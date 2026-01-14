@@ -41,12 +41,13 @@ WORKDIR /workspace/openvscode-server/remote
 RUN . /root/.nvm/nvm.sh && npm ci
 WORKDIR /workspace/openvscode-server
 
-RUN . /root/.nvm/nvm.sh && npm run compile
-
 RUN . /root/.nvm/nvm.sh && \
     ln -sf $(which node) /usr/local/bin/node && \
     ln -sf $(which npm) /usr/local/bin/npm && \
     node --version
+
+RUN npm run gulp core-ci && \
+    npm run gulp extensions-ci
 
 # Download built-in extensions (language support, themes, etc.)
 RUN npm run download-builtin-extensions
