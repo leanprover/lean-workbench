@@ -18,8 +18,6 @@ current result: seems to work ok
 
 Try to build vscode from scratch
 
-Directly use `gitpod/openvscode-server:latest` with preinstalled extension, elan not yet preinstalled:
-
 ```
 cd manual
 docker build -t podserver .
@@ -27,3 +25,13 @@ docker run -it --init -p 3000:3000 podserver:latest
 ```
 
 current result: server exists, and serves some html file, but interface does not load
+
+## Experiment 3
+
+Try to use gitpod's release of openvscode-server.
+
+```
+cd rebuild
+docker build -t podserver .
+docker run -it --init -p 3000:3000 podserver:latest
+```
