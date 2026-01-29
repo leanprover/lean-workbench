@@ -35,3 +35,9 @@ cd rebuild
 docker build -t podserver .
 docker run -it --init -p 3000:3000 podserver:latest
 ```
+
+other manual entry points:
+```
+docker run -it --init -p 3000:3000 -v "/tmp/workspace4:/home/workspace:cached"  podserver:latest --extensions-dir /home/openvscode-server/extensions
+docker run -it --init --entrypoint /bin/bash  podserver:latest
+```
