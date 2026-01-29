@@ -34,7 +34,7 @@ function isAlive(pid: number): boolean {
 }
 
 function writeNginxConf(username: string, port: number): void {
-  const conf = `location /user/${username}/ {
+  const conf = `location /user/${username}/_vs/ {
     proxy_pass http://127.0.0.1:${port};
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
@@ -42,6 +42,7 @@ function writeNginxConf(username: string, port: number): void {
     proxy_set_header Host $host;
     proxy_buffering off;
     proxy_read_timeout 86400;
+    proxy_hide_header X-Frame-Options;
 }
 `;
   const confPath = path.join(NGINX_ROUTES_DIR, `${username}.conf`);
@@ -90,7 +91,7 @@ function spawnUser(username: string): { info: UserInfo; created: boolean } {
       "--host", "127.0.0.1",
       "--port", String(port),
       "--without-connection-token",
-      `--server-base-path=/user/${username}/`,
+      `--server-base-path=/user/${username}/_vs/`,
     ],
     {
       stdio: "ignore",
@@ -244,6 +245,43 @@ app.post("/api/spawn", (req: Request, res: Response) => {
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
   }
+});
+
+app.get("/user/:username/", (req: Request, res: Response) => {
+  const username = req.params.username;
+  if (!USERNAME_RE.test(username)) {
+    res.status(404).send("Not found");
+    return;
+  }
+  res.type("html").send(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>${username} - podserver</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  nav { height: 36px; background: #1e1e1e; color: #ccc; display: flex; align-items: center; padding: 0 12px; font-family: system-ui, sans-serif; font-size: 13px; border-bottom: 1px solid #333; }
+  nav .brand { color: #999; }
+  nav .sep { margin: 0 8px; color: #555; }
+  nav .user { color: #ddd; }
+  nav .spacer { flex: 1; }
+  nav a { color: #569cd6; text-decoration: none; font-size: 13px; }
+  nav a:hover { text-decoration: underline; }
+  iframe { width: 100%; height: calc(100% - 36px); border: none; display: block; }
+</style>
+</head>
+<body>
+<nav>
+  <span class="brand">podserver</span>
+  <span class="sep">|</span>
+  <span class="user">${username}</span>
+  <span class="spacer"></span>
+  <a href="/">Home</a>
+</nav>
+<iframe src="/user/${username}/_vs/"></iframe>
+</body>
+</html>`);
 });
 
 const HOST = "127.0.0.1";
