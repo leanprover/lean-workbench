@@ -4,6 +4,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         git \
         sudo \
         libatomic1 \
+        bubblewrap \
+        nginx \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /home/
@@ -47,6 +49,14 @@ RUN chmod g+rw /home && \
     chown -R $USERNAME:$USERNAME /home/workspace && \
     chown -R $USERNAME:$USERNAME ${OPENVSCODE_SERVER_ROOT}
 
+COPY nginx.conf /etc/nginx/nginx.conf
+COPY start.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
+
+# Allow non-root user to run nginx
+RUN mkdir -p /var/lib/nginx/body /var/lib/nginx/proxy /var/lib/nginx/fastcgi \
+    && chown -R $USERNAME:$USERNAME /var/log/nginx /var/lib/nginx /var/run
+
 USER $USERNAME
 
 WORKDIR /home/workspace/
@@ -62,4 +72,4 @@ ENV LANG=C.UTF-8 \
 # Default exposed port if none is specified
 EXPOSE 3000
 
-ENTRYPOINT [ "/bin/sh", "-c", "exec ${OPENVSCODE_SERVER_ROOT}/bin/openvscode-server --host 0.0.0.0 --without-connection-token \"${@}\"", "--" ]
+ENTRYPOINT [ "/usr/local/bin/start.sh" ]
