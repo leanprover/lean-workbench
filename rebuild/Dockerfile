@@ -1,11 +1,13 @@
 FROM buildpack-deps:22.04-curl
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y --no-install-recommends \
         git \
         sudo \
         libatomic1 \
         bubblewrap \
         nginx \
+        nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /home/
@@ -50,12 +52,16 @@ RUN chmod g+rw /home && \
     chown -R $USERNAME:$USERNAME ${OPENVSCODE_SERVER_ROOT}
 
 COPY nginx.conf /etc/nginx/nginx.conf
+COPY package.json spawner.ts /usr/local/lib/spawner/
+RUN cd /usr/local/lib/spawner && npm install --production
 COPY start.sh /usr/local/bin/start.sh
 RUN chmod +x /usr/local/bin/start.sh
 
-# Allow non-root user to run nginx
+# Allow non-root user to run nginx and spawner to write route configs
 RUN mkdir -p /var/lib/nginx/body /var/lib/nginx/proxy /var/lib/nginx/fastcgi \
-    && chown -R $USERNAME:$USERNAME /var/log/nginx /var/lib/nginx /var/run
+        /etc/nginx/user-routes \
+    && chown -R $USERNAME:$USERNAME /var/log/nginx /var/lib/nginx /var/run \
+        /etc/nginx/user-routes
 
 USER $USERNAME
 
