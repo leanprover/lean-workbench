@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lean Workbench</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; color: #333; }
+  h1 { margin-bottom: 4px; }
+  h1 + p { color: #666; margin-top: 0; }
+  .login-link { display: inline-block; margin: 20px 0; padding: 10px 20px; font-size: 14px; background: #333; color: #fff; text-decoration: none; border-radius: 4px; }
+  .login-link:hover { background: #555; }
+  .welcome { margin: 20px 0; }
+  .welcome a { color: #0078d4; text-decoration: none; }
+  .welcome a:hover { text-decoration: underline; }
+  #users { margin-top: 24px; }
+  #users a { display: block; padding: 6px 0; color: #0078d4; text-decoration: none; }
+  #users a:hover { text-decoration: underline; }
+  #no-users { color: #999; display: none; }
+</style>
+</head>
+<body>
+<h1>Lean Workbench</h1>
+<p>Multi-user sandboxed VS Code server.</p>
+
+<% if (user) { %>
+  <div class="welcome">
+    <h2>Welcome, <%= user.username %></h2>
+    <p><a href="/user/<%= user.username %>/">Go to your session</a></p>
+    <p><a href="/logout">Logout</a></p>
+  </div>
+<% } else { %>
+  <h2>Launch a session</h2>
+  <a class="login-link" href="/auth/github">Login with GitHub</a>
+<% } %>
+
+<h2>Active users</h2>
+<div id="users"><span id="no-users">No active users.</span></div>
+
+<script>
+const usersDiv = document.getElementById('users');
+const noUsers = document.getElementById('no-users');
+
+async function loadUsers() {
+  try {
+    const res = await fetch('/api/status');
+    const data = await res.json();
+    const alive = Object.entries(data.users).filter(([, u]) => u.alive);
+    if (alive.length === 0) {
+      noUsers.style.display = 'inline';
+      return;
+    }
+    noUsers.style.display = 'none';
+    usersDiv.innerHTML = '';
+    for (const [name] of alive) {
+      const a = document.createElement('a');
+      a.href = '/user/' + name + '/';
+      a.textContent = name;
+      usersDiv.appendChild(a);
+    }
+  } catch {}
+}
+
+loadUsers();
+</script>
+</body>
+</html>

@@ -52,7 +52,7 @@ RUN chmod g+rw /home && \
     chown -R $USERNAME:$USERNAME ${OPENVSCODE_SERVER_ROOT}
 
 COPY nginx.conf /etc/nginx/nginx.conf
-COPY package.json spawner.ts /usr/local/lib/spawner/
+COPY package.json package-lock.json spawner.ts /usr/local/lib/spawner/
 COPY public/ /usr/local/lib/spawner/public/
 RUN cd /usr/local/lib/spawner && npm install --production
 COPY start.sh /usr/local/bin/start.sh

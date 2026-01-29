@@ -1,5 +1,10 @@
+import "dotenv/config";
 import express from "express";
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
+import session from "express-session";
+import passport from "passport";
+import { Strategy as GitHubStrategy } from "passport-github2";
+import type { VerifyCallback } from "passport-oauth2";
 import { spawn, execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -8,7 +13,7 @@ import ejs from "ejs";
 const OPENVSCODE_SERVER_ROOT = "/home/.openvscode-server";
 const WORKSPACE_BASE = "/home/workspace";
 const NGINX_ROUTES_DIR = "/etc/nginx/user-routes";
-const USERNAME_RE = /^[a-z][a-z0-9_-]{0,30}$/;
+const USERNAME_RE = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/;
 const BASE_PORT = 3010;
 
 interface UserInfo {
@@ -110,15 +115,69 @@ function spawnUser(username: string): { info: UserInfo; created: boolean } {
   return { info, created: true };
 }
 
+// --- Templates ---
 const publicDir = path.join(import.meta.dirname, "public");
-const LANDING_HTML = fs.readFileSync(path.join(publicDir, "landing.html"), "utf-8");
+const LANDING_TEMPLATE = fs.readFileSync(path.join(publicDir, "landing.ejs"), "utf-8");
 const SESSION_TEMPLATE = fs.readFileSync(path.join(publicDir, "session.ejs"), "utf-8");
 
+// --- App setup ---
 const app = express();
 app.use(express.json());
 
-app.get("/", (_req: Request, res: Response) => {
-  res.type("html").send(LANDING_HTML);
+// Session middleware
+app.use(session({
+  secret: "lean-workbench-demo-secret",
+  resave: false,
+  saveUninitialized: false,
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+// --- GitHub OAuth strategy ---
+passport.use(
+  new GitHubStrategy(
+    {
+      clientID: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+      callbackURL: process.env.CALLBACK_URL ?? "http://localhost:3000/auth/github/callback",
+    },
+    (accessToken: string, refreshToken: string, profile: any, done: VerifyCallback) => {
+      done(null, profile);
+    },
+  ),
+);
+
+passport.serializeUser((user, done) => done(null, user));
+passport.deserializeUser((obj, done) => done(null, obj as any));
+
+// --- Auth routes ---
+app.get("/auth/github", passport.authenticate("github", { scope: ["user:email"] }));
+
+app.get(
+  "/auth/github/callback",
+  passport.authenticate("github", { failureRedirect: "/" }),
+  (req: Request, res: Response) => {
+    const username = (req.user as any)?.username?.toLowerCase() ?? "";
+    res.redirect(`/user/${username}/`);
+  },
+);
+
+app.get("/logout", (req: Request, res: Response, next: NextFunction) => {
+  req.logout((err) => {
+    if (err) return next(err);
+    req.session.destroy((err) => {
+      if (err) return next(err);
+      res.clearCookie("connect.sid");
+      res.redirect("/");
+    });
+  });
+});
+
+// --- Pages ---
+app.get("/", (req: Request, res: Response) => {
+  const user = req.user ? { username: (req.user as any).username?.toLowerCase() } : null;
+  res.type("html").send(ejs.render(LANDING_TEMPLATE, { user }));
 });
 
 app.get("/api/health", (_req: Request, res: Response) => {
@@ -138,36 +197,34 @@ app.get("/api/status", (_req: Request, res: Response) => {
   res.json({ users: status });
 });
 
-app.post("/api/spawn", (req: Request, res: Response) => {
-  const username: string = req.body?.username ?? "";
-  if (!USERNAME_RE.test(username)) {
-    res.status(400).json({
-      error: "invalid username",
-      detail: "must match ^[a-z][a-z0-9_-]{0,30}$",
-    });
-    return;
-  }
-
-  try {
-    const { info, created } = spawnUser(username);
-    res.status(created ? 201 : 200).json({
-      username,
-      port: info.port,
-      pid: info.pid,
-      url: `/user/${username}/`,
-      workspace: info.workspace,
-    });
-  } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
-  }
-});
-
 app.get("/user/:username/", (req: Request, res: Response) => {
-  const username = req.params.username;
+  const username = req.params.username as string;
   if (!USERNAME_RE.test(username)) {
     res.status(404).send("Not found");
     return;
   }
+
+  // Require login
+  if (!req.user) {
+    res.redirect("/");
+    return;
+  }
+
+  // Require matching username
+  const loggedInUser = (req.user as any).username?.toLowerCase() ?? "";
+  if (loggedInUser !== username) {
+    res.status(403).send("Forbidden: you can only access your own session.");
+    return;
+  }
+
+  // Auto-spawn the user's VS Code session
+  try {
+    spawnUser(username);
+  } catch (err) {
+    res.status(500).send("Failed to spawn session: " + (err as Error).message);
+    return;
+  }
+
   res.type("html").send(ejs.render(SESSION_TEMPLATE, { username }));
 });
 
