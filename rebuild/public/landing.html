@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lean Workbench</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; color: #333; }
+  h1 { margin-bottom: 4px; }
+  h1 + p { color: #666; margin-top: 0; }
+  form { display: flex; gap: 8px; margin: 20px 0; }
+  input[type=text] { flex: 1; padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; }
+  button { padding: 8px 16px; font-size: 14px; background: #0078d4; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+  button:hover { background: #005ea2; }
+  #error { color: #c00; margin: 8px 0; display: none; }
+  #users { margin-top: 24px; }
+  #users a { display: block; padding: 6px 0; color: #0078d4; text-decoration: none; }
+  #users a:hover { text-decoration: underline; }
+  #no-users { color: #999; display: none; }
+</style>
+</head>
+<body>
+<h1>Lean Workbench</h1>
+<p>Multi-user sandboxed VS Code server.</p>
+
+<h2>Launch a session</h2>
+<form id="launch-form">
+  <input type="text" id="username" placeholder="username" pattern="[a-z][a-z0-9_-]{0,30}" required autofocus>
+  <button type="submit">Launch</button>
+</form>
+<div id="error"></div>
+
+<h2>Active users</h2>
+<div id="users"><span id="no-users">No active users.</span></div>
+
+<script>
+const form = document.getElementById('launch-form');
+const input = document.getElementById('username');
+const errorDiv = document.getElementById('error');
+const usersDiv = document.getElementById('users');
+const noUsers = document.getElementById('no-users');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  errorDiv.style.display = 'none';
+  const username = input.value.trim();
+  if (!username) return;
+  try {
+    const res = await fetch('/api/spawn', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errorDiv.textContent = data.error + (data.detail ? ': ' + data.detail : '');
+      errorDiv.style.display = 'block';
+      return;
+    }
+    window.location = data.url;
+  } catch (err) {
+    errorDiv.textContent = 'Request failed: ' + err.message;
+    errorDiv.style.display = 'block';
+  }
+});
+
+async function loadUsers() {
+  try {
+    const res = await fetch('/api/status');
+    const data = await res.json();
+    const alive = Object.entries(data.users).filter(([, u]) => u.alive);
+    if (alive.length === 0) {
+      noUsers.style.display = 'inline';
+      return;
+    }
+    noUsers.style.display = 'none';
+    usersDiv.innerHTML = '';
+    for (const [name] of alive) {
+      const a = document.createElement('a');
+      a.href = '/user/' + name + '/';
+      a.textContent = name;
+      usersDiv.appendChild(a);
+    }
+  } catch {}
+}
+
+loadUsers();
+</script>
+</body>
+</html>

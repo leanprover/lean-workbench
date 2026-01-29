@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { spawn, execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import ejs from "ejs";
 
 const OPENVSCODE_SERVER_ROOT = "/home/.openvscode-server";
 const WORKSPACE_BASE = "/home/workspace";
@@ -109,95 +110,9 @@ function spawnUser(username: string): { info: UserInfo; created: boolean } {
   return { info, created: true };
 }
 
-const LANDING_HTML = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>podserver</title>
-<style>
-  body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; color: #333; }
-  h1 { margin-bottom: 4px; }
-  h1 + p { color: #666; margin-top: 0; }
-  form { display: flex; gap: 8px; margin: 20px 0; }
-  input[type=text] { flex: 1; padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; }
-  button { padding: 8px 16px; font-size: 14px; background: #0078d4; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
-  button:hover { background: #005ea2; }
-  #error { color: #c00; margin: 8px 0; display: none; }
-  #users { margin-top: 24px; }
-  #users a { display: block; padding: 6px 0; color: #0078d4; text-decoration: none; }
-  #users a:hover { text-decoration: underline; }
-  #no-users { color: #999; display: none; }
-</style>
-</head>
-<body>
-<h1>podserver</h1>
-<p>Multi-user sandboxed VS Code server.</p>
-
-<h2>Launch a session</h2>
-<form id="launch-form">
-  <input type="text" id="username" placeholder="username" pattern="[a-z][a-z0-9_-]{0,30}" required autofocus>
-  <button type="submit">Launch</button>
-</form>
-<div id="error"></div>
-
-<h2>Active users</h2>
-<div id="users"><span id="no-users">No active users.</span></div>
-
-<script>
-const form = document.getElementById('launch-form');
-const input = document.getElementById('username');
-const errorDiv = document.getElementById('error');
-const usersDiv = document.getElementById('users');
-const noUsers = document.getElementById('no-users');
-
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  errorDiv.style.display = 'none';
-  const username = input.value.trim();
-  if (!username) return;
-  try {
-    const res = await fetch('/api/spawn', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      errorDiv.textContent = data.error + (data.detail ? ': ' + data.detail : '');
-      errorDiv.style.display = 'block';
-      return;
-    }
-    window.location = data.url;
-  } catch (err) {
-    errorDiv.textContent = 'Request failed: ' + err.message;
-    errorDiv.style.display = 'block';
-  }
-});
-
-async function loadUsers() {
-  try {
-    const res = await fetch('/api/status');
-    const data = await res.json();
-    const alive = Object.entries(data.users).filter(([, u]) => u.alive);
-    if (alive.length === 0) {
-      noUsers.style.display = 'inline';
-      return;
-    }
-    noUsers.style.display = 'none';
-    usersDiv.innerHTML = '';
-    for (const [name] of alive) {
-      const a = document.createElement('a');
-      a.href = '/user/' + name + '/';
-      a.textContent = name;
-      usersDiv.appendChild(a);
-    }
-  } catch {}
-}
-
-loadUsers();
-</script>
-</body>
-</html>`;
+const publicDir = path.join(import.meta.dirname, "public");
+const LANDING_HTML = fs.readFileSync(path.join(publicDir, "landing.html"), "utf-8");
+const SESSION_TEMPLATE = fs.readFileSync(path.join(publicDir, "session.ejs"), "utf-8");
 
 const app = express();
 app.use(express.json());
@@ -253,35 +168,7 @@ app.get("/user/:username/", (req: Request, res: Response) => {
     res.status(404).send("Not found");
     return;
   }
-  res.type("html").send(`<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>${username} - podserver</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: 100%; overflow: hidden; }
-  nav { height: 36px; background: #1e1e1e; color: #ccc; display: flex; align-items: center; padding: 0 12px; font-family: system-ui, sans-serif; font-size: 13px; border-bottom: 1px solid #333; }
-  nav .brand { color: #999; }
-  nav .sep { margin: 0 8px; color: #555; }
-  nav .user { color: #ddd; }
-  nav .spacer { flex: 1; }
-  nav a { color: #569cd6; text-decoration: none; font-size: 13px; }
-  nav a:hover { text-decoration: underline; }
-  iframe { width: 100%; height: calc(100% - 36px); border: none; display: block; }
-</style>
-</head>
-<body>
-<nav>
-  <span class="brand">podserver</span>
-  <span class="sep">|</span>
-  <span class="user">${username}</span>
-  <span class="spacer"></span>
-  <a href="/">Home</a>
-</nav>
-<iframe src="/user/${username}/_vs/"></iframe>
-</body>
-</html>`);
+  res.type("html").send(ejs.render(SESSION_TEMPLATE, { username }));
 });
 
 const HOST = "127.0.0.1";

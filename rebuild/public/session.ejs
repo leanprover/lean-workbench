@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title><%= username %> - Lean Workbench</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  nav { height: 36px; background: #1e1e1e; color: #ccc; display: flex; align-items: center; padding: 0 12px; font-family: system-ui, sans-serif; font-size: 13px; border-bottom: 1px solid #333; }
+  nav .brand { color: #999; }
+  nav .sep { margin: 0 8px; color: #555; }
+  nav .user { color: #ddd; }
+  nav .spacer { flex: 1; }
+  nav a { color: #569cd6; text-decoration: none; font-size: 13px; }
+  nav a:hover { text-decoration: underline; }
+  iframe { width: 100%; height: calc(100% - 36px); border: none; display: block; }
+</style>
+</head>
+<body>
+<nav>
+  <span class="brand">Lean Workbench</span>
+  <span class="sep">|</span>
+  <span class="user"><%= username %></span>
+  <span class="spacer"></span>
+  <a href="/">Home</a>
+</nav>
+<iframe src="/user/<%= username %>/_vs/"></iframe>
+</body>
+</html>
