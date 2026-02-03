@@ -26,14 +26,14 @@ interface SessionInfo {
   port: number;
   pid: number;
   workspace: string;
-  projectId: number;
+  projectId: string;
 }
 
 // In-memory state: "username/projectId" -> { port, pid, workspace, projectId }
 const sessions: Record<string, SessionInfo> = {};
 let nextPort = BASE_PORT;
 
-function sessionKey(username: string, projectId: number): string {
+function sessionKey(username: string, projectId: string): string {
   return `${username}/${projectId}`;
 }
 
@@ -72,7 +72,7 @@ function waitForPort(port: number, timeoutMs = 10000): Promise<void> {
   });
 }
 
-function writeNginxConf(username: string, projectId: number, port: number): void {
+function writeNginxConf(username: string, projectId: string, port: number): void {
   const conf = `location /${username}/${projectId}/_vs/ {
     proxy_pass http://127.0.0.1:${port};
     proxy_http_version 1.1;
@@ -88,7 +88,7 @@ function writeNginxConf(username: string, projectId: number, port: number): void
   fs.writeFileSync(confPath, conf);
 }
 
-function removeNginxConf(username: string, projectId: number): void {
+function removeNginxConf(username: string, projectId: string): void {
   const confPath = path.join(NGINX_ROUTES_DIR, `${username}-${projectId}.conf`);
   try { fs.unlinkSync(confPath); } catch { }
 }
@@ -97,7 +97,7 @@ function reloadNginx(): void {
   execSync("nginx -s reload");
 }
 
-async function spawnProject(username: string, projectId: number): Promise<{ info: SessionInfo; created: boolean }> {
+async function spawnProject(username: string, projectId: string): Promise<{ info: SessionInfo; created: boolean }> {
   const key = sessionKey(username, projectId);
   let port: number;
 
@@ -113,7 +113,7 @@ async function spawnProject(username: string, projectId: number): Promise<{ info
     port = allocatePort();
   }
 
-  const workspace = path.join(WORKSPACE_BASE, username, String(projectId));
+  const workspace = path.join(WORKSPACE_BASE, username, projectId);
   fs.mkdirSync(workspace, { recursive: true });
 
   // Initialize the vscode config for this workspace
@@ -168,7 +168,7 @@ async function spawnProject(username: string, projectId: number): Promise<{ info
   return { info, created: true };
 }
 
-function killSession(username: string, projectId: number): void {
+function killSession(username: string, projectId: string): void {
   const key = sessionKey(username, projectId);
   const session = sessions[key];
   if (session) {
@@ -314,7 +314,7 @@ app.post("/:username/projects", (req: Request, res: Response) => {
     if (err.message?.includes("UNIQUE constraint")) {
       res.status(409).json({ error: "A project with that name already exists" });
     } else {
-      res.status(500).json({ error: "Failed to create project" });
+      res.status(500).json({ error: `Failed to create project: ${err.message}` });
     }
   }
 });
@@ -323,8 +323,7 @@ app.put("/:username/projects/:projectId", (req: Request, res: Response) => {
   const user = requireOwner(req, res);
   if (!user) return;
 
-  const projectId = parseInt(req.params.projectId, 10);
-  if (isNaN(projectId)) { res.status(400).json({ error: "Invalid project ID" }); return; }
+  const projectId = req.params.projectId as string;
 
   const project = getProjectById(projectId);
   if (!project || project.user_id !== user.id) {
@@ -354,8 +353,7 @@ app.delete("/:username/projects/:projectId", (req: Request, res: Response) => {
   const user = requireOwner(req, res);
   if (!user) return;
 
-  const projectId = parseInt(req.params.projectId, 10);
-  if (isNaN(projectId)) { res.status(400).json({ error: "Invalid project ID" }); return; }
+  const projectId = req.params.projectId as string;
 
   const project = getProjectById(projectId);
   if (!project || project.user_id !== user.id) {
@@ -403,11 +401,7 @@ app.get("/:username/:projectId/", async (req: Request, res: Response) => {
     return;
   }
 
-  const projectId = parseInt(req.params.projectId, 10);
-  if (isNaN(projectId)) {
-    res.status(404).send("Not found");
-    return;
-  }
+  const projectId = req.params.projectId as string;
 
   if (!req.user) {
     res.redirect("/");

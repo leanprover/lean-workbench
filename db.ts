@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import Database from "better-sqlite3";
 
 const DB_PATH = "/data/podserver.db";
@@ -11,7 +12,7 @@ export interface UserRow {
 }
 
 export interface ProjectRow {
-  id: number;
+  id: string;
   user_id: number;
   name: string;
   description: string | null;
@@ -48,7 +49,7 @@ CREATE TABLE IF NOT EXISTS auth_github (
 );
 
 CREATE TABLE IF NOT EXISTS projects (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  id          TEXT PRIMARY KEY,
   user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name        TEXT NOT NULL,
   description TEXT,
@@ -153,12 +154,10 @@ export function setAdmin(userId: number, value: boolean): void {
 // --- Project queries ---
 
 export function createProject(userId: number, name: string, description?: string): ProjectRow {
-  const { lastInsertRowid } = db.prepare(
-    `INSERT INTO projects (user_id, name, description, path) VALUES (?, ?, ?, '')`
-  ).run(userId, name, description ?? null);
-
-  const id = Number(lastInsertRowid);
-  db.prepare(`UPDATE projects SET path = ? WHERE id = ?`).run(String(id), id);
+  const id = crypto.randomUUID();
+  db.prepare(
+    `INSERT INTO projects (id, user_id, name, description, path) VALUES (?, ?, ?, ?, ?)`
+  ).run(id, userId, name, description ?? null, id);
 
   return db.prepare(`SELECT * FROM projects WHERE id = ?`).get(id) as ProjectRow;
 }
@@ -167,16 +166,16 @@ export function getProjectsByUser(userId: number): ProjectRow[] {
   return db.prepare(`SELECT * FROM projects WHERE user_id = ? ORDER BY created_at DESC`).all(userId) as ProjectRow[];
 }
 
-export function getProjectById(projectId: number): ProjectRow | undefined {
+export function getProjectById(projectId: string): ProjectRow | undefined {
   return db.prepare(`SELECT * FROM projects WHERE id = ?`).get(projectId) as ProjectRow | undefined;
 }
 
-export function updateProject(projectId: number, name: string, description: string | null): void {
+export function updateProject(projectId: string, name: string, description: string | null): void {
   db.prepare(
     `UPDATE projects SET name = ?, description = ?, updated_at = datetime('now') WHERE id = ?`
   ).run(name, description, projectId);
 }
 
-export function deleteProject(projectId: number): void {
+export function deleteProject(projectId: string): void {
   db.prepare(`DELETE FROM projects WHERE id = ?`).run(projectId);
 }

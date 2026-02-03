@@ -4,12 +4,12 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "better-sqlite3": "^11.0.0",
     "dotenv": "^16.4.0",
     "ejs": "^3.1.10",
     "express": "^4.21.0",
     "express-session": "^1.18.0",
     "passport": "^0.7.0",
-    "better-sqlite3": "^11.0.0",
     "passport-github2": "^0.1.12"
   },
   "devDependencies": {
@@ -19,6 +19,7 @@
     "@types/express-session": "^1.18.0",
     "@types/node": "^22.0.0",
     "@types/passport": "^1.0.16",
-    "@types/passport-github2": "^1.2.9"
+    "@types/passport-github2": "^1.2.9",
+    "typescript": "^5.9.3"
   }
 }
