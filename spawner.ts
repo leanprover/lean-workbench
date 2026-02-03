@@ -151,7 +151,7 @@ app.use(express.json());
 
 // Session middleware
 app.use(session({
-  secret: "lean-workbench-demo-secret",
+  secret: "lean-workbench-demo-secret", // FIXME
   resave: false,
   saveUninitialized: false,
 }));
