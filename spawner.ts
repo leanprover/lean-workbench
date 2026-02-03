@@ -10,8 +10,11 @@ import net from "node:net";
 import fs from "node:fs";
 import path from "node:path";
 import ejs from "ejs";
-import { upsertGithubUser, getUserById, ensureUser } from "./db.js";
-import type { UserRow } from "./db.js";
+import {
+  upsertGithubUser, getUserById, ensureUser,
+  getProjectsByUser, getProjectById, createProject, updateProject, deleteProject,
+} from "./db.ts";
+import type { UserRow } from "./db.ts";
 
 const OPENVSCODE_SERVER_ROOT = "/home/.openvscode-server";
 const WORKSPACE_BASE = "/home/workspace";
@@ -19,15 +22,20 @@ const NGINX_ROUTES_DIR = "/etc/nginx/user-routes";
 const USERNAME_RE = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/;
 const BASE_PORT = 3010;
 
-interface UserInfo {
+interface SessionInfo {
   port: number;
   pid: number;
   workspace: string;
+  projectId: number;
 }
 
-// In-memory state: username -> { port, pid, workspace }
-const users: Record<string, UserInfo> = {};
+// In-memory state: "username/projectId" -> { port, pid, workspace, projectId }
+const sessions: Record<string, SessionInfo> = {};
 let nextPort = BASE_PORT;
+
+function sessionKey(username: string, projectId: number): string {
+  return `${username}/${projectId}`;
+}
 
 function allocatePort(): number {
   return nextPort++;
@@ -64,8 +72,8 @@ function waitForPort(port: number, timeoutMs = 10000): Promise<void> {
   });
 }
 
-function writeNginxConf(username: string, port: number): void {
-  const conf = `location /${username}/_vs/ {
+function writeNginxConf(username: string, projectId: number, port: number): void {
+  const conf = `location /${username}/${projectId}/_vs/ {
     proxy_pass http://127.0.0.1:${port};
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
@@ -76,20 +84,26 @@ function writeNginxConf(username: string, port: number): void {
     proxy_hide_header X-Frame-Options;
 }
 `;
-  const confPath = path.join(NGINX_ROUTES_DIR, `${username}.conf`);
+  const confPath = path.join(NGINX_ROUTES_DIR, `${username}-${projectId}.conf`);
   fs.writeFileSync(confPath, conf);
+}
+
+function removeNginxConf(username: string, projectId: number): void {
+  const confPath = path.join(NGINX_ROUTES_DIR, `${username}-${projectId}.conf`);
+  try { fs.unlinkSync(confPath); } catch { }
 }
 
 function reloadNginx(): void {
   execSync("nginx -s reload");
 }
 
-async function spawnUser(username: string): Promise<{ info: UserInfo; created: boolean }> {
+async function spawnProject(username: string, projectId: number): Promise<{ info: SessionInfo; created: boolean }> {
+  const key = sessionKey(username, projectId);
   let port: number;
 
   // Idempotent: if already spawned and alive, return existing info
-  if (users[username]) {
-    const existing = users[username];
+  if (sessions[key]) {
+    const existing = sessions[key];
     if (isAlive(existing.pid)) {
       return { info: existing, created: false };
     }
@@ -99,7 +113,7 @@ async function spawnUser(username: string): Promise<{ info: UserInfo; created: b
     port = allocatePort();
   }
 
-  const workspace = path.join(WORKSPACE_BASE, username);
+  const workspace = path.join(WORKSPACE_BASE, username, String(projectId));
   fs.mkdirSync(workspace, { recursive: true });
 
   // Initialize the vscode config for this workspace
@@ -132,7 +146,7 @@ async function spawnUser(username: string): Promise<{ info: UserInfo; created: b
       "--without-connection-token",
       "--server-data-dir", "/workspace/.vscode-data",
       "--default-folder", "/workspace",
-      `--server-base-path=/${username}/_vs/`,
+      `--server-base-path=/${username}/${projectId}/_vs/`,
     ],
     {
       stdio: "ignore",
@@ -141,10 +155,10 @@ async function spawnUser(username: string): Promise<{ info: UserInfo; created: b
   );
   child.unref();
 
-  const info: UserInfo = { port, pid: child.pid!, workspace };
-  users[username] = info;
+  const info: SessionInfo = { port, pid: child.pid!, workspace, projectId };
+  sessions[key] = info;
 
-  writeNginxConf(username, port);
+  writeNginxConf(username, projectId, port);
   reloadNginx();
 
   await waitForPort(port);
@@ -152,10 +166,22 @@ async function spawnUser(username: string): Promise<{ info: UserInfo; created: b
   return { info, created: true };
 }
 
+function killSession(username: string, projectId: number): void {
+  const key = sessionKey(username, projectId);
+  const session = sessions[key];
+  if (session) {
+    try { process.kill(session.pid); } catch { }
+    delete sessions[key];
+  }
+  removeNginxConf(username, projectId);
+  try { reloadNginx(); } catch { }
+}
+
 // --- Templates ---
 const publicDir = path.join(import.meta.dirname, "public");
 const LANDING_TEMPLATE = fs.readFileSync(path.join(publicDir, "landing.ejs"), "utf-8");
 const SESSION_TEMPLATE = fs.readFileSync(path.join(publicDir, "session.ejs"), "utf-8");
+const PROJECTS_TEMPLATE = fs.readFileSync(path.join(publicDir, "projects.ejs"), "utf-8");
 
 // --- App setup ---
 const app = express();
@@ -202,6 +228,25 @@ passport.deserializeUser((id, done) => {
   done(null, user ?? false);
 });
 
+// --- Helper: require auth + ownership ---
+function requireOwner(req: Request, res: Response): UserRow | null {
+  const username = req.params.username as string;
+  if (!USERNAME_RE.test(username)) {
+    res.status(404).send("Not found");
+    return null;
+  }
+  if (!req.user) {
+    res.status(401).json({ error: "Not logged in" });
+    return null;
+  }
+  const user = req.user as UserRow;
+  if (user.username !== username) {
+    res.status(403).json({ error: "Forbidden" });
+    return null;
+  }
+  return user;
+}
+
 // --- Auth routes ---
 app.get("/auth/github", passport.authenticate("github", { scope: ["user:email"] }));
 
@@ -237,46 +282,160 @@ app.get("/api/health", (_req: Request, res: Response) => {
 
 app.get("/api/status", (_req: Request, res: Response) => {
   const status: Record<string, object> = {};
-  for (const [name, info] of Object.entries(users)) {
-    status[name] = {
+  for (const [key, info] of Object.entries(sessions)) {
+    status[key] = {
       port: info.port,
       pid: info.pid,
       alive: isAlive(info.pid),
       workspace: info.workspace,
+      projectId: info.projectId,
     };
   }
-  res.json({ users: status });
+  res.json({ sessions: status });
 });
 
-app.get("/:username/", async (req: Request, res: Response) => {
+// --- Project CRUD routes (before /:username/ to avoid conflicts) ---
+app.post("/:username/projects", (req: Request, res: Response) => {
+  const user = requireOwner(req, res);
+  if (!user) return;
+
+  const { name, description } = req.body;
+  if (!name || typeof name !== "string" || !name.trim()) {
+    res.status(400).json({ error: "Name is required" });
+    return;
+  }
+
+  try {
+    const project = createProject(user.id, name.trim(), description?.trim() || undefined);
+    res.json(project);
+  } catch (err: any) {
+    if (err.message?.includes("UNIQUE constraint")) {
+      res.status(409).json({ error: "A project with that name already exists" });
+    } else {
+      res.status(500).json({ error: "Failed to create project" });
+    }
+  }
+});
+
+app.put("/:username/projects/:projectId", (req: Request, res: Response) => {
+  const user = requireOwner(req, res);
+  if (!user) return;
+
+  const projectId = parseInt(req.params.projectId, 10);
+  if (isNaN(projectId)) { res.status(400).json({ error: "Invalid project ID" }); return; }
+
+  const project = getProjectById(projectId);
+  if (!project || project.user_id !== user.id) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  const { name, description } = req.body;
+  if (!name || typeof name !== "string" || !name.trim()) {
+    res.status(400).json({ error: "Name is required" });
+    return;
+  }
+
+  try {
+    updateProject(projectId, name.trim(), description ?? null);
+    res.json({ ok: true });
+  } catch (err: any) {
+    if (err.message?.includes("UNIQUE constraint")) {
+      res.status(409).json({ error: "A project with that name already exists" });
+    } else {
+      res.status(500).json({ error: "Failed to update project" });
+    }
+  }
+});
+
+app.delete("/:username/projects/:projectId", (req: Request, res: Response) => {
+  const user = requireOwner(req, res);
+  if (!user) return;
+
+  const projectId = parseInt(req.params.projectId, 10);
+  if (isNaN(projectId)) { res.status(400).json({ error: "Invalid project ID" }); return; }
+
+  const project = getProjectById(projectId);
+  if (!project || project.user_id !== user.id) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  // Kill session if running, remove nginx conf
+  killSession(user.username, projectId);
+
+  // Delete DB row (workspace files intentionally kept)
+  deleteProject(projectId);
+
+  res.json({ ok: true });
+});
+
+// --- Project list page ---
+app.get("/:username/", (req: Request, res: Response) => {
   const username = req.params.username as string;
   if (!USERNAME_RE.test(username)) {
     res.status(404).send("Not found");
     return;
   }
 
-  // Require login
   if (!req.user) {
     res.redirect("/");
     return;
   }
 
-  // Require matching username
-  const loggedInUser = (req.user as UserRow).username;
-  if (loggedInUser !== username) {
-    res.status(403).send("Forbidden: you can only access your own session.");
+  const loggedInUser = (req.user as UserRow);
+  if (loggedInUser.username !== username) {
+    res.status(403).send("Forbidden: you can only access your own projects.");
     return;
   }
 
-  // Auto-spawn the user's VS Code session
+  const projects = getProjectsByUser(loggedInUser.id);
+  res.type("html").send(ejs.render(PROJECTS_TEMPLATE, { username, projects }));
+});
+
+// --- Project session page ---
+app.get("/:username/:projectId/", async (req: Request, res: Response) => {
+  const username = req.params.username as string;
+  if (!USERNAME_RE.test(username)) {
+    res.status(404).send("Not found");
+    return;
+  }
+
+  const projectId = parseInt(req.params.projectId, 10);
+  if (isNaN(projectId)) {
+    res.status(404).send("Not found");
+    return;
+  }
+
+  if (!req.user) {
+    res.redirect("/");
+    return;
+  }
+
+  const loggedInUser = (req.user as UserRow);
+  if (loggedInUser.username !== username) {
+    res.status(403).send("Forbidden: you can only access your own sessions.");
+    return;
+  }
+
+  const project = getProjectById(projectId);
+  if (!project || project.user_id !== loggedInUser.id) {
+    res.status(404).send("Project not found");
+    return;
+  }
+
   try {
-    await spawnUser(username);
+    await spawnProject(username, projectId);
   } catch (err) {
     res.status(500).send("Failed to spawn session: " + (err as Error).message);
     return;
   }
 
-  res.type("html").send(ejs.render(SESSION_TEMPLATE, { username }));
+  res.type("html").send(ejs.render(SESSION_TEMPLATE, {
+    username,
+    projectId,
+    projectName: project.name,
+  }));
 });
 
 const HOST = "127.0.0.1";

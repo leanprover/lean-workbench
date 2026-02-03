@@ -153,14 +153,30 @@ export function setAdmin(userId: number, value: boolean): void {
 // --- Project queries ---
 
 export function createProject(userId: number, name: string, description?: string): ProjectRow {
-  const projectPath = name;
   const { lastInsertRowid } = db.prepare(
-    `INSERT INTO projects (user_id, name, description, path) VALUES (?, ?, ?, ?)`
-  ).run(userId, name, description ?? null, projectPath);
+    `INSERT INTO projects (user_id, name, description, path) VALUES (?, ?, ?, '')`
+  ).run(userId, name, description ?? null);
 
-  return db.prepare(`SELECT * FROM projects WHERE id = ?`).get(Number(lastInsertRowid)) as ProjectRow;
+  const id = Number(lastInsertRowid);
+  db.prepare(`UPDATE projects SET path = ? WHERE id = ?`).run(String(id), id);
+
+  return db.prepare(`SELECT * FROM projects WHERE id = ?`).get(id) as ProjectRow;
 }
 
 export function getProjectsByUser(userId: number): ProjectRow[] {
   return db.prepare(`SELECT * FROM projects WHERE user_id = ? ORDER BY created_at DESC`).all(userId) as ProjectRow[];
+}
+
+export function getProjectById(projectId: number): ProjectRow | undefined {
+  return db.prepare(`SELECT * FROM projects WHERE id = ?`).get(projectId) as ProjectRow | undefined;
+}
+
+export function updateProject(projectId: number, name: string, description: string | null): void {
+  db.prepare(
+    `UPDATE projects SET name = ?, description = ?, updated_at = datetime('now') WHERE id = ?`
+  ).run(name, description, projectId);
+}
+
+export function deleteProject(projectId: number): void {
+  db.prepare(`DELETE FROM projects WHERE id = ?`).run(projectId);
 }
