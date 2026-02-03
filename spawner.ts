@@ -6,6 +6,7 @@ import passport from "passport";
 import { Strategy as GitHubStrategy } from "passport-github2";
 import type { VerifyCallback } from "passport-oauth2";
 import { spawn, execSync } from "node:child_process";
+import net from "node:net";
 import fs from "node:fs";
 import path from "node:path";
 import ejs from "ejs";
@@ -39,6 +40,28 @@ function isAlive(pid: number): boolean {
   }
 }
 
+function waitForPort(port: number, timeoutMs = 10000): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const deadline = Date.now() + timeoutMs;
+    function attempt() {
+      if (Date.now() > deadline) {
+        reject(new Error(`Timeout waiting for port ${port}`));
+        return;
+      }
+      const socket = net.connect(port, "127.0.0.1");
+      socket.once("connect", () => {
+        socket.destroy();
+        resolve();
+      });
+      socket.once("error", () => {
+        socket.destroy();
+        setTimeout(attempt, 1000);
+      });
+    }
+    attempt();
+  });
+}
+
 function writeNginxConf(username: string, port: number): void {
   const conf = `location /user/${username}/_vs/ {
     proxy_pass http://127.0.0.1:${port};
@@ -59,7 +82,7 @@ function reloadNginx(): void {
   execSync("nginx -s reload");
 }
 
-function spawnUser(username: string): { info: UserInfo; created: boolean } {
+async function spawnUser(username: string): Promise<{ info: UserInfo; created: boolean }> {
   let port: number;
 
   // Idempotent: if already spawned and alive, return existing info
@@ -111,6 +134,8 @@ function spawnUser(username: string): { info: UserInfo; created: boolean } {
 
   writeNginxConf(username, port);
   reloadNginx();
+
+  await waitForPort(port);
 
   return { info, created: true };
 }
@@ -197,7 +222,7 @@ app.get("/api/status", (_req: Request, res: Response) => {
   res.json({ users: status });
 });
 
-app.get("/user/:username/", (req: Request, res: Response) => {
+app.get("/user/:username/", async (req: Request, res: Response) => {
   const username = req.params.username as string;
   if (!USERNAME_RE.test(username)) {
     res.status(404).send("Not found");
@@ -219,7 +244,7 @@ app.get("/user/:username/", (req: Request, res: Response) => {
 
   // Auto-spawn the user's VS Code session
   try {
-    spawnUser(username);
+    await spawnUser(username);
   } catch (err) {
     res.status(500).send("Failed to spawn session: " + (err as Error).message);
     return;
