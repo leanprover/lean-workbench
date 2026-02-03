@@ -63,7 +63,7 @@ function waitForPort(port: number, timeoutMs = 10000): Promise<void> {
 }
 
 function writeNginxConf(username: string, port: number): void {
-  const conf = `location /user/${username}/_vs/ {
+  const conf = `location /${username}/_vs/ {
     proxy_pass http://127.0.0.1:${port};
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
@@ -120,7 +120,7 @@ async function spawnUser(username: string): Promise<{ info: UserInfo; created: b
       "--host", "127.0.0.1",
       "--port", String(port),
       "--without-connection-token",
-      `--server-base-path=/user/${username}/_vs/`,
+      `--server-base-path=/${username}/_vs/`,
     ],
     {
       stdio: "ignore",
@@ -184,7 +184,7 @@ app.get(
   passport.authenticate("github", { failureRedirect: "/" }),
   (req: Request, res: Response) => {
     const username = (req.user as any)?.username?.toLowerCase() ?? "";
-    res.redirect(`/user/${username}/`);
+    res.redirect(`/${username}/`);
   },
 );
 
@@ -222,7 +222,7 @@ app.get("/api/status", (_req: Request, res: Response) => {
   res.json({ users: status });
 });
 
-app.get("/user/:username/", async (req: Request, res: Response) => {
+app.get("/:username/", async (req: Request, res: Response) => {
   const username = req.params.username as string;
   if (!USERNAME_RE.test(username)) {
     res.status(404).send("Not found");
