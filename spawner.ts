@@ -121,7 +121,7 @@ async function spawnProject(username: string, projectId: number): Promise<{ info
   const machineSettingsFile = path.join(machineSettingsDir, "settings.json");
   if (!fs.existsSync(machineSettingsFile)) {
     fs.mkdirSync(machineSettingsDir, { recursive: true });
-    fs.writeFileSync(machineSettingsFile, JSON.stringify({ "security.workspace.trust.enabled": false }));
+    fs.writeFileSync(machineSettingsFile, JSON.stringify({ "security.workspace.trust.enabled": false, "workbench.startupEditor": "none" }));
   }
 
   const child = spawn(
@@ -134,7 +134,8 @@ async function spawnProject(username: string, projectId: number): Promise<{ info
       "--ro-bind", "/etc", "/etc",
       "--ro-bind", OPENVSCODE_SERVER_ROOT, OPENVSCODE_SERVER_ROOT,
       "--tmpfs", "/workspace",
-      "--bind", workspace, `/workspace/${projectId}`,
+      "--dir", `/workspace/${projectId}`,
+      "--bind", workspace, `/workspace/${projectId}/lean-project`,
       "--dev", "/dev",
       "--tmpfs", "/tmp",
       "--unshare-pid",
@@ -145,8 +146,8 @@ async function spawnProject(username: string, projectId: number): Promise<{ info
       "--host", "127.0.0.1",
       "--port", String(port),
       "--without-connection-token",
-      "--server-data-dir", `/workspace/${projectId}/.vscode-data`,
-      "--default-folder", `/workspace/${projectId}`,
+      "--server-data-dir", `/workspace/${projectId}/lean-project/.vscode-data`,
+      "--default-folder", `/workspace/${projectId}/lean-project`,
       `--server-base-path=/${username}/${projectId}/_vs/`,
     ],
     {
