@@ -10,6 +10,8 @@ import net from "node:net";
 import fs from "node:fs";
 import path from "node:path";
 import ejs from "ejs";
+import { upsertGithubUser, getUserById, ensureUser } from "./db.js";
+import type { UserRow } from "./db.js";
 
 const OPENVSCODE_SERVER_ROOT = "/home/.openvscode-server";
 const WORKSPACE_BASE = "/home/workspace";
@@ -168,13 +170,27 @@ passport.use(
       callbackURL: process.env.CALLBACK_URL ?? "http://localhost:3000/auth/github/callback",
     },
     (accessToken: string, refreshToken: string, profile: any, done: VerifyCallback) => {
-      done(null, profile);
+      try {
+        const user = upsertGithubUser({
+          github_id: parseInt(profile.id, 10),
+          github_username: profile.username,
+          display_name: profile.displayName,
+          email: profile.emails?.[0]?.value,
+          avatar_url: profile.photos?.[0]?.value,
+        });
+        done(null, user);
+      } catch (err) {
+        done(err as Error);
+      }
     },
   ),
 );
 
-passport.serializeUser((user, done) => done(null, user));
-passport.deserializeUser((obj, done) => done(null, obj as any));
+passport.serializeUser((user, done) => done(null, (user as UserRow).id));
+passport.deserializeUser((id, done) => {
+  const user = getUserById(id as number);
+  done(null, user ?? false);
+});
 
 // --- Auth routes ---
 app.get("/auth/github", passport.authenticate("github", { scope: ["user:email"] }));
@@ -183,7 +199,7 @@ app.get(
   "/auth/github/callback",
   passport.authenticate("github", { failureRedirect: "/" }),
   (req: Request, res: Response) => {
-    const username = (req.user as any)?.username?.toLowerCase() ?? "";
+    const username = (req.user as UserRow)?.username ?? "";
     res.redirect(`/${username}/`);
   },
 );
@@ -201,7 +217,7 @@ app.get("/logout", (req: Request, res: Response, next: NextFunction) => {
 
 // --- Pages ---
 app.get("/", (req: Request, res: Response) => {
-  const user = req.user ? { username: (req.user as any).username?.toLowerCase() } : null;
+  const user = req.user ? { username: (req.user as UserRow).username } : null;
   res.type("html").send(ejs.render(LANDING_TEMPLATE, { user }));
 });
 
@@ -236,7 +252,7 @@ app.get("/:username/", async (req: Request, res: Response) => {
   }
 
   // Require matching username
-  const loggedInUser = (req.user as any).username?.toLowerCase() ?? "";
+  const loggedInUser = (req.user as UserRow).username;
   if (loggedInUser !== username) {
     res.status(403).send("Forbidden: you can only access your own session.");
     return;

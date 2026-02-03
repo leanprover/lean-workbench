@@ -8,6 +8,9 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
         bubblewrap \
         nginx \
         nodejs \
+        python3 \
+        make \
+        g++ \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /home/
@@ -52,7 +55,7 @@ RUN chmod g+rw /home && \
     chown -R $USERNAME:$USERNAME ${OPENVSCODE_SERVER_ROOT}
 
 COPY nginx.conf /etc/nginx/nginx.conf
-COPY package.json package-lock.json spawner.ts /usr/local/lib/spawner/
+COPY package.json package-lock.json spawner.ts db.ts /usr/local/lib/spawner/
 COPY public/ /usr/local/lib/spawner/public/
 RUN cd /usr/local/lib/spawner && npm install --production
 COPY start.sh /usr/local/bin/start.sh
@@ -63,6 +66,8 @@ RUN mkdir -p /var/lib/nginx/body /var/lib/nginx/proxy /var/lib/nginx/fastcgi \
         /etc/nginx/user-routes \
     && chown -R $USERNAME:$USERNAME /var/log/nginx /var/lib/nginx /var/run \
         /etc/nginx/user-routes
+
+RUN mkdir -p /data && chown $USERNAME:$USERNAME /data
 
 USER $USERNAME
 
