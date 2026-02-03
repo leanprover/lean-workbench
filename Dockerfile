@@ -1,17 +1,22 @@
 FROM buildpack-deps:22.04-curl
 
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
         git \
         sudo \
         libatomic1 \
         bubblewrap \
         nginx \
-        nodejs \
         python3 \
         make \
         g++ \
     && rm -rf /var/lib/apt/lists/*
+
+ENV NVM_DIR=/usr/local/nvm
+RUN mkdir -p "$NVM_DIR" \
+    && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash \
+    && bash -c '. "$NVM_DIR/nvm.sh" && nvm install 22' \
+    && ln -s "$NVM_DIR/versions/node/$(ls "$NVM_DIR/versions/node")" "$NVM_DIR/default"
+ENV PATH=$NVM_DIR/default/bin:$PATH
 
 WORKDIR /home/
 

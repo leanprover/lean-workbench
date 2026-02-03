@@ -10,8 +10,8 @@ import net from "node:net";
 import fs from "node:fs";
 import path from "node:path";
 import ejs from "ejs";
-import { upsertGithubUser, getUserById, ensureUser } from "./db.js";
-import type { UserRow } from "./db.js";
+import { upsertGithubUser, getUserById, ensureUser } from "./db.ts";
+import type { UserRow } from "./db.ts";
 
 const OPENVSCODE_SERVER_ROOT = "/home/.openvscode-server";
 const WORKSPACE_BASE = "/home/workspace";
