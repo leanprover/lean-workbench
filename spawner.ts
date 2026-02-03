@@ -102,6 +102,14 @@ async function spawnUser(username: string): Promise<{ info: UserInfo; created: b
   const workspace = path.join(WORKSPACE_BASE, username);
   fs.mkdirSync(workspace, { recursive: true });
 
+  // Initialize the vscode config for this workspace
+  const machineSettingsDir = path.join(workspace, ".vscode-data", "data", "Machine");
+  const machineSettingsFile = path.join(machineSettingsDir, "settings.json");
+  if (!fs.existsSync(machineSettingsFile)) {
+    fs.mkdirSync(machineSettingsDir, { recursive: true });
+    fs.writeFileSync(machineSettingsFile, JSON.stringify({ "security.workspace.trust.enabled": false }));
+  }
+
   const child = spawn(
     "bwrap",
     [
@@ -122,6 +130,7 @@ async function spawnUser(username: string): Promise<{ info: UserInfo; created: b
       "--host", "127.0.0.1",
       "--port", String(port),
       "--without-connection-token",
+      "--server-data-dir", "/workspace/.vscode-data",
       "--default-folder", "/workspace",
       `--server-base-path=/${username}/_vs/`,
     ],
