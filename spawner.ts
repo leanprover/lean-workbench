@@ -109,7 +109,7 @@ async function spawnUser(username: string): Promise<{ info: UserInfo; created: b
       "--ro-bind", "/bin", "/bin",
       "--ro-bind", "/etc", "/etc",
       "--ro-bind", OPENVSCODE_SERVER_ROOT, OPENVSCODE_SERVER_ROOT,
-      "--bind", workspace, workspace,
+      "--bind", workspace, "/workspace",
       "--dev", "/dev",
       "--tmpfs", "/tmp",
       "--unshare-pid",
