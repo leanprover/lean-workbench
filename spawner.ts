@@ -122,6 +122,7 @@ async function spawnUser(username: string): Promise<{ info: UserInfo; created: b
       "--host", "127.0.0.1",
       "--port", String(port),
       "--without-connection-token",
+      "--default-folder", "/workspace",
       `--server-base-path=/${username}/_vs/`,
     ],
     {
