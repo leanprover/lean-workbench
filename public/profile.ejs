@@ -29,7 +29,7 @@
   </div>
 </nav>
 <div id="root"></div>
-<script>window.__DATA__ = { username: '<%= username %>' };</script>
+<script>window.__DATA__ = { username: '<%= username %>', isAdmin: <%= isAdmin ? 'true' : 'false' %> };</script>
 <script type="module" src="/static/dist/profile.js"></script>
 </body>
 </html>

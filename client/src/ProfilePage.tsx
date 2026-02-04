@@ -4,20 +4,25 @@ import {
   createProject,
   updateProject,
   deleteProject,
+  fetchStatus,
 } from "./api.ts";
-import type { Project } from "./api.ts";
+import type { Project, SessionStatus } from "./api.ts";
 
-export function ProfilePage({ username }: { username: string }) {
+export function ProfilePage({ username, isAdmin }: { username: string; isAdmin: boolean }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<Record<string, SessionStatus>>({});
 
   useEffect(() => {
     fetchProjects()
       .then(setProjects)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [username]);
+    if (isAdmin) {
+      fetchStatus().then(setSessions).catch(() => {});
+    }
+  }, [username, isAdmin]);
 
   function handleCreated(project: Project) {
     setProjects((prev) => [...prev, project]);
@@ -58,7 +63,40 @@ export function ProfilePage({ username }: { username: string }) {
       )}
 
       <NewProjectInline onCreated={handleCreated} />
+
+      {isAdmin && <ActiveSessions sessions={sessions} />}
     </main>
+  );
+}
+
+function ActiveSessions({ sessions }: { sessions: Record<string, SessionStatus> }) {
+  const alive = Object.entries(sessions).filter(([, s]) => s.alive);
+
+  return (
+    <section style={{ marginTop: 32 }}>
+      <h2>Active sessions</h2>
+      {alive.length === 0 ? (
+        <p className="empty">No active sessions.</p>
+      ) : (
+        <ul className="project-list">
+          {alive.map(([key, s]) => {
+            const [user] = key.split("/");
+            return (
+              <li key={key}>
+                <div className="info">
+                  <a href={`/${user}/`}>{user}</a>
+                  <span style={{ color: "#90a4ae", margin: "0 0.25rem" }}>/</span>
+                  <span style={{ fontSize: "0.85rem", color: "#666" }}>{s.projectId.slice(0, 8)}</span>
+                </div>
+                <div className="actions">
+                  <span style={{ fontSize: "0.8rem", color: "#90a4ae" }}>port {s.port}</span>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
 

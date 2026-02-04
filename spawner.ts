@@ -335,7 +335,13 @@ app.get("/api/health", (_req: Request, res: Response) => {
   res.json({ status: "ok" });
 });
 
-app.get("/api/status", (_req: Request, res: Response) => {
+app.get("/api/status", (req: Request, res: Response) => {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  if (!user.is_admin) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const status: Record<string, object> = {};
   for (const [key, info] of Object.entries(sessions)) {
     status[key] = {
@@ -475,7 +481,7 @@ app.get("/:username/", (req: Request, res: Response) => {
 
   const projects = getProjectsByUser(loggedInUser.id);
   const avatarUrl = getAvatarUrl(loggedInUser.id);
-  res.type("html").send(ejs.render(PROFILE_TEMPLATE, { username, avatarUrl, projects }));
+  res.type("html").send(ejs.render(PROFILE_TEMPLATE, { username, avatarUrl, isAdmin: loggedInUser.is_admin, projects }));
 });
 
 // --- Project session page ---

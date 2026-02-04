@@ -3,6 +3,21 @@ export interface Project {
   name: string;
 }
 
+export interface SessionStatus {
+  port: number;
+  pid: number;
+  alive: boolean;
+  workspace: string;
+  projectId: string;
+}
+
+export async function fetchStatus(): Promise<Record<string, SessionStatus>> {
+  const res = await fetch("/api/status");
+  if (!res.ok) throw new Error("Failed to fetch status");
+  const data = await res.json();
+  return data.sessions;
+}
+
 const API_BASE = "/api/projects";
 
 export async function fetchProjects(): Promise<Project[]> {
