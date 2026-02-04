@@ -133,58 +133,68 @@ async function spawnProject(username: string, projectName: string, projectId: st
     fs.writeFileSync(machineSettingsFile, JSON.stringify({ "security.workspace.trust.enabled": false, "workbench.startupEditor": "none" }));
   }
 
-  let child;
-  try {
-    child = spawn(
-      "bwrap",
-      [
-        "--ro-bind", "/usr", "/usr",
-        "--ro-bind", "/lib", "/lib",
-        "--ro-bind-try", "/lib64", "/lib64",
-        "--ro-bind", "/bin", "/bin",
-        "--ro-bind", "/etc", "/etc",
-        "--ro-bind", OPENVSCODE_SERVER_ROOT, OPENVSCODE_SERVER_ROOT,
-        "--ro-bind", EXTENSIONS_DIR, EXTENSIONS_DIR,
-        "--ro-bind", ELAN_BASE, ELAN_BASE,
-        "--tmpfs", `${ELAN_BASE}/tmp`,
-        "--tmpfs", "/workspace",
-        "--dir", `/workspace/${projectId}`,
-        "--bind", workspace, `/workspace/${projectId}/lean-project`,
-        "--proc", "/proc",
-        "--dev", "/dev",
-        "--tmpfs", "/tmp",
-        "--clearenv",
-        "--setenv", "ELAN_HOME", ELAN_BASE,
-        "--setenv", "PATH", `${ELAN_BASE}/bin:/usr/local/bin:/usr/bin:/bin`,
-        "--setenv", "HOME", `/workspace/${projectId}`,
-        "--unshare-user",
-        "--unshare-pid",
-        "--unshare-uts",
-        "--unshare-cgroup",
-        "--die-with-parent",
-        "--new-session",
-        "--",
-        `${OPENVSCODE_SERVER_ROOT}/bin/openvscode-server`,
-        "--host", "127.0.0.1",
-        "--port", String(port),
-        "--without-connection-token",
-        "--extensions-dir", EXTENSIONS_DIR,
-        "--server-data-dir", `/workspace/${projectId}/lean-project/.vscode-data`,
-        "--default-folder", `/workspace/${projectId}/lean-project`,
-        `--server-base-path=/${username}/${encodeURIComponent(projectName)}/_vs/`,
-      ],
-      {
-        stdio: "inherit",
-        detached: true,
-      },
-    );
-    child.unref();
-  } catch (err) {
-    console.warn("[spawner] bwrap spawn failed (expected in local dev):", (err as Error).message);
+  const child = spawn(
+    "bwrap",
+    [
+      "--ro-bind", "/usr", "/usr",
+      "--ro-bind", "/lib", "/lib",
+      "--ro-bind-try", "/lib64", "/lib64",
+      "--ro-bind", "/bin", "/bin",
+      "--ro-bind", "/etc", "/etc",
+      "--ro-bind", OPENVSCODE_SERVER_ROOT, OPENVSCODE_SERVER_ROOT,
+      "--ro-bind", EXTENSIONS_DIR, EXTENSIONS_DIR,
+      "--ro-bind", ELAN_BASE, ELAN_BASE,
+      "--tmpfs", `${ELAN_BASE}/tmp`,
+      "--tmpfs", "/workspace",
+      "--dir", `/workspace/${projectId}`,
+      "--bind", workspace, `/workspace/${projectId}/lean-project`,
+      "--proc", "/proc",
+      "--dev", "/dev",
+      "--tmpfs", "/tmp",
+      "--clearenv",
+      "--setenv", "ELAN_HOME", ELAN_BASE,
+      "--setenv", "PATH", `${ELAN_BASE}/bin:/usr/local/bin:/usr/bin:/bin`,
+      "--setenv", "HOME", `/workspace/${projectId}`,
+      "--unshare-user",
+      "--unshare-pid",
+      "--unshare-uts",
+      "--unshare-cgroup",
+      "--die-with-parent",
+      "--new-session",
+      "--",
+      `${OPENVSCODE_SERVER_ROOT}/bin/openvscode-server`,
+      "--host", "127.0.0.1",
+      "--port", String(port),
+      "--without-connection-token",
+      "--extensions-dir", EXTENSIONS_DIR,
+      "--server-data-dir", `/workspace/${projectId}/lean-project/.vscode-data`,
+      "--default-folder", `/workspace/${projectId}/lean-project`,
+      `--server-base-path=/${username}/${encodeURIComponent(projectName)}/_vs/`,
+    ],
+    {
+      stdio: "inherit",
+      detached: true,
+    },
+  );
+
+  // Handle async spawn errors (e.g. bwrap ENOENT on macOS)
+  const spawnResult = await new Promise<"ok" | "error">((resolve) => {
+    child.once("error", (err) => {
+      console.warn("[spawner] bwrap spawn failed (expected in local dev):", err.message);
+      resolve("error");
+    });
+    child.once("spawn", () => {
+      resolve("ok");
+    });
+  });
+
+  if (spawnResult === "error") {
     const info: SessionInfo = { port, pid: -1, workspace, projectId };
     sessions[key] = info;
     return { info, created: true };
   }
+
+  child.unref();
 
   const info: SessionInfo = { port, pid: child.pid!, workspace, projectId };
   sessions[key] = info;
