@@ -31,6 +31,9 @@
 <% } else { %>
   <h2>Launch a session</h2>
   <a class="login-link" href="/auth/github">Login with GitHub</a>
+<% if (devMode) { %>
+  <a class="login-link" href="/dev-login">Dev Login</a>
+<% } %>
 <% } %>
 
 <h2>Active users</h2>

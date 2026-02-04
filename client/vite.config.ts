@@ -13,4 +13,12 @@ export default defineConfig({
       },
     },
   },
+  server: {
+    proxy: {
+      "/api": "http://localhost:3002",
+      "/auth": "http://localhost:3002",
+      "/dev-login": "http://localhost:3002",
+      "/logout": "http://localhost:3002",
+    },
+  },
 });

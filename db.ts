@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import Database from "better-sqlite3";
 
-const DB_PATH = "/data/podserver.db";
+const DB_PATH = process.env.DB_PATH ?? "/data/podserver.db";
 
 export interface UserRow {
   id: number;
