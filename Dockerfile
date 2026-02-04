@@ -59,6 +59,11 @@ ENV ELAN_HOME=/home/elan
 RUN curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
     | sh -s -- -y --default-toolchain leanprover/lean4:stable --no-modify-path
 RUN ELAN_HOME=/home/elan /home/elan/bin/lean --version
+# Pin the default toolchain to its concrete version so elan doesn't need
+# network access to resolve the "stable" alias at runtime.
+RUN RESOLVED=$(ls /home/elan/toolchains/) && \
+    TOOLCHAIN=$(echo "$RESOLVED" | sed 's|---|:|g' | sed 's|--|/|g') && \
+    sed -i "s|^default_toolchain = .*|default_toolchain = \"$TOOLCHAIN\"|" /home/elan/settings.toml
 RUN chmod -R a+rX /home/elan
 
 # Pre-install the Lean4 VS Code extension

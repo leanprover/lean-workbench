@@ -140,12 +140,13 @@ async function spawnProject(username: string, projectName: string, projectId: st
       "--ro-bind", OPENVSCODE_SERVER_ROOT, OPENVSCODE_SERVER_ROOT,
       "--ro-bind", EXTENSIONS_DIR, EXTENSIONS_DIR,
       "--ro-bind", ELAN_BASE, ELAN_BASE,
+      "--tmpfs", `${ELAN_BASE}/tmp`,
       "--tmpfs", "/workspace",
       "--dir", `/workspace/${projectId}`,
       "--bind", workspace, `/workspace/${projectId}/lean-project`,
       "--setenv", "ELAN_HOME", ELAN_BASE,
       "--setenv", "PATH", `${ELAN_BASE}/bin:/usr/local/bin:/usr/bin:/bin`,
-      "--proc", "/proc",
+      "--ro-bind", "/proc", "/proc",
       "--dev", "/dev",
       "--tmpfs", "/tmp",
       "--unshare-pid",
@@ -162,7 +163,7 @@ async function spawnProject(username: string, projectName: string, projectId: st
       `--server-base-path=/${username}/${encodeURIComponent(projectName)}/_vs/`,
     ],
     {
-      stdio: "ignore",
+      stdio: "inherit",
       detached: true,
     },
   );
