@@ -58,6 +58,8 @@ RUN groupadd --gid $USER_GID $USERNAME \
 ENV ELAN_HOME=/home/elan
 RUN curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
     | sh -s -- -y --default-toolchain leanprover/lean4:stable --no-modify-path
+RUN ELAN_HOME=/home/elan /home/elan/bin/lean --version
+RUN chmod -R a+rX /home/elan
 
 # Pre-install the Lean4 VS Code extension
 ARG LEAN4_EXT_URL="https://github.com/leanprover/vscode-lean4/releases/download/v0.0.221/lean4-0.0.221.vsix"

@@ -129,14 +129,6 @@ async function spawnProject(username: string, projectName: string, projectId: st
     fs.writeFileSync(machineSettingsFile, JSON.stringify({ "security.workspace.trust.enabled": false, "workbench.startupEditor": "none" }));
   }
 
-  // Seed per-project elan from the shared install on first use
-  const elanDir = path.join(workspace, ".elan");
-  if (!fs.existsSync(elanDir) && fs.existsSync(ELAN_BASE)) {
-    execSync(`cp -a ${ELAN_BASE} ${elanDir}`);
-  }
-
-  const elanBin = `/workspace/${projectId}/lean-project/.elan/bin`;
-
   const child = spawn(
     "bwrap",
     [
@@ -147,11 +139,13 @@ async function spawnProject(username: string, projectName: string, projectId: st
       "--ro-bind", "/etc", "/etc",
       "--ro-bind", OPENVSCODE_SERVER_ROOT, OPENVSCODE_SERVER_ROOT,
       "--ro-bind", EXTENSIONS_DIR, EXTENSIONS_DIR,
+      "--ro-bind", ELAN_BASE, ELAN_BASE,
       "--tmpfs", "/workspace",
       "--dir", `/workspace/${projectId}`,
       "--bind", workspace, `/workspace/${projectId}/lean-project`,
-      "--setenv", "ELAN_HOME", `/workspace/${projectId}/lean-project/.elan`,
-      "--setenv", "PATH", `${elanBin}:/usr/local/bin:/usr/bin:/bin`,
+      "--setenv", "ELAN_HOME", ELAN_BASE,
+      "--setenv", "PATH", `${ELAN_BASE}/bin:/usr/local/bin:/usr/bin:/bin`,
+      "--proc", "/proc",
       "--dev", "/dev",
       "--tmpfs", "/tmp",
       "--unshare-pid",
