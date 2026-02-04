@@ -7,4 +7,4 @@ serve:
 dev:
 	mkdir -p /tmp/podserver-data /tmp/podserver-nginx-routes
 	cd client && npm run build
-	node --experimental-strip-types spawner.ts
+	DB_PATH=/tmp/podserver-data/podserver.db WORKSPACE_BASE=/tmp/podserver-workspaces NGINX_ROUTES_DIR=/tmp/podserver-nginx-routes node --experimental-strip-types spawner.ts

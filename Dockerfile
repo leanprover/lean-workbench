@@ -111,7 +111,8 @@ ENV LANG=C.UTF-8 \
     EDITOR=code \
     VISUAL=code \
     GIT_EDITOR="code --wait" \
-    OPENVSCODE_SERVER_ROOT=${OPENVSCODE_SERVER_ROOT}
+    OPENVSCODE_SERVER_ROOT=${OPENVSCODE_SERVER_ROOT} \
+    NODE_ENV=production
 
 # Default exposed port if none is specified
 EXPOSE 3000
