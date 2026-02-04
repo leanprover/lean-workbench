@@ -7,7 +7,7 @@ import {
 } from "./api.ts";
 import type { Project } from "./api.ts";
 
-export function ProjectsPage({ username }: { username: string }) {
+export function ProfilePage({ username }: { username: string }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

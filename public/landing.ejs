@@ -23,7 +23,7 @@
     </button>
     <div class="avatar-dropdown">
       <div class="avatar-dropdown-user"><%= user.username %></div>
-      <a href="/<%= user.username %>/">Projects</a>
+      <a href="/<%= user.username %>/">Profile</a>
       <a href="/logout">Logout</a>
     </div>
   </div>
@@ -38,7 +38,7 @@
 <% if (user) { %>
   <div class="welcome">
     <h2>Welcome, <%= user.username %></h2>
-    <p><a href="/<%= user.username %>/">Go to your projects</a></p>
+    <p><a href="/<%= user.username %>/">Go to your profile</a></p>
   </div>
 <% } else { %>
   <h2>Launch a session</h2>

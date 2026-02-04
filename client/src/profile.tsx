@@ -1,5 +1,5 @@
 import { createRoot } from "react-dom/client";
-import { ProjectsPage } from "./ProjectsPage.tsx";
+import { ProfilePage } from "./ProfilePage.tsx";
 
 declare global {
   interface Window {
@@ -9,4 +9,4 @@ declare global {
 
 const { username } = window.__DATA__;
 
-createRoot(document.getElementById("root")!).render(<ProjectsPage username={username} />);
+createRoot(document.getElementById("root")!).render(<ProfilePage username={username} />);

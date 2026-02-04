@@ -9,7 +9,7 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
-        entryFileNames: "projects.js",
+        entryFileNames: "profile.js",
       },
     },
   },

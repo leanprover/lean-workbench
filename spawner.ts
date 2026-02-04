@@ -222,7 +222,7 @@ function killSession(username: string, projectId: string): void {
 const publicDir = path.join(import.meta.dirname, "public");
 const LANDING_TEMPLATE = fs.readFileSync(path.join(publicDir, "landing.ejs"), "utf-8");
 const SESSION_TEMPLATE = fs.readFileSync(path.join(publicDir, "session.ejs"), "utf-8");
-const PROJECTS_TEMPLATE = fs.readFileSync(path.join(publicDir, "projects.ejs"), "utf-8");
+const PROFILE_TEMPLATE = fs.readFileSync(path.join(publicDir, "profile.ejs"), "utf-8");
 
 // --- App setup ---
 const app = express();
@@ -454,7 +454,7 @@ app.delete("/api/projects/:projectId", (req: Request, res: Response) => {
   res.json({ ok: true });
 });
 
-// --- Project list page ---
+// --- Profile page ---
 app.get("/:username/", (req: Request, res: Response) => {
   const username = req.params.username as string;
   if (!USERNAME_RE.test(username)) {
@@ -469,13 +469,13 @@ app.get("/:username/", (req: Request, res: Response) => {
 
   const loggedInUser = (req.user as UserRow);
   if (loggedInUser.username !== username) {
-    res.status(403).send("Forbidden: you can only access your own projects.");
+    res.status(403).send("Forbidden: you can only access your own profile.");
     return;
   }
 
   const projects = getProjectsByUser(loggedInUser.id);
   const avatarUrl = getAvatarUrl(loggedInUser.id);
-  res.type("html").send(ejs.render(PROJECTS_TEMPLATE, { username, avatarUrl, projects }));
+  res.type("html").send(ejs.render(PROFILE_TEMPLATE, { username, avatarUrl, projects }));
 });
 
 // --- Project session page ---
