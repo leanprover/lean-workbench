@@ -1,7 +1,6 @@
 export interface Project {
   id: string;
   name: string;
-  description: string | null;
 }
 
 const API_BASE = "/api/projects";
@@ -12,14 +11,11 @@ export async function fetchProjects(): Promise<Project[]> {
   return res.json();
 }
 
-export async function createProject(
-  name: string,
-  description?: string,
-): Promise<Project> {
+export async function createProject(name: string): Promise<Project> {
   const res = await fetch(API_BASE, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, description: description || undefined }),
+    body: JSON.stringify({ name }),
   });
   if (!res.ok) {
     const e = await res.json().catch(() => ({}));
@@ -31,12 +27,11 @@ export async function createProject(
 export async function updateProject(
   projectId: string,
   name: string,
-  description?: string | null,
 ): Promise<void> {
   const res = await fetch(`${API_BASE}/${projectId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, description: description ?? null }),
+    body: JSON.stringify({ name }),
   });
   if (!res.ok) {
     const e = await res.json().catch(() => ({}));

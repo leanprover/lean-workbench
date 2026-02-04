@@ -15,7 +15,6 @@ export interface ProjectRow {
   id: string;
   user_id: number;
   name: string;
-  description: string | null;
   path: string;
   created_at: string;
   updated_at: string;
@@ -52,7 +51,6 @@ CREATE TABLE IF NOT EXISTS projects (
   id          TEXT PRIMARY KEY,
   user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name        TEXT NOT NULL,
-  description TEXT,
   path        TEXT NOT NULL,
   created_at  TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
@@ -159,11 +157,11 @@ export function getProjectByUserAndName(userId: number, name: string): ProjectRo
   return db.prepare(`SELECT * FROM projects WHERE user_id = ? AND name = ?`).get(userId, name) as ProjectRow | undefined;
 }
 
-export function createProject(userId: number, name: string, description?: string): ProjectRow {
+export function createProject(userId: number, name: string): ProjectRow {
   const id = crypto.randomUUID();
   db.prepare(
-    `INSERT INTO projects (id, user_id, name, description, path) VALUES (?, ?, ?, ?, ?)`
-  ).run(id, userId, name, description ?? null, id);
+    `INSERT INTO projects (id, user_id, name, path) VALUES (?, ?, ?, ?)`
+  ).run(id, userId, name, id);
 
   return db.prepare(`SELECT * FROM projects WHERE id = ?`).get(id) as ProjectRow;
 }
@@ -176,10 +174,10 @@ export function getProjectById(projectId: string): ProjectRow | undefined {
   return db.prepare(`SELECT * FROM projects WHERE id = ?`).get(projectId) as ProjectRow | undefined;
 }
 
-export function updateProject(projectId: string, name: string, description: string | null): void {
+export function updateProject(projectId: string, name: string): void {
   db.prepare(
-    `UPDATE projects SET name = ?, description = ?, updated_at = datetime('now') WHERE id = ?`
-  ).run(name, description, projectId);
+    `UPDATE projects SET name = ?, updated_at = datetime('now') WHERE id = ?`
+  ).run(name, projectId);
 }
 
 export function deleteProject(projectId: string): void {

@@ -23,9 +23,9 @@ export function ProjectsPage({ username }: { username: string }) {
     setProjects((prev) => [...prev, project]);
   }
 
-  function handleUpdated(id: string, name: string, description: string | null) {
+  function handleUpdated(id: string, name: string) {
     setProjects((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, name, description } : p)),
+      prev.map((p) => (p.id === id ? { ...p, name } : p)),
     );
   }
 
@@ -70,12 +70,11 @@ function ProjectRow({
 }: {
   project: Project;
   username: string;
-  onUpdated: (id: string, name: string, description: string | null) => void;
+  onUpdated: (id: string, name: string) => void;
   onDeleted: (id: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(project.name);
-  const [editDesc, setEditDesc] = useState(project.description ?? "");
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -93,9 +92,8 @@ function ProjectRow({
     setSaving(true);
     setEditError(null);
     try {
-      const desc = editDesc.trim() || null;
-      await updateProject(project.id, trimmed, desc);
-      onUpdated(project.id, trimmed, desc);
+      await updateProject(project.id, trimmed);
+      onUpdated(project.id, trimmed);
       setEditing(false);
     } catch (e: any) {
       setEditError(e.message);
@@ -106,7 +104,6 @@ function ProjectRow({
 
   function handleCancel() {
     setEditName(project.name);
-    setEditDesc(project.description ?? "");
     setEditError(null);
     setEditing(false);
   }
@@ -137,17 +134,6 @@ function ProjectRow({
             style={{ width: "100%", marginBottom: 4 }}
             disabled={saving}
           />
-          <input
-            value={editDesc}
-            onChange={(e) => setEditDesc(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSave();
-              if (e.key === "Escape") handleCancel();
-            }}
-            placeholder="Description (optional)"
-            style={{ width: "100%", marginBottom: 4, fontSize: 13 }}
-            disabled={saving}
-          />
           {editError && <div style={{ color: "#dc2626", fontSize: 13 }}>{editError}</div>}
         </div>
         <div className="actions">
@@ -162,7 +148,6 @@ function ProjectRow({
     <li>
       <div className="info">
         <a href={`/${username}/${encodeURIComponent(project.name)}/`}>{project.name}</a>
-        {project.description && <div className="desc">{project.description}</div>}
       </div>
       <div className="actions">
         <button onClick={() => setEditing(true)}>Edit</button>
@@ -179,7 +164,6 @@ function NewProjectInline({
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [desc, setDesc] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -197,10 +181,9 @@ function NewProjectInline({
     setCreating(true);
     setError(null);
     try {
-      const project = await createProject(trimmed, desc.trim() || undefined);
+      const project = await createProject(trimmed);
       onCreated(project);
       setName("");
-      setDesc("");
       setOpen(false);
     } catch (e: any) {
       setError(e.message);
@@ -211,7 +194,6 @@ function NewProjectInline({
 
   function handleCancel() {
     setName("");
-    setDesc("");
     setError(null);
     setOpen(false);
   }
@@ -252,17 +234,6 @@ function NewProjectInline({
         }}
         placeholder="Project name (letters, digits, hyphens, underscores)"
         maxLength={100}
-        disabled={creating}
-      />
-      <input
-        type="text"
-        value={desc}
-        onChange={(e) => setDesc(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") handleCreate();
-          if (e.key === "Escape") handleCancel();
-        }}
-        placeholder="Description (optional)"
         disabled={creating}
       />
       {error && <div style={{ color: "#dc2626", fontSize: 13, marginBottom: 8 }}>{error}</div>}

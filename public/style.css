@@ -63,8 +63,7 @@ h1 + p { color: #607D8B; margin-top: 0; }
 /* === Projects Page === */
 .new-project { margin: 20px 0; padding: 16px; background: #f5f7fa; border: 1px solid #E4EBF3; border-radius: 0.5rem; }
 .new-project h3 { margin: 0 0 10px; }
-.new-project input,
-.new-project textarea {
+.new-project input {
   display: block;
   width: 100%;
   margin-bottom: 8px;
@@ -74,9 +73,7 @@ h1 + p { color: #607D8B; margin-top: 0; }
   border-radius: 0.5rem;
   font-family: inherit;
 }
-.new-project input:focus,
-.new-project textarea:focus { outline: none; border-color: #386EE0; box-shadow: 0 0 0 3px rgba(56, 110, 224, 0.12); }
-.new-project textarea { height: 50px; resize: vertical; }
+.new-project input:focus { outline: none; border-color: #386EE0; box-shadow: 0 0 0 3px rgba(56, 110, 224, 0.12); }
 .new-project button {
   padding: 8px 20px;
   font-size: 14px;
@@ -96,7 +93,6 @@ h1 + p { color: #607D8B; margin-top: 0; }
 .project-list .info { flex: 1; }
 .project-list .info a { color: #386EE0; text-decoration: none; font-weight: 500; }
 .project-list .info a:hover { text-decoration: underline; }
-.project-list .info .desc { color: #607D8B; font-size: 13px; margin-top: 2px; }
 .project-list .actions button {
   margin-left: 6px;
   padding: 4px 12px;

@@ -335,7 +335,7 @@ app.post("/api/projects", (req: Request, res: Response) => {
   const user = requireAuth(req, res);
   if (!user) return;
 
-  const { name, description } = req.body;
+  const { name } = req.body;
   if (!name || typeof name !== "string" || !name.trim()) {
     res.status(400).json({ error: "Name is required" });
     return;
@@ -348,7 +348,7 @@ app.post("/api/projects", (req: Request, res: Response) => {
   }
 
   try {
-    const project = createProject(user.id, trimmedName, description?.trim() || undefined);
+    const project = createProject(user.id, trimmedName);
     res.json(project);
   } catch (err: any) {
     if (err.message?.includes("UNIQUE constraint")) {
@@ -371,7 +371,7 @@ app.put("/api/projects/:projectId", (req: Request, res: Response) => {
     return;
   }
 
-  const { name, description } = req.body;
+  const { name } = req.body;
   if (!name || typeof name !== "string" || !name.trim()) {
     res.status(400).json({ error: "Name is required" });
     return;
@@ -387,7 +387,7 @@ app.put("/api/projects/:projectId", (req: Request, res: Response) => {
     if (trimmedName !== project.name) {
       killSession(user.username, projectId);
     }
-    updateProject(projectId, trimmedName, description ?? null);
+    updateProject(projectId, trimmedName);
     res.json({ ok: true });
   } catch (err: any) {
     if (err.message?.includes("UNIQUE constraint")) {
