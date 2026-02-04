@@ -81,8 +81,14 @@ RUN chmod g+rw /home && \
     chown -R $USERNAME:$USERNAME ${OPENVSCODE_SERVER_ROOT}
 
 COPY nginx.conf /etc/nginx/nginx.conf
+
+# Build the React client
+COPY client/ /tmp/build/client/
+RUN mkdir -p /tmp/build/public && cd /tmp/build/client && npm install && npm run build
+
 COPY package.json package-lock.json spawner.ts db.ts /usr/local/lib/spawner/
 COPY public/ /usr/local/lib/spawner/public/
+RUN cp -r /tmp/build/public/dist /usr/local/lib/spawner/public/dist
 RUN cd /usr/local/lib/spawner && npm install --production
 COPY start.sh /usr/local/bin/start.sh
 RUN chmod +x /usr/local/bin/start.sh

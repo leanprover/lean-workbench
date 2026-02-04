@@ -314,9 +314,25 @@ app.get("/api/status", (_req: Request, res: Response) => {
   res.json({ sessions: status });
 });
 
-// --- Project CRUD routes (under /-/ to avoid conflicts with project names) ---
-app.post("/:username/-/projects", (req: Request, res: Response) => {
-  const user = requireOwner(req, res);
+// --- Helper: require auth (no username in URL) ---
+function requireAuth(req: Request, res: Response): UserRow | null {
+  if (!req.user) {
+    res.status(401).json({ error: "Not logged in" });
+    return null;
+  }
+  return req.user as UserRow;
+}
+
+// --- Project CRUD API ---
+app.get("/api/projects", (req: Request, res: Response) => {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  const projects = getProjectsByUser(user.id);
+  res.json(projects);
+});
+
+app.post("/api/projects", (req: Request, res: Response) => {
+  const user = requireAuth(req, res);
   if (!user) return;
 
   const { name, description } = req.body;
@@ -343,8 +359,8 @@ app.post("/:username/-/projects", (req: Request, res: Response) => {
   }
 });
 
-app.put("/:username/-/projects/:projectId", (req: Request, res: Response) => {
-  const user = requireOwner(req, res);
+app.put("/api/projects/:projectId", (req: Request, res: Response) => {
+  const user = requireAuth(req, res);
   if (!user) return;
 
   const projectId = req.params.projectId as string;
@@ -382,8 +398,8 @@ app.put("/:username/-/projects/:projectId", (req: Request, res: Response) => {
   }
 });
 
-app.delete("/:username/-/projects/:projectId", (req: Request, res: Response) => {
-  const user = requireOwner(req, res);
+app.delete("/api/projects/:projectId", (req: Request, res: Response) => {
+  const user = requireAuth(req, res);
   if (!user) return;
 
   const projectId = req.params.projectId as string;

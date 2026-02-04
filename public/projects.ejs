@@ -17,77 +17,8 @@
   <a class="nav-link" href="/">Home</a>
   <a class="nav-link" href="/logout">Logout</a>
 </nav>
-<main style="max-width: 700px;">
-<h1>Projects</h1>
-<p><%= username %>'s workspaces</p>
-
-<div class="new-project">
-  <h3>New Project</h3>
-  <input type="text" id="project-name" placeholder="Project name (letters, digits, hyphens, underscores)" maxlength="100">
-  <textarea id="project-desc" placeholder="Description (optional)"></textarea>
-  <button onclick="createProject()">Create</button>
-</div>
-
-<% if (projects.length === 0) { %>
-  <p class="empty">No projects yet. Create one above.</p>
-<% } else { %>
-  <ul class="project-list">
-  <% for (const p of projects) { %>
-    <li>
-      <div class="info">
-        <a href="/<%= username %>/<%= encodeURIComponent(p.name) %>/"><%= p.name %></a>
-        <% if (p.description) { %><div class="desc"><%= p.description %></div><% } %>
-      </div>
-      <div class="actions">
-        <button onclick="editProject('<%= p.id %>', '<%= p.name.replace(/'/g, "\\'") %>', '<%= (p.description || '').replace(/'/g, "\\'") %>')">Edit</button>
-        <button class="delete" onclick="removeProject('<%= p.id %>', '<%= p.name.replace(/'/g, "\\'") %>')">Delete</button>
-      </div>
-    </li>
-  <% } %>
-  </ul>
-<% } %>
-</main>
-
-<script>
-const username = '<%= username %>';
-const apiBase = '/' + username + '/-/projects';
-
-async function createProject() {
-  const name = document.getElementById('project-name').value.trim();
-  const description = document.getElementById('project-desc').value.trim();
-  if (!name) { alert('Name is required'); return; }
-  const res = await fetch(apiBase, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, description: description || undefined }),
-  });
-  if (res.ok) { location.reload(); }
-  else { const e = await res.json().catch(() => ({})); alert(e.error || 'Failed to create project'); }
-}
-
-function editProject(id, currentName, currentDesc) {
-  const name = prompt('Project name:', currentName);
-  if (name === null) return;
-  if (!name.trim()) { alert('Name is required'); return; }
-  const description = prompt('Description:', currentDesc);
-  if (description === null) return;
-  fetch(apiBase + '/' + id, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: name.trim(), description: description.trim() || null }),
-  }).then(res => {
-    if (res.ok) location.reload();
-    else res.json().catch(() => ({})).then(e => alert(e.error || 'Failed to update project'));
-  });
-}
-
-function removeProject(id, name) {
-  if (!confirm('Delete project "' + name + '"? Workspace files will be kept.')) return;
-  fetch(apiBase + '/' + id, { method: 'DELETE' }).then(res => {
-    if (res.ok) location.reload();
-    else res.json().catch(() => ({})).then(e => alert(e.error || 'Failed to delete project'));
-  });
-}
-</script>
+<div id="root"></div>
+<script>window.__DATA__ = { username: '<%= username %>' };</script>
+<script type="module" src="/static/dist/projects.js"></script>
 </body>
 </html>

@@ -1,0 +1,55 @@
+export interface Project {
+  id: string;
+  name: string;
+  description: string | null;
+}
+
+const API_BASE = "/api/projects";
+
+export async function fetchProjects(): Promise<Project[]> {
+  const res = await fetch(API_BASE);
+  if (!res.ok) throw new Error("Failed to fetch projects");
+  return res.json();
+}
+
+export async function createProject(
+  name: string,
+  description?: string,
+): Promise<Project> {
+  const res = await fetch(API_BASE, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, description: description || undefined }),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error || "Failed to create project");
+  }
+  return res.json();
+}
+
+export async function updateProject(
+  projectId: string,
+  name: string,
+  description?: string | null,
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/${projectId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, description: description ?? null }),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error || "Failed to update project");
+  }
+}
+
+export async function deleteProject(projectId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/${projectId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error || "Failed to delete project");
+  }
+}
