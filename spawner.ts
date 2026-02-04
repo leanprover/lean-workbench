@@ -11,7 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import ejs from "ejs";
 import {
-  upsertGithubUser, getUserById, ensureUser,
+  upsertGithubUser, getUserById, ensureUser, getAvatarUrl,
   getProjectsByUser, getProjectById, getProjectByUserAndName,
   createProject, updateProject, deleteProject,
   PROJECT_NAME_RE,
@@ -325,7 +325,8 @@ if (process.env.NODE_ENV !== "production") {
 
 // --- Pages ---
 app.get("/", (req: Request, res: Response) => {
-  const user = req.user ? { username: (req.user as UserRow).username } : null;
+  const u = req.user as UserRow | undefined;
+  const user = u ? { username: u.username, avatarUrl: getAvatarUrl(u.id) } : null;
   const devMode = process.env.NODE_ENV !== "production";
   res.type("html").send(ejs.render(LANDING_TEMPLATE, { user, devMode }));
 });
@@ -473,7 +474,8 @@ app.get("/:username/", (req: Request, res: Response) => {
   }
 
   const projects = getProjectsByUser(loggedInUser.id);
-  res.type("html").send(ejs.render(PROJECTS_TEMPLATE, { username, projects }));
+  const avatarUrl = getAvatarUrl(loggedInUser.id);
+  res.type("html").send(ejs.render(PROJECTS_TEMPLATE, { username, avatarUrl, projects }));
 });
 
 // --- Project session page ---
@@ -510,8 +512,10 @@ app.get("/:username/:projectName/", async (req: Request, res: Response) => {
     return;
   }
 
+  const avatarUrl = getAvatarUrl(loggedInUser.id);
   res.type("html").send(ejs.render(SESSION_TEMPLATE, {
     username,
+    avatarUrl,
     projectName: project.name,
   }));
 });

@@ -135,6 +135,11 @@ export function ensureUser(username: string): UserRow {
   return getUserByUsername(username)!;
 }
 
+export function getAvatarUrl(userId: number): string | null {
+  const row = db.prepare(`SELECT avatar_url FROM auth_github WHERE user_id = ?`).get(userId) as { avatar_url: string | null } | undefined;
+  return row?.avatar_url ?? null;
+}
+
 // --- Admin queries ---
 
 export function isAdmin(userId: number): boolean {

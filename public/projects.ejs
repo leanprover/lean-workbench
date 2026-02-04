@@ -10,12 +10,23 @@
 </head>
 <body>
 <nav>
-  <a class="logo" href="/"><img src="/static/lean-logo.svg" alt="Lean"></a>
+  <a class="logo" href="/"><img src="/static/lean-logo.svg" alt="Lean"><span class="logo-text">Workbench</span></a>
   <span class="sep">/</span>
-  <span class="user"><%= username %></span>
+  <a class="breadcrumb" href="/<%= username %>/"><%= username %></a>
   <span class="spacer"></span>
-  <a class="nav-link" href="/">Home</a>
-  <a class="nav-link" href="/logout">Logout</a>
+  <div class="avatar-menu">
+    <button class="avatar-btn">
+    <% if (avatarUrl) { %>
+      <img src="<%= avatarUrl %>" alt="<%= username %>">
+    <% } else { %>
+      <span class="avatar-placeholder"><%= username[0].toUpperCase() %></span>
+    <% } %>
+    </button>
+    <div class="avatar-dropdown">
+      <div class="avatar-dropdown-user"><%= username %></div>
+      <a href="/logout">Logout</a>
+    </div>
+  </div>
 </nav>
 <div id="root"></div>
 <script>window.__DATA__ = { username: '<%= username %>' };</script>

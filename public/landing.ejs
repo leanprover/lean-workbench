@@ -10,11 +10,23 @@
 </head>
 <body>
 <nav>
-  <a class="logo" href="/"><img src="/static/lean-logo.svg" alt="Lean"></a>
+  <a class="logo" href="/"><img src="/static/lean-logo.svg" alt="Lean"><span class="logo-text">Workbench</span></a>
   <span class="spacer"></span>
 <% if (user) { %>
-  <a class="nav-link" href="/<%= user.username %>/"><%= user.username %></a>
-  <a class="nav-link" href="/logout">Logout</a>
+  <div class="avatar-menu">
+    <button class="avatar-btn">
+    <% if (user.avatarUrl) { %>
+      <img src="<%= user.avatarUrl %>" alt="<%= user.username %>">
+    <% } else { %>
+      <span class="avatar-placeholder"><%= user.username[0].toUpperCase() %></span>
+    <% } %>
+    </button>
+    <div class="avatar-dropdown">
+      <div class="avatar-dropdown-user"><%= user.username %></div>
+      <a href="/<%= user.username %>/">Projects</a>
+      <a href="/logout">Logout</a>
+    </div>
+  </div>
 <% } else { %>
   <a class="nav-link" href="/auth/github">Login</a>
 <% } %>
@@ -35,37 +47,6 @@
   <a class="login-link" href="/dev-login">Dev Login</a>
 <% } %>
 <% } %>
-
-<h2>Active users</h2>
-<div id="users"><span id="no-users">No active users.</span></div>
 </main>
-
-<script>
-const usersDiv = document.getElementById('users');
-const noUsers = document.getElementById('no-users');
-
-async function loadUsers() {
-  try {
-    const res = await fetch('/api/status');
-    const data = await res.json();
-    const alive = Object.entries(data.sessions).filter(([, s]) => s.alive);
-    const names = [...new Set(alive.map(([key]) => key.split('/')[0]))];
-    if (names.length === 0) {
-      noUsers.style.display = 'inline';
-      return;
-    }
-    noUsers.style.display = 'none';
-    usersDiv.innerHTML = '';
-    for (const name of names) {
-      const a = document.createElement('a');
-      a.href = '/' + name + '/';
-      a.textContent = name;
-      usersDiv.appendChild(a);
-    }
-  } catch {}
-}
-
-loadUsers();
-</script>
 </body>
 </html>
