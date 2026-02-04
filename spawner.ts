@@ -20,6 +20,7 @@ import type { UserRow } from "./db.ts";
 
 const OPENVSCODE_SERVER_ROOT = "/home/.openvscode-server";
 const EXTENSIONS_DIR = "/home/extensions";
+const ELAN_BASE = "/home/elan";
 const WORKSPACE_BASE = "/home/workspace";
 const NGINX_ROUTES_DIR = "/etc/nginx/user-routes";
 const USERNAME_RE = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/;
@@ -128,6 +129,14 @@ async function spawnProject(username: string, projectName: string, projectId: st
     fs.writeFileSync(machineSettingsFile, JSON.stringify({ "security.workspace.trust.enabled": false, "workbench.startupEditor": "none" }));
   }
 
+  // Seed per-project elan from the shared install on first use
+  const elanDir = path.join(workspace, ".elan");
+  if (!fs.existsSync(elanDir) && fs.existsSync(ELAN_BASE)) {
+    execSync(`cp -a ${ELAN_BASE} ${elanDir}`);
+  }
+
+  const elanBin = `/workspace/${projectId}/lean-project/.elan/bin`;
+
   const child = spawn(
     "bwrap",
     [
@@ -141,6 +150,8 @@ async function spawnProject(username: string, projectName: string, projectId: st
       "--tmpfs", "/workspace",
       "--dir", `/workspace/${projectId}`,
       "--bind", workspace, `/workspace/${projectId}/lean-project`,
+      "--setenv", "ELAN_HOME", `/workspace/${projectId}/lean-project/.elan`,
+      "--setenv", "PATH", `${elanBin}:/usr/local/bin:/usr/bin:/bin`,
       "--dev", "/dev",
       "--tmpfs", "/tmp",
       "--unshare-pid",

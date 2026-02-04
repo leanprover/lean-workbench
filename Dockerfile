@@ -54,6 +54,11 @@ RUN groupadd --gid $USER_GID $USERNAME \
     && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME
 
+# Install elan and a stable Lean toolchain
+ENV ELAN_HOME=/home/elan
+RUN curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+    | sh -s -- -y --default-toolchain leanprover/lean4:stable --no-modify-path
+
 # Pre-install the Lean4 VS Code extension
 ARG LEAN4_EXT_URL="https://github.com/leanprover/vscode-lean4/releases/download/v0.0.221/lean4-0.0.221.vsix"
 RUN mkdir -p /home/extensions \
