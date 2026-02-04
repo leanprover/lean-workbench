@@ -19,6 +19,7 @@ import {
 import type { UserRow } from "./db.ts";
 
 const OPENVSCODE_SERVER_ROOT = "/home/.openvscode-server";
+const EXTENSIONS_DIR = "/home/extensions";
 const WORKSPACE_BASE = "/home/workspace";
 const NGINX_ROUTES_DIR = "/etc/nginx/user-routes";
 const USERNAME_RE = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/;
@@ -136,6 +137,7 @@ async function spawnProject(username: string, projectName: string, projectId: st
       "--ro-bind", "/bin", "/bin",
       "--ro-bind", "/etc", "/etc",
       "--ro-bind", OPENVSCODE_SERVER_ROOT, OPENVSCODE_SERVER_ROOT,
+      "--ro-bind", EXTENSIONS_DIR, EXTENSIONS_DIR,
       "--tmpfs", "/workspace",
       "--dir", `/workspace/${projectId}`,
       "--bind", workspace, `/workspace/${projectId}/lean-project`,
@@ -149,6 +151,7 @@ async function spawnProject(username: string, projectName: string, projectId: st
       "--host", "127.0.0.1",
       "--port", String(port),
       "--without-connection-token",
+      "--extensions-dir", EXTENSIONS_DIR,
       "--server-data-dir", `/workspace/${projectId}/lean-project/.vscode-data`,
       "--default-folder", `/workspace/${projectId}/lean-project`,
       `--server-base-path=/${username}/${encodeURIComponent(projectName)}/_vs/`,
