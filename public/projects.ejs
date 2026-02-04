@@ -3,42 +3,53 @@
 <head>
 <meta charset="utf-8">
 <title><%= username %> - Projects - Lean Workbench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 20px; color: #333; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Open Sans', Arial, sans-serif; color: #333; }
+  nav { position: sticky; top: 0; z-index: 1000; background: rgba(249, 251, 253, 0.81); backdrop-filter: blur(10px); display: flex; align-items: center; padding: 1.5rem 2rem; border-bottom: 1px solid #E4EBF3; }
+  nav .logo { display: flex; align-items: center; margin-right: 1.5rem; text-decoration: none; }
+  nav .logo img { height: 20px; }
+  nav .sep { margin: 0 0.25rem; color: #90a4ae; }
+  nav .user { font-weight: 500; font-size: 0.9rem; color: #333; }
+  nav .spacer { flex: 1; }
+  nav a.nav-link { text-decoration: none; color: #333; font-weight: 500; font-size: 0.9rem; padding: 0.75rem 1rem; border-radius: 0.5rem; transition: all 0.2s; }
+  nav a.nav-link:hover { color: #386EE0; background: rgba(56, 110, 224, 0.08); }
+  main { max-width: 700px; margin: 40px auto; padding: 0 20px; }
   h1 { margin-bottom: 4px; }
-  h1 + p { color: #666; margin-top: 0; }
-  nav.top { margin-bottom: 24px; font-size: 14px; }
-  nav.top a { color: #0078d4; text-decoration: none; }
-  nav.top a:hover { text-decoration: underline; }
-  nav.top .sep { margin: 0 6px; color: #999; }
-  .new-project { margin: 20px 0; padding: 16px; background: #f5f5f5; border-radius: 6px; }
+  h1 + p { color: #607D8B; margin-top: 0; }
+  .new-project { margin: 20px 0; padding: 16px; background: #f5f7fa; border: 1px solid #E4EBF3; border-radius: 0.5rem; }
   .new-project h3 { margin: 0 0 10px; }
-  .new-project input, .new-project textarea { display: block; width: 100%; margin-bottom: 8px; padding: 6px 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; }
+  .new-project input, .new-project textarea { display: block; width: 100%; margin-bottom: 8px; padding: 8px 10px; font-size: 14px; border: 1px solid #D1D9E2; border-radius: 0.5rem; font-family: inherit; }
+  .new-project input:focus, .new-project textarea:focus { outline: none; border-color: #386EE0; box-shadow: 0 0 0 3px rgba(56, 110, 224, 0.12); }
   .new-project textarea { height: 50px; resize: vertical; }
-  .new-project button { padding: 6px 16px; font-size: 14px; background: #333; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
-  .new-project button:hover { background: #555; }
+  .new-project button { padding: 8px 20px; font-size: 14px; background: #386EE0; color: #fff; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 500; font-family: inherit; transition: background 0.2s; }
+  .new-project button:hover { background: #1D4ED8; }
   .project-list { list-style: none; padding: 0; }
-  .project-list li { padding: 10px 0; border-bottom: 1px solid #eee; display: flex; align-items: center; }
+  .project-list li { padding: 12px 0; border-bottom: 1px solid #E4EBF3; display: flex; align-items: center; }
   .project-list li:last-child { border-bottom: none; }
   .project-list .info { flex: 1; }
-  .project-list .info a { color: #0078d4; text-decoration: none; font-weight: 500; }
+  .project-list .info a { color: #386EE0; text-decoration: none; font-weight: 500; }
   .project-list .info a:hover { text-decoration: underline; }
-  .project-list .info .desc { color: #666; font-size: 13px; margin-top: 2px; }
-  .project-list .actions button { margin-left: 6px; padding: 3px 10px; font-size: 12px; border: 1px solid #ccc; border-radius: 3px; background: #fff; cursor: pointer; }
-  .project-list .actions button:hover { background: #eee; }
-  .project-list .actions button.delete:hover { background: #fdd; border-color: #d88; }
-  .empty { color: #999; margin: 16px 0; }
+  .project-list .info .desc { color: #607D8B; font-size: 13px; margin-top: 2px; }
+  .project-list .actions button { margin-left: 6px; padding: 4px 12px; font-size: 12px; border: 1px solid #D1D9E2; border-radius: 0.25rem; background: #fff; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+  .project-list .actions button:hover { background: #f0f4f8; border-color: #b0bec5; }
+  .project-list .actions button.delete:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
+  .empty { color: #90a4ae; margin: 16px 0; }
 </style>
 </head>
 <body>
-<nav class="top">
-  <a href="/">Home</a>
-  <span class="sep">|</span>
-  <span><%= username %></span>
-  <span class="sep">|</span>
-  <a href="/logout">Logout</a>
+<nav>
+  <a class="logo" href="/"><img src="/static/lean-logo.svg" alt="Lean"></a>
+  <span class="sep">/</span>
+  <span class="user"><%= username %></span>
+  <span class="spacer"></span>
+  <a class="nav-link" href="/">Home</a>
+  <a class="nav-link" href="/logout">Logout</a>
 </nav>
-
+<main>
 <h1>Projects</h1>
 <p><%= username %>'s workspaces</p>
 
@@ -67,6 +78,7 @@
   <% } %>
   </ul>
 <% } %>
+</main>
 
 <script>
 const username = '<%= username %>';

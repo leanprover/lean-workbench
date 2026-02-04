@@ -190,6 +190,7 @@ const PROJECTS_TEMPLATE = fs.readFileSync(path.join(publicDir, "projects.ejs"), 
 
 // --- App setup ---
 const app = express();
+app.use("/static", express.static(publicDir));
 app.use(express.json());
 
 // Session middleware

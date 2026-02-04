@@ -3,33 +3,35 @@
 <head>
 <meta charset="utf-8">
 <title><%= projectName %> - Lean Workbench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: 100%; overflow: hidden; }
-  nav { height: 36px; background: #1e1e1e; color: #ccc; display: flex; align-items: center; padding: 0 12px; font-family: system-ui, sans-serif; font-size: 13px; border-bottom: 1px solid #333; }
-  nav .brand { color: #999; }
-  nav .sep { margin: 0 8px; color: #555; }
-  nav .user { color: #ddd; }
-  nav .project { color: #9cdcfe; }
+  html, body { height: 100%; overflow: hidden; font-family: 'Open Sans', Arial, sans-serif; }
+  nav { height: 40px; background: rgba(249, 251, 253, 0.95); backdrop-filter: blur(10px); color: #333; display: flex; align-items: center; padding: 0 1rem; font-size: 0.85rem; border-bottom: 1px solid #E4EBF3; }
+  nav .logo { display: flex; align-items: center; margin-right: 0.5rem; }
+  nav .logo img { height: 16px; }
+  nav .sep { margin: 0 0.25rem; color: #90a4ae; }
+  nav .user { color: #333; font-weight: 500; }
+  nav .project { color: #386EE0; font-weight: 500; }
   nav .spacer { flex: 1; }
-  nav a { color: #569cd6; text-decoration: none; font-size: 13px; }
-  nav a:hover { text-decoration: underline; }
-  iframe { width: 100%; height: calc(100% - 36px); border: none; display: block; }
+  nav a.nav-link { text-decoration: none; color: #333; font-weight: 500; font-size: 0.85rem; padding: 0.4rem 0.6rem; border-radius: 0.375rem; transition: all 0.2s; }
+  nav a.nav-link:hover { color: #386EE0; background: rgba(56, 110, 224, 0.08); }
+  iframe { width: 100%; height: calc(100% - 40px); border: none; display: block; }
 </style>
 </head>
 <body>
 <nav>
-  <span class="brand">Lean Workbench</span>
-  <span class="sep">|</span>
+  <a class="logo" href="/"><img src="/static/lean-logo.svg" alt="Lean"></a>
+  <span class="sep">/</span>
   <span class="user"><%= username %></span>
   <span class="sep">/</span>
   <span class="project"><%= projectName %></span>
   <span class="spacer"></span>
-  <a href="/<%= username %>/">Projects</a>
-  <span class="sep">|</span>
-  <a href="/">Home</a>
-  <span class="sep">|</span>
-  <a href="/logout">Logout</a>
+  <a class="nav-link" href="/<%= username %>/">Projects</a>
+  <a class="nav-link" href="/">Home</a>
+  <a class="nav-link" href="/logout">Logout</a>
 </nav>
 <iframe src="/<%= username %>/<%= encodeURIComponent(projectName) %>/_vs/"></iframe>
 </body>
