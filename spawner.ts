@@ -12,7 +12,9 @@ import path from "node:path";
 import ejs from "ejs";
 import {
   upsertGithubUser, getUserById, ensureUser,
-  getProjectsByUser, getProjectById, createProject, updateProject, deleteProject,
+  getProjectsByUser, getProjectById, getProjectByUserAndName,
+  createProject, updateProject, deleteProject,
+  PROJECT_NAME_RE,
 } from "./db.ts";
 import type { UserRow } from "./db.ts";
 
@@ -72,8 +74,9 @@ function waitForPort(port: number, timeoutMs = 10000): Promise<void> {
   });
 }
 
-function writeNginxConf(username: string, projectId: string, port: number): void {
-  const conf = `location /${username}/${projectId}/_vs/ {
+function writeNginxConf(username: string, projectName: string, projectId: string, port: number): void {
+  const encodedName = encodeURIComponent(projectName);
+  const conf = `location /${username}/${encodedName}/_vs/ {
     proxy_pass http://127.0.0.1:${port};
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
@@ -97,7 +100,7 @@ function reloadNginx(): void {
   execSync("nginx -s reload");
 }
 
-async function spawnProject(username: string, projectId: string): Promise<{ info: SessionInfo; created: boolean }> {
+async function spawnProject(username: string, projectName: string, projectId: string): Promise<{ info: SessionInfo; created: boolean }> {
   const key = sessionKey(username, projectId);
   let port: number;
 
@@ -148,7 +151,7 @@ async function spawnProject(username: string, projectId: string): Promise<{ info
       "--without-connection-token",
       "--server-data-dir", `/workspace/${projectId}/lean-project/.vscode-data`,
       "--default-folder", `/workspace/${projectId}/lean-project`,
-      `--server-base-path=/${username}/${projectId}/_vs/`,
+      `--server-base-path=/${username}/${encodeURIComponent(projectName)}/_vs/`,
     ],
     {
       stdio: "ignore",
@@ -160,7 +163,7 @@ async function spawnProject(username: string, projectId: string): Promise<{ info
   const info: SessionInfo = { port, pid: child.pid!, workspace, projectId };
   sessions[key] = info;
 
-  writeNginxConf(username, projectId, port);
+  writeNginxConf(username, projectName, projectId, port);
   reloadNginx();
 
   await waitForPort(port);
@@ -296,8 +299,8 @@ app.get("/api/status", (_req: Request, res: Response) => {
   res.json({ sessions: status });
 });
 
-// --- Project CRUD routes (before /:username/ to avoid conflicts) ---
-app.post("/:username/projects", (req: Request, res: Response) => {
+// --- Project CRUD routes (under /-/ to avoid conflicts with project names) ---
+app.post("/:username/-/projects", (req: Request, res: Response) => {
   const user = requireOwner(req, res);
   if (!user) return;
 
@@ -307,8 +310,14 @@ app.post("/:username/projects", (req: Request, res: Response) => {
     return;
   }
 
+  const trimmedName = name.trim();
+  if (!PROJECT_NAME_RE.test(trimmedName)) {
+    res.status(400).json({ error: "Name must start with a letter or digit and contain only letters, digits, hyphens, or underscores" });
+    return;
+  }
+
   try {
-    const project = createProject(user.id, name.trim(), description?.trim() || undefined);
+    const project = createProject(user.id, trimmedName, description?.trim() || undefined);
     res.json(project);
   } catch (err: any) {
     if (err.message?.includes("UNIQUE constraint")) {
@@ -319,7 +328,7 @@ app.post("/:username/projects", (req: Request, res: Response) => {
   }
 });
 
-app.put("/:username/projects/:projectId", (req: Request, res: Response) => {
+app.put("/:username/-/projects/:projectId", (req: Request, res: Response) => {
   const user = requireOwner(req, res);
   if (!user) return;
 
@@ -336,9 +345,18 @@ app.put("/:username/projects/:projectId", (req: Request, res: Response) => {
     res.status(400).json({ error: "Name is required" });
     return;
   }
+  const trimmedName = name.trim();
+  if (!PROJECT_NAME_RE.test(trimmedName)) {
+    res.status(400).json({ error: "Name must start with a letter or digit and contain only letters, digits, hyphens, or underscores" });
+    return;
+  }
 
   try {
-    updateProject(projectId, name.trim(), description ?? null);
+    // Kill session if name changed (base path will be different)
+    if (trimmedName !== project.name) {
+      killSession(user.username, projectId);
+    }
+    updateProject(projectId, trimmedName, description ?? null);
     res.json({ ok: true });
   } catch (err: any) {
     if (err.message?.includes("UNIQUE constraint")) {
@@ -349,7 +367,7 @@ app.put("/:username/projects/:projectId", (req: Request, res: Response) => {
   }
 });
 
-app.delete("/:username/projects/:projectId", (req: Request, res: Response) => {
+app.delete("/:username/-/projects/:projectId", (req: Request, res: Response) => {
   const user = requireOwner(req, res);
   if (!user) return;
 
@@ -394,14 +412,14 @@ app.get("/:username/", (req: Request, res: Response) => {
 });
 
 // --- Project session page ---
-app.get("/:username/:projectId/", async (req: Request, res: Response) => {
+app.get("/:username/:projectName/", async (req: Request, res: Response) => {
   const username = req.params.username as string;
   if (!USERNAME_RE.test(username)) {
     res.status(404).send("Not found");
     return;
   }
 
-  const projectId = req.params.projectId as string;
+  const projectName = decodeURIComponent(req.params.projectName as string);
 
   if (!req.user) {
     res.redirect("/");
@@ -414,14 +432,14 @@ app.get("/:username/:projectId/", async (req: Request, res: Response) => {
     return;
   }
 
-  const project = getProjectById(projectId);
-  if (!project || project.user_id !== loggedInUser.id) {
+  const project = getProjectByUserAndName(loggedInUser.id, projectName);
+  if (!project) {
     res.status(404).send("Project not found");
     return;
   }
 
   try {
-    await spawnProject(username, projectId);
+    await spawnProject(username, project.name, project.id);
   } catch (err) {
     res.status(500).send("Failed to spawn session: " + (err as Error).message);
     return;
@@ -429,7 +447,6 @@ app.get("/:username/:projectId/", async (req: Request, res: Response) => {
 
   res.type("html").send(ejs.render(SESSION_TEMPLATE, {
     username,
-    projectId,
     projectName: project.name,
   }));
 });

@@ -44,7 +44,7 @@
 
 <div class="new-project">
   <h3>New Project</h3>
-  <input type="text" id="project-name" placeholder="Project name" maxlength="100">
+  <input type="text" id="project-name" placeholder="Project name (letters, digits, hyphens, underscores)" maxlength="100">
   <textarea id="project-desc" placeholder="Description (optional)"></textarea>
   <button onclick="createProject()">Create</button>
 </div>
@@ -56,12 +56,12 @@
   <% for (const p of projects) { %>
     <li>
       <div class="info">
-        <a href="/<%= username %>/<%= p.id %>/"><%= p.name %></a>
+        <a href="/<%= username %>/<%= encodeURIComponent(p.name) %>/"><%= p.name %></a>
         <% if (p.description) { %><div class="desc"><%= p.description %></div><% } %>
       </div>
       <div class="actions">
-        <button onclick="editProject(<%= p.id %>, '<%= p.name.replace(/'/g, "\\'") %>', '<%= (p.description || '').replace(/'/g, "\\'") %>')">Edit</button>
-        <button class="delete" onclick="removeProject(<%= p.id %>, '<%= p.name.replace(/'/g, "\\'") %>')">Delete</button>
+        <button onclick="editProject('<%= p.id %>', '<%= p.name.replace(/'/g, "\\'") %>', '<%= (p.description || '').replace(/'/g, "\\'") %>')">Edit</button>
+        <button class="delete" onclick="removeProject('<%= p.id %>', '<%= p.name.replace(/'/g, "\\'") %>')">Delete</button>
       </div>
     </li>
   <% } %>
@@ -70,12 +70,13 @@
 
 <script>
 const username = '<%= username %>';
+const apiBase = '/' + username + '/-/projects';
 
 async function createProject() {
   const name = document.getElementById('project-name').value.trim();
   const description = document.getElementById('project-desc').value.trim();
   if (!name) { alert('Name is required'); return; }
-  const res = await fetch('/' + username + '/projects', {
+  const res = await fetch(apiBase, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, description: description || undefined }),
@@ -90,7 +91,7 @@ function editProject(id, currentName, currentDesc) {
   if (!name.trim()) { alert('Name is required'); return; }
   const description = prompt('Description:', currentDesc);
   if (description === null) return;
-  fetch('/' + username + '/projects/' + id, {
+  fetch(apiBase + '/' + id, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name: name.trim(), description: description.trim() || null }),
@@ -102,7 +103,7 @@ function editProject(id, currentName, currentDesc) {
 
 function removeProject(id, name) {
   if (!confirm('Delete project "' + name + '"? Workspace files will be kept.')) return;
-  fetch('/' + username + '/projects/' + id, { method: 'DELETE' }).then(res => {
+  fetch(apiBase + '/' + id, { method: 'DELETE' }).then(res => {
     if (res.ok) location.reload();
     else res.json().catch(() => ({})).then(e => alert(e.error || 'Failed to delete project'));
   });

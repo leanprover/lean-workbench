@@ -153,6 +153,12 @@ export function setAdmin(userId: number, value: boolean): void {
 
 // --- Project queries ---
 
+export const PROJECT_NAME_RE = /^[\p{L}\p{N}][\p{L}\p{N}_-]{0,99}$/u;
+
+export function getProjectByUserAndName(userId: number, name: string): ProjectRow | undefined {
+  return db.prepare(`SELECT * FROM projects WHERE user_id = ? AND name = ?`).get(userId, name) as ProjectRow | undefined;
+}
+
 export function createProject(userId: number, name: string, description?: string): ProjectRow {
   const id = crypto.randomUUID();
   db.prepare(
