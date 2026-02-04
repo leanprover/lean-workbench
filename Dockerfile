@@ -64,7 +64,7 @@ RUN ELAN_HOME=/home/elan /home/elan/bin/lean --version
 RUN RESOLVED=$(ls /home/elan/toolchains/) && \
     TOOLCHAIN=$(echo "$RESOLVED" | sed 's|---|:|g' | sed 's|--|/|g') && \
     sed -i "s|^default_toolchain = .*|default_toolchain = \"$TOOLCHAIN\"|" /home/elan/settings.toml
-RUN chmod -R a+rX /home/elan
+RUN chmod a+rx /home/elan && chmod -R a+rX /home/elan
 
 # Pre-install the Lean4 VS Code extension
 ARG LEAN4_EXT_URL="https://github.com/leanprover/vscode-lean4/releases/download/v0.0.221/lean4-0.0.221.vsix"
