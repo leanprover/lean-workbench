@@ -6,28 +6,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Open Sans', Arial, sans-serif; color: #333; }
-  nav { position: sticky; top: 0; z-index: 1000; background: rgba(249, 251, 253, 0.81); backdrop-filter: blur(10px); display: flex; align-items: center; padding: 1.5rem 2rem; border-bottom: 1px solid #E4EBF3; }
-  nav .logo { display: flex; align-items: center; margin-right: 1.5rem; text-decoration: none; }
-  nav .logo img { height: 20px; }
-  nav .spacer { flex: 1; }
-  nav a.nav-link { text-decoration: none; color: #333; font-weight: 500; font-size: 0.9rem; padding: 0.75rem 1rem; border-radius: 0.5rem; transition: all 0.2s; position: relative; }
-  nav a.nav-link:hover { color: #386EE0; background: rgba(56, 110, 224, 0.08); }
-  main { max-width: 600px; margin: 40px auto; padding: 0 20px; }
-  h1 { margin-bottom: 4px; }
-  h1 + p { color: #607D8B; margin-top: 0; }
-  .login-link { display: inline-block; margin: 20px 0; padding: 10px 20px; font-size: 14px; background: #386EE0; color: #fff; text-decoration: none; border-radius: 0.5rem; font-weight: 500; transition: background 0.2s; }
-  .login-link:hover { background: #1D4ED8; }
-  .welcome { margin: 20px 0; }
-  .welcome a { color: #386EE0; text-decoration: none; font-weight: 500; }
-  .welcome a:hover { color: #1D4ED8; text-decoration: underline; }
-  #users { margin-top: 24px; }
-  #users a { display: block; padding: 6px 0; color: #386EE0; text-decoration: none; }
-  #users a:hover { text-decoration: underline; }
-  #no-users { color: #90a4ae; display: none; }
-</style>
+<link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <nav>
@@ -40,7 +19,7 @@
   <a class="nav-link" href="/auth/github">Login</a>
 <% } %>
 </nav>
-<main>
+<main style="max-width: 600px;">
 <h1>Lean Workbench</h1>
 <p>Multi-user sandboxed VS Code server.</p>
 

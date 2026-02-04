@@ -6,39 +6,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Open Sans', Arial, sans-serif; color: #333; }
-  nav { position: sticky; top: 0; z-index: 1000; background: rgba(249, 251, 253, 0.81); backdrop-filter: blur(10px); display: flex; align-items: center; padding: 1.5rem 2rem; border-bottom: 1px solid #E4EBF3; }
-  nav .logo { display: flex; align-items: center; margin-right: 1.5rem; text-decoration: none; }
-  nav .logo img { height: 20px; }
-  nav .sep { margin: 0 0.25rem; color: #90a4ae; }
-  nav .user { font-weight: 500; font-size: 0.9rem; color: #333; }
-  nav .spacer { flex: 1; }
-  nav a.nav-link { text-decoration: none; color: #333; font-weight: 500; font-size: 0.9rem; padding: 0.75rem 1rem; border-radius: 0.5rem; transition: all 0.2s; }
-  nav a.nav-link:hover { color: #386EE0; background: rgba(56, 110, 224, 0.08); }
-  main { max-width: 700px; margin: 40px auto; padding: 0 20px; }
-  h1 { margin-bottom: 4px; }
-  h1 + p { color: #607D8B; margin-top: 0; }
-  .new-project { margin: 20px 0; padding: 16px; background: #f5f7fa; border: 1px solid #E4EBF3; border-radius: 0.5rem; }
-  .new-project h3 { margin: 0 0 10px; }
-  .new-project input, .new-project textarea { display: block; width: 100%; margin-bottom: 8px; padding: 8px 10px; font-size: 14px; border: 1px solid #D1D9E2; border-radius: 0.5rem; font-family: inherit; }
-  .new-project input:focus, .new-project textarea:focus { outline: none; border-color: #386EE0; box-shadow: 0 0 0 3px rgba(56, 110, 224, 0.12); }
-  .new-project textarea { height: 50px; resize: vertical; }
-  .new-project button { padding: 8px 20px; font-size: 14px; background: #386EE0; color: #fff; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 500; font-family: inherit; transition: background 0.2s; }
-  .new-project button:hover { background: #1D4ED8; }
-  .project-list { list-style: none; padding: 0; }
-  .project-list li { padding: 12px 0; border-bottom: 1px solid #E4EBF3; display: flex; align-items: center; }
-  .project-list li:last-child { border-bottom: none; }
-  .project-list .info { flex: 1; }
-  .project-list .info a { color: #386EE0; text-decoration: none; font-weight: 500; }
-  .project-list .info a:hover { text-decoration: underline; }
-  .project-list .info .desc { color: #607D8B; font-size: 13px; margin-top: 2px; }
-  .project-list .actions button { margin-left: 6px; padding: 4px 12px; font-size: 12px; border: 1px solid #D1D9E2; border-radius: 0.25rem; background: #fff; cursor: pointer; font-family: inherit; transition: all 0.2s; }
-  .project-list .actions button:hover { background: #f0f4f8; border-color: #b0bec5; }
-  .project-list .actions button.delete:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
-  .empty { color: #90a4ae; margin: 16px 0; }
-</style>
+<link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <nav>
@@ -49,7 +17,7 @@
   <a class="nav-link" href="/">Home</a>
   <a class="nav-link" href="/logout">Logout</a>
 </nav>
-<main>
+<main style="max-width: 700px;">
 <h1>Projects</h1>
 <p><%= username %>'s workspaces</p>
 
