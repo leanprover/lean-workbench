@@ -130,6 +130,7 @@ async function spawnProject(username: string, projectName: string, projectId: st
   const machineSettingsFile = path.join(machineSettingsDir, "settings.json");
   if (!fs.existsSync(machineSettingsFile)) {
     fs.mkdirSync(machineSettingsDir, { recursive: true });
+    // FIXME: this is attempting to do the same thing as --disable-workspace-trust below, redundant?
     fs.writeFileSync(machineSettingsFile, JSON.stringify({ "security.workspace.trust.enabled": false, "workbench.startupEditor": "none" }));
   }
 
@@ -166,6 +167,8 @@ async function spawnProject(username: string, projectName: string, projectId: st
       "--host", "127.0.0.1",
       "--port", String(port),
       "--without-connection-token",
+      // FIXME: attempting to do the same thing as `security.workspace.trust.enabled` setting above, redundant?
+      "--disable-workspace-trust",
       "--extensions-dir", EXTENSIONS_DIR,
       "--server-data-dir", `/workspace/${projectId}/lean-project/.vscode-data`,
       "--default-folder", `/workspace/${projectId}/lean-project`,
