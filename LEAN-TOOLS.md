@@ -191,6 +191,43 @@ associated with an installation that has pre-built dependencies.
 Without it, the workspace's own `.lake/packages` (if any) is visible
 via the normal workspace bind.
 
+## Network access and user-managed dependencies
+
+Principle 5 says sandboxes have no network access. Combined with the
+read-only `.lake/packages` overlay, this means users cannot run
+`lake update` to fetch their own dependencies. This is the right
+default for large shared deps like mathlib (which take hours to build
+and should never be fetched per-user), but it also prevents users from
+adding small dependencies of their own.
+
+If we were to consider relaxing this assumption, there are at least
+three options, in order of increasing complexity:
+
+1. **No network, admin-only deps (current design).** Users can only
+   use what the admin has pre-installed. Simple and predictable, but
+   restrictive — users can't experiment with new packages.
+
+2. **Allow network access in the sandbox.** Users can `lake update`
+   freely. The read-only overlay still provides pre-built mathlib
+   .oleans so users don't have to rebuild it, but they can fetch
+   additional small deps into the writable portion of `.lake/`.
+   Bubblewrap still provides filesystem isolation; network access
+   doesn't weaken that. The main downside is that builds become
+   less reproducible and users may hit confusing failures if a
+   remote package disappears.
+
+3. **No network, but selective overlay.** Only overlay specific large
+   packages (e.g. mathlib) as read-only; leave the rest of
+   `.lake/packages` writable. The admin pre-populates the big deps,
+   and the user could add small ones if they were also pre-fetched
+   or bundled. More complex mount plumbing for unclear benefit over
+   option 2.
+
+This decision does not need to be made now — the mount structure
+supports all three options. The choice affects only whether
+`--unshare-net` is passed to bwrap and whether the `.lake/packages`
+overlay covers the entire directory or selected subdirectories.
+
 ## Installation management
 
 Admins manage the contents of `/tmp/podserver/elan/` and
