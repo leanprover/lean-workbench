@@ -175,26 +175,14 @@ associated with an installation that has pre-built dependencies.
 Without it, the workspace's own `.lake/packages` (if any) is visible
 via the normal workspace bind.
 
-## How an admin adds an installation
+## Installation management
 
-An admin runs a script on the host:
-
-```
-scripts/create-installation.sh mathlib-4.27 leanprover/lean4:v4.27.0 "Lean 4.27 + Mathlib"
-```
-
-This:
-1. Installs the toolchain via elan into `/tmp/podserver/elan/toolchains/`
-2. Creates a template directory under `/tmp/podserver/installations/mathlib-4.27/`
-   with `lean-toolchain`, `lakefile.toml` (with mathlib dep), starter `Main.lean`
-3. Runs `lake build` in the template to pre-compile all dependencies
-4. Writes `metadata.json` with the display name
-
-The spawner discovers available installations by scanning for
-`metadata.json` files and exposes them via `GET /api/installations`.
-The project creation UI shows a picker. The chosen installation ID is
-stored in the projects table. When creating a project, the spawner
-copies the template files into the user's workspace directory.
+Admins manage the contents of `/tmp/podserver/elan/` and
+`/tmp/podserver/installations/` outside of the running application
+(e.g. via host-side scripts, or a future admin UI). The exact
+mechanism is out of scope for this document. The important contract is
+that the spawner treats these directories as read-only at runtime and
+mounts them read-only into sandboxes.
 
 ## VS Code extension
 
