@@ -394,8 +394,26 @@ app.get("/", (req: Request, res: Response) => {
   res.render("landing", { user, devMode, githubEnabled });
 });
 
+function requirePageOwner(req: Request, res: Response): UserRow | null {
+  const { username } = req.params;
+  if (!USERNAME_RE.test(username)) {
+    res.redirect("/");
+    return null;
+  }
+  if (!req.isAuthenticated || !req.isAuthenticated()) {
+    res.redirect("/");
+    return null;
+  }
+  const user = req.user as UserRow;
+  if (user.username !== username) {
+    res.redirect("/");
+    return null;
+  }
+  return user;
+}
+
 app.get("/:username/", (req: Request, res: Response) => {
-  const user = requireOwner(req, res);
+  const user = requirePageOwner(req, res);
   if (!user) return;
 
   const avatarUrl = getAvatarUrl(user.id);
@@ -403,13 +421,13 @@ app.get("/:username/", (req: Request, res: Response) => {
 });
 
 app.get("/:username/:projectName/", async (req: Request, res: Response) => {
-  const user = requireOwner(req, res);
+  const user = requirePageOwner(req, res);
   if (!user) return;
 
   const { projectName } = req.params;
   const project = getProjectByUserAndName(user.id, projectName);
   if (!project) {
-    res.status(404).send("Project not found");
+    res.redirect(`/${user.username}/`);
     return;
   }
 
