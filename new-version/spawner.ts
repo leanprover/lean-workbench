@@ -1,13 +1,17 @@
+import "dotenv/config";
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import session from "express-session";
+import passport from "passport";
+import { Strategy as GitHubStrategy } from "passport-github2";
+import type { VerifyCallback } from "passport-oauth2";
 import { spawn, execSync } from "node:child_process";
 import net from "node:net";
 import fs from "node:fs";
 import path from "node:path";
 import {
   ensureUser, getUserById, getUserByUsername, getAvatarUrl,
-  isAdmin as checkIsAdmin,
+  upsertGithubUser, isAdmin as checkIsAdmin,
   getProjectsByUser, getProjectByUserAndName, createProject,
   getProjectById, updateProject, deleteProject, PROJECT_NAME_RE,
   type UserRow, type ProjectRow,
@@ -21,12 +25,6 @@ const WORKSPACES_DIR = `${DATA_DIR}/workspaces`;
 const NGINX_ROUTES_DIR = "/etc/nginx/user-routes";
 const USERNAME_RE = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/;
 const BASE_PORT = 3010;
-
-declare module "express-session" {
-  interface SessionData {
-    userId: number;
-  }
-}
 
 // --- Session management ---
 
@@ -192,17 +190,11 @@ async function spawnProject(username: string, projectName: string, projectId: st
 // --- Auth helpers ---
 
 function requireAuth(req: Request, res: Response): UserRow | null {
-  const userId = req.session.userId;
-  if (!userId) {
+  if (!req.isAuthenticated || !req.isAuthenticated()) {
     res.status(401).send("Not logged in");
     return null;
   }
-  const user = getUserById(userId);
-  if (!user) {
-    res.status(401).send("User not found");
-    return null;
-  }
-  return user;
+  return req.user as UserRow;
 }
 
 function requireOwner(req: Request, res: Response): UserRow | null {
@@ -227,10 +219,43 @@ app.set("view engine", "ejs");
 app.set("views", path.join(import.meta.dirname!, "public"));
 
 app.use(session({
-  secret: "lean-workbench-dev-secret",
+  secret: process.env.SESSION_SECRET ?? "lean-workbench-dev-secret",
   resave: false,
   saveUninitialized: false,
 }));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+// --- GitHub OAuth strategy ---
+
+if (process.env.GITHUB_CLIENT_ID) {
+  passport.use(
+    new GitHubStrategy(
+      {
+        clientID: process.env.GITHUB_CLIENT_ID,
+        clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+        callbackURL: process.env.CALLBACK_URL ?? "http://localhost:3000/auth/github/callback",
+      },
+      (accessToken: string, refreshToken: string, profile: any, done: VerifyCallback) => {
+        const user = upsertGithubUser({
+          github_id: parseInt(profile.id, 10),
+          github_username: profile.username,
+          display_name: profile.displayName,
+          email: profile.emails?.[0]?.value,
+          avatar_url: profile.photos?.[0]?.value,
+        });
+        done(null, user);
+      },
+    ),
+  );
+}
+
+passport.serializeUser((user, done) => done(null, (user as UserRow).id));
+passport.deserializeUser((id, done) => {
+  const user = getUserById(id as number);
+  done(null, user ?? false);
+});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -239,18 +264,35 @@ app.use("/static", express.static(path.join(import.meta.dirname!, "public")));
 
 // --- Auth routes ---
 
-app.get("/dev-login", (req: Request, res: Response) => {
-  const user = ensureUser("dev");
-  req.session.userId = user.id;
-  req.session.save(() => {
-    res.redirect("/dev/");
+if (process.env.GITHUB_CLIENT_ID) {
+  app.get("/auth/github", passport.authenticate("github", { scope: ["user:email"] }));
+
+  app.get(
+    "/auth/github/callback",
+    passport.authenticate("github", { failureRedirect: "/" }),
+    (req: Request, res: Response) => {
+      const username = (req.user as UserRow)?.username ?? "";
+      res.redirect(`/${username}/`);
+    },
+  );
+}
+
+if (process.env.NODE_ENV !== "production") {
+  app.get("/dev-login", (req: Request, res: Response) => {
+    const user = ensureUser("dev");
+    req.login(user, (err) => {
+      if (err) { res.status(500).send("Login failed"); return; }
+      res.redirect("/dev/");
+    });
   });
-});
+}
 
 app.get("/logout", (req: Request, res: Response) => {
-  req.session.destroy(() => {
-    res.clearCookie("connect.sid");
-    res.redirect("/");
+  req.logout(() => {
+    req.session.destroy(() => {
+      res.clearCookie("connect.sid");
+      res.redirect("/");
+    });
   });
 });
 
@@ -338,19 +380,22 @@ app.delete("/api/projects/:projectId", (req: Request, res: Response) => {
 // --- Page routes ---
 
 app.get("/", (req: Request, res: Response) => {
-  let user: { username: string } | null = null;
-  if (req.session.userId) {
-    const u = getUserById(req.session.userId);
-    if (u) user = { username: u.username };
+  let user: { username: string; avatarUrl: string | null } | null = null;
+  if (req.isAuthenticated()) {
+    const u = req.user as UserRow;
+    user = { username: u.username, avatarUrl: getAvatarUrl(u.id) };
   }
-  res.render("landing", { user });
+  const devMode = process.env.NODE_ENV !== "production";
+  const githubEnabled = !!process.env.GITHUB_CLIENT_ID;
+  res.render("landing", { user, devMode, githubEnabled });
 });
 
 app.get("/:username/", (req: Request, res: Response) => {
   const user = requireOwner(req, res);
   if (!user) return;
 
-  res.render("profile", { username: user.username, isAdmin: user.is_admin });
+  const avatarUrl = getAvatarUrl(user.id);
+  res.render("profile", { username: user.username, isAdmin: user.is_admin, avatarUrl });
 });
 
 app.get("/:username/:projectName/", async (req: Request, res: Response) => {
@@ -371,7 +416,8 @@ app.get("/:username/:projectName/", async (req: Request, res: Response) => {
     return;
   }
 
-  res.render("session", { username: user.username, projectName });
+  const avatarUrl = getAvatarUrl(user.id);
+  res.render("session", { username: user.username, projectName, avatarUrl });
 });
 
 app.listen(3002, "127.0.0.1", () => {
