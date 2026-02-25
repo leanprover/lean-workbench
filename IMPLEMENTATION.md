@@ -170,6 +170,10 @@ source of startup slowness.
 
 ---
 
+Testing notes: seems ok, although the multitude of files are no longer
+present in the user's workspace. TODO: We aren't really exercising the
+lean tooling by default, I'll have to manually follow the steps above.
+
 ## Step 6 — Multi-session support with port allocation
 
 **Goal**: Support multiple concurrent sessions, each on its own port.

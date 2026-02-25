@@ -93,13 +93,29 @@ read-only resources that don't need to be on the host.
   bin/openvscode-server
   ...
 
+/home/elan-seed/                       # baked into image (read-only)
+  bin/elan                             # elan binary only — no toolchains
+  settings.toml
+
 /home/extensions/                      # baked into image (read-only)
   lean4/                               # pre-installed lean4 VS Code ext
 ```
 
-The container's `start.sh` seeds `/data/elan/` from a copy baked into
-the image on first run, so that a fresh volume gets a working elan +
-default toolchain without the admin needing to do anything.
+**What the Docker image contains (Lean-specific):**
+- The **elan binary** (the Lean version manager) — a small seed copy
+  at `/home/elan-seed/`.
+- The **lean4 VS Code extension** at `/home/extensions/`.
+
+**What the Docker image does not contain:**
+- Any Lean toolchain. Specific toolchain versions (the large ~1 GB
+  directories under `elan/toolchains/`) live exclusively on the host
+  volume and are managed by the admin.
+- Mathlib builds, `.lake/packages`, or any installation templates.
+
+The container's `start.sh` seeds `/data/elan/` from `/home/elan-seed/`
+on first run, so that a fresh volume gets a working elan binary
+without the admin needing to do anything. The admin then installs
+toolchains into `/data/elan/toolchains/` on the host.
 
 ### Bwrap sandbox (one user session)
 

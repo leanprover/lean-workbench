@@ -3,9 +3,13 @@ import type { Request, Response } from "express";
 import { spawn, execSync } from "node:child_process";
 import net from "node:net";
 import fs from "node:fs";
+import path from "node:path";
 
 const OPENVSCODE_SERVER_ROOT = "/home/.openvscode-server";
-const WORKSPACE = "/home/workspace";
+const EXTENSIONS_DIR = "/home/extensions";
+const DATA_DIR = "/data";
+const ELAN_DIR = `${DATA_DIR}/elan`;
+const WORKSPACES_DIR = `${DATA_DIR}/workspaces`;
 const NGINX_ROUTES_DIR = "/etc/nginx/user-routes";
 const PORT = 3010;
 
@@ -61,8 +65,26 @@ function reloadNginx(): void {
   execSync("nginx -s reload");
 }
 
+function ensureMachineSettings(workspace: string): void {
+  const machineSettingsDir = path.join(workspace, ".vscode-data", "data", "Machine");
+  const machineSettingsFile = path.join(machineSettingsDir, "settings.json");
+  if (!fs.existsSync(machineSettingsFile)) {
+    fs.mkdirSync(machineSettingsDir, { recursive: true });
+    fs.writeFileSync(machineSettingsFile, JSON.stringify({
+      "security.workspace.trust.enabled": false,
+      "workbench.startupEditor": "none",
+      "files.watcherExclude": { "/home/elan/**": true },
+    }, null, 2) + "\n");
+  }
+}
+
 async function ensureSession(): Promise<void> {
   if (session && isAlive(session.pid)) return;
+
+  // For now, single hardcoded workspace. Multi-user comes in Step 6.
+  const workspace = path.join(WORKSPACES_DIR, "dev", "default");
+  fs.mkdirSync(workspace, { recursive: true });
+  ensureMachineSettings(workspace);
 
   const child = spawn(
     "bwrap",
@@ -73,13 +95,16 @@ async function ensureSession(): Promise<void> {
       "--ro-bind", "/bin", "/bin",
       "--ro-bind", "/etc", "/etc",
       "--ro-bind", OPENVSCODE_SERVER_ROOT, OPENVSCODE_SERVER_ROOT,
-      "--bind", WORKSPACE, "/workspace",
+      "--ro-bind", ELAN_DIR, "/home/elan",
+      "--ro-bind", EXTENSIONS_DIR, EXTENSIONS_DIR,
+      "--bind", workspace, "/workspace",
       "--proc", "/proc",
       "--dev", "/dev",
       "--tmpfs", "/tmp",
       "--clearenv",
       "--setenv", "HOME", "/workspace",
-      "--setenv", "PATH", "/usr/local/bin:/usr/bin:/bin",
+      "--setenv", "ELAN_HOME", "/home/elan",
+      "--setenv", "PATH", `/home/elan/bin:/usr/local/bin:/usr/bin:/bin`,
       "--unshare-user",
       "--unshare-pid",
       "--unshare-uts",
@@ -93,6 +118,8 @@ async function ensureSession(): Promise<void> {
       "--without-connection-token",
       "--server-base-path=/session/_vs/",
       "--default-folder", "/workspace",
+      "--extensions-dir", EXTENSIONS_DIR,
+      "--server-data-dir", "/workspace/.vscode-data",
     ],
     { stdio: "inherit", detached: true },
   );
