@@ -140,19 +140,27 @@ perhaps these are expected.
 ## Step 5 — Add Lean toolchain and VS Code extension
 
 **Goal**: Install elan/Lean and the lean4 VS Code extension in the
-Docker image. Mount the toolchain into the bwrap sandbox.
+Docker image. Mount the toolchain into the bwrap sandbox. Switch from
+ad-hoc workspace volume to the unified `/tmp/podserver` host directory
+described in `LEAN-TOOLS.md`.
 
 **Files to modify**:
 - `Dockerfile` — install elan, pin the stable toolchain, install
   lean4 extension into `/home/extensions`. Add strace and other debug
   tools.
-- `spawner.ts` — add `--ro-bind` for extensions dir, `--bind` for
-  elan at `/home/elan`, `--setenv ELAN_HOME`, add `--extensions-dir`
-  flag to openvscode-server args. Add `--server-data-dir` and
-  `--default-folder` flags. Write machine settings (disable workspace
-  trust, etc.).
-- `start.sh` — seed elan volume on first run.
-- `Makefile` — add elan volume to `serve`.
+- `spawner.ts` — add `--ro-bind /data/elan /home/elan` (read-only),
+  `--ro-bind /home/extensions /home/extensions`, `--setenv ELAN_HOME
+  /home/elan`. Add `--extensions-dir`, `--server-data-dir`, and
+  `--default-folder` flags to openvscode-server args. Write machine
+  settings to `.vscode-data/data/Machine/settings.json` inside the
+  workspace (disable workspace trust, suppress Welcome tab, exclude
+  elan from file watcher). If the project is associated with an
+  installation, add a `--ro-bind` overlay for `.lake/packages`.
+- `start.sh` — seed `/data/elan/` from the image-baked copy on first
+  run (so a fresh volume gets a working elan + default toolchain).
+- `Makefile` — replace the old workspace volume with a single volume:
+  `-v /tmp/podserver:/data`. Create `/tmp/podserver/workspaces/` on
+  the host if needed.
 
 **What to test**: Open a session, verify Lean extension loads, create a
 `.lean` file, verify Lean LSP starts. Compare startup time.
@@ -166,17 +174,21 @@ source of startup slowness.
 
 **Goal**: Support multiple concurrent sessions, each on its own port.
 Still no auth — sessions are keyed by a username in the URL path
-(`/{username}/_vs/`).
+(`/{username}/_vs/`). Each user gets a workspace directory under
+`/data/workspaces/<username>/` (created on demand by the spawner).
 
 **Files to modify**:
 - `spawner.ts` — in-memory session map (username -> {port, pid}).
   Port allocation counter from 3010. `isAlive()` check. Route pattern
-  `GET /:username/` spawns or reuses session. Dynamic nginx conf per
-  user. `killSession()` for cleanup.
+  `GET /:username/` spawns or reuses session. Workspace bind is now
+  `/data/workspaces/<username>/<project-uuid>` on the Docker side,
+  mounted rw into the bwrap sandbox. Dynamic nginx conf per user.
+  `killSession()` for cleanup.
 
 **What to test**: Open `localhost:3000/alice/` and
 `localhost:3000/bob/` in separate tabs. Each gets their own VS Code
-instance with a separate workspace. Verify nginx routes correctly.
+instance with a separate workspace under `/data/workspaces/`. Verify
+nginx routes correctly.
 
 ---
 
@@ -190,14 +202,16 @@ instance with a separate workspace. Verify nginx routes correctly.
   projects tables). All query functions.
 - `spawner.ts` — add express-session middleware, dev-login route,
   requireAuth/requireOwner helpers. Sessions keyed by
-  `username/projectId` instead of just username. Landing page
+  `username/projectId` instead of just username. Workspace dirs are
+  `/data/workspaces/<username>/<project-uuid>/`. Landing page
   (`GET /`) with EJS. Profile page (`GET /:username/`). Session page
   (`GET /:username/:projectName/`).
 - `package.json` — add better-sqlite3, dotenv, ejs, express-session.
 - `public/landing.ejs`, `public/session.ejs`, `public/profile.ejs` —
   templates (can copy from old-version, stripping GitHub-specific UI).
 - `public/style.css` — copy from old-version.
-- `Makefile` — add `/data` volume for SQLite, add `dev` target.
+- `Makefile` — add `dev` target. (The `/data` volume already exists
+    from Step 5; SQLite goes to `/data/db/podserver.db`.)
 
 **What to test**: `localhost:3000` shows landing page, `/dev-login`
 logs in as "dev" user, profile page shows empty project list (no React
