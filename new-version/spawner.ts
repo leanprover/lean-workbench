@@ -57,7 +57,7 @@ function waitForPort(port: number, timeoutMs = 10000): Promise<void> {
       });
       socket.once("error", () => {
         socket.destroy();
-        setTimeout(attempt, 200);
+        setTimeout(attempt, 1000);
       });
     }
     attempt();
@@ -191,7 +191,7 @@ async function spawnProject(username: string, projectName: string, projectId: st
 
 function requireAuth(req: Request, res: Response): UserRow | null {
   if (!req.isAuthenticated || !req.isAuthenticated()) {
-    res.status(401).send("Not logged in");
+    res.status(401).json({ error: "Not logged in" });
     return null;
   }
   return req.user as UserRow;
@@ -200,13 +200,13 @@ function requireAuth(req: Request, res: Response): UserRow | null {
 function requireOwner(req: Request, res: Response): UserRow | null {
   const { username } = req.params;
   if (!USERNAME_RE.test(username)) {
-    res.status(404).send("Not found");
+    res.status(404).json({ error: "Not found" });
     return null;
   }
   const user = requireAuth(req, res);
   if (!user) return null;
   if (user.username !== username) {
-    res.status(403).send("Forbidden");
+    res.status(403).json({ error: "Forbidden" });
     return null;
   }
   return user;
@@ -298,6 +298,10 @@ app.get("/logout", (req: Request, res: Response) => {
 
 // --- API routes (must come before /:username/ params) ---
 
+app.get("/api/health", (_req: Request, res: Response) => {
+  res.json({ status: "ok" });
+});
+
 app.get("/api/projects", (req: Request, res: Response) => {
   const user = requireAuth(req, res);
   if (!user) return;
@@ -308,7 +312,7 @@ app.get("/api/status", (req: Request, res: Response) => {
   const user = requireAuth(req, res);
   if (!user) return;
   if (!user.is_admin) {
-    res.status(403).send("Forbidden");
+    res.status(403).json({ error: "Forbidden" });
     return;
   }
   const result: Record<string, { port: number; pid: number; alive: boolean; workspace: string; projectId: string }> = {};
@@ -324,13 +328,13 @@ app.post("/api/projects", (req: Request, res: Response) => {
 
   const { name } = req.body;
   if (!name || !PROJECT_NAME_RE.test(name)) {
-    res.status(400).send("Invalid project name");
+    res.status(400).json({ error: "Invalid project name" });
     return;
   }
 
   const existing = getProjectByUserAndName(user.id, name);
   if (existing) {
-    res.status(409).send("Project already exists");
+    res.status(409).json({ error: "Project already exists" });
     return;
   }
 
@@ -344,13 +348,13 @@ app.put("/api/projects/:projectId", (req: Request, res: Response) => {
 
   const project = getProjectById(req.params.projectId);
   if (!project || project.user_id !== user.id) {
-    res.status(404).send("Project not found");
+    res.status(404).json({ error: "Project not found" });
     return;
   }
 
   const { name } = req.body;
   if (!name || !PROJECT_NAME_RE.test(name)) {
-    res.status(400).send("Invalid project name");
+    res.status(400).json({ error: "Invalid project name" });
     return;
   }
 
@@ -368,7 +372,7 @@ app.delete("/api/projects/:projectId", (req: Request, res: Response) => {
 
   const project = getProjectById(req.params.projectId);
   if (!project || project.user_id !== user.id) {
-    res.status(404).send("Project not found");
+    res.status(404).json({ error: "Project not found" });
     return;
   }
 
