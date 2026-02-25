@@ -7,6 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   ensureUser, getUserById, getUserByUsername, getAvatarUrl,
+  isAdmin as checkIsAdmin,
   getProjectsByUser, getProjectByUserAndName, createProject,
   getProjectById, updateProject, deleteProject, PROJECT_NAME_RE,
   type UserRow, type ProjectRow,
@@ -253,47 +254,27 @@ app.get("/logout", (req: Request, res: Response) => {
   });
 });
 
-// --- Page routes ---
+// --- API routes (must come before /:username/ params) ---
 
-app.get("/", (req: Request, res: Response) => {
-  let user: { username: string } | null = null;
-  if (req.session.userId) {
-    const u = getUserById(req.session.userId);
-    if (u) user = { username: u.username };
-  }
-  res.render("landing", { user });
+app.get("/api/projects", (req: Request, res: Response) => {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  res.json(getProjectsByUser(user.id));
 });
 
-app.get("/:username/", (req: Request, res: Response) => {
-  const user = requireOwner(req, res);
+app.get("/api/status", (req: Request, res: Response) => {
+  const user = requireAuth(req, res);
   if (!user) return;
-
-  const projects = getProjectsByUser(user.id);
-  res.render("profile", { username: user.username, projects });
-});
-
-app.get("/:username/:projectName/", async (req: Request, res: Response) => {
-  const user = requireOwner(req, res);
-  if (!user) return;
-
-  const { projectName } = req.params;
-  const project = getProjectByUserAndName(user.id, projectName);
-  if (!project) {
-    res.status(404).send("Project not found");
+  if (!user.is_admin) {
+    res.status(403).send("Forbidden");
     return;
   }
-
-  try {
-    await spawnProject(user.username, projectName, project.id);
-  } catch (err) {
-    res.status(500).send("Failed to start session: " + (err as Error).message);
-    return;
+  const result: Record<string, { port: number; pid: number; alive: boolean; workspace: string; projectId: string }> = {};
+  for (const [key, s] of sessions) {
+    result[key] = { ...s, alive: isAlive(s.pid) };
   }
-
-  res.render("session", { username: user.username, projectName });
+  res.json({ sessions: result });
 });
-
-// --- API routes ---
 
 app.post("/api/projects", (req: Request, res: Response) => {
   const user = requireAuth(req, res);
@@ -312,13 +293,7 @@ app.post("/api/projects", (req: Request, res: Response) => {
   }
 
   const project = createProject(user.id, name);
-
-  // If this came from a form submission, redirect to profile
-  if (req.headers["content-type"]?.includes("application/x-www-form-urlencoded")) {
-    res.redirect(`/${user.username}/`);
-  } else {
-    res.json(project);
-  }
+  res.json(project);
 });
 
 app.put("/api/projects/:projectId", (req: Request, res: Response) => {
@@ -358,6 +333,45 @@ app.delete("/api/projects/:projectId", (req: Request, res: Response) => {
   killSession(user.username, project.id);
   deleteProject(project.id);
   res.json({ ok: true });
+});
+
+// --- Page routes ---
+
+app.get("/", (req: Request, res: Response) => {
+  let user: { username: string } | null = null;
+  if (req.session.userId) {
+    const u = getUserById(req.session.userId);
+    if (u) user = { username: u.username };
+  }
+  res.render("landing", { user });
+});
+
+app.get("/:username/", (req: Request, res: Response) => {
+  const user = requireOwner(req, res);
+  if (!user) return;
+
+  res.render("profile", { username: user.username, isAdmin: user.is_admin });
+});
+
+app.get("/:username/:projectName/", async (req: Request, res: Response) => {
+  const user = requireOwner(req, res);
+  if (!user) return;
+
+  const { projectName } = req.params;
+  const project = getProjectByUserAndName(user.id, projectName);
+  if (!project) {
+    res.status(404).send("Project not found");
+    return;
+  }
+
+  try {
+    await spawnProject(user.username, projectName, project.id);
+  } catch (err) {
+    res.status(500).send("Failed to start session: " + (err as Error).message);
+    return;
+  }
+
+  res.render("session", { username: user.username, projectName });
 });
 
 app.listen(3002, "127.0.0.1", () => {

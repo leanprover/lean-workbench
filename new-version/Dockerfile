@@ -40,9 +40,15 @@ RUN mkdir -p /home/extensions \
         --install-extension /tmp/lean4.vsix \
     && rm /tmp/lean4.vsix
 
+# Build React client (outputs to /tmp/public/dist/)
+COPY client/ /tmp/client/
+RUN cd /tmp/client && npm install && npm run build
+
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY package.json spawner.ts db.ts /usr/local/lib/spawner/
 COPY public/ /usr/local/lib/spawner/public/
+# Copy built React bundle into public/dist/
+RUN cp -r /tmp/public/dist/ /usr/local/lib/spawner/public/dist/ && rm -rf /tmp/client /tmp/public
 RUN cd /usr/local/lib/spawner && npm install --production
 COPY start.sh /usr/local/bin/start.sh
 RUN chmod +x /usr/local/bin/start.sh
