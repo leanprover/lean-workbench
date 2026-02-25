@@ -1,24 +1,5 @@
 # Debrief
 
-Summary of the incremental rebuild debugging session. The goal was to
-bisect a performance problem where VS Code startup took 10–30 seconds
-in old-version/. We rebuilt the application from scratch in 10 steps,
-testing startup time at each step.
-
-## Result
-
-The anomalous 10–30s startup time is gone. No single step introduced
-a measurable regression. The new-version has occasional 1–2s delays
-on first load of the file explorer pane, but this is intermittent and
-not reproducible — likely cold-start caching effects.
-
-The exact cause of the old-version slowdown remains unknown. Likely
-candidates:
-- Accumulated state in the workspace or .vscode-data directories
-- The more complex bwrap mount structure (tmpfs + nested subdirs)
-- Interaction between multiple volumes and filesystem layering
-- Something in the old Dockerfile's heavier dependency set
-
 ## Functional differences: old-version vs new-version
 
 ### Features present in both
@@ -31,63 +12,6 @@ candidates:
 - nginx reverse proxy with dynamic per-session routes
 - Machine settings (workspace trust disabled, Welcome tab suppressed,
   elan excluded from file watcher)
-
-### Missing from new-version
-- **Lean logo SVG** — old-version uses `/static/lean-logo.svg` in the
-  navbar. New-version uses text only ("Lean Workbench").
-- **Google Fonts** — old-version loads Open Sans from Google Fonts.
-  New-version relies on system fonts.
-- **`GET /api/health`** — simple health check route present in
-  old-version, not implemented in new-version.
-- **Port reuse** — old-version reuses ports when a session process
-  dies. New-version always allocates a fresh port.
-- **Graceful spawn failure** — old-version creates a session entry
-  with pid -1 on spawn failure (degraded mode). New-version fails
-  fast with a 500 error.
-
-### Intentional changes in new-version
-- **Unified volume** — single `-v /tmp/podserver:/data` replaces
-  three separate volumes (`/data`, `/home/workspace`,
-  `/home/elan-volume`).
-- **Simplified workspace mount** — workspace is bound directly to
-  `/workspace` inside bwrap, rather than old-version's
-  `--tmpfs /workspace` + `--dir /workspace/{id}` +
-  `--bind ... /workspace/{id}/lean-project` structure.
-- **Database path** — moved from `/data/podserver.db` to
-  `/data/db/podserver.db` (in its own subdirectory under the unified
-  volume).
-- **Elan mounted read-only** — `--ro-bind /data/elan /home/elan`
-  instead of old-version's `--bind` (read-write).
-- **Conditional GitHub OAuth** — strategy and routes only registered
-  when `GITHUB_CLIENT_ID` is set. Old-version required it.
-- **Passport-based auth** — uses `req.isAuthenticated()` and
-  `req.login()` instead of manual `req.session.userId`.
-- **Express view engine** — `res.render()` instead of manual
-  `fs.readFileSync` + `ejs.render`.
-- **Faster port polling** — `waitForPort` retries every 200ms instead
-  of 1000ms.
-- **Lighter Docker image** — does not install python3, make, g++,
-  libatomic1, or sudo.
-- **API error format** — new-version returns plain text errors instead
-  of JSON `{ error: "..." }` objects.
-
-## IMPLEMENTATION.md completion
-
-All 10 steps are complete:
-
-| Step | Description | Status |
-|------|-------------|--------|
-| 1 | Bare openvscode-server | Done |
-| 1b | Workspace file-count stress test | Done |
-| 2 | nginx reverse proxy | Done |
-| 3 | Spawner (single session, no auth) | Done |
-| 4 | bwrap sandboxing | Done |
-| 5 | Lean toolchain + extension | Done |
-| 6 | Multi-session support | Done |
-| 7 | SQLite + dev-login auth | Done |
-| 8 | React project management UI | Done |
-| 9 | GitHub OAuth | Done |
-| 10 | Admin features + final polish | Done |
 
 ## DESIGN.md inconsistencies
 
