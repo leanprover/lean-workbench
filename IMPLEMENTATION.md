@@ -5,6 +5,7 @@ produces a working system that the user will manually tested before
 moving on.
 
 Reference code is in `old-version/`. Follow `DESIGN.md` for structure.
+Put the new version in `new-version/`.
 
 ---
 
