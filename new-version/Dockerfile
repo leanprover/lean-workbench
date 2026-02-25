@@ -57,6 +57,7 @@ RUN chmod +x /usr/local/bin/start.sh
 RUN mkdir -p /etc/nginx/user-routes
 
 ENV OPENVSCODE_SERVER_ROOT=${OPENVSCODE_SERVER_ROOT}
+ENV NODE_ENV=production
 
 EXPOSE 3000
 
