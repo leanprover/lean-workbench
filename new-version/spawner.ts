@@ -11,9 +11,9 @@ const DATA_DIR = "/data";
 const ELAN_DIR = `${DATA_DIR}/elan`;
 const WORKSPACES_DIR = `${DATA_DIR}/workspaces`;
 const NGINX_ROUTES_DIR = "/etc/nginx/user-routes";
-const PORT = 3010;
 
-let session: { port: number; pid: number } | null = null;
+let nextPort = 3010;
+const sessions = new Map<string, { port: number; pid: number }>();
 
 function waitForPort(port: number, timeoutMs = 10000): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -46,8 +46,8 @@ function isAlive(pid: number): boolean {
   }
 }
 
-function writeNginxConf(port: number): void {
-  const conf = `location /session/_vs/ {
+function writeNginxConf(username: string, port: number): void {
+  const conf = `location /${username}/_vs/ {
     proxy_pass http://127.0.0.1:${port};
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
@@ -58,7 +58,7 @@ function writeNginxConf(port: number): void {
     proxy_hide_header X-Frame-Options;
 }
 `;
-  fs.writeFileSync(`${NGINX_ROUTES_DIR}/session.conf`, conf);
+  fs.writeFileSync(`${NGINX_ROUTES_DIR}/${username}.conf`, conf);
 }
 
 function reloadNginx(): void {
@@ -78,11 +78,32 @@ function ensureMachineSettings(workspace: string): void {
   }
 }
 
-async function ensureSession(): Promise<void> {
-  if (session && isAlive(session.pid)) return;
+function killSession(username: string): void {
+  const s = sessions.get(username);
+  if (!s) return;
+  try {
+    process.kill(s.pid);
+  } catch {
+    // already dead
+  }
+  sessions.delete(username);
+  try {
+    fs.unlinkSync(`${NGINX_ROUTES_DIR}/${username}.conf`);
+    reloadNginx();
+  } catch {
+    // conf may not exist
+  }
+}
 
-  // For now, single hardcoded workspace. Multi-user comes in Step 6.
-  const workspace = path.join(WORKSPACES_DIR, "dev", "default");
+async function ensureSession(username: string): Promise<{ port: number }> {
+  const existing = sessions.get(username);
+  if (existing && isAlive(existing.pid)) return existing;
+
+  // Clean up stale session if pid is dead
+  if (existing) sessions.delete(username);
+
+  const port = nextPort++;
+  const workspace = path.join(WORKSPACES_DIR, username, "default");
   fs.mkdirSync(workspace, { recursive: true });
   ensureMachineSettings(workspace);
 
@@ -114,9 +135,9 @@ async function ensureSession(): Promise<void> {
       "--",
       `${OPENVSCODE_SERVER_ROOT}/bin/openvscode-server`,
       "--host", "127.0.0.1",
-      "--port", String(PORT),
+      "--port", String(port),
       "--without-connection-token",
-      "--server-base-path=/session/_vs/",
+      `--server-base-path=/${username}/_vs/`,
       "--default-folder", "/workspace",
       "--extensions-dir", EXTENSIONS_DIR,
       "--server-data-dir", "/workspace/.vscode-data",
@@ -125,12 +146,13 @@ async function ensureSession(): Promise<void> {
   );
   child.unref();
 
-  session = { port: PORT, pid: child.pid! };
+  sessions.set(username, { port, pid: child.pid! });
 
-  writeNginxConf(PORT);
+  writeNginxConf(username, port);
   reloadNginx();
 
-  await waitForPort(PORT);
+  await waitForPort(port);
+  return { port };
 }
 
 const app = express();
@@ -140,20 +162,22 @@ app.get("/", (_req: Request, res: Response) => {
 <html><head><meta charset="utf-8"><title>podserver</title></head>
 <body>
 <h1>podserver</h1>
-<p><a href="/session/">Open session</a></p>
+<p>Go to <code>/&lt;username&gt;/</code> to start a session.</p>
 </body></html>`);
 });
 
-app.get("/session/", async (_req: Request, res: Response) => {
+app.get("/:username/", async (req: Request, res: Response) => {
+  const { username } = req.params;
+
   try {
-    await ensureSession();
+    await ensureSession(username);
   } catch (err) {
     res.status(500).send("Failed to start session: " + (err as Error).message);
     return;
   }
 
   res.type("html").send(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>session - podserver</title>
+<html><head><meta charset="utf-8"><title>${username} - podserver</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; overflow: hidden; }
@@ -164,7 +188,7 @@ app.get("/session/", async (_req: Request, res: Response) => {
 </style></head>
 <body>
 <nav><span>podserver</span><span class="spacer"></span><a href="/">Home</a></nav>
-<iframe src="/session/_vs/"></iframe>
+<iframe src="/${username}/_vs/"></iframe>
 </body></html>`);
 });
 
