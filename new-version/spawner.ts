@@ -1,9 +1,16 @@
 import express from "express";
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
+import session from "express-session";
 import { spawn, execSync } from "node:child_process";
 import net from "node:net";
 import fs from "node:fs";
 import path from "node:path";
+import {
+  ensureUser, getUserById, getUserByUsername, getAvatarUrl,
+  getProjectsByUser, getProjectByUserAndName, createProject,
+  getProjectById, updateProject, deleteProject, PROJECT_NAME_RE,
+  type UserRow, type ProjectRow,
+} from "./db.ts";
 
 const OPENVSCODE_SERVER_ROOT = "/home/.openvscode-server";
 const EXTENSIONS_DIR = "/home/extensions";
@@ -11,9 +18,30 @@ const DATA_DIR = "/data";
 const ELAN_DIR = `${DATA_DIR}/elan`;
 const WORKSPACES_DIR = `${DATA_DIR}/workspaces`;
 const NGINX_ROUTES_DIR = "/etc/nginx/user-routes";
+const USERNAME_RE = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/;
+const BASE_PORT = 3010;
 
-let nextPort = 3010;
-const sessions = new Map<string, { port: number; pid: number }>();
+declare module "express-session" {
+  interface SessionData {
+    userId: number;
+  }
+}
+
+// --- Session management ---
+
+interface SessionInfo {
+  port: number;
+  pid: number;
+  workspace: string;
+  projectId: string;
+}
+
+let nextPort = BASE_PORT;
+const sessions = new Map<string, SessionInfo>();
+
+function sessionKey(username: string, projectId: string): string {
+  return `${username}/${projectId}`;
+}
 
 function waitForPort(port: number, timeoutMs = 10000): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -46,8 +74,9 @@ function isAlive(pid: number): boolean {
   }
 }
 
-function writeNginxConf(username: string, port: number): void {
-  const conf = `location /${username}/_vs/ {
+function writeNginxConf(username: string, projectName: string, projectId: string, port: number): void {
+  const encodedName = encodeURIComponent(projectName);
+  const conf = `location /${username}/${encodedName}/_vs/ {
     proxy_pass http://127.0.0.1:${port};
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
@@ -58,7 +87,7 @@ function writeNginxConf(username: string, port: number): void {
     proxy_hide_header X-Frame-Options;
 }
 `;
-  fs.writeFileSync(`${NGINX_ROUTES_DIR}/${username}.conf`, conf);
+  fs.writeFileSync(`${NGINX_ROUTES_DIR}/${username}-${projectId}.conf`, conf);
 }
 
 function reloadNginx(): void {
@@ -78,35 +107,38 @@ function ensureMachineSettings(workspace: string): void {
   }
 }
 
-function killSession(username: string): void {
-  const s = sessions.get(username);
+function killSession(username: string, projectId: string): void {
+  const key = sessionKey(username, projectId);
+  const s = sessions.get(key);
   if (!s) return;
   try {
     process.kill(s.pid);
   } catch {
     // already dead
   }
-  sessions.delete(username);
+  sessions.delete(key);
   try {
-    fs.unlinkSync(`${NGINX_ROUTES_DIR}/${username}.conf`);
+    fs.unlinkSync(`${NGINX_ROUTES_DIR}/${username}-${projectId}.conf`);
     reloadNginx();
   } catch {
     // conf may not exist
   }
 }
 
-async function ensureSession(username: string): Promise<{ port: number }> {
-  const existing = sessions.get(username);
+async function spawnProject(username: string, projectName: string, projectId: string): Promise<SessionInfo> {
+  const key = sessionKey(username, projectId);
+  const existing = sessions.get(key);
   if (existing && isAlive(existing.pid)) return existing;
 
-  // Clean up stale session if pid is dead
-  if (existing) sessions.delete(username);
+  // Clean up stale entry
+  if (existing) sessions.delete(key);
 
   const port = nextPort++;
-  const workspace = path.join(WORKSPACES_DIR, username, "default");
+  const workspace = path.join(WORKSPACES_DIR, username, projectId);
   fs.mkdirSync(workspace, { recursive: true });
   ensureMachineSettings(workspace);
 
+  const encodedName = encodeURIComponent(projectName);
   const child = spawn(
     "bwrap",
     [
@@ -137,7 +169,7 @@ async function ensureSession(username: string): Promise<{ port: number }> {
       "--host", "127.0.0.1",
       "--port", String(port),
       "--without-connection-token",
-      `--server-base-path=/${username}/_vs/`,
+      `--server-base-path=/${username}/${encodedName}/_vs/`,
       "--default-folder", "/workspace",
       "--extensions-dir", EXTENSIONS_DIR,
       "--server-data-dir", "/workspace/.vscode-data",
@@ -146,50 +178,186 @@ async function ensureSession(username: string): Promise<{ port: number }> {
   );
   child.unref();
 
-  sessions.set(username, { port, pid: child.pid! });
+  const info: SessionInfo = { port, pid: child.pid!, workspace, projectId };
+  sessions.set(key, info);
 
-  writeNginxConf(username, port);
+  writeNginxConf(username, projectName, projectId, port);
   reloadNginx();
 
   await waitForPort(port);
-  return { port };
+  return info;
 }
 
-const app = express();
+// --- Auth helpers ---
 
-app.get("/", (_req: Request, res: Response) => {
-  res.type("html").send(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>podserver</title></head>
-<body>
-<h1>podserver</h1>
-<p>Go to <code>/&lt;username&gt;/</code> to start a session.</p>
-</body></html>`);
+function requireAuth(req: Request, res: Response): UserRow | null {
+  const userId = req.session.userId;
+  if (!userId) {
+    res.status(401).send("Not logged in");
+    return null;
+  }
+  const user = getUserById(userId);
+  if (!user) {
+    res.status(401).send("User not found");
+    return null;
+  }
+  return user;
+}
+
+function requireOwner(req: Request, res: Response): UserRow | null {
+  const { username } = req.params;
+  if (!USERNAME_RE.test(username)) {
+    res.status(404).send("Not found");
+    return null;
+  }
+  const user = requireAuth(req, res);
+  if (!user) return null;
+  if (user.username !== username) {
+    res.status(403).send("Forbidden");
+    return null;
+  }
+  return user;
+}
+
+// --- Express app ---
+
+const app = express();
+app.set("view engine", "ejs");
+app.set("views", path.join(import.meta.dirname!, "public"));
+
+app.use(session({
+  secret: "lean-workbench-dev-secret",
+  resave: false,
+  saveUninitialized: false,
+}));
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+
+app.use("/static", express.static(path.join(import.meta.dirname!, "public")));
+
+// --- Auth routes ---
+
+app.get("/dev-login", (req: Request, res: Response) => {
+  const user = ensureUser("dev");
+  req.session.userId = user.id;
+  req.session.save(() => {
+    res.redirect("/dev/");
+  });
 });
 
-app.get("/:username/", async (req: Request, res: Response) => {
-  const { username } = req.params;
+app.get("/logout", (req: Request, res: Response) => {
+  req.session.destroy(() => {
+    res.clearCookie("connect.sid");
+    res.redirect("/");
+  });
+});
+
+// --- Page routes ---
+
+app.get("/", (req: Request, res: Response) => {
+  let user: { username: string } | null = null;
+  if (req.session.userId) {
+    const u = getUserById(req.session.userId);
+    if (u) user = { username: u.username };
+  }
+  res.render("landing", { user });
+});
+
+app.get("/:username/", (req: Request, res: Response) => {
+  const user = requireOwner(req, res);
+  if (!user) return;
+
+  const projects = getProjectsByUser(user.id);
+  res.render("profile", { username: user.username, projects });
+});
+
+app.get("/:username/:projectName/", async (req: Request, res: Response) => {
+  const user = requireOwner(req, res);
+  if (!user) return;
+
+  const { projectName } = req.params;
+  const project = getProjectByUserAndName(user.id, projectName);
+  if (!project) {
+    res.status(404).send("Project not found");
+    return;
+  }
 
   try {
-    await ensureSession(username);
+    await spawnProject(user.username, projectName, project.id);
   } catch (err) {
     res.status(500).send("Failed to start session: " + (err as Error).message);
     return;
   }
 
-  res.type("html").send(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>${username} - podserver</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: 100%; overflow: hidden; }
-  nav { height: 36px; background: #1e1e1e; color: #ccc; display: flex; align-items: center; padding: 0 12px; font-family: system-ui; font-size: 13px; }
-  nav a { color: #569cd6; text-decoration: none; }
-  nav .spacer { flex: 1; }
-  iframe { width: 100%; height: calc(100% - 36px); border: none; display: block; }
-</style></head>
-<body>
-<nav><span>podserver</span><span class="spacer"></span><a href="/">Home</a></nav>
-<iframe src="/${username}/_vs/"></iframe>
-</body></html>`);
+  res.render("session", { username: user.username, projectName });
+});
+
+// --- API routes ---
+
+app.post("/api/projects", (req: Request, res: Response) => {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const { name } = req.body;
+  if (!name || !PROJECT_NAME_RE.test(name)) {
+    res.status(400).send("Invalid project name");
+    return;
+  }
+
+  const existing = getProjectByUserAndName(user.id, name);
+  if (existing) {
+    res.status(409).send("Project already exists");
+    return;
+  }
+
+  const project = createProject(user.id, name);
+
+  // If this came from a form submission, redirect to profile
+  if (req.headers["content-type"]?.includes("application/x-www-form-urlencoded")) {
+    res.redirect(`/${user.username}/`);
+  } else {
+    res.json(project);
+  }
+});
+
+app.put("/api/projects/:projectId", (req: Request, res: Response) => {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const project = getProjectById(req.params.projectId);
+  if (!project || project.user_id !== user.id) {
+    res.status(404).send("Project not found");
+    return;
+  }
+
+  const { name } = req.body;
+  if (!name || !PROJECT_NAME_RE.test(name)) {
+    res.status(400).send("Invalid project name");
+    return;
+  }
+
+  if (name !== project.name) {
+    killSession(user.username, project.id);
+  }
+
+  updateProject(project.id, name);
+  res.json({ ok: true });
+});
+
+app.delete("/api/projects/:projectId", (req: Request, res: Response) => {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const project = getProjectById(req.params.projectId);
+  if (!project || project.user_id !== user.id) {
+    res.status(404).send("Project not found");
+    return;
+  }
+
+  killSession(user.username, project.id);
+  deleteProject(project.id);
+  res.json({ ok: true });
 });
 
 app.listen(3002, "127.0.0.1", () => {

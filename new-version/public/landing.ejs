@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lean Workbench</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<nav>
+  <a class="logo" href="/"><span class="logo-text">Lean Workbench</span></a>
+  <span class="spacer"></span>
+<% if (user) { %>
+  <div class="avatar-menu">
+    <button class="avatar-btn">
+      <span class="avatar-placeholder"><%= user.username[0].toUpperCase() %></span>
+    </button>
+    <div class="avatar-dropdown">
+      <div class="avatar-dropdown-user"><%= user.username %></div>
+      <a href="/<%= user.username %>/">Profile</a>
+      <a href="/logout">Logout</a>
+    </div>
+  </div>
+<% } else { %>
+  <a class="nav-link" href="/dev-login">Login</a>
+<% } %>
+</nav>
+<main style="max-width: 600px;">
+<h1>Lean Workbench</h1>
+<p>Multi-user sandboxed VS Code server.</p>
+
+<% if (user) { %>
+  <div class="welcome">
+    <h2>Welcome, <%= user.username %></h2>
+    <p><a href="/<%= user.username %>/">Go to your profile</a></p>
+  </div>
+<% } else { %>
+  <h2>Launch a session</h2>
+  <a class="login-link" href="/dev-login">Dev Login</a>
+<% } %>
+</main>
+</body>
+</html>

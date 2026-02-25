@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title><%= username %> - Profile - Lean Workbench</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<nav>
+  <a class="logo" href="/"><span class="logo-text">Lean Workbench</span></a>
+  <span class="sep">/</span>
+  <a class="breadcrumb" href="/<%= username %>/"><%= username %></a>
+  <span class="spacer"></span>
+  <div class="avatar-menu">
+    <button class="avatar-btn">
+      <span class="avatar-placeholder"><%= username[0].toUpperCase() %></span>
+    </button>
+    <div class="avatar-dropdown">
+      <div class="avatar-dropdown-user"><%= username %></div>
+      <a href="/logout">Logout</a>
+    </div>
+  </div>
+</nav>
+<main style="max-width: 600px;">
+<h1><%= username %></h1>
+<p>Your projects</p>
+
+<div class="new-project">
+  <h3>New project</h3>
+  <form method="POST" action="/api/projects">
+    <input type="text" name="name" placeholder="Project name" required>
+    <button type="submit">Create</button>
+  </form>
+</div>
+
+<% if (projects.length === 0) { %>
+  <p class="empty">No projects yet.</p>
+<% } else { %>
+  <ul class="project-list">
+  <% for (const p of projects) { %>
+    <li>
+      <div class="info">
+        <a href="/<%= username %>/<%= encodeURIComponent(p.name) %>/"><%= p.name %></a>
+      </div>
+    </li>
+  <% } %>
+  </ul>
+<% } %>
+</main>
+</body>
+</html>

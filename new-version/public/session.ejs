@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title><%= projectName %> - Lean Workbench</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="page-session">
+<nav>
+  <a class="logo" href="/"><span class="logo-text">Lean Workbench</span></a>
+  <span class="sep">/</span>
+  <a class="breadcrumb" href="/<%= username %>/"><%= username %></a>
+  <span class="sep">/</span>
+  <a class="breadcrumb project" href="/<%= username %>/<%= encodeURIComponent(projectName) %>/"><%= projectName %></a>
+  <span class="spacer"></span>
+  <div class="avatar-menu">
+    <button class="avatar-btn">
+      <span class="avatar-placeholder"><%= username[0].toUpperCase() %></span>
+    </button>
+    <div class="avatar-dropdown">
+      <div class="avatar-dropdown-user"><%= username %></div>
+      <a href="/logout">Logout</a>
+    </div>
+  </div>
+</nav>
+<iframe src="/<%= username %>/<%= encodeURIComponent(projectName) %>/_vs/"></iframe>
+</body>
+</html>
