@@ -20,10 +20,12 @@ RUN arch=$(uname -m) && \
     rm -f ${RELEASE_TAG}-linux-${arch}.tar.gz
 
 COPY nginx.conf /etc/nginx/nginx.conf
+COPY package.json spawner.ts /usr/local/lib/spawner/
+RUN cd /usr/local/lib/spawner && npm install --production
 COPY start.sh /usr/local/bin/start.sh
 RUN chmod +x /usr/local/bin/start.sh
 
-# Create the user-routes dir so the nginx include glob doesn't fail
+# Create the user-routes dir for dynamic nginx includes
 RUN mkdir -p /etc/nginx/user-routes
 
 ENV OPENVSCODE_SERVER_ROOT=${OPENVSCODE_SERVER_ROOT}

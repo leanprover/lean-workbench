@@ -1,14 +1,10 @@
 #!/bin/bash
 set -e
 
-# Start openvscode-server in the background
-/home/.openvscode-server/bin/openvscode-server \
-    --host 127.0.0.1 \
-    --port 3001 \
-    --without-connection-token \
-    "$@" &
+# Start the spawner API in the background
+node --experimental-strip-types /usr/local/lib/spawner/spawner.ts &
 
-# Give it a moment to bind
+# Give spawner a moment to bind
 sleep 1
 
 # Start nginx in the foreground (keeps container alive)
