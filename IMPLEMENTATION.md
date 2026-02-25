@@ -131,6 +131,12 @@ restricted filesystem.
 
 ---
 
+Notes: this worked, and had acceptable startup time, although there were errors such as
+
+[15:34:55] Kt [Error]: Unable to resolve nonexistent file '/workspace/.openvscode-server/extensions'
+
+perhaps these are expected.
+
 ## Step 5 — Add Lean toolchain and VS Code extension
 
 **Goal**: Install elan/Lean and the lean4 VS Code extension in the

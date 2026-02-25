@@ -1,7 +1,7 @@
 FROM buildpack-deps:22.04-curl
 
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y --no-install-recommends nodejs nginx \
+    && apt-get install -y --no-install-recommends nodejs nginx bubblewrap \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /home/
