@@ -68,7 +68,7 @@ a "dev" user without OAuth.
 
 ### Backend
 
-**`spawner.ts`** (540 lines) - Main entry point. Express app with:
+**`spawner.ts`** - Main entry point. Express app with:
 - GitHub OAuth via Passport
 - Session management (express-session, in-memory store)
 - bwrap process spawning and lifecycle
@@ -77,7 +77,7 @@ a "dev" user without OAuth.
 - Project CRUD REST API
 - Dev login route
 
-**`db.ts`** (191 lines) - SQLite layer (better-sqlite3). Schema:
+**`db.ts`** - SQLite layer (better-sqlite3). Schema:
 - `users` (id, username, timestamps)
 - `auth_github` (user_id, github_id, github_username, display_name, email, avatar_url)
 - `admins` (user_id) - flag table
@@ -88,10 +88,10 @@ a "dev" user without OAuth.
 **`client/src/profile.tsx`** - React entry point. Reads `window.__DATA__`
 and mounts `ProfilePage`.
 
-**`client/src/ProfilePage.tsx`** (302 lines) - Project management UI:
+**`client/src/ProfilePage.tsx`** - Project management UI:
 create, rename, delete projects. Admin section shows active sessions.
 
-**`client/src/api.ts`** (66 lines) - Fetch wrappers for
+**`client/src/api.ts`** - Fetch wrappers for
 `/api/projects` and `/api/status`.
 
 **`client/vite.config.ts`** - Builds to `public/dist/profile.js`. Base
@@ -113,7 +113,7 @@ list, login button, session iframe layout.
 
 ### Infrastructure
 
-**`Dockerfile`** (122 lines) - Single-stage build on
+**`Dockerfile`** - Single-stage build on
 `buildpack-deps:22.04-curl`. Installs:
 - Node 22 (via nvm), bubblewrap, nginx, build tools
 - OpenVSCode Server v1.106.3 (gitpod release)
@@ -131,8 +131,10 @@ run, starts spawner in background, runs nginx in foreground.
 **`Makefile`** - Three targets:
 - `build`: docker build
 - `serve`: docker run with SYS_ADMIN + seccomp/apparmor/systempaths
-  unconfined, three volumes (data, workspaces, elan), env file
-- `dev`: runs spawner directly (no Docker/nginx/bwrap)
+  unconfined, single volume (`/tmp/podserver:/data`), env file.
+  `NODE_ENV=production` (baked into image).
+- `dev`: same as serve but overrides `NODE_ENV=development` (enables
+  dev-login)
 
 ## Sandbox (bwrap) Configuration
 
@@ -141,14 +143,15 @@ Each openvscode-server runs inside bubblewrap with:
 **Read-only mounts**: `/usr`, `/lib`, `/lib64`, `/bin`, `/etc`,
 openvscode-server root, extensions dir
 
-**Read-write mounts**: elan toolchain at `/home/elan`, project workspace
-at `/workspace/{projectId}/lean-project`
+**Read-only mounts (Lean)**: elan toolchain at `/home/elan`,
+extensions at `/home/extensions`
 
-**Synthetic mounts**: `/proc` (proc), `/dev` (dev), `/tmp` (tmpfs),
-`/workspace` (tmpfs with project subdirectory)
+**Read-write mounts**: project workspace at `/workspace`
+
+**Synthetic mounts**: `/proc` (proc), `/dev` (dev), `/tmp` (tmpfs)
 
 **Environment**: cleared (`--clearenv`), then PATH (elan + system bins),
-ELAN_HOME, HOME (set to `/workspace/{projectId}`)
+ELAN_HOME, HOME (set to `/workspace`)
 
 **Namespace isolation**: `--unshare-user`, `--unshare-pid`,
 `--unshare-uts`, `--unshare-cgroup`. Network is NOT unshared (the
@@ -159,15 +162,15 @@ and systempaths unconfined.
 
 ## Data Storage
 
-**SQLite** (`/data/podserver.db`) - users, auth, projects. WAL mode.
+**SQLite** (`/data/db/podserver.db`) - users, auth, projects. WAL mode.
 
-**Workspace files** (`/home/workspace/{username}/{projectId}/`) -
+**Workspace files** (`/data/workspaces/{username}/{projectId}/`) -
 persistent across container restarts via Docker volume. Contains the
 Lean project files and `.vscode-data/` server state. Not cleaned up on
 project delete (intentional).
 
-**Elan volume** (`/home/elan-volume/`) - Lean toolchain. Seeded from
-image on first run, persisted via Docker volume.
+**Elan** (`/data/elan/`) - Lean toolchain. Seeded from image-baked
+copy on first run, persisted via Docker volume.
 
 ## API Routes
 
