@@ -1,7 +1,7 @@
 FROM buildpack-deps:22.04-curl
 
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y --no-install-recommends nodejs \
+    && apt-get install -y --no-install-recommends nodejs nginx \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /home/
@@ -19,11 +19,15 @@ RUN arch=$(uname -m) && \
     mv -f ${RELEASE_TAG}-linux-${arch} ${OPENVSCODE_SERVER_ROOT} && \
     rm -f ${RELEASE_TAG}-linux-${arch}.tar.gz
 
+COPY nginx.conf /etc/nginx/nginx.conf
+COPY start.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
+
+# Create the user-routes dir so the nginx include glob doesn't fail
+RUN mkdir -p /etc/nginx/user-routes
+
 ENV OPENVSCODE_SERVER_ROOT=${OPENVSCODE_SERVER_ROOT}
 
 EXPOSE 3000
 
-ENTRYPOINT ["/home/.openvscode-server/bin/openvscode-server", \
-    "--host", "0.0.0.0", \
-    "--port", "3000", \
-    "--without-connection-token"]
+ENTRYPOINT ["/usr/local/bin/start.sh"]
