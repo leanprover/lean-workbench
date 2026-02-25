@@ -20,7 +20,7 @@ import type { UserRow } from "./db.ts";
 
 const OPENVSCODE_SERVER_ROOT = "/home/.openvscode-server";
 const EXTENSIONS_DIR = "/home/extensions";
-const ELAN_BASE = "/home/elan";
+const ELAN_BASE = process.env.ELAN_BASE ?? "/home/elan-volume";
 const WORKSPACE_BASE = process.env.WORKSPACE_BASE ?? "/home/workspace";
 const NGINX_ROUTES_DIR = process.env.NGINX_ROUTES_DIR ?? "/etc/nginx/user-routes";
 const USERNAME_RE = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/;
@@ -131,7 +131,11 @@ async function spawnProject(username: string, projectName: string, projectId: st
   if (!fs.existsSync(machineSettingsFile)) {
     fs.mkdirSync(machineSettingsDir, { recursive: true });
     // FIXME: this is attempting to do the same thing as --disable-workspace-trust below, redundant?
-    fs.writeFileSync(machineSettingsFile, JSON.stringify({ "security.workspace.trust.enabled": false, "workbench.startupEditor": "none" }));
+    fs.writeFileSync(machineSettingsFile, JSON.stringify({
+      "security.workspace.trust.enabled": false,
+      "workbench.startupEditor": "none",
+      "files.watcherExclude": { "/home/elan/**": true },
+    }));
   }
 
   const child = spawn(
@@ -144,8 +148,7 @@ async function spawnProject(username: string, projectName: string, projectId: st
       "--ro-bind", "/etc", "/etc",
       "--ro-bind", OPENVSCODE_SERVER_ROOT, OPENVSCODE_SERVER_ROOT,
       "--ro-bind", EXTENSIONS_DIR, EXTENSIONS_DIR,
-      "--ro-bind", ELAN_BASE, ELAN_BASE,
-      "--tmpfs", `${ELAN_BASE}/tmp`,
+      "--bind", ELAN_BASE, "/home/elan",
       "--tmpfs", "/workspace",
       "--dir", `/workspace/${projectId}`,
       "--bind", workspace, `/workspace/${projectId}/lean-project`,
@@ -153,8 +156,8 @@ async function spawnProject(username: string, projectName: string, projectId: st
       "--dev", "/dev",
       "--tmpfs", "/tmp",
       "--clearenv",
-      "--setenv", "ELAN_HOME", ELAN_BASE,
-      "--setenv", "PATH", `${ELAN_BASE}/bin:/usr/local/bin:/usr/bin:/bin`,
+      "--setenv", "ELAN_HOME", "/home/elan",
+      "--setenv", "PATH", `/home/elan/bin:/usr/local/bin:/usr/bin:/bin`,
       "--setenv", "HOME", `/workspace/${projectId}`,
       "--unshare-user",
       "--unshare-pid",
