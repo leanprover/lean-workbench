@@ -24,7 +24,8 @@ const DATA_DIR = "/data";
 const ELAN_DIR = `${DATA_DIR}/elan`;
 const WORKSPACES_DIR = `${DATA_DIR}/workspaces`;
 const TEMPLATES_DIR = "/home/templates";
-const MATHLIB_LAKE_DIR = `${DATA_DIR}/installations/mathlib/.lake`;
+const MATHLIB_INSTALL_DIR = `${DATA_DIR}/installations/mathlib`;
+const MATHLIB_LAKE_DIR = `${MATHLIB_INSTALL_DIR}/.lake`;
 const NGINX_ROUTES_DIR = "/etc/nginx/user-routes";
 const USERNAME_RE = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/;
 const BASE_PORT = 3010;
@@ -130,9 +131,19 @@ function killSession(username: string, projectId: string): void {
 function seedTemplate(username: string, projectId: string, template: Template): void {
   if (template === 'blank') return;
   const workspace = path.join(WORKSPACES_DIR, username, projectId);
-  const templateDir = path.join(TEMPLATES_DIR, template);
-  for (const file of ['lean-toolchain', 'lakefile.toml', 'Main.lean']) {
-    const src = path.join(templateDir, file);
+
+  // For mathlib, use files from the installation (which have pinned versions)
+  // rather than the static templates. Fall back to static templates if no
+  // installation exists.
+  const sourceDir = template === 'mathlib' && fs.existsSync(MATHLIB_INSTALL_DIR)
+    ? MATHLIB_INSTALL_DIR
+    : path.join(TEMPLATES_DIR, template);
+
+  const files = ['lean-toolchain', 'lakefile.toml', 'Main.lean'];
+  if (template === 'mathlib') files.push('lake-manifest.json');
+
+  for (const file of files) {
+    const src = path.join(sourceDir, file);
     const dst = path.join(workspace, file);
     if (!fs.existsSync(dst) && fs.existsSync(src)) {
       fs.copyFileSync(src, dst);
