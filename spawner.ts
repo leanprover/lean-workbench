@@ -132,15 +132,19 @@ function seedTemplate(username: string, projectId: string, template: Template): 
   if (template === 'blank') return;
   const workspace = path.join(WORKSPACES_DIR, username, projectId);
 
-  // For mathlib, use files from the installation (which have pinned versions)
-  // rather than the static templates. Fall back to static templates if no
-  // installation exists.
-  const sourceDir = template === 'mathlib' && fs.existsSync(MATHLIB_INSTALL_DIR)
-    ? MATHLIB_INSTALL_DIR
-    : path.join(TEMPLATES_DIR, template);
+  let sourceDir: string;
+  let files: string[];
 
-  const files = ['lean-toolchain', 'lakefile.toml', 'Main.lean'];
-  if (template === 'mathlib') files.push('lake-manifest.json');
+  if (template === 'mathlib') {
+    if (!fs.existsSync(MATHLIB_INSTALL_DIR)) {
+      throw new Error('Mathlib installation not found. Run scripts/mk-mathlib-installation.sh first.');
+    }
+    sourceDir = MATHLIB_INSTALL_DIR;
+    files = ['lean-toolchain', 'lakefile.toml', 'Main.lean', 'lake-manifest.json'];
+  } else {
+    sourceDir = path.join(TEMPLATES_DIR, template);
+    files = ['lean-toolchain', 'lakefile.toml', 'Main.lean'];
+  }
 
   for (const file of files) {
     const src = path.join(sourceDir, file);
@@ -373,6 +377,11 @@ app.post("/api/projects", (req: Request, res: Response) => {
 
   if (!VALID_TEMPLATES.includes(template)) {
     res.status(400).json({ error: "Invalid template" });
+    return;
+  }
+
+  if (template === 'mathlib' && !fs.existsSync(MATHLIB_INSTALL_DIR)) {
+    res.status(500).json({ error: "Mathlib installation not found. An admin must run scripts/mk-mathlib-installation.sh first." });
     return;
   }
 
