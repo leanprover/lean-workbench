@@ -16,9 +16,13 @@ export interface ProjectRow {
   user_id: number;
   name: string;
   path: string;
+  template: string;
   created_at: string;
   updated_at: string;
 }
+
+export const VALID_TEMPLATES = ['blank', 'hello', 'mathlib'] as const;
+export type Template = typeof VALID_TEMPLATES[number];
 
 const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
@@ -52,11 +56,19 @@ CREATE TABLE IF NOT EXISTS projects (
   user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name        TEXT NOT NULL,
   path        TEXT NOT NULL,
+  template    TEXT NOT NULL DEFAULT 'blank',
   created_at  TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(user_id, name)
 );
 `);
+
+// Migration: add template column if it doesn't exist (for existing DBs)
+try {
+  db.exec(`ALTER TABLE projects ADD COLUMN template TEXT NOT NULL DEFAULT 'blank'`);
+} catch {
+  // column already exists
+}
 
 // --- User queries ---
 
@@ -162,11 +174,11 @@ export function getProjectByUserAndName(userId: number, name: string): ProjectRo
   return db.prepare(`SELECT * FROM projects WHERE user_id = ? AND name = ?`).get(userId, name) as ProjectRow | undefined;
 }
 
-export function createProject(userId: number, name: string): ProjectRow {
+export function createProject(userId: number, name: string, template: Template = 'blank'): ProjectRow {
   const id = crypto.randomUUID();
   db.prepare(
-    `INSERT INTO projects (id, user_id, name, path) VALUES (?, ?, ?, ?)`
-  ).run(id, userId, name, id);
+    `INSERT INTO projects (id, user_id, name, path, template) VALUES (?, ?, ?, ?, ?)`
+  ).run(id, userId, name, id, template);
 
   return db.prepare(`SELECT * FROM projects WHERE id = ?`).get(id) as ProjectRow;
 }

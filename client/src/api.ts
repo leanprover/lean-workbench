@@ -1,6 +1,7 @@
 export interface Project {
   id: string;
   name: string;
+  template: string;
 }
 
 export interface SessionStatus {
@@ -26,11 +27,11 @@ export async function fetchProjects(): Promise<Project[]> {
   return res.json();
 }
 
-export async function createProject(name: string): Promise<Project> {
+export async function createProject(name: string, template: string = 'blank'): Promise<Project> {
   const res = await fetch(API_BASE, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, template }),
   });
   if (!res.ok) {
     const e = await res.json().catch(() => ({}));

@@ -195,6 +195,12 @@ function ProjectRow({
   );
 }
 
+const TEMPLATE_OPTIONS = [
+  { value: 'hello', label: 'Hello World', desc: 'Minimal Lean project' },
+  { value: 'mathlib', label: 'Mathlib', desc: 'Pre-built Mathlib dependency' },
+  { value: 'blank', label: 'Blank', desc: 'Empty workspace' },
+] as const;
+
 function NewProjectInline({
   onCreated,
 }: {
@@ -202,6 +208,7 @@ function NewProjectInline({
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
+  const [template, setTemplate] = useState<string>("hello");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -219,9 +226,10 @@ function NewProjectInline({
     setCreating(true);
     setError(null);
     try {
-      const project = await createProject(trimmed);
+      const project = await createProject(trimmed, template);
       onCreated(project);
       setName("");
+      setTemplate("hello");
       setOpen(false);
     } catch (e: any) {
       setError(e.message);
@@ -274,6 +282,20 @@ function NewProjectInline({
         maxLength={100}
         disabled={creating}
       />
+      <div className="template-selector">
+        {TEMPLATE_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            className={`template-option${template === opt.value ? ' selected' : ''}`}
+            onClick={() => setTemplate(opt.value)}
+            disabled={creating}
+          >
+            <strong>{opt.label}</strong>
+            <span>{opt.desc}</span>
+          </button>
+        ))}
+      </div>
       {error && <div style={{ color: "#dc2626", fontSize: 13, marginBottom: 8 }}>{error}</div>}
       <div>
         <button onClick={handleCreate} disabled={creating}>Create</button>

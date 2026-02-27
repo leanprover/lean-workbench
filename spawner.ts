@@ -14,7 +14,8 @@ import {
   upsertGithubUser, isAdmin as checkIsAdmin,
   getProjectsByUser, getProjectByUserAndName, createProject,
   getProjectById, updateProject, deleteProject, PROJECT_NAME_RE,
-  type UserRow, type ProjectRow,
+  VALID_TEMPLATES,
+  type UserRow, type ProjectRow, type Template,
 } from "./db.ts";
 
 const OPENVSCODE_SERVER_ROOT = "/home/.openvscode-server";
@@ -22,6 +23,8 @@ const EXTENSIONS_DIR = "/home/extensions";
 const DATA_DIR = "/data";
 const ELAN_DIR = `${DATA_DIR}/elan`;
 const WORKSPACES_DIR = `${DATA_DIR}/workspaces`;
+const TEMPLATES_DIR = "/home/templates";
+const MATHLIB_LAKE_DIR = `${DATA_DIR}/installations/mathlib/.lake`;
 const NGINX_ROUTES_DIR = "/etc/nginx/user-routes";
 const USERNAME_RE = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/;
 const BASE_PORT = 3010;
@@ -124,7 +127,20 @@ function killSession(username: string, projectId: string): void {
   }
 }
 
-async function spawnProject(username: string, projectName: string, projectId: string): Promise<SessionInfo> {
+function seedTemplate(username: string, projectId: string, template: Template): void {
+  if (template === 'blank') return;
+  const workspace = path.join(WORKSPACES_DIR, username, projectId);
+  const templateDir = path.join(TEMPLATES_DIR, template);
+  for (const file of ['lean-toolchain', 'lakefile.toml', 'Main.lean']) {
+    const src = path.join(templateDir, file);
+    const dst = path.join(workspace, file);
+    if (!fs.existsSync(dst) && fs.existsSync(src)) {
+      fs.copyFileSync(src, dst);
+    }
+  }
+}
+
+async function spawnProject(username: string, projectName: string, projectId: string, template: Template = 'blank'): Promise<SessionInfo> {
   const key = sessionKey(username, projectId);
   const existing = sessions.get(key);
   if (existing && isAlive(existing.pid)) return existing;
@@ -138,6 +154,17 @@ async function spawnProject(username: string, projectName: string, projectId: st
   ensureMachineSettings(workspace);
 
   const encodedName = encodeURIComponent(projectName);
+
+  // For mathlib template, create .lake/packages mount point and add ro-bind
+  const mathlibBindArgs: string[] = [];
+  if (template === 'mathlib' && fs.existsSync(path.join(MATHLIB_LAKE_DIR, 'packages'))) {
+    const lakePackagesDir = path.join(workspace, '.lake', 'packages');
+    fs.mkdirSync(lakePackagesDir, { recursive: true });
+    mathlibBindArgs.push(
+      "--ro-bind", path.join(MATHLIB_LAKE_DIR, 'packages'), `/workspace/${projectName}/.lake/packages`,
+    );
+  }
+
   const child = spawn(
     "bwrap",
     [
@@ -150,6 +177,7 @@ async function spawnProject(username: string, projectName: string, projectId: st
       "--ro-bind", ELAN_DIR, "/home/elan",
       "--ro-bind", EXTENSIONS_DIR, EXTENSIONS_DIR,
       "--bind", workspace, `/workspace/${projectName}`,
+      ...mathlibBindArgs,
       "--proc", "/proc",
       "--dev", "/dev",
       "--tmpfs", "/tmp",
@@ -326,9 +354,14 @@ app.post("/api/projects", (req: Request, res: Response) => {
   const user = requireAuth(req, res);
   if (!user) return;
 
-  const { name } = req.body;
+  const { name, template = 'blank' } = req.body;
   if (!name || !PROJECT_NAME_RE.test(name)) {
     res.status(400).json({ error: "Invalid project name" });
+    return;
+  }
+
+  if (!VALID_TEMPLATES.includes(template)) {
+    res.status(400).json({ error: "Invalid template" });
     return;
   }
 
@@ -338,7 +371,13 @@ app.post("/api/projects", (req: Request, res: Response) => {
     return;
   }
 
-  const project = createProject(user.id, name);
+  const project = createProject(user.id, name, template);
+
+  // Seed template files into workspace
+  const workspace = path.join(WORKSPACES_DIR, user.username, project.id);
+  fs.mkdirSync(workspace, { recursive: true });
+  seedTemplate(user.username, project.id, template);
+
   res.json(project);
 });
 
@@ -432,7 +471,7 @@ app.get("/:username/:projectName/", async (req: Request, res: Response) => {
   }
 
   try {
-    await spawnProject(user.username, projectName, project.id);
+    await spawnProject(user.username, projectName, project.id, project.template as Template);
   } catch (err) {
     res.status(500).send("Failed to start session: " + (err as Error).message);
     return;

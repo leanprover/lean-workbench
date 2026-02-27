@@ -40,6 +40,9 @@ RUN mkdir -p /home/extensions \
         --install-extension /tmp/lean4.vsix \
     && rm /tmp/lean4.vsix
 
+# Copy project templates (source files only; mathlib .lake is admin-managed on the host volume)
+COPY templates/ /home/templates/
+
 # Build React client (outputs to /tmp/public/dist/)
 COPY client/ /tmp/client/
 RUN cd /tmp/client && npm install && npm run build

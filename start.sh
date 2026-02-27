@@ -9,7 +9,7 @@ if [ ! -d /data/elan/bin ]; then
 fi
 
 # Ensure data subdirs exist
-mkdir -p /data/workspaces /data/db
+mkdir -p /data/workspaces /data/db /data/installations
 
 # Start the spawner API in the background
 node --experimental-strip-types /usr/local/lib/spawner/spawner.ts &

@@ -148,6 +148,35 @@ h1 + p { color: #607D8B; margin-top: 0; }
 .project-list .actions button.delete:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
 .empty { color: #90a4ae; margin: 16px 0; }
 
+/* === Template Selector === */
+.template-selector {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.template-option {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #D1D9E2;
+  border-radius: 0.5rem;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.template-option:hover { border-color: #90a4ae; }
+.template-option strong { font-size: 13px; color: #333; }
+.template-option span { font-size: 11px; color: #90a4ae; }
+.template-option.selected {
+  border-color: #386EE0;
+  background: rgba(56, 110, 224, 0.06);
+}
+.template-option.selected strong { color: #386EE0; }
+
 /* === Session Page === */
 html:has(.page-session), .page-session { height: 100%; overflow: hidden; }
 .page-session iframe { width: 100%; height: calc(100% - 40px); border: none; display: block; }
