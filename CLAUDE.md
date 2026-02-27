@@ -8,3 +8,7 @@ DEBRIEF.md - an analysis of what differs between the before and after state of t
 ## ignore
 
 TODO - informal notes that should not be given much weight
+
+## git operations
+
+Don't do git commits or pushes, let the user do them.
