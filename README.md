@@ -4,6 +4,8 @@ Multi-user sandboxed VS Code server. Each user gets an isolated
 [OpenVSCode Server](https://github.com/gitpod-io/openvscode-server)
 instance inside a bubblewrap sandbox, reverse-proxied through nginx.
 
+The code here is still very much in progress and experimental!
+
 ## Architecture
 
 - **spawner.ts** — Express app (Node 22, ESM). Spawns per-user
@@ -31,8 +33,11 @@ The app's "Authorization callback URL" should be `http://localhost:3000/auth/git
 ## Usage
 
 ```
-docker build -t lean-workbench .
-docker run -it --init -p 3000:3000 --env-file .env lean-workbench
+mkdir /tmp/podserver
+# some invocation of ./scripts/mk-mathlib-installation.sh
+# that has not yet been tested would go here
+make # build docker image
+make serve # run docker container
 ```
 
 Then visit `http://localhost:3000`.
