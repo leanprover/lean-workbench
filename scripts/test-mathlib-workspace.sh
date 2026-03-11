@@ -152,6 +152,8 @@ bwrap \
   --setenv GIT_CONFIG_KEY_0 safe.directory \
   --setenv GIT_CONFIG_VALUE_0 '*' \
   --unshare-user \
+  --uid 1000 \
+  --gid 1000 \
   --unshare-pid \
   --unshare-uts \
   --unshare-cgroup \
