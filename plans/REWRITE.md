@@ -1,5 +1,7 @@
 # Implementation Plan
 
+Status: Completed. Might be of historical interest.
+
 Incremental reconstruction of Lean Workbench from scratch. Each step
 produces a working system that the user will manually tested before
 moving on.

@@ -1,5 +1,7 @@
 # Lean Workbench - Design Document
 
+Status: still relevant as a description of current intent.
+
 ## Overview
 
 Lean Workbench is a multi-user web application that gives each user an

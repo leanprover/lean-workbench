@@ -1,5 +1,7 @@
 # Plan: Mathlib package/template/workspace/test scripts
 
+Status: completed.
+
 ## Context
 
 We're moving from the old `installations/` layout to the new layout

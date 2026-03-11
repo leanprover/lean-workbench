@@ -1,5 +1,7 @@
 # Lean Tools Strategy
 
+Status: still relevant as a description of current intent.
+
 How the Lean toolchain, mathlib, and VS Code extension are installed,
 shared, and presented to users inside bwrap sandboxes.
 

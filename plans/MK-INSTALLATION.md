@@ -1,5 +1,7 @@
 # Making a Mathlib Installation
 
+Status: Obsolete, might be of historical interest.
+
 ## Goal
 
 Provide a host-side script that an admin runs (outside Docker) to create
