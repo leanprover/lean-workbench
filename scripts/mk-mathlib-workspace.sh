@@ -18,11 +18,12 @@ Options:
   --root DIR       Root directory for podserver state
                    (default: $PODSERVER_ROOT or /tmp/podserver)
   --user NAME      Username for the workspace (default: testuser)
+  --id ID          Workspace ID (default: 00000000-0000-0000-0000-000000000000)
   --version VER    Lean version suffix, e.g. v4.28.0
                    (default: auto-detect from available templates)
   --help           Show this help message
 
-The workspace is created at $ROOT/workspaces/<user>/<uuid>/ with
+The workspace is created at $ROOT/workspaces/<user>/<id>/ with
 template files copied from $ROOT/templates/mathlib-<version>/.
 EOF
   exit 0
@@ -30,12 +31,14 @@ EOF
 
 ROOT="${PODSERVER_ROOT:-/tmp/podserver}"
 USER_NAME="testuser"
+WORKSPACE_ID="00000000-0000-0000-0000-000000000000"
 VERSION=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --root) ROOT="$2"; shift 2 ;;
     --user) USER_NAME="$2"; shift 2 ;;
+    --id) WORKSPACE_ID="$2"; shift 2 ;;
     --version) VERSION="$2"; shift 2 ;;
     --help) usage ;;
     *) echo "Unknown option: $1"; echo "Try --help"; exit 1 ;;
@@ -62,10 +65,7 @@ if [ ! -d "$TEMPLATE_DIR" ]; then
   exit 1
 fi
 
-# Generate a UUID for the workspace
-UUID=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || python3 -c 'import uuid; print(uuid.uuid4())')
-
-WORKSPACE="$ROOT/workspaces/$USER_NAME/$UUID"
+WORKSPACE="$ROOT/workspaces/$USER_NAME/$WORKSPACE_ID"
 mkdir -p "$WORKSPACE"
 
 # Copy template files
@@ -80,7 +80,7 @@ mkdir -p "$WORKSPACE/.lake/packages"
 
 echo "[mk-mathlib-workspace] Created workspace:"
 echo "  Path:     $WORKSPACE"
-echo "  UUID:     $UUID"
+echo "  ID:       $WORKSPACE_ID"
 echo "  User:     $USER_NAME"
 echo "  Version:  $VERSION"
 echo "  Template: $TEMPLATE_DIR"

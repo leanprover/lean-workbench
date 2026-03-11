@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Test that lake build works inside a bwrap sandbox with overlaid mathlib
-# packages. Runs a short-lived docker container.
+# Test that lake setup-file works inside a bwrap sandbox with overlaid mathlib
+# packages. This is what the VS Code lean4 extension runs when opening a file.
 #
 # Prerequisites:
 #   1. mk-mathlib-package.sh has been run (populates package-sets/ and templates/)
@@ -12,9 +12,9 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: test-mathlib-workspace.sh [OPTIONS]
+Usage: test-setup-file.sh [OPTIONS]
 
-Test lake build inside a bwrap sandbox with shared mathlib packages.
+Test lake setup-file inside a bwrap sandbox with shared mathlib packages.
 
 Options:
   --root DIR          Root directory for podserver state
@@ -22,11 +22,11 @@ Options:
   --workspace PATH    Path to the workspace directory (relative to ROOT)
                       (default: workspaces/testuser/00000000-...)
   --shell             Drop into a bash shell inside the bwrap sandbox
-                      instead of running lake build
+                      instead of running lake setup-file
   --help              Show this help message
 
 Runs a short-lived docker container that executes bwrap with --tmp-overlay
-mounts for shared packages, then runs `lake build` inside the sandbox.
+mounts for shared packages, then runs `lake setup-file` inside the sandbox.
 EOF
   exit 0
 }
@@ -64,8 +64,7 @@ if [ ! -f "$WORKSPACE_ABS/lean-toolchain" ]; then
   exit 1
 fi
 
-# Determine which package set to use by reading the template's metadata
-# or by matching the lean-toolchain version
+# Determine which package set to use
 TOOLCHAIN=$(cat "$WORKSPACE_ABS/lean-toolchain")
 LEAN_VERSION=$(echo "$TOOLCHAIN" | sed 's|.*/lean4:||')
 PACKAGE_SET="mathlib-$LEAN_VERSION"
@@ -85,8 +84,6 @@ echo "  Package set: $PACKAGE_SET"
 echo "  Packages:    $(cat "$PACKAGE_SET_DIR/packages.txt" | tr '\n' ' ')"
 echo ""
 
-# Build the script that will run inside the docker container.
-# This script assembles bwrap args and runs lake build.
 INNER_SCRIPT=$(cat <<'DOCKER_SCRIPT'
 #!/bin/bash
 set -euo pipefail
@@ -121,8 +118,11 @@ if [ "$SHELL_MODE" = "true" ]; then
   BWRAP_CMD=("/bin/bash")
   echo "[bwrap-test] Dropping into shell inside sandbox..."
 else
-  BWRAP_CMD=("/home/elan/bin/lake" "build" "-v")
-  echo "[bwrap-test] Running lake build inside sandbox..."
+  # lake setup-file reads a ModuleHeader JSON from stdin when the second arg is "-".
+  # We construct the header for Main.lean which imports Mathlib.
+  HEADER='{"imports":[{"module":"Mathlib","importAll":false,"isExported":true,"isMeta":false}],"isModule":true}'
+  BWRAP_CMD=("/bin/bash" "-c" "echo '$HEADER' | /home/elan/bin/lake setup-file Main.lean - --no-build --no-cache")
+  echo "[bwrap-test] Running lake setup-file inside sandbox..."
 fi
 echo ""
 
