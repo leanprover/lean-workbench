@@ -157,7 +157,7 @@ cp "$WORK_DIR/lake-manifest.json" "$TEMPLATE_DIR/"
 cp "$WORK_DIR/Main.lean" "$TEMPLATE_DIR/"
 
 cat > "$TEMPLATE_DIR/metadata.json" <<EOF
-{ "name": "Lean $LEAN_VERSION + Mathlib", "packageSet": "mathlib-$LEAN_VERSION" }
+{ "name": "Lean $LEAN_VERSION + Mathlib", "description": "Pre-built Mathlib dependency", "packageSet": "mathlib-$LEAN_VERSION" }
 EOF
 
 # --- Summary ---

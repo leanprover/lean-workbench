@@ -1,22 +1,30 @@
 import { useState, useEffect, useRef } from "react";
 import {
   fetchProjects,
+  fetchTemplates,
   createProject,
   updateProject,
   deleteProject,
   fetchStatus,
 } from "./api.ts";
-import type { Project, SessionStatus } from "./api.ts";
+import type { Project, SessionStatus, TemplateInfo } from "./api.ts";
 
 export function ProfilePage({ username, isAdmin }: { username: string; isAdmin: boolean }) {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [templates, setTemplates] = useState<TemplateInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Record<string, SessionStatus>>({});
 
   useEffect(() => {
-    fetchProjects()
-      .then(setProjects)
+    Promise.all([
+      fetchProjects(),
+      fetchTemplates(),
+    ])
+      .then(([projects, templates]) => {
+        setProjects(projects);
+        setTemplates(templates);
+      })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
     if (isAdmin) {
@@ -62,7 +70,7 @@ export function ProfilePage({ username, isAdmin }: { username: string; isAdmin: 
         </ul>
       )}
 
-      <NewProjectInline onCreated={handleCreated} />
+      <NewProjectInline onCreated={handleCreated} templates={templates} />
 
       {isAdmin && <ActiveSessions sessions={sessions} />}
     </main>
@@ -195,20 +203,17 @@ function ProjectRow({
   );
 }
 
-const TEMPLATE_OPTIONS = [
-  { value: 'hello', label: 'Hello World', desc: 'Minimal Lean project' },
-  { value: 'mathlib', label: 'Mathlib', desc: 'Pre-built Mathlib dependency' },
-  { value: 'blank', label: 'Blank', desc: 'Empty workspace' },
-] as const;
-
 function NewProjectInline({
   onCreated,
+  templates,
 }: {
   onCreated: (project: Project) => void;
+  templates: TemplateInfo[];
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [template, setTemplate] = useState<string>("hello");
+  const defaultTemplate = templates.find(t => t.id !== 'blank')?.id ?? 'blank';
+  const [template, setTemplate] = useState<string>(defaultTemplate);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -229,7 +234,7 @@ function NewProjectInline({
       const project = await createProject(trimmed, template);
       onCreated(project);
       setName("");
-      setTemplate("hello");
+      setTemplate(defaultTemplate);
       setOpen(false);
     } catch (e: any) {
       setError(e.message);
@@ -283,16 +288,16 @@ function NewProjectInline({
         disabled={creating}
       />
       <div className="template-selector">
-        {TEMPLATE_OPTIONS.map((opt) => (
+        {templates.map((t) => (
           <button
-            key={opt.value}
+            key={t.id}
             type="button"
-            className={`template-option${template === opt.value ? ' selected' : ''}`}
-            onClick={() => setTemplate(opt.value)}
+            className={`template-option${template === t.id ? ' selected' : ''}`}
+            onClick={() => setTemplate(t.id)}
             disabled={creating}
           >
-            <strong>{opt.label}</strong>
-            <span>{opt.desc}</span>
+            <strong>{t.name}</strong>
+            <span>{t.description}</span>
           </button>
         ))}
       </div>

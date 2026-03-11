@@ -26,7 +26,7 @@ shared, and presented to users inside bwrap sandboxes.
 
 4. **Multiple versions.** Different projects may require different Lean
    versions and different mathlib builds. Elan's `toolchains/`
-   directory holds multiple versions side by side. The `packages/`
+   directory holds multiple versions side by side. The `package-sets/`
    directory holds multiple versions of mathlib (and other large deps).
    The right toolchain is selected per-project via `lean-toolchain`.
 
@@ -89,7 +89,7 @@ directly (managing toolchains, packages, templates, etc.).
       leanprover--lean4---v4.27.0/
       leanprover--lean4---v4.28.0/
 
-  packages/                            # admin-managed shared packages
+  package-sets/                        # admin-managed shared packages
     mathlib-4.27/                      # mathlib at a specific version
       Mathlib/                         # source tree
       Mathlib.lean
@@ -111,7 +111,7 @@ directly (managing toolchains, packages, templates, etc.).
       metadata.json                    # { "name": "Lean 4.27 + Mathlib" }
       lean-toolchain                   # "leanprover/lean4:v4.27.0"
       lakefile.toml                    # requires mathlib
-      lake-manifest.json               # pinned to match packages/mathlib-4.27
+      lake-manifest.json               # pinned to match package-sets/mathlib-4.27
       Main.lean
 
   workspaces/                          # per-user, per-project work dirs
@@ -133,7 +133,7 @@ directly (managing toolchains, packages, templates, etc.).
 directory with a full project skeleton containing `.lake/build/` and
 `.lake/packages/` side by side. Instead:
 
-- `packages/` holds the *dependency* directories themselves (source +
+- `package-sets/` holds the *dependency* directories themselves (source +
   oleans), named by version. These are what get overlaid into each
   project's `.lake/packages/`.
 - `templates/` holds minimal project boilerplate (lakefile, manifest,
@@ -148,7 +148,7 @@ read-only resources that don't need to be on the host.
 /data/                                 # volume: /tmp/podserver (host)
   db/podserver.db
   elan/...
-  packages/...
+  package-sets/...
   templates/...
   workspaces/...
 
@@ -269,10 +269,10 @@ This is used for shared packages (e.g. mathlib). The benefits:
 # Shared packages (copy-on-write overlay)
 # Each shared package is overlaid into .lake/packages/ via --tmp-overlay.
 # Reads come from the shared admin directory; writes go to tmpfs.
---overlay-src /data/packages/mathlib-4.27
+--overlay-src /data/package-sets/mathlib-4.27/mathlib
 --tmp-overlay /workspace/<project-uuid>/lean-project/.lake/packages/mathlib
 
---overlay-src /data/packages/batteries-4.27
+--overlay-src /data/package-sets/mathlib-4.27/batteries
 --tmp-overlay /workspace/<project-uuid>/lean-project/.lake/packages/batteries
 
 # (repeat for each shared package the project depends on)
@@ -334,7 +334,7 @@ future enhancement — `--tmp-overlay` is sufficient for now.
 ## Template and package management
 
 Admins manage the contents of `/tmp/podserver/elan/`,
-`/tmp/podserver/packages/`, and `/tmp/podserver/templates/` outside of
+`/tmp/podserver/package-sets/`, and `/tmp/podserver/templates/` outside of
 the running application (e.g. via host-side scripts, or a future admin
 UI). The exact mechanism is out of scope for this document.
 
@@ -348,7 +348,7 @@ To prepare a shared mathlib for a given toolchain version:
 3. Run `lake exe cache get` (or `lake build` if no cache is available)
    to populate `.lake/packages/mathlib/.lake/build/`.
 4. Copy the resulting `mathlib/` directory (source + oleans) into
-   `/tmp/podserver/packages/mathlib-<version>/`.
+   `/tmp/podserver/package-sets/mathlib-<version>/`.
 5. Repeat for transitive dependencies (batteries, Qq, aesop, etc.)
    that are large enough to be worth sharing.
 

@@ -4,6 +4,18 @@ export interface Project {
   template: string;
 }
 
+export interface TemplateInfo {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export async function fetchTemplates(): Promise<TemplateInfo[]> {
+  const res = await fetch("/api/templates");
+  if (!res.ok) throw new Error("Failed to fetch templates");
+  return res.json();
+}
+
 export interface SessionStatus {
   port: number;
   pid: number;

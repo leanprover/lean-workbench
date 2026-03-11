@@ -21,9 +21,6 @@ export interface ProjectRow {
   updated_at: string;
 }
 
-export const VALID_TEMPLATES = ['blank', 'hello', 'mathlib'] as const;
-export type Template = typeof VALID_TEMPLATES[number];
-
 const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
 db.pragma("foreign_keys = ON");
@@ -60,6 +57,12 @@ CREATE TABLE IF NOT EXISTS projects (
   created_at  TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(user_id, name)
+);
+
+CREATE TABLE IF NOT EXISTS project_package_sets (
+  project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  package_set TEXT NOT NULL,
+  PRIMARY KEY (project_id, package_set)
 );
 `);
 
@@ -174,7 +177,7 @@ export function getProjectByUserAndName(userId: number, name: string): ProjectRo
   return db.prepare(`SELECT * FROM projects WHERE user_id = ? AND name = ?`).get(userId, name) as ProjectRow | undefined;
 }
 
-export function createProject(userId: number, name: string, template: Template = 'blank'): ProjectRow {
+export function createProject(userId: number, name: string, template: string = 'blank'): ProjectRow {
   const id = crypto.randomUUID();
   db.prepare(
     `INSERT INTO projects (id, user_id, name, path, template) VALUES (?, ?, ?, ?, ?)`
@@ -199,4 +202,19 @@ export function updateProject(projectId: string, name: string): void {
 
 export function deleteProject(projectId: string): void {
   db.prepare(`DELETE FROM projects WHERE id = ?`).run(projectId);
+}
+
+// --- Package set queries ---
+
+export function getPackageSets(projectId: string): string[] {
+  const rows = db.prepare(
+    `SELECT package_set FROM project_package_sets WHERE project_id = ?`
+  ).all(projectId) as { package_set: string }[];
+  return rows.map(r => r.package_set);
+}
+
+export function addPackageSet(projectId: string, packageSet: string): void {
+  db.prepare(
+    `INSERT OR IGNORE INTO project_package_sets (project_id, package_set) VALUES (?, ?)`
+  ).run(projectId, packageSet);
 }

@@ -14,8 +14,8 @@ import {
   upsertGithubUser, isAdmin as checkIsAdmin,
   getProjectsByUser, getProjectByUserAndName, createProject,
   getProjectById, updateProject, deleteProject, PROJECT_NAME_RE,
-  VALID_TEMPLATES,
-  type UserRow, type ProjectRow, type Template,
+  getPackageSets, addPackageSet,
+  type UserRow, type ProjectRow,
 } from "./db.ts";
 
 const OPENVSCODE_SERVER_ROOT = "/home/.openvscode-server";
@@ -23,9 +23,8 @@ const EXTENSIONS_DIR = "/home/extensions";
 const DATA_DIR = "/data";
 const ELAN_DIR = `${DATA_DIR}/elan`;
 const WORKSPACES_DIR = `${DATA_DIR}/workspaces`;
-const TEMPLATES_DIR = "/home/templates";
-const MATHLIB_INSTALL_DIR = `${DATA_DIR}/installations/mathlib`;
-const MATHLIB_LAKE_DIR = `${MATHLIB_INSTALL_DIR}/.lake`;
+const PACKAGE_SETS_DIR = `${DATA_DIR}/package-sets`;
+const TEMPLATES_DIR = `${DATA_DIR}/templates`;
 const NGINX_ROUTES_DIR = "/etc/nginx/user-routes";
 const USERNAME_RE = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/;
 const BASE_PORT = 3010;
@@ -128,34 +127,86 @@ function killSession(username: string, projectId: string): void {
   }
 }
 
-function seedTemplate(username: string, projectId: string, template: Template): void {
-  if (template === 'blank') return;
+interface TemplateMetadata {
+  name: string;
+  description?: string;
+  packageSet?: string | null;
+}
+
+function readTemplateMetadata(templateId: string): TemplateMetadata | null {
+  const metaPath = path.join(TEMPLATES_DIR, templateId, 'metadata.json');
+  if (!fs.existsSync(metaPath)) return null;
+  return JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+}
+
+function listTemplates(): { id: string; name: string; description: string }[] {
+  const result: { id: string; name: string; description: string }[] = [
+    { id: 'blank', name: 'Blank', description: 'Empty workspace' },
+  ];
+  if (!fs.existsSync(TEMPLATES_DIR)) return result;
+  for (const entry of fs.readdirSync(TEMPLATES_DIR, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const meta = readTemplateMetadata(entry.name);
+    if (!meta) continue;
+    result.push({
+      id: entry.name,
+      name: meta.name,
+      description: meta.description ?? '',
+    });
+  }
+  return result;
+}
+
+const TEMPLATE_FILES = ['lean-toolchain', 'lakefile.toml', 'Main.lean', 'lake-manifest.json'];
+
+/** Seed a workspace from a template. Returns the packageSet name, or null. */
+function seedTemplate(username: string, projectId: string, template: string): string | null {
+  if (template === 'blank') return null;
+
   const workspace = path.join(WORKSPACES_DIR, username, projectId);
-
-  let sourceDir: string;
-  let files: string[];
-
-  if (template === 'mathlib') {
-    if (!fs.existsSync(MATHLIB_INSTALL_DIR)) {
-      throw new Error('Mathlib installation not found. Run scripts/mk-mathlib-installation.sh first.');
-    }
-    sourceDir = MATHLIB_INSTALL_DIR;
-    files = ['lean-toolchain', 'lakefile.toml', 'Main.lean', 'lake-manifest.json'];
-  } else {
-    sourceDir = path.join(TEMPLATES_DIR, template);
-    files = ['lean-toolchain', 'lakefile.toml', 'Main.lean'];
+  const sourceDir = path.join(TEMPLATES_DIR, template);
+  const meta = readTemplateMetadata(template);
+  if (!meta) {
+    throw new Error(`Template "${template}" not found at ${sourceDir}`);
   }
 
-  for (const file of files) {
+  for (const file of TEMPLATE_FILES) {
     const src = path.join(sourceDir, file);
     const dst = path.join(workspace, file);
     if (!fs.existsSync(dst) && fs.existsSync(src)) {
       fs.copyFileSync(src, dst);
     }
   }
+
+  const packageSet = meta.packageSet ?? null;
+  if (packageSet) {
+    fs.mkdirSync(path.join(workspace, '.lake', 'packages'), { recursive: true });
+  }
+
+  return packageSet;
 }
 
-async function spawnProject(username: string, projectName: string, projectId: string, template: Template = 'blank'): Promise<SessionInfo> {
+/** Build --overlay-src/--tmp-overlay args for the project's package sets. */
+function buildOverlayArgs(projectId: string, workspace: string, sandboxProject: string): string[] {
+  const packageSets = getPackageSets(projectId);
+  const args: string[] = [];
+  for (const setName of packageSets) {
+    const setDir = path.join(PACKAGE_SETS_DIR, setName);
+    const packagesFile = path.join(setDir, 'packages.txt');
+    if (!fs.existsSync(packagesFile)) continue;
+    const packages = fs.readFileSync(packagesFile, 'utf-8').split('\n').filter(Boolean);
+    for (const pkg of packages) {
+      fs.mkdirSync(path.join(workspace, '.lake', 'packages', pkg), { recursive: true });
+      args.push(
+        "--overlay-src", path.join(setDir, pkg),
+        "--tmp-overlay", `${sandboxProject}/.lake/packages/${pkg}`,
+      );
+    }
+  }
+  return args;
+}
+
+async function spawnProject(username: string, projectName: string, projectId: string): Promise<SessionInfo> {
   const key = sessionKey(username, projectId);
   const existing = sessions.get(key);
   if (existing && isAlive(existing.pid)) return existing;
@@ -169,16 +220,9 @@ async function spawnProject(username: string, projectName: string, projectId: st
   ensureMachineSettings(workspace);
 
   const encodedName = encodeURIComponent(projectName);
+  const sandboxProject = `/workspace/${projectName}`;
 
-  // For mathlib template, create .lake/packages mount point and add ro-bind
-  const mathlibBindArgs: string[] = [];
-  if (template === 'mathlib' && fs.existsSync(path.join(MATHLIB_LAKE_DIR, 'packages'))) {
-    const lakePackagesDir = path.join(workspace, '.lake', 'packages');
-    fs.mkdirSync(lakePackagesDir, { recursive: true });
-    mathlibBindArgs.push(
-      "--ro-bind", path.join(MATHLIB_LAKE_DIR, 'packages'), `/workspace/${projectName}/.lake/packages`,
-    );
-  }
+  const overlayArgs = buildOverlayArgs(projectId, workspace, sandboxProject);
 
   const child = spawn(
     "bwrap",
@@ -191,15 +235,22 @@ async function spawnProject(username: string, projectName: string, projectId: st
       "--ro-bind", OPENVSCODE_SERVER_ROOT, OPENVSCODE_SERVER_ROOT,
       "--ro-bind", ELAN_DIR, "/home/elan",
       "--ro-bind", EXTENSIONS_DIR, EXTENSIONS_DIR,
-      "--bind", workspace, `/workspace/${projectName}`,
-      ...mathlibBindArgs,
+      "--bind", workspace, sandboxProject,
+      ...overlayArgs,
       "--proc", "/proc",
       "--dev", "/dev",
       "--tmpfs", "/tmp",
       "--clearenv",
-      "--setenv", "HOME", `/workspace/${projectName}`,
+      "--setenv", "HOME", sandboxProject,
       "--setenv", "ELAN_HOME", "/home/elan",
       "--setenv", "PATH", `/home/elan/bin:/usr/local/bin:/usr/bin:/bin`,
+      // FIXME: Git's "dubious ownership" check (CVE-2022-24765) rejects repos
+      // owned by a different uid. The overlay mounts cause an ownership mismatch
+      // that triggers this; safe.directory=* *should* be ok here since the sandbox
+      // is already isolated, but this should be considered more carefully.
+      "--setenv", "GIT_CONFIG_COUNT", "1",
+      "--setenv", "GIT_CONFIG_KEY_0", "safe.directory",
+      "--setenv", "GIT_CONFIG_VALUE_0", "*",
       "--unshare-user",
       "--unshare-pid",
       "--unshare-uts",
@@ -212,9 +263,9 @@ async function spawnProject(username: string, projectName: string, projectId: st
       "--port", String(port),
       "--without-connection-token",
       `--server-base-path=/${username}/${encodedName}/_vs/`,
-      "--default-folder", `/workspace/${projectName}`,
+      "--default-folder", sandboxProject,
       "--extensions-dir", EXTENSIONS_DIR,
-      "--server-data-dir", `/workspace/${projectName}/.vscode-data`,
+      "--server-data-dir", `${sandboxProject}/.vscode-data`,
     ],
     { stdio: "inherit", detached: true },
   );
@@ -345,6 +396,10 @@ app.get("/api/health", (_req: Request, res: Response) => {
   res.json({ status: "ok" });
 });
 
+app.get("/api/templates", (_req: Request, res: Response) => {
+  res.json(listTemplates());
+});
+
 app.get("/api/projects", (req: Request, res: Response) => {
   const user = requireAuth(req, res);
   if (!user) return;
@@ -375,14 +430,20 @@ app.post("/api/projects", (req: Request, res: Response) => {
     return;
   }
 
-  if (!VALID_TEMPLATES.includes(template)) {
-    res.status(400).json({ error: "Invalid template" });
-    return;
-  }
-
-  if (template === 'mathlib' && !fs.existsSync(MATHLIB_INSTALL_DIR)) {
-    res.status(500).json({ error: "Mathlib installation not found. An admin must run scripts/mk-mathlib-installation.sh first." });
-    return;
+  // Validate template exists
+  if (template !== 'blank') {
+    const meta = readTemplateMetadata(template);
+    if (!meta) {
+      res.status(400).json({ error: `Template "${template}" not found` });
+      return;
+    }
+    if (meta.packageSet) {
+      const packagesFile = path.join(PACKAGE_SETS_DIR, meta.packageSet, 'packages.txt');
+      if (!fs.existsSync(packagesFile)) {
+        res.status(500).json({ error: `Package set "${meta.packageSet}" not found. Run scripts/seed-volume.sh first.` });
+        return;
+      }
+    }
   }
 
   const existing = getProjectByUserAndName(user.id, name);
@@ -396,7 +457,10 @@ app.post("/api/projects", (req: Request, res: Response) => {
   // Seed template files into workspace
   const workspace = path.join(WORKSPACES_DIR, user.username, project.id);
   fs.mkdirSync(workspace, { recursive: true });
-  seedTemplate(user.username, project.id, template);
+  const packageSet = seedTemplate(user.username, project.id, template);
+  if (packageSet) {
+    addPackageSet(project.id, packageSet);
+  }
 
   res.json(project);
 });
@@ -491,7 +555,7 @@ app.get("/:username/:projectName/", async (req: Request, res: Response) => {
   }
 
   try {
-    await spawnProject(user.username, projectName, project.id, project.template as Template);
+    await spawnProject(user.username, projectName, project.id);
   } catch (err) {
     res.status(500).send("Failed to start session: " + (err as Error).message);
     return;
