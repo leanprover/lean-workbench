@@ -1,4 +1,8 @@
 #!/bin/bash
+#
+# Docker container entrypoint (see ENTRYPOINT in Dockerfile).
+# Seeds the data volume on first run, then starts the spawner and nginx.
+#
 set -e
 
 # Seed elan from the image-baked copy on first run
@@ -9,7 +13,7 @@ if [ ! -d /data/elan/bin ]; then
 fi
 
 # Ensure data subdirs exist
-mkdir -p /data/workspaces /data/db /data/installations
+mkdir -p /data/workspaces /data/db /data/package-sets /data/templates
 
 # Start the spawner API in the background
 node --experimental-strip-types /usr/local/lib/spawner/spawner.ts &

@@ -5,40 +5,74 @@ shared, and presented to users inside bwrap sandboxes.
 
 ## Principles
 
-1. **Read-only for users.** From the perspective of any user session,
-   all shared Lean tooling (elan, toolchain binaries, pre-built
-   library .oleans, VS Code extensions) is read-only. A user must not
-   be able to corrupt a shared resource.
+1. **Read-only shared resources.** From the perspective of any user
+   session, all shared Lean tooling (elan, toolchain binaries, pre-built
+   library source and .oleans, VS Code extensions) is backed by
+   admin-owned storage that users cannot modify. Users interact with
+   shared packages through copy-on-write overlay mounts, so accidental
+   writes are harmless.
 
 2. **Writable for admins.** From the perspective of an administrator
    (running scripts on the host machine), the tooling is writable.
-   Admins install and manage Lean versions, build mathlib, and create
-   project templates.
+   Admins install and manage Lean versions, build/cache mathlib, and
+   create project templates.
 
 3. **Shared across users.** Lean toolchains and pre-built libraries
-   are large (~1 GB per toolchain, ~2 GB for mathlib .oleans). They
-   are stored once and shared read-only across all sessions that need
-   them.
+   are large (~1 GB per toolchain, ~5 GB for mathlib .oleans). They
+   are stored once and shared across all sessions that need them.
+   Disk usage does not grow linearly with the number of projects.
 
 4. **Multiple versions.** Different projects may require different Lean
    versions and different mathlib builds. Elan's `toolchains/`
-   directory holds multiple versions side by side. The right version is
-   selected per-project via a `lean-toolchain` file in the workspace.
+   directory holds multiple versions side by side. The `packages/`
+   directory holds multiple versions of mathlib (and other large deps).
+   The right toolchain is selected per-project via `lean-toolchain`.
 
-5. **No network in the sandbox.** User sessions cannot call
-   `lake update` or `elan toolchain install`. Everything a project
-   needs must be pre-mounted into the sandbox.
+5. **Network is allowed but minimized.** Sandboxes have network access,
+   so users can `lake update` or install their own dependencies.
+   However, pre-mounted shared packages mean that common operations
+   (building a project that depends on mathlib) don't require any
+   network traffic. Minimizing network traffic is a convenience and
+   performance goal, not a security boundary.
 
 6. **One host directory.** All persistent state lives under a single
    configurable host directory (examples below use `/tmp/podserver`).
    This directory is mounted as a Docker volume.
+
+## Where Lean stores things (background)
+
+For context on the decisions below, here's where Lean's tooling puts
+files:
+
+- **Toolchains** live under `$ELAN_HOME/toolchains/`, one directory per
+  installed version (e.g. `leanprover--lean4---v4.27.0/`). Each is
+  ~1 GB and contains the compiler, stdlib .oleans, and Lake.
+
+- **Dependency source code** is fetched by `lake update` into each
+  project's `.lake/packages/` directory. Each dependency (e.g.
+  `mathlib/`) is a git checkout at the commit pinned in
+  `lake-manifest.json`.
+
+- **Compiled .oleans** for a dependency live *inside* that dependency's
+  package directory, at `.lake/packages/<dep>/.lake/build/lib/lean/`.
+  They do NOT live in the root project's `.lake/build/`. (The root
+  project's `.lake/build/` contains only the root project's own build
+  output.)
+
+- **`lake exe cache get`** (Mathlib's custom cache tool) downloads
+  pre-built .olean archives and unpacks them into the dependency's
+  build directory (i.e. `.lake/packages/mathlib/.lake/build/`).
+
+This means that a single copy of a package directory under
+`.lake/packages/<dep>/` contains both source and .oleans — sharing
+that one directory is sufficient to avoid duplicating either.
 
 ## File layout
 
 ### Host machine
 
 Everything lives under one directory. The admin controls this
-directly (creating installations, managing toolchains, etc.).
+directly (managing toolchains, packages, templates, etc.).
 
 ```
 /tmp/podserver/                        # root of all persistent state
@@ -53,29 +87,55 @@ directly (creating installations, managing toolchains, etc.).
       leanprover--lean4---v4.27.0/
       leanprover--lean4---v4.28.0/
 
-  installations/                       # admin-created project templates
+  packages/                            # admin-managed shared packages
+    mathlib-4.27/                      # mathlib at a specific version
+      Mathlib/                         # source tree
+      Mathlib.lean
+      lakefile.toml
+      lean-toolchain
+      lake-manifest.json
+      .lake/
+        build/
+          lib/lean/
+            Mathlib/
+              *.olean                  # pre-compiled .oleans (~5 GB)
+    mathlib-4.28/                      # another version
+      ...
+    batteries-4.27/                    # other large deps if needed
+      ...
+
+  templates/                           # boilerplate project starters
     mathlib-4.27/
       metadata.json                    # { "name": "Lean 4.27 + Mathlib" }
       lean-toolchain                   # "leanprover/lean4:v4.27.0"
-      lakefile.toml
+      lakefile.toml                    # requires mathlib
+      lake-manifest.json               # pinned to match packages/mathlib-4.27
       Main.lean
-      .lake/
-        packages/                      # pre-fetched dependency sources
-        build/                         # pre-compiled .oleans
 
   workspaces/                          # per-user, per-project work dirs
     alice/
       <project-uuid>/
         lean-toolchain
         lakefile.toml
+        lake-manifest.json
         Main.lean
-        .lake/build/                   # user's build artifacts
-        .lake/packages/                # (may be overlaid read-only)
+        .lake/packages/                # overlaid from shared packages
+        .lake/build/                   # user's own build artifacts
         .vscode-data/                  # openvscode-server state
     bob/
       <project-uuid>/
         ...
 ```
+
+**Key difference from the old layout:** There is no `installations/`
+directory with a full project skeleton containing `.lake/build/` and
+`.lake/packages/` side by side. Instead:
+
+- `packages/` holds the *dependency* directories themselves (source +
+  oleans), named by version. These are what get overlaid into each
+  project's `.lake/packages/`.
+- `templates/` holds minimal project boilerplate (lakefile, manifest,
+  lean-toolchain, starter code). These are copied into new workspaces.
 
 ### Docker container
 
@@ -86,7 +146,8 @@ read-only resources that don't need to be on the host.
 /data/                                 # volume: /tmp/podserver (host)
   db/podserver.db
   elan/...
-  installations/...
+  packages/...
+  templates/...
   workspaces/...
 
 /home/.openvscode-server/              # baked into image (read-only)
@@ -110,7 +171,7 @@ read-only resources that don't need to be on the host.
 - Any Lean toolchain. Specific toolchain versions (the large ~1 GB
   directories under `elan/toolchains/`) live exclusively on the host
   volume and are managed by the admin.
-- Mathlib builds, `.lake/packages`, or any installation templates.
+- Mathlib source/oleans, shared packages, or templates.
 
 The container's `start.sh` seeds `/data/elan/` from `/home/elan-seed/`
 on first run, so that a fresh volume gets a working elan binary
@@ -120,8 +181,8 @@ toolchains into `/data/elan/toolchains/` on the host.
 ### Bwrap sandbox (one user session)
 
 Inside the sandbox, the user sees a carefully assembled filesystem.
-Shared resources are read-only; only the project workspace is
-writable.
+Shared resources are protected by copy-on-write overlays; the project
+workspace is writable.
 
 ```
 /usr, /lib, /lib64, /bin, /etc        # ro-bind from container
@@ -142,8 +203,11 @@ writable.
     lean-toolchain
     lakefile.toml
     Main.lean
-    .lake/build/                       # rw — user's build output
-    .lake/packages/                    # ro-bind overlay from installation
+    .lake/build/                       # rw — user's own build output
+    .lake/packages/
+      mathlib/                         # tmp-overlay from shared package
+      batteries/                       # tmp-overlay from shared package
+      ...                              # user-added deps land here too
     .vscode-data/                      # rw — server state
 ```
 
@@ -158,7 +222,30 @@ Elan reads `lean-toolchain` in the project directory, resolves it to a
 toolchain under `/home/elan/toolchains/`, and runs the corresponding
 `lean` binary. No write access to elan is needed.
 
-## Bwrap mount summary
+## Bwrap overlay strategy
+
+### Copy-on-write with `--tmp-overlay`
+
+Bubblewrap supports overlayfs mounts via `--overlay-src` and
+`--tmp-overlay`. This provides copy-on-write semantics: reads come
+from the admin-managed shared directory, but writes go to an ephemeral
+tmpfs layer that is invisible to the host and other sandboxes.
+
+This is used for shared packages (e.g. mathlib). The benefits:
+
+- **No corruption risk.** Writes go to tmpfs, not the shared storage.
+  Even if Lake or the user writes into a package directory, other
+  users are unaffected.
+- **Debugging flexibility.** A user can temporarily modify mathlib
+  source for debugging purposes. Changes are ephemeral — lost on
+  sandbox restart — which is the right default.
+- **User-added dependencies coexist.** Because `.lake/packages/` as a
+  whole is writable (via the overlay upper layer), `lake update` can
+  add new packages alongside the shared ones. Small user-added deps
+  land in the tmpfs layer; the shared mathlib is served from the
+  lower layer.
+
+### Bwrap mount summary
 
 ```
 # System (read-only)
@@ -177,8 +264,16 @@ toolchain under `/home/elan/toolchains/`, and runs the corresponding
 --dir      /workspace/<project-uuid>
 --bind     /data/workspaces/<user>/<project-uuid>   /workspace/<project-uuid>/lean-project
 
-# Pre-built dependencies overlay (read-only, optional)
---ro-bind  /data/installations/<id>/.lake/packages  /workspace/<project-uuid>/lean-project/.lake/packages
+# Shared packages (copy-on-write overlay)
+# Each shared package is overlaid into .lake/packages/ via --tmp-overlay.
+# Reads come from the shared admin directory; writes go to tmpfs.
+--overlay-src /data/packages/mathlib-4.27
+--tmp-overlay /workspace/<project-uuid>/lean-project/.lake/packages/mathlib
+
+--overlay-src /data/packages/batteries-4.27
+--tmp-overlay /workspace/<project-uuid>/lean-project/.lake/packages/batteries
+
+# (repeat for each shared package the project depends on)
 
 # Synthetic
 --proc     /proc
@@ -186,56 +281,89 @@ toolchain under `/home/elan/toolchains/`, and runs the corresponding
 --tmpfs    /tmp
 ```
 
-The `.lake/packages` overlay is only present when the project is
-associated with an installation that has pre-built dependencies.
-Without it, the workspace's own `.lake/packages` (if any) is visible
-via the normal workspace bind.
+The overlay mounts are only present for packages that the project
+actually depends on (determined from the template or manifest). If a
+user adds a new dependency via `lake update`, it lands in the writable
+workspace directory normally — no overlay is needed for user-managed
+deps.
 
 ## Network access and user-managed dependencies
 
-Principle 5 says sandboxes have no network access. Combined with the
-read-only `.lake/packages` overlay, this means users cannot run
-`lake update` to fetch their own dependencies. This is the right
-default for large shared deps like mathlib (which take hours to build
-and should never be fetched per-user), but it also prevents users from
-adding small dependencies of their own.
+Sandboxes have network access. This means users can:
 
-If we were to consider relaxing this assumption, there are at least
-three options, in order of increasing complexity:
+- Run `lake update` to add new dependencies or upgrade existing ones.
+- Fetch small packages that aren't pre-cached.
 
-1. **No network, admin-only deps (current design).** Users can only
-   use what the admin has pre-installed. Simple and predictable, but
-   restrictive — users can't experiment with new packages.
+Pre-mounted shared packages (via copy-on-write overlays) ensure that
+the common case — building a project that depends on mathlib — doesn't
+require any network traffic. The pre-built .oleans are already present
+in the overlay lower layer.
 
-2. **Allow network access in the sandbox.** Users can `lake update`
-   freely. The read-only overlay still provides pre-built mathlib
-   .oleans so users don't have to rebuild it, but they can fetch
-   additional small deps into the writable portion of `.lake/`.
-   Bubblewrap still provides filesystem isolation; network access
-   doesn't weaken that. The main downside is that builds become
-   less reproducible and users may hit confusing failures if a
-   remote package disappears.
+### What happens when a user runs `lake update`
 
-3. **No network, but selective overlay.** Only overlay specific large
-   packages (e.g. mathlib) as read-only; leave the rest of
-   `.lake/packages` writable. The admin pre-populates the big deps,
-   and the user could add small ones if they were also pre-fetched
-   or bundled. More complex mount plumbing for unclear benefit over
-   option 2.
+If a user runs `lake update` in a project that has shared mathlib
+overlaid:
 
-This decision does not need to be made now — the mount structure
-supports all three options. The choice affects only whether
-`--unshare-net` is passed to bwrap and whether the `.lake/packages`
-overlay covers the entire directory or selected subdirectories.
+1. Lake fetches new source and writes a new `lake-manifest.json`.
+2. The new package source lands in the tmpfs overlay upper layer of
+   `.lake/packages/`. For mathlib, this means the user now has a
+   *different* version in the upper layer that shadows the shared one.
+3. The user will need to rebuild .oleans for the new version (or use
+   `lake exe cache get` to download them). This is potentially
+   expensive, but it's the user's explicit choice.
+4. On sandbox restart, the tmpfs is lost and the project reverts to
+   seeing the shared version. However, the updated `lake-manifest.json`
+   persists in the workspace. On the next `lake build`, Lake will
+   notice the mismatch and re-fetch — so the user may want to also
+   revert `lake-manifest.json` if they didn't intend to upgrade.
 
-## Installation management
+This is an acceptable trade-off: upgrading mathlib is an intentional,
+heavyweight operation, and users who do it accept the cost. For the
+common case, no network or rebuilding is needed.
 
-Admins manage the contents of `/tmp/podserver/elan/` and
-`/tmp/podserver/installations/` outside of the running application
-(e.g. via host-side scripts, or a future admin UI). The exact
-mechanism is out of scope for this document. The important contract is
-that the spawner treats these directories as read-only at runtime and
-mounts them read-only into sandboxes.
+### Persistent upgrades
+
+If a user wants to *persistently* upgrade to a new mathlib version
+(surviving sandbox restarts), the spawner could be extended to use
+`--overlay RWSRC DEST` instead of `--tmp-overlay`, with `RWSRC`
+pointing to a per-user writable directory on the host. This is a
+future enhancement — `--tmp-overlay` is sufficient for now.
+
+## Template and package management
+
+Admins manage the contents of `/tmp/podserver/elan/`,
+`/tmp/podserver/packages/`, and `/tmp/podserver/templates/` outside of
+the running application (e.g. via host-side scripts, or a future admin
+UI). The exact mechanism is out of scope for this document.
+
+### Preparing a shared package
+
+To prepare a shared mathlib for a given toolchain version:
+
+1. Create a temporary project depending on mathlib at the desired
+   version.
+2. Run `lake update` to fetch sources into `.lake/packages/mathlib/`.
+3. Run `lake exe cache get` (or `lake build` if no cache is available)
+   to populate `.lake/packages/mathlib/.lake/build/`.
+4. Copy the resulting `mathlib/` directory (source + oleans) into
+   `/tmp/podserver/packages/mathlib-<version>/`.
+5. Repeat for transitive dependencies (batteries, Qq, aesop, etc.)
+   that are large enough to be worth sharing.
+
+### Preparing a template
+
+A template is a minimal project skeleton:
+
+- `lean-toolchain` — pinned to the appropriate version.
+- `lakefile.toml` — declares the dependency on mathlib (and any
+  others).
+- `lake-manifest.json` — pinned to match the shared packages.
+- `Main.lean` — starter code.
+- `metadata.json` — display name for the UI.
+
+When a user creates a new project from a template, these files are
+copied into their workspace directory. The spawner then sets up overlay
+mounts for the shared packages listed in the manifest.
 
 ## VS Code extension
 

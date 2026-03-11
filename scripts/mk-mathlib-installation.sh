@@ -1,5 +1,7 @@
 #!/bin/bash
 #
+# SUPERSEDED by mk-mathlib-package.sh — kept for reference.
+#
 # Create a mathlib installation for podserver.
 #
 # Run this on the host (outside Docker). If elan is not already

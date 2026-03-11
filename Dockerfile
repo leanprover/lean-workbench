@@ -1,8 +1,18 @@
 FROM buildpack-deps:22.04-curl
 
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y --no-install-recommends nodejs nginx bubblewrap strace git \
+    && apt-get install -y --no-install-recommends nodejs nginx strace git \
+       meson ninja-build pkg-config libcap-dev xz-utils gcc libc6-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# Build bubblewrap 0.11.0 from source (need --tmp-overlay support; Ubuntu 22.04 only has 0.5.0)
+RUN curl -sSfL https://github.com/containers/bubblewrap/releases/download/v0.11.0/bubblewrap-0.11.0.tar.xz \
+    | tar -xJ \
+    && cd bubblewrap-0.11.0 \
+    && meson setup _build --prefix=/usr \
+    && ninja -C _build \
+    && ninja -C _build install \
+    && cd / && rm -rf /bubblewrap-0.11.0
 
 WORKDIR /home/
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-TARGET="${1:?Usage: gen-workspace.sh <target-directory>}"
+TARGET="${1:?Usage: mk-big-workspace.sh <target-directory>}"
 
 LOREM="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
 eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad
