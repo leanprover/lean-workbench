@@ -124,6 +124,16 @@ do_install() {
     info "Skipping docker pull, using local image."
   fi
 
+  # Copy env file if provided (dev only — credentials end up on disk in
+  # the data directory, so don't use this in production)
+  local ENV_FILE_SECTION=""
+  if [ -n "$OPT_ENV_FILE" ]; then
+    cp "$OPT_ENV_FILE" "$DATA_DIR/.env"
+    chmod 600 "$DATA_DIR/.env"
+    info "Copied $OPT_ENV_FILE to $DATA_DIR/.env"
+    ENV_FILE_SECTION=$'\n    env_file:\n      - .env'
+  fi
+
   # Helper to write a compose file
   write_compose() {
     local file="$1" bind_addr="$2"
@@ -135,7 +145,7 @@ services:
     ports:
       - "${bind_addr}:${PORT}:3000"
     volumes:
-      - ./data:/data
+      - ./data:/data${ENV_FILE_SECTION}
     cap_add:
       - SYS_ADMIN
     security_opt:
@@ -165,7 +175,7 @@ EOF
   echo "  Then open http://localhost:$PORT to configure authentication"
   echo "  and complete setup."
   echo ""
-  echo "  After setup, switch to production mode:"
+  echo "  After setup, you can switch to production mode:"
   echo "    cd $DATA_DIR && docker compose down"
   echo "    docker compose -f docker-compose.prod.yml up -d"
   echo ""
@@ -187,7 +197,7 @@ EOF
 
 # --- Main ---
 
-OPT_DIR="" OPT_PORT="" NO_PULL="" ACTION="install"
+OPT_DIR="" OPT_PORT="" NO_PULL="" OPT_ENV_FILE="" ACTION="install"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -195,6 +205,7 @@ while [ $# -gt 0 ]; do
     --no-pull) NO_PULL=1; shift ;;
     --dir) OPT_DIR="$2"; shift 2 ;;
     --port) OPT_PORT="$2"; shift 2 ;;
+    --env-file) OPT_ENV_FILE="$2"; shift 2 ;;
     --help|-h)
       echo "Usage: $0 [OPTIONS]"
       echo ""
@@ -204,6 +215,7 @@ while [ $# -gt 0 ]; do
       echo "  --dir DIR    Data directory (default: ~/.lean-workbench)"
       echo "  --port PORT  Server port (default: 8080)"
       echo "  --no-pull    Skip docker pull (use locally-built image)"
+      echo "  --env-file F Copy env file into data dir (dev only, not for production)"
       echo "  --uninstall  Stop and remove Lean Workbench"
       exit 0
       ;;

@@ -311,8 +311,9 @@ function streamLogs() {
       progressBar.style.width = pct + '%';
       progressText.textContent = data.label + ' (' + data.step + '/' + data.total + ')';
     } else if (data.type === 'log') {
-      logArea.textContent += data.line + '\n';
-      logArea.scrollTop = logArea.scrollHeight;
+      var atBottom = logArea.scrollHeight - logArea.scrollTop - logArea.clientHeight < 2;
+      logArea.appendChild(document.createTextNode(data.line + '\n'));
+      if (atBottom) logArea.scrollTop = logArea.scrollHeight;
     } else if (data.type === 'done') {
       source.close();
       progressBar.style.width = '100%';

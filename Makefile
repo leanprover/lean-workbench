@@ -3,7 +3,7 @@ build:
 
 clean-install: build
 	sudo rm -rf /tmp/podserver
-	./install.sh --no-pull --dir /tmp/podserver --port 8080
+	./install.sh --no-pull --dir /tmp/podserver --port 3000 $(if $(wildcard .env),--env-file .env,)
 
 serve:
 	mkdir -p /tmp/podserver
