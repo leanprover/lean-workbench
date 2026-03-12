@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import Database from "better-sqlite3";
 
-const DB_PATH = process.env.DB_PATH ?? "/data/db/podserver.db";
+export const DB_PATH = process.env.DB_PATH ?? "/data/db/podserver.db";
 
 export interface UserRow {
   id: number;
@@ -21,11 +21,20 @@ export interface ProjectRow {
   updated_at: string;
 }
 
-const db = new Database(DB_PATH);
-db.pragma("journal_mode = WAL");
-db.pragma("foreign_keys = ON");
+let db: InstanceType<typeof Database> | null = null;
 
-db.exec(`
+function getDb(): InstanceType<typeof Database> {
+  if (!db) throw new Error("Database not initialized — call initDb() first");
+  return db;
+}
+
+export function initDb(): void {
+  if (db) return;
+  db = new Database(DB_PATH);
+  db.pragma("journal_mode = WAL");
+  db.pragma("foreign_keys = ON");
+
+  db.exec(`
 CREATE TABLE IF NOT EXISTS users (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   username    TEXT NOT NULL UNIQUE,
@@ -66,11 +75,12 @@ CREATE TABLE IF NOT EXISTS project_package_sets (
 );
 `);
 
-// Migration: add template column if it doesn't exist (for existing DBs)
-try {
-  db.exec(`ALTER TABLE projects ADD COLUMN template TEXT NOT NULL DEFAULT 'blank'`);
-} catch {
-  // column already exists
+  // Migration: add template column if it doesn't exist (for existing DBs)
+  try {
+    db.exec(`ALTER TABLE projects ADD COLUMN template TEXT NOT NULL DEFAULT 'blank'`);
+  } catch {
+    // column already exists
+  }
 }
 
 // --- User queries ---
@@ -83,67 +93,70 @@ export interface GitHubProfile {
   avatar_url?: string;
 }
 
-const upsertGithubUserTx = db.transaction((profile: GitHubProfile): UserRow => {
-  const existing = db.prepare(
-    `SELECT u.id, u.username, u.created_at, u.updated_at
-     FROM auth_github ag JOIN users u ON u.id = ag.user_id
-     WHERE ag.github_id = ?`
-  ).get(profile.github_id) as { id: number; username: string; created_at: string; updated_at: string } | undefined;
-
-  if (existing) {
-    db.prepare(
-      `UPDATE auth_github SET github_username = ?, display_name = ?, email = ?, avatar_url = ?
-       WHERE github_id = ?`
-    ).run(profile.github_username, profile.display_name ?? null, profile.email ?? null, profile.avatar_url ?? null, profile.github_id);
-
-    db.prepare(`UPDATE users SET updated_at = datetime('now') WHERE id = ?`).run(existing.id);
-
-    return getUserById(existing.id)!;
-  }
-
-  const username = profile.github_username.toLowerCase();
-  const insertUser = db.prepare(
-    `INSERT INTO users (username) VALUES (?)`
-  );
-  const { lastInsertRowid } = insertUser.run(username);
-  const userId = Number(lastInsertRowid);
-
-  db.prepare(
-    `INSERT INTO auth_github (user_id, github_id, github_username, display_name, email, avatar_url)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  ).run(userId, profile.github_id, profile.github_username, profile.display_name ?? null, profile.email ?? null, profile.avatar_url ?? null);
-
-  return getUserById(userId)!;
-});
-
 export function upsertGithubUser(profile: GitHubProfile): UserRow {
-  return upsertGithubUserTx(profile);
+  const d = getDb();
+  const tx = d.transaction((): UserRow => {
+    const existing = d.prepare(
+      `SELECT u.id, u.username, u.created_at, u.updated_at
+       FROM auth_github ag JOIN users u ON u.id = ag.user_id
+       WHERE ag.github_id = ?`
+    ).get(profile.github_id) as { id: number; username: string; created_at: string; updated_at: string } | undefined;
+
+    if (existing) {
+      d.prepare(
+        `UPDATE auth_github SET github_username = ?, display_name = ?, email = ?, avatar_url = ?
+         WHERE github_id = ?`
+      ).run(profile.github_username, profile.display_name ?? null, profile.email ?? null, profile.avatar_url ?? null, profile.github_id);
+
+      d.prepare(`UPDATE users SET updated_at = datetime('now') WHERE id = ?`).run(existing.id);
+
+      return getUserById(existing.id)!;
+    }
+
+    const username = profile.github_username.toLowerCase();
+    const insertUser = d.prepare(
+      `INSERT INTO users (username) VALUES (?)`
+    );
+    const { lastInsertRowid } = insertUser.run(username);
+    const userId = Number(lastInsertRowid);
+
+    d.prepare(
+      `INSERT INTO auth_github (user_id, github_id, github_username, display_name, email, avatar_url)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).run(userId, profile.github_id, profile.github_username, profile.display_name ?? null, profile.email ?? null, profile.avatar_url ?? null);
+
+    return getUserById(userId)!;
+  });
+  return tx();
 }
 
 export function getUserById(id: number): UserRow | undefined {
-  const row = db.prepare(
+  const d = getDb();
+  const row = d.prepare(
     `SELECT id, username, created_at, updated_at FROM users WHERE id = ?`
   ).get(id) as { id: number; username: string; created_at: string; updated_at: string } | undefined;
 
   if (!row) return undefined;
 
-  const admin = db.prepare(`SELECT 1 FROM admins WHERE user_id = ?`).get(row.id);
+  const admin = d.prepare(`SELECT 1 FROM admins WHERE user_id = ?`).get(row.id);
   return { ...row, is_admin: !!admin };
 }
 
 export function getUserByUsername(username: string): UserRow | undefined {
-  const row = db.prepare(
+  const d = getDb();
+  const row = d.prepare(
     `SELECT id, username, created_at, updated_at FROM users WHERE username = ?`
   ).get(username) as { id: number; username: string; created_at: string; updated_at: string } | undefined;
 
   if (!row) return undefined;
 
-  const admin = db.prepare(`SELECT 1 FROM admins WHERE user_id = ?`).get(row.id);
+  const admin = d.prepare(`SELECT 1 FROM admins WHERE user_id = ?`).get(row.id);
   return { ...row, is_admin: !!admin };
 }
 
 export function ensureUser(username: string): UserRow {
-  db.prepare(
+  const d = getDb();
+  d.prepare(
     `INSERT INTO users (username) VALUES (?) ON CONFLICT(username) DO UPDATE SET updated_at = datetime('now')`
   ).run(username);
 
@@ -151,22 +164,29 @@ export function ensureUser(username: string): UserRow {
 }
 
 export function getAvatarUrl(userId: number): string | null {
-  const row = db.prepare(`SELECT avatar_url FROM auth_github WHERE user_id = ?`).get(userId) as { avatar_url: string | null } | undefined;
+  const d = getDb();
+  const row = d.prepare(`SELECT avatar_url FROM auth_github WHERE user_id = ?`).get(userId) as { avatar_url: string | null } | undefined;
   return row?.avatar_url ?? null;
 }
 
 // --- Admin queries ---
 
 export function isAdmin(userId: number): boolean {
-  return !!db.prepare(`SELECT 1 FROM admins WHERE user_id = ?`).get(userId);
+  return !!getDb().prepare(`SELECT 1 FROM admins WHERE user_id = ?`).get(userId);
 }
 
 export function setAdmin(userId: number, value: boolean): void {
+  const d = getDb();
   if (value) {
-    db.prepare(`INSERT OR IGNORE INTO admins (user_id) VALUES (?)`).run(userId);
+    d.prepare(`INSERT OR IGNORE INTO admins (user_id) VALUES (?)`).run(userId);
   } else {
-    db.prepare(`DELETE FROM admins WHERE user_id = ?`).run(userId);
+    d.prepare(`DELETE FROM admins WHERE user_id = ?`).run(userId);
   }
+}
+
+export function getUserCount(): number {
+  const row = getDb().prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
+  return row.count;
 }
 
 // --- Project queries ---
@@ -174,47 +194,48 @@ export function setAdmin(userId: number, value: boolean): void {
 export const PROJECT_NAME_RE = /^[\p{L}\p{N}][\p{L}\p{N}_-]{0,99}$/u;
 
 export function getProjectByUserAndName(userId: number, name: string): ProjectRow | undefined {
-  return db.prepare(`SELECT * FROM projects WHERE user_id = ? AND name = ?`).get(userId, name) as ProjectRow | undefined;
+  return getDb().prepare(`SELECT * FROM projects WHERE user_id = ? AND name = ?`).get(userId, name) as ProjectRow | undefined;
 }
 
 export function createProject(userId: number, name: string, template: string = 'blank'): ProjectRow {
+  const d = getDb();
   const id = crypto.randomUUID();
-  db.prepare(
+  d.prepare(
     `INSERT INTO projects (id, user_id, name, path, template) VALUES (?, ?, ?, ?, ?)`
   ).run(id, userId, name, id, template);
 
-  return db.prepare(`SELECT * FROM projects WHERE id = ?`).get(id) as ProjectRow;
+  return d.prepare(`SELECT * FROM projects WHERE id = ?`).get(id) as ProjectRow;
 }
 
 export function getProjectsByUser(userId: number): ProjectRow[] {
-  return db.prepare(`SELECT * FROM projects WHERE user_id = ? ORDER BY created_at DESC`).all(userId) as ProjectRow[];
+  return getDb().prepare(`SELECT * FROM projects WHERE user_id = ? ORDER BY created_at DESC`).all(userId) as ProjectRow[];
 }
 
 export function getProjectById(projectId: string): ProjectRow | undefined {
-  return db.prepare(`SELECT * FROM projects WHERE id = ?`).get(projectId) as ProjectRow | undefined;
+  return getDb().prepare(`SELECT * FROM projects WHERE id = ?`).get(projectId) as ProjectRow | undefined;
 }
 
 export function updateProject(projectId: string, name: string): void {
-  db.prepare(
+  getDb().prepare(
     `UPDATE projects SET name = ?, updated_at = datetime('now') WHERE id = ?`
   ).run(name, projectId);
 }
 
 export function deleteProject(projectId: string): void {
-  db.prepare(`DELETE FROM projects WHERE id = ?`).run(projectId);
+  getDb().prepare(`DELETE FROM projects WHERE id = ?`).run(projectId);
 }
 
 // --- Package set queries ---
 
 export function getPackageSets(projectId: string): string[] {
-  const rows = db.prepare(
+  const rows = getDb().prepare(
     `SELECT package_set FROM project_package_sets WHERE project_id = ?`
   ).all(projectId) as { package_set: string }[];
   return rows.map(r => r.package_set);
 }
 
 export function addPackageSet(projectId: string, packageSet: string): void {
-  db.prepare(
+  getDb().prepare(
     `INSERT OR IGNORE INTO project_package_sets (project_id, package_set) VALUES (?, ?)`
   ).run(projectId, packageSet);
 }

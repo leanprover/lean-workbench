@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lean Workbench Setup</title>
+<link rel="icon" href="/static/favicon.ico">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap">
+<style>
+.setup-btn {
+  display: inline-block;
+  margin: 20px 0;
+  padding: 10px 20px;
+  font-size: 14px;
+  background: #386EE0;
+  color: #fff;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s;
+}
+.setup-btn:hover { background: #1D4ED8; }
+.setup-btn:disabled { background: #90a4ae; cursor: not-allowed; }
+.progress-area {
+  display: none;
+  margin: 20px 0;
+}
+.progress-bar-outer {
+  width: 100%;
+  height: 8px;
+  background: #E4EBF3;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.progress-bar-inner {
+  height: 100%;
+  width: 0%;
+  background: #386EE0;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+.progress-label {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #607D8B;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.progress-label .spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #D1D9E2;
+  border-top-color: #386EE0;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.log-area {
+  display: none;
+  margin: 12px 0;
+  padding: 12px;
+  background: #1a1a2e;
+  color: #a0d0a0;
+  border-radius: 0.5rem;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.done-message {
+  display: none;
+  margin: 20px 0;
+  padding: 12px 16px;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 0.5rem;
+  color: #166534;
+  font-weight: 500;
+}
+.done-message a { color: #386EE0; text-decoration: none; font-weight: 600; }
+.done-message a:hover { text-decoration: underline; }
+.error-message {
+  display: none;
+  margin: 20px 0;
+  padding: 12px 16px;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 0.5rem;
+  color: #dc2626;
+  font-weight: 500;
+}
+</style>
+</head>
+<body>
+<nav>
+  <a class="logo" href="/setup"><img src="/static/lean-logo.svg" alt="Lean" class="logo-img"><span class="logo-text">Lean Workbench</span></a>
+  <span class="spacer"></span>
+</nav>
+<main style="max-width: 600px;">
+<h1>Setup</h1>
+<p>Initialize the data volume with Lean toolchains and libraries.</p>
+
+<p style="margin-top: 16px; color: #607D8B; font-size: 13px;">
+  This will install elan, download pre-compiled Mathlib, and set up
+  project templates. It may take several minutes.
+</p>
+
+<button class="setup-btn" id="start-btn" onclick="startSetup()">Start Setup</button>
+
+<div class="progress-area" id="progress-area">
+  <div class="progress-bar-outer">
+    <div class="progress-bar-inner" id="progress-bar"></div>
+  </div>
+  <div class="progress-label">
+    <span class="spinner"></span>
+    <span id="progress-text">Starting...</span>
+  </div>
+</div>
+
+<div class="log-area" id="log-area"></div>
+
+<div class="done-message" id="done-message">
+  Setup complete! <a href="/">Continue to Lean Workbench</a>
+</div>
+
+<div class="error-message" id="error-message">
+  Setup failed. Check the log output above for details.
+</div>
+
+<script>
+function startSetup() {
+  var btn = document.getElementById('start-btn');
+  var progressArea = document.getElementById('progress-area');
+  var logArea = document.getElementById('log-area');
+
+  btn.disabled = true;
+  btn.textContent = 'Setting up...';
+  progressArea.style.display = 'block';
+  logArea.style.display = 'block';
+
+  fetch('/api/setup/seed', { method: 'POST' })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.error) {
+        showError(data.error);
+        return;
+      }
+      streamLogs();
+    })
+    .catch(function(err) { showError(err.message); });
+}
+
+function streamLogs() {
+  var logArea = document.getElementById('log-area');
+  var progressBar = document.getElementById('progress-bar');
+  var progressText = document.getElementById('progress-text');
+  var source = new EventSource('/api/setup/stream');
+
+  source.onmessage = function(event) {
+    var data = JSON.parse(event.data);
+    if (data.type === 'progress') {
+      var pct = Math.round((data.step / data.total) * 100);
+      progressBar.style.width = pct + '%';
+      progressText.textContent = data.label + ' (' + data.step + '/' + data.total + ')';
+    } else if (data.type === 'log') {
+      logArea.textContent += data.line + '\n';
+      logArea.scrollTop = logArea.scrollHeight;
+    } else if (data.type === 'done') {
+      source.close();
+      progressBar.style.width = '100%';
+      showDone();
+    } else if (data.type === 'error') {
+      source.close();
+      showError(data.message);
+    }
+  };
+
+  source.onerror = function() {
+    source.close();
+    fetch('/api/setup/status')
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.seeded) showDone();
+        else if (!data.seeding) showError('Connection lost');
+      });
+  };
+}
+
+function showDone() {
+  document.getElementById('progress-area').style.display = 'none';
+  document.getElementById('start-btn').style.display = 'none';
+  document.getElementById('done-message').style.display = 'block';
+}
+
+function showError(msg) {
+  document.getElementById('progress-area').style.display = 'none';
+  var el = document.getElementById('error-message');
+  el.textContent = 'Setup failed: ' + msg;
+  el.style.display = 'block';
+  var btn = document.getElementById('start-btn');
+  btn.disabled = false;
+  btn.textContent = 'Retry Setup';
+}
+</script>
+</main>
+</body>
+</html>

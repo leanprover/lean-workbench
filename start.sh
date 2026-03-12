@@ -7,7 +7,7 @@ set -e
 
 # Seed elan from the image-baked copy on first run
 if [ ! -d /data/elan/bin ]; then
-  echo "[start.sh] Seeding /data/elan/ from image..."
+  echo "[start.sh] Copying /data/elan/ from image..."
   mkdir -p /data/elan
   cp -a /home/elan-image/. /data/elan/
 fi

@@ -10,8 +10,9 @@ import net from "node:net";
 import fs from "node:fs";
 import path from "node:path";
 import {
+  initDb, DB_PATH,
   ensureUser, getUserById, getUserByUsername, getAvatarUrl,
-  upsertGithubUser, isAdmin as checkIsAdmin,
+  upsertGithubUser, isAdmin as checkIsAdmin, setAdmin, getUserCount,
   getProjectsByUser, getProjectByUserAndName, createProject,
   getProjectById, updateProject, deleteProject, PROJECT_NAME_RE,
   getPackageSets, addPackageSet,
@@ -25,9 +26,33 @@ const ELAN_DIR = `${DATA_DIR}/elan`;
 const WORKSPACES_DIR = `${DATA_DIR}/workspaces`;
 const PACKAGE_SETS_DIR = `${DATA_DIR}/package-sets`;
 const TEMPLATES_DIR = `${DATA_DIR}/templates`;
+const SCRIPTS_DIR = path.join(import.meta.dirname!, "scripts");
 const NGINX_ROUTES_DIR = "/etc/nginx/user-routes";
 const USERNAME_RE = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/;
 const BASE_PORT = 3010;
+
+// --- Setup state ---
+
+let volumeSeeded = fs.existsSync(DB_PATH);
+let seedingInProgress = false;
+
+interface SeedEvent {
+  type: "log" | "progress" | "done" | "error";
+  line?: string;
+  step?: number;
+  total?: number;
+  label?: string;
+  message?: string;
+}
+const seedEvents: SeedEvent[] = [];
+const PROGRESS_RE = /^\[progress (\d+)\/(\d+) (.+)\]$/;
+
+if (volumeSeeded) {
+  initDb();
+  console.log("[spawner] Volume already seeded, database initialized.");
+} else {
+  console.log("[spawner] Volume not seeded (no database). Serving setup page.");
+}
 
 // --- Session management ---
 
@@ -341,6 +366,11 @@ if (process.env.GITHUB_CLIENT_ID) {
           email: profile.emails?.[0]?.value,
           avatar_url: profile.photos?.[0]?.value,
         });
+        // First user to log in becomes admin
+        if (getUserCount() === 1 && !user.is_admin) {
+          setAdmin(user.id, true);
+          user.is_admin = true;
+        }
         done(null, user);
       },
     ),
@@ -357,6 +387,113 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 app.use("/static", express.static(path.join(import.meta.dirname!, "public")));
+
+// --- Setup routes (available before seeding) ---
+
+app.get("/setup", (_req: Request, res: Response) => {
+  if (volumeSeeded) { res.redirect("/"); return; }
+  res.render("setup");
+});
+
+app.get("/api/setup/status", (_req: Request, res: Response) => {
+  res.json({ seeded: volumeSeeded, seeding: seedingInProgress });
+});
+
+app.post("/api/setup/seed", (_req: Request, res: Response) => {
+  if (volumeSeeded) {
+    res.status(400).json({ error: "Already seeded" });
+    return;
+  }
+  if (seedingInProgress) {
+    res.status(409).json({ error: "Seeding already in progress" });
+    return;
+  }
+
+  seedingInProgress = true;
+  seedEvents.length = 0;
+
+  const child = spawn(
+    "bash",
+    [path.join(SCRIPTS_DIR, "seed-volume.sh"), "--root", DATA_DIR],
+    { stdio: ["ignore", "pipe", "pipe"] },
+  );
+
+  function processLine(line: string) {
+    if (!line) return;
+    const m = PROGRESS_RE.exec(line);
+    if (m) {
+      seedEvents.push({ type: "progress", step: parseInt(m[1]), total: parseInt(m[2]), label: m[3] });
+    } else {
+      seedEvents.push({ type: "log", line });
+    }
+  }
+
+  child.stdout.on("data", (chunk: Buffer) => {
+    for (const line of chunk.toString().split("\n")) processLine(line);
+  });
+  child.stderr.on("data", (chunk: Buffer) => {
+    for (const line of chunk.toString().split("\n")) processLine(line);
+  });
+
+  child.on("close", (code) => {
+    seedingInProgress = false;
+    if (code === 0) {
+      initDb();
+      volumeSeeded = true;
+      seedEvents.push({ type: "done" });
+    } else {
+      seedEvents.push({ type: "error", message: `seed-volume.sh exited with code ${code}` });
+    }
+  });
+
+  res.json({ ok: true });
+});
+
+app.get("/api/setup/stream", (req: Request, res: Response) => {
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+  });
+
+  let cursor = 0;
+  const interval = setInterval(() => {
+    while (cursor < seedEvents.length) {
+      const event = seedEvents[cursor++];
+      res.write(`data: ${JSON.stringify(event)}\n\n`);
+      if (event.type === "done" || event.type === "error") {
+        clearInterval(interval);
+        res.end();
+        return;
+      }
+    }
+    if (!seedingInProgress && cursor >= seedEvents.length) {
+      clearInterval(interval);
+      res.end();
+    }
+  }, 500);
+
+  req.on("close", () => clearInterval(interval));
+});
+
+// --- Setup guard: redirect everything else if not seeded ---
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (volumeSeeded) { next(); return; }
+
+  // Allow static assets and setup routes through
+  if (req.path.startsWith("/static/") || req.path.startsWith("/api/setup/") || req.path === "/api/health") {
+    next();
+    return;
+  }
+
+  if (req.path.startsWith("/api/")) {
+    res.status(503).json({ error: "Setup required" });
+    return;
+  }
+
+  res.redirect("/setup");
+});
 
 // --- Auth routes ---
 
@@ -376,6 +513,11 @@ if (process.env.GITHUB_CLIENT_ID) {
 if (process.env.NODE_ENV !== "production") {
   app.get("/dev-login", (req: Request, res: Response) => {
     const user = ensureUser("dev");
+    // First user to log in becomes admin
+    if (getUserCount() === 1 && !user.is_admin) {
+      setAdmin(user.id, true);
+      user.is_admin = true;
+    }
     req.login(user, (err) => {
       if (err) { res.status(500).send("Login failed"); return; }
       res.redirect("/dev/");
