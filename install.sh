@@ -3,15 +3,12 @@
 # Lean Workbench installer.
 #
 # Usage:
-#   ./install.sh              Install and start Lean Workbench
-#   ./install.sh --uninstall  Stop and remove Lean Workbench
+#   ./install.sh              Install Lean Workbench
+#   ./install.sh --uninstall  Remove Lean Workbench
 #
 set -euo pipefail
 
 IMAGE="ghcr.io/leanprover/lean-workbench:latest"
-SERVICE_NAME="lean-workbench"
-UNIT_DIR="$HOME/.config/systemd/user"
-UNIT_FILE="$UNIT_DIR/$SERVICE_NAME.service"
 
 # --- Helpers ---
 
@@ -32,7 +29,6 @@ ask_yesno() {
   local prompt="$1"
   if has_whiptail; then
     whiptail --yesno "$prompt" 10 60 3>&1 1>&2 2>&3
-    # Returns 0 for Yes, 1 for No/Cancel — caller decides meaning
   else
     read -p "$prompt [y/N]: " yn
     [[ "$yn" =~ ^[Yy] ]]
@@ -45,23 +41,27 @@ error() { echo "ERROR: $1" >&2; exit 1; }
 # --- Uninstall ---
 
 do_uninstall() {
-  info "Uninstalling Lean Workbench..."
+  local data_dir="${1:-}"
 
-  # Read data dir from unit file before removing it
-  local data_dir=""
-  if [ -f "$UNIT_FILE" ]; then
-    data_dir=$(grep -oP '(?<=-v )\S+(?=:/data)' "$UNIT_FILE" || true)
+  if [ -z "$data_dir" ]; then
+    # Try to find an existing installation
+    local default="$HOME/.lean-workbench"
+    if [ -f "$default/docker-compose.yml" ]; then
+      data_dir="$default"
+    else
+      data_dir=$(ask_input "Where is Lean Workbench installed?" "$default")
+      data_dir="${data_dir/#\~/$HOME}"
+    fi
   fi
 
-  # Stop and disable
-  systemctl --user disable --now "$SERVICE_NAME" 2>/dev/null || true
-
-  # Remove unit file
-  if [ -f "$UNIT_FILE" ]; then
-    rm "$UNIT_FILE"
-    info "Removed $UNIT_FILE"
+  if [ ! -f "$data_dir/docker-compose.yml" ]; then
+    error "No Lean Workbench installation found at $data_dir"
   fi
-  systemctl --user daemon-reload 2>/dev/null || true
+
+  info "Uninstalling Lean Workbench from $data_dir..."
+
+  # Stop the service if running
+  docker compose -f "$data_dir/docker-compose.yml" down 2>/dev/null || true
 
   # Optionally remove image
   if docker image inspect "$IMAGE" &>/dev/null; then
@@ -72,11 +72,13 @@ do_uninstall() {
   fi
 
   # Optionally remove data
-  if [ -n "$data_dir" ] && [ -d "$data_dir" ]; then
-    if ask_yesno "Remove data directory at $data_dir?\n(This will delete all workspaces and projects)"; then
-      rm -rf "$data_dir"
-      info "Removed $data_dir"
-    fi
+  if ask_yesno "Remove data directory at $data_dir?\n(This will delete all workspaces and projects)"; then
+    rm -rf "$data_dir"
+    info "Removed $data_dir"
+  else
+    # At minimum remove the compose file
+    rm "$data_dir/docker-compose.yml"
+    info "Removed docker-compose.yml (data preserved)."
   fi
 
   info "Uninstall complete."
@@ -92,9 +94,6 @@ do_install() {
   fi
   if ! docker info &>/dev/null 2>&1; then
     error "Cannot connect to Docker. Is the Docker daemon running? Is your user in the docker group?"
-  fi
-  if ! command -v systemctl &>/dev/null; then
-    error "systemctl not found. This installer requires systemd."
   fi
 
   # Prompt for configuration
@@ -121,61 +120,75 @@ do_install() {
   info "Pulling Docker image..."
   docker pull "$IMAGE"
 
-  # Write systemd unit
-  info "Installing systemd service..."
-  mkdir -p "$UNIT_DIR"
-  cat > "$UNIT_FILE" <<EOF
-[Unit]
-Description=Lean Workbench
-After=docker.service
-Requires=docker.service
-
-[Service]
-Type=simple
-ExecStartPre=-/usr/bin/docker rm -f $SERVICE_NAME
-ExecStart=/usr/bin/docker run --rm --name $SERVICE_NAME \\
-  --cap-add SYS_ADMIN \\
-  --security-opt seccomp=unconfined \\
-  --security-opt apparmor=unconfined \\
-  --security-opt systempaths=unconfined \\
-  -p $PORT:3000 \\
-  -v $DATA_DIR:/data \\
-  $IMAGE
-ExecStop=/usr/bin/docker stop $SERVICE_NAME
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=default.target
+  # Helper to write a compose file
+  write_compose() {
+    local file="$1" bind_addr="$2"
+    cat > "$file" <<EOF
+services:
+  lean-workbench:
+    image: $IMAGE
+    container_name: lean-workbench
+    ports:
+      - "${bind_addr}:${PORT}:3000"
+    volumes:
+      - ./data:/data
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
+      - systempaths=unconfined
+    restart: unless-stopped
 EOF
+  }
 
-  # Enable and start
-  systemctl --user daemon-reload
-  systemctl --user enable --now "$SERVICE_NAME"
+  # Write compose files: localhost-only for setup, 0.0.0.0 for production
+  info "Writing docker-compose.yml (localhost-only, for setup)..."
+  write_compose "$DATA_DIR/docker-compose.yml" "127.0.0.1"
+
+  info "Writing docker-compose.prod.yml (all interfaces, for production)..."
+  write_compose "$DATA_DIR/docker-compose.prod.yml" "0.0.0.0"
+
+  # Create data subdirectory (compose mounts ./data, not the dir itself)
+  mkdir -p "$DATA_DIR/data"
 
   echo ""
-  info "Lean Workbench is running!"
+  info "Lean Workbench is installed!"
   echo ""
-  echo "  Open http://localhost:$PORT to complete setup."
+  echo "  To start (localhost-only, for initial setup):"
+  echo "    cd $DATA_DIR && docker compose up -d"
   echo ""
-  echo "  Manage the service:"
-  echo "    systemctl --user status $SERVICE_NAME"
-  echo "    systemctl --user stop $SERVICE_NAME"
-  echo "    systemctl --user start $SERVICE_NAME"
-  echo "    systemctl --user restart $SERVICE_NAME"
+  echo "  Then open http://localhost:$PORT to configure authentication"
+  echo "  and complete setup."
+  echo ""
+  echo "  After setup, switch to production mode:"
+  echo "    cd $DATA_DIR && docker compose down"
+  echo "    docker compose -f docker-compose.prod.yml up -d"
+  echo ""
+  echo "  Other commands:"
+  echo "    docker compose -f $DATA_DIR/docker-compose.yml logs -f     # view logs"
+  echo "    docker compose -f $DATA_DIR/docker-compose.yml pull        # update image"
   echo ""
   echo "  To uninstall:"
   echo "    $(realpath "$0") --uninstall"
+
+  # Offer to start now
+  if ask_yesno "Start Lean Workbench now?"; then
+    docker compose -f "$DATA_DIR/docker-compose.yml" up -d
+    echo ""
+    info "Lean Workbench is running at http://localhost:$PORT"
+    echo "  Open http://localhost:$PORT to configure authentication and complete setup."
+  fi
 }
 
 # --- Main ---
 
 case "${1:-}" in
-  --uninstall) do_uninstall ;;
+  --uninstall) do_uninstall "${2:-}" ;;
   --help|-h)
-    echo "Usage: $0 [--uninstall]"
+    echo "Usage: $0 [--uninstall [DATA_DIR]]"
     echo ""
-    echo "Install and configure Lean Workbench as a systemd user service."
+    echo "Install Lean Workbench with Docker Compose."
     echo "Re-run with --uninstall to remove."
     exit 0
     ;;

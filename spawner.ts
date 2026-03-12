@@ -5,17 +5,20 @@ import session from "express-session";
 import passport from "passport";
 import { Strategy as GitHubStrategy } from "passport-github2";
 import type { VerifyCallback } from "passport-oauth2";
+import crypto from "node:crypto";
 import { spawn, execSync } from "node:child_process";
 import net from "node:net";
 import fs from "node:fs";
 import path from "node:path";
 import {
-  initDb, DB_PATH,
+  initDb,
   ensureUser, getUserById, getUserByUsername, getAvatarUrl,
   upsertGithubUser, isAdmin as checkIsAdmin, setAdmin, getUserCount,
   getProjectsByUser, getProjectByUserAndName, createProject,
   getProjectById, updateProject, deleteProject, PROJECT_NAME_RE,
   getPackageSets, addPackageSet,
+  isFirstRunComplete, setFirstRunComplete,
+  getAuthMethod, saveAuthMethod,
   type UserRow, type ProjectRow,
 } from "./db.ts";
 
@@ -33,7 +36,11 @@ const BASE_PORT = 3010;
 
 // --- Setup state ---
 
-let volumeSeeded = fs.existsSync(DB_PATH);
+// DB is always created at startup (schema + first_run row)
+fs.mkdirSync(path.dirname(process.env.DB_PATH ?? "/data/db/podserver.db"), { recursive: true });
+initDb();
+
+let setupComplete = isFirstRunComplete();
 let seedingInProgress = false;
 
 interface SeedEvent {
@@ -47,11 +54,68 @@ interface SeedEvent {
 const seedEvents: SeedEvent[] = [];
 const PROGRESS_RE = /^\[progress (\d+)\/(\d+) (.+)\]$/;
 
-if (volumeSeeded) {
-  initDb();
-  console.log("[spawner] Volume already seeded, database initialized.");
+// --- OAuth config (from DB, falling back to env vars) ---
+
+interface GithubOAuthConfig {
+  clientId: string;
+  clientSecret: string;
+  callbackUrl?: string;
+}
+
+function getGithubConfig(): GithubOAuthConfig | null {
+  // DB takes priority
+  const row = getAuthMethod("github_oauth") as GithubOAuthConfig | null;
+  if (row?.clientId) return row;
+  // Fall back to env vars (for development)
+  if (process.env.GITHUB_CLIENT_ID) {
+    return {
+      clientId: process.env.GITHUB_CLIENT_ID,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+      callbackUrl: process.env.CALLBACK_URL,
+    };
+  }
+  return null;
+}
+
+function getSessionSecret(): string {
+  const row = getAuthMethod("session") as { secret: string } | null;
+  if (row?.secret) return row.secret;
+  return process.env.SESSION_SECRET ?? "lean-workbench-dev-secret";
+}
+
+let githubConfig = getGithubConfig();
+
+function registerGithubStrategy(config: GithubOAuthConfig): void {
+  passport.use(
+    new GitHubStrategy(
+      {
+        clientID: config.clientId,
+        clientSecret: config.clientSecret,
+        callbackURL: config.callbackUrl ?? "http://localhost:3000/auth/github/callback",
+      },
+      (accessToken: string, refreshToken: string, profile: any, done: VerifyCallback) => {
+        const user = upsertGithubUser({
+          github_id: parseInt(profile.id, 10),
+          github_username: profile.username,
+          display_name: profile.displayName,
+          email: profile.emails?.[0]?.value,
+          avatar_url: profile.photos?.[0]?.value,
+        });
+        // First user to log in becomes admin
+        if (getUserCount() === 1 && !user.is_admin) {
+          setAdmin(user.id, true);
+          user.is_admin = true;
+        }
+        done(null, user);
+      },
+    ),
+  );
+}
+
+if (setupComplete) {
+  console.log("[spawner] Setup complete, ready.");
 } else {
-  console.log("[spawner] Volume not seeded (no database). Serving setup page.");
+  console.log("[spawner] First run — serving setup page.");
 }
 
 // --- Session management ---
@@ -340,7 +404,7 @@ app.set("view engine", "ejs");
 app.set("views", path.join(import.meta.dirname!, "public"));
 
 app.use(session({
-  secret: process.env.SESSION_SECRET ?? "lean-workbench-dev-secret",
+  secret: getSessionSecret(),
   resave: false,
   saveUninitialized: false,
 }));
@@ -348,33 +412,9 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// --- GitHub OAuth strategy ---
-
-if (process.env.GITHUB_CLIENT_ID) {
-  passport.use(
-    new GitHubStrategy(
-      {
-        clientID: process.env.GITHUB_CLIENT_ID,
-        clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-        callbackURL: process.env.CALLBACK_URL ?? "http://localhost:3000/auth/github/callback",
-      },
-      (accessToken: string, refreshToken: string, profile: any, done: VerifyCallback) => {
-        const user = upsertGithubUser({
-          github_id: parseInt(profile.id, 10),
-          github_username: profile.username,
-          display_name: profile.displayName,
-          email: profile.emails?.[0]?.value,
-          avatar_url: profile.photos?.[0]?.value,
-        });
-        // First user to log in becomes admin
-        if (getUserCount() === 1 && !user.is_admin) {
-          setAdmin(user.id, true);
-          user.is_admin = true;
-        }
-        done(null, user);
-      },
-    ),
-  );
+// Register GitHub strategy if config already exists
+if (githubConfig) {
+  registerGithubStrategy(githubConfig);
 }
 
 passport.serializeUser((user, done) => done(null, (user as UserRow).id));
@@ -388,20 +428,58 @@ app.use(express.urlencoded({ extended: false }));
 
 app.use("/static", express.static(path.join(import.meta.dirname!, "public")));
 
-// --- Setup routes (available before seeding) ---
+// --- Setup routes (available before first-run is complete) ---
 
 app.get("/setup", (_req: Request, res: Response) => {
-  if (volumeSeeded) { res.redirect("/"); return; }
+  if (setupComplete) { res.redirect("/"); return; }
   res.render("setup");
 });
 
 app.get("/api/setup/status", (_req: Request, res: Response) => {
-  res.json({ seeded: volumeSeeded, seeding: seedingInProgress });
+  res.json({
+    configSaved: !!githubConfig,
+    seeded: setupComplete,
+    seeding: seedingInProgress,
+  });
+});
+
+app.post("/api/setup/config", (req: Request, res: Response) => {
+  if (setupComplete) {
+    res.status(400).json({ error: "Setup already complete" });
+    return;
+  }
+
+  const { githubClientId, githubClientSecret, callbackUrl } = req.body;
+  if (!githubClientId || !githubClientSecret) {
+    res.status(400).json({ error: "Client ID and Client Secret are required" });
+    return;
+  }
+
+  const config: GithubOAuthConfig = {
+    clientId: githubClientId,
+    clientSecret: githubClientSecret,
+    callbackUrl: callbackUrl || undefined,
+  };
+  saveAuthMethod("github_oauth", config);
+
+  // Auto-generate session secret if not already stored
+  if (!getAuthMethod("session")) {
+    saveAuthMethod("session", { secret: crypto.randomBytes(32).toString("base64") });
+  }
+
+  githubConfig = config;
+  registerGithubStrategy(config);
+
+  res.json({ ok: true });
 });
 
 app.post("/api/setup/seed", (_req: Request, res: Response) => {
-  if (volumeSeeded) {
+  if (setupComplete) {
     res.status(400).json({ error: "Already seeded" });
+    return;
+  }
+  if (!githubConfig) {
+    res.status(400).json({ error: "Configure authentication first" });
     return;
   }
   if (seedingInProgress) {
@@ -438,8 +516,8 @@ app.post("/api/setup/seed", (_req: Request, res: Response) => {
   child.on("close", (code) => {
     seedingInProgress = false;
     if (code === 0) {
-      initDb();
-      volumeSeeded = true;
+      setFirstRunComplete();
+      setupComplete = true;
       seedEvents.push({ type: "done" });
     } else {
       seedEvents.push({ type: "error", message: `seed-volume.sh exited with code ${code}` });
@@ -476,10 +554,10 @@ app.get("/api/setup/stream", (req: Request, res: Response) => {
   req.on("close", () => clearInterval(interval));
 });
 
-// --- Setup guard: redirect everything else if not seeded ---
+// --- Setup guard: redirect everything else if setup not complete ---
 
 app.use((req: Request, res: Response, next: NextFunction) => {
-  if (volumeSeeded) { next(); return; }
+  if (setupComplete) { next(); return; }
 
   // Allow static assets and setup routes through
   if (req.path.startsWith("/static/") || req.path.startsWith("/api/setup/") || req.path === "/api/health") {
@@ -497,18 +575,28 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 // --- Auth routes ---
 
-if (process.env.GITHUB_CLIENT_ID) {
-  app.get("/auth/github", passport.authenticate("github", { scope: ["user:email"] }));
+app.get("/auth/github", (req: Request, res: Response, next: NextFunction) => {
+  if (!githubConfig) {
+    res.status(503).send("GitHub OAuth not configured");
+    return;
+  }
+  passport.authenticate("github", { scope: ["user:email"] })(req, res, next);
+});
 
-  app.get(
-    "/auth/github/callback",
-    passport.authenticate("github", { failureRedirect: "/" }),
-    (req: Request, res: Response) => {
-      const username = (req.user as UserRow)?.username ?? "";
-      res.redirect(`/${username}/`);
-    },
-  );
-}
+app.get(
+  "/auth/github/callback",
+  (req: Request, res: Response, next: NextFunction) => {
+    if (!githubConfig) {
+      res.status(503).send("GitHub OAuth not configured");
+      return;
+    }
+    passport.authenticate("github", { failureRedirect: "/" })(req, res, next);
+  },
+  (req: Request, res: Response) => {
+    const username = (req.user as UserRow)?.username ?? "";
+    res.redirect(`/${username}/`);
+  },
+);
 
 if (process.env.NODE_ENV !== "production") {
   app.get("/dev-login", (req: Request, res: Response) => {
@@ -657,7 +745,7 @@ app.get("/", (req: Request, res: Response) => {
     user = { username: u.username, avatarUrl: getAvatarUrl(u.id) };
   }
   const devMode = process.env.NODE_ENV !== "production";
-  const githubEnabled = !!process.env.GITHUB_CLIENT_ID;
+  const githubEnabled = !!githubConfig;
   res.render("landing", { user, devMode, githubEnabled });
 });
 

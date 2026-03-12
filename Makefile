@@ -1,5 +1,5 @@
 build:
-	docker build -t podserver .
+	docker build -t ghcr.io/leanprover/lean-workbench:latest .
 
 serve:
 	mkdir -p /tmp/podserver
@@ -11,7 +11,7 @@ serve:
 		-p 3000:3000 \
 		-v /tmp/podserver:/data \
 		$(if $(wildcard .env),--env-file .env,) \
-		podserver:latest
+		ghcr.io/leanprover/lean-workbench:latest
 
 dev:
 	mkdir -p /tmp/podserver
@@ -24,7 +24,7 @@ dev:
 		-v /tmp/podserver:/data \
 		-e NODE_ENV=development \
 		$(if $(wildcard .env),--env-file .env,) \
-		podserver:latest
+		ghcr.io/leanprover/lean-workbench:latest
 
 enter:
 	docker run --rm -it \
@@ -34,4 +34,4 @@ enter:
 		--security-opt systempaths=unconfined \
 		-v /tmp/podserver:/data \
 		--entrypoint bash \
-		podserver:latest
+		ghcr.io/leanprover/lean-workbench:latest

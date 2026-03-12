@@ -15,8 +15,8 @@ The code here is still very much in progress and experimental!
   writes nginx route configs, and serves the landing/session/setup pages.
   Authentication via GitHub OAuth (Passport) or dev-login.
 - **db.ts** — SQLite database (via `better-sqlite3`). Stores users,
-  projects, and admin status. Lazy initialization — the DB file's
-  existence is the sentinel for whether the data volume has been seeded.
+  projects, admin status, and authentication configuration. The
+  `first_run` table tracks whether initial setup is complete.
 - **nginx.conf** — Front-door reverse proxy on port 3000. Routes
   `/user/<name>/_vs/` to per-user VS Code backends; everything else
   goes to the spawner on port 3002.
@@ -28,8 +28,8 @@ The code here is still very much in progress and experimental!
 - **public/** — EJS templates (`landing.ejs`, `session.ejs`,
   `profile.ejs`, `setup.ejs`) plus a React client for project management.
 - **install.sh** — End-user installer. Uses whiptail TUI to configure
-  data directory and port, pulls the Docker image, and installs a
-  systemd user service.
+  data directory and port, pulls the Docker image, and generates
+  Docker Compose files (localhost-only for setup, 0.0.0.0 for production).
 
 ## Quick Start (Production)
 
@@ -38,9 +38,20 @@ The code here is still very much in progress and experimental!
 curl -sSf https://raw.githubusercontent.com/leanprover/lean-workbench/main/install.sh | bash
 ```
 
-The installer will prompt for a data directory and port, pull the Docker
-image, and start a systemd user service. Then visit
-`http://localhost:<port>` to complete setup in the browser.
+The installer prompts for a data directory and port, pulls the Docker
+image, and generates two Docker Compose files:
+
+- `docker-compose.yml` — binds to localhost only (for initial setup)
+- `docker-compose.prod.yml` — binds to all interfaces (for production)
+
+Start with the localhost-only file, visit `http://localhost:<port>` to
+configure GitHub OAuth and seed the data volume, then switch to production:
+
+```bash
+cd ~/.lean-workbench
+docker compose down
+docker compose -f docker-compose.prod.yml up -d
+```
 
 To uninstall:
 
@@ -56,17 +67,17 @@ Docker must be installed and running.
 
 ### Configuration
 
-Authentication uses GitHub OAuth. Create a `.env` file:
+In production, GitHub OAuth is configured through the web-based setup
+UI on first run. No `.env` file is needed.
+
+For development, you can optionally create a `.env` file to override
+the database config:
 
     cp .env.example .env
     # fill in GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET
 
-These come from a GitHub OAuth App (Settings → Developer settings →
-OAuth Apps). Set the callback URL to
-`http://localhost:3000/auth/github/callback`.
-
 In development mode (`NODE_ENV=development`), a dev-login is available
-that bypasses OAuth.
+that bypasses OAuth entirely.
 
 ### Build and Run
 
@@ -78,7 +89,8 @@ make enter  # open a shell inside the container
 ```
 
 Then visit `http://localhost:3000`. On first run you'll see the setup
-page, which seeds the data volume with Lean toolchains and Mathlib.
+page, where you can configure authentication and seed the data volume
+with Lean toolchains and Mathlib.
 
 ### Data Volume
 

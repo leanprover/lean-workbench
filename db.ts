@@ -73,6 +73,19 @@ CREATE TABLE IF NOT EXISTS project_package_sets (
   package_set TEXT NOT NULL,
   PRIMARY KEY (project_id, package_set)
 );
+
+CREATE TABLE IF NOT EXISTS first_run (
+  id       INTEGER PRIMARY KEY CHECK (id = 1),
+  complete INTEGER NOT NULL DEFAULT 0
+);
+INSERT OR IGNORE INTO first_run (id, complete) VALUES (1, 0);
+
+CREATE TABLE IF NOT EXISTS auth_methods (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  type       TEXT NOT NULL UNIQUE,
+  config     TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 `);
 
   // Migration: add template column if it doesn't exist (for existing DBs)
@@ -238,4 +251,36 @@ export function addPackageSet(projectId: string, packageSet: string): void {
   getDb().prepare(
     `INSERT OR IGNORE INTO project_package_sets (project_id, package_set) VALUES (?, ?)`
   ).run(projectId, packageSet);
+}
+
+// --- First-run queries ---
+
+export function isFirstRunComplete(): boolean {
+  const row = getDb().prepare(`SELECT complete FROM first_run WHERE id = 1`).get() as { complete: number };
+  return row.complete === 1;
+}
+
+export function setFirstRunComplete(): void {
+  getDb().prepare(`UPDATE first_run SET complete = 1 WHERE id = 1`).run();
+}
+
+// --- Auth method queries ---
+
+export interface AuthMethodRow {
+  id: number;
+  type: string;
+  config: string;
+  created_at: string;
+}
+
+export function getAuthMethod(type: string): object | null {
+  const row = getDb().prepare(`SELECT config FROM auth_methods WHERE type = ?`).get(type) as { config: string } | undefined;
+  return row ? JSON.parse(row.config) : null;
+}
+
+export function saveAuthMethod(type: string, config: object): void {
+  getDb().prepare(
+    `INSERT INTO auth_methods (type, config) VALUES (?, ?)
+     ON CONFLICT(type) DO UPDATE SET config = excluded.config`
+  ).run(type, JSON.stringify(config));
 }
