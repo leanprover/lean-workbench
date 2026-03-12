@@ -96,9 +96,9 @@ do_install() {
     error "Cannot connect to Docker. Is the Docker daemon running? Is your user in the docker group?"
   fi
 
-  # Prompt for configuration
-  DATA_DIR=$(ask_input "Where should Lean Workbench store its data?" "$HOME/.lean-workbench")
-  PORT=$(ask_input "Which port should the server listen on?" "8080")
+  # Prompt for configuration (skip if provided via flags)
+  DATA_DIR="${OPT_DIR:-$(ask_input "Where should Lean Workbench store its data?" "$HOME/.lean-workbench")}"
+  PORT="${OPT_PORT:-$(ask_input "Which port should the server listen on?" "8080")}"
 
   # Validate port
   if ! [[ "$PORT" =~ ^[0-9]+$ ]] || [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then
@@ -116,9 +116,13 @@ do_install() {
   # Create data directory
   mkdir -p "$DATA_DIR"
 
-  # Pull image
-  info "Pulling Docker image..."
-  docker pull "$IMAGE"
+  # Pull image (skip with --dev if using a locally-built image)
+  if [ "${NO_PULL:-}" != "1" ]; then
+    info "Pulling Docker image..."
+    docker pull "$IMAGE"
+  else
+    info "Skipping docker pull, using local image."
+  fi
 
   # Helper to write a compose file
   write_compose() {
@@ -183,15 +187,31 @@ EOF
 
 # --- Main ---
 
-case "${1:-}" in
-  --uninstall) do_uninstall "${2:-}" ;;
-  --help|-h)
-    echo "Usage: $0 [--uninstall [DATA_DIR]]"
-    echo ""
-    echo "Install Lean Workbench with Docker Compose."
-    echo "Re-run with --uninstall to remove."
-    exit 0
-    ;;
-  "") do_install ;;
-  *) error "Unknown option: $1. Try --help." ;;
+OPT_DIR="" OPT_PORT="" NO_PULL="" ACTION="install"
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --uninstall) ACTION="uninstall"; shift ;;
+    --no-pull) NO_PULL=1; shift ;;
+    --dir) OPT_DIR="$2"; shift 2 ;;
+    --port) OPT_PORT="$2"; shift 2 ;;
+    --help|-h)
+      echo "Usage: $0 [OPTIONS]"
+      echo ""
+      echo "Install Lean Workbench with Docker Compose."
+      echo ""
+      echo "Options:"
+      echo "  --dir DIR    Data directory (default: ~/.lean-workbench)"
+      echo "  --port PORT  Server port (default: 8080)"
+      echo "  --no-pull    Skip docker pull (use locally-built image)"
+      echo "  --uninstall  Stop and remove Lean Workbench"
+      exit 0
+      ;;
+    *) error "Unknown option: $1. Try --help." ;;
+  esac
+done
+
+case "$ACTION" in
+  install) do_install ;;
+  uninstall) do_uninstall "$OPT_DIR" ;;
 esac

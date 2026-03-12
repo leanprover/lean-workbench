@@ -1,6 +1,10 @@
 build:
 	docker build -t ghcr.io/leanprover/lean-workbench:latest .
 
+clean-install: build
+	sudo rm -rf /tmp/podserver
+	./install.sh --no-pull --dir /tmp/podserver --port 8080
+
 serve:
 	mkdir -p /tmp/podserver
 	docker run -it --init \

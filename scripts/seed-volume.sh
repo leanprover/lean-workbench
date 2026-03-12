@@ -105,6 +105,9 @@ import Mathlib
 EOF
 
 cd "$WORK_DIR"
+mkdir -p .lake/packages
+git clone --progress https://github.com/leanprover-community/mathlib4 .lake/packages/mathlib
+(cd .lake/packages/mathlib && git checkout "$MATHLIB_REV")
 lake update
 
 # --- Step 5: Download pre-compiled oleans ---
