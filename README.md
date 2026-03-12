@@ -1,56 +1,104 @@
 # Lean Workbench
 
-Multi-user sandboxed VS Code server. Each user gets an isolated
-[OpenVSCode Server](https://github.com/gitpod-io/openvscode-server)
-instance inside a bubblewrap sandbox, reverse-proxied through nginx.
+Multi-user sandboxed VS Code server for Lean 4. Each user gets an
+isolated [OpenVSCode Server](https://github.com/gitpod-io/openvscode-server)
+instance inside a [bubblewrap](https://github.com/containers/bubblewrap)
+sandbox, reverse-proxied through nginx.
 
 The code here is still very much in progress and experimental!
 
 ## Architecture
 
-- **spawner.ts** — Express app (Node 22, ESM). Spawns per-user
-  `openvscode-server` processes inside `bwrap` sandboxes, writes nginx
-  route configs, and serves the landing page / session wrapper.
-  Authentication uses GitHub OAuth via Passport.
+- **spawner.ts** — Express app (Node 22, TypeScript via
+  `--experimental-strip-types`). Spawns per-user `openvscode-server`
+  processes inside `bwrap` sandboxes with overlayfs copy-on-write,
+  writes nginx route configs, and serves the landing/session/setup pages.
+  Authentication via GitHub OAuth (Passport) or dev-login.
+- **db.ts** — SQLite database (via `better-sqlite3`). Stores users,
+  projects, and admin status. Lazy initialization — the DB file's
+  existence is the sentinel for whether the data volume has been seeded.
 - **nginx.conf** — Front-door reverse proxy on port 3000. Routes
-  `/user/<name>/_vs/` to the user's VS Code backend; everything else
-  goes to the spawner API on port 3002.
-- **start.sh** — Entrypoint: starts the spawner, then runs nginx in
-  the foreground.
-- **public/** — EJS templates. `landing.ejs` (login / welcome page) and
-  `session.ejs` (rendered per-user with VS Code iframe).
+  `/user/<name>/_vs/` to per-user VS Code backends; everything else
+  goes to the spawner on port 3002.
+- **start.sh** — Container entrypoint. Seeds elan from the image-baked
+  copy on first run, then starts the spawner and nginx.
+- **scripts/seed-volume.sh** — First-time setup script (run via the
+  setup UI). Installs elan, downloads pre-compiled Mathlib, and sets up
+  package sets and project templates on the data volume.
+- **public/** — EJS templates (`landing.ejs`, `session.ejs`,
+  `profile.ejs`, `setup.ejs`) plus a React client for project management.
+- **install.sh** — End-user installer. Uses whiptail TUI to configure
+  data directory and port, pulls the Docker image, and installs a
+  systemd user service.
 
-## Configuration
+## Quick Start (Production)
 
-Authentication uses GitHub OAuth. Create a `.env` file with your app credentials:
+```bash
+# Download and run the installer
+curl -sSf https://raw.githubusercontent.com/leanprover/lean-workbench/main/install.sh | bash
+```
+
+The installer will prompt for a data directory and port, pull the Docker
+image, and start a systemd user service. Then visit
+`http://localhost:<port>` to complete setup in the browser.
+
+To uninstall:
+
+```bash
+./install.sh --uninstall
+```
+
+## Development
+
+### Prerequisites
+
+Docker must be installed and running.
+
+### Configuration
+
+Authentication uses GitHub OAuth. Create a `.env` file:
 
     cp .env.example .env
     # fill in GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET
 
-These come from a GitHub OAuth App (Settings → Developer settings → OAuth Apps).
-The app's "Authorization callback URL" should be `http://localhost:3000/auth/github/callback`.
+These come from a GitHub OAuth App (Settings → Developer settings →
+OAuth Apps). Set the callback URL to
+`http://localhost:3000/auth/github/callback`.
 
-## Usage
+In development mode (`NODE_ENV=development`), a dev-login is available
+that bypasses OAuth.
 
+### Build and Run
+
+```bash
+make        # build Docker image
+make dev    # run in development mode (enables dev-login)
+make serve  # run in production mode
+make enter  # open a shell inside the container
 ```
-mkdir /tmp/podserver
-# some invocation of ./scripts/mk-mathlib-installation.sh
-# that has not yet been tested would go here
-make # build docker image
-make serve # run docker container
-```
 
-Then visit `http://localhost:3000`.
+Then visit `http://localhost:3000`. On first run you'll see the setup
+page, which seeds the data volume with Lean toolchains and Mathlib.
 
-## Development
+### Data Volume
 
-The spawner runs directly with `--experimental-strip-types` (no build
-step). To iterate locally without Docker:
+All persistent state lives under the data directory (mounted at `/data`
+inside the container, defaults to `/tmp/podserver` in the Makefile):
 
-```
-npm install
-node --experimental-strip-types spawner.ts
-```
+- `db/` — SQLite database
+- `elan/` — Elan toolchain manager
+- `package-sets/` — Pre-built Mathlib and other Lake dependencies
+- `templates/` — Project templates
+- `workspaces/` — Per-user workspace files
+
+### Security Model
+
+Docker is used for packaging and convenience. **Bubblewrap is the
+security boundary** — each user session runs in a `bwrap` sandbox with
+`--unshare-user`, overlayfs copy-on-write (`--tmp-overlay`), and
+read-only bind mounts for shared toolchains. Package-set files are
+root-owned on the host so that overlayfs copy-up works correctly inside
+the user namespace.
 
 ## Archive
 
