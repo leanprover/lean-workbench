@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import Database from "better-sqlite3";
 
-export const DB_PATH = process.env.DB_PATH ?? "/data/db/podserver.db";
+export const DB_PATH = process.env.DB_PATH ?? "/data/db/lean-workbench.db";
 
 export interface UserRow {
   id: number;

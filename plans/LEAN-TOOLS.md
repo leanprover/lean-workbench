@@ -38,7 +38,7 @@ shared, and presented to users inside bwrap sandboxes.
    performance goal, not a security boundary.
 
 6. **One host directory.** All persistent state lives under a single
-   configurable host directory (examples below use `/tmp/podserver`).
+   configurable host directory (examples below use `/tmp/lean-workbench`).
    This directory is mounted as a Docker volume.
 
 ## Where Lean stores things (background)
@@ -77,9 +77,9 @@ Everything lives under one directory. The admin controls this
 directly (managing toolchains, packages, templates, etc.).
 
 ```
-/tmp/podserver/                        # root of all persistent state
+/tmp/lean-workbench/                        # root of all persistent state
   db/
-    podserver.db                       # SQLite database
+    lean-workbench.db                       # SQLite database
 
   elan/                                # shared elan home
     bin/elan                           # elan binary
@@ -145,8 +145,8 @@ The host directory is volume-mounted. The Docker image also bakes in
 read-only resources that don't need to be on the host.
 
 ```
-/data/                                 # volume: /tmp/podserver (host)
-  db/podserver.db
+/data/                                 # volume: /tmp/lean-workbench (host)
+  db/lean-workbench.db
   elan/...
   package-sets/...
   templates/...
@@ -333,8 +333,8 @@ future enhancement — `--tmp-overlay` is sufficient for now.
 
 ## Template and package management
 
-Admins manage the contents of `/tmp/podserver/elan/`,
-`/tmp/podserver/package-sets/`, and `/tmp/podserver/templates/` outside of
+Admins manage the contents of `/tmp/lean-workbench/elan/`,
+`/tmp/lean-workbench/package-sets/`, and `/tmp/lean-workbench/templates/` outside of
 the running application (e.g. via host-side scripts, or a future admin
 UI). The exact mechanism is out of scope for this document.
 
@@ -348,7 +348,7 @@ To prepare a shared mathlib for a given toolchain version:
 3. Run `lake exe cache get` (or `lake build` if no cache is available)
    to populate `.lake/packages/mathlib/.lake/build/`.
 4. Copy the resulting `mathlib/` directory (source + oleans) into
-   `/tmp/podserver/package-sets/mathlib-<version>/`.
+   `/tmp/lean-workbench/package-sets/mathlib-<version>/`.
 5. Repeat for transitive dependencies (batteries, Qq, aesop, etc.)
    that are large enough to be worth sharing.
 

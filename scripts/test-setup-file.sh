@@ -6,7 +6,7 @@
 # Prerequisites:
 #   1. mk-mathlib-package.sh has been run (populates package-sets/ and templates/)
 #   2. mk-mathlib-workspace.sh has been run (creates a workspace)
-#   3. docker image "podserver" has been built (make build)
+#   3. docker image "lean-workbench" has been built (make build)
 #
 set -euo pipefail
 
@@ -17,8 +17,8 @@ Usage: test-setup-file.sh [OPTIONS]
 Test lake setup-file inside a bwrap sandbox with shared mathlib packages.
 
 Options:
-  --root DIR          Root directory for podserver state
-                      (default: $PODSERVER_ROOT or /tmp/podserver)
+  --root DIR          Root directory for lean-workbench state
+                      (default: $LEAN_WORKBENCH_ROOT or /tmp/lean-workbench)
   --workspace PATH    Path to the workspace directory (relative to ROOT)
                       (default: workspaces/testuser/00000000-...)
   --shell             Drop into a bash shell inside the bwrap sandbox
@@ -31,7 +31,7 @@ EOF
   exit 0
 }
 
-ROOT="${PODSERVER_ROOT:-/tmp/podserver}"
+ROOT="${LEAN_WORKBENCH_ROOT:-/tmp/lean-workbench}"
 WORKSPACE_REL=""
 SHELL_MODE=false
 
@@ -186,5 +186,5 @@ docker run --rm $DOCKER_IT \
   --security-opt systempaths=unconfined \
   -v "$ROOT:/data" \
   --entrypoint bash \
-  podserver:latest \
+  ghcr.io/leanprover/lean-workbench:latest \
   -c "$INNER_SCRIPT" -- "$WORKSPACE_REL" "$PACKAGE_SET" "$SHELL_MODE"

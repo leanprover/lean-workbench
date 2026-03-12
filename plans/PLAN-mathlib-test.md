@@ -24,7 +24,7 @@ Replaces `mk-mathlib-installation.sh`. Key differences from the old
 script:
 
 - `--help` flag with usage docs.
-- Args: `--root DIR` (default `$PODSERVER_ROOT` or `/tmp/podserver`),
+- Args: `--root DIR` (default `$LEAN_WORKBENCH_ROOT` or `/tmp/lean-workbench`),
   `--lean-version VERSION` (default: auto-detect from elan stable).
 - Output goes to `$ROOT/package-sets/mathlib-<version>/` containing
   one subdirectory per package (mathlib, batteries, Qq, aesop, etc.)
@@ -46,7 +46,7 @@ it's superseded by `mk-mathlib-package.sh`.
 Creates a test workspace using the mathlib template.
 
 - `--help` flag.
-- Args: `--root DIR` (default `/tmp/podserver`),
+- Args: `--root DIR` (default `/tmp/lean-workbench`),
   `--user NAME` (default `testuser`),
   `--version VER` (default: auto-detect from available templates).
 - Copies template files from `$ROOT/templates/mathlib-<version>/`
@@ -66,7 +66,7 @@ docker.
 
 - `--help` flag.
 - Args: `--root DIR`, `--workspace PATH` (or auto-detect most recent).
-- Runs: `docker run --rm` with the podserver image, mounting
+- Runs: `docker run --rm` with the lean-workbench image, mounting
   `$ROOT` as `/data`.
 - Inside docker, runs a bash script that:
   1. Reads the template to determine which package set to use.

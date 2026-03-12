@@ -1,5 +1,5 @@
 {
-  "name": "podserver-client",
+  "name": "lean-workbench-client",
   "private": true,
   "type": "module",
   "scripts": {

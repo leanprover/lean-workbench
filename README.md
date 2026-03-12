@@ -95,7 +95,7 @@ with Lean toolchains and Mathlib.
 ### Data Volume
 
 All persistent state lives under the data directory (mounted at `/data`
-inside the container, defaults to `/tmp/podserver` in the Makefile):
+inside the container, defaults to `/tmp/lean-workbench` in the Makefile):
 
 - `db/` — SQLite database
 - `elan/` — Elan toolchain manager

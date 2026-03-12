@@ -5,7 +5,7 @@ Status: Obsolete, might be of historical interest.
 ## Goal
 
 Provide a host-side script that an admin runs (outside Docker) to create
-a complete mathlib installation under `/tmp/podserver/installations/mathlib/`.
+a complete mathlib installation under `/tmp/lean-workbench/installations/mathlib/`.
 Then update the spawner so that new mathlib projects use this installation
 for instant startup — no network fetches, no hour-long builds.
 
@@ -33,19 +33,19 @@ network access or compilation:
 
 ## Part 1: Host-side script (`scripts/mk-mathlib-installation.sh`)
 
-The script uses elan/lake already seeded at `/tmp/podserver/elan/`:
+The script uses elan/lake already seeded at `/tmp/lean-workbench/elan/`:
 
 1. Create a temporary working directory.
 2. Copy the mathlib template files (`templates/mathlib/`) into it:
    `lean-toolchain`, `lakefile.toml`, `Main.lean`.
-3. Run `lake update` with `ELAN_HOME=/tmp/podserver/elan` and
-   `PATH=/tmp/podserver/elan/bin:$PATH`. This:
+3. Run `lake update` with `ELAN_HOME=/tmp/lean-workbench/elan` and
+   `PATH=/tmp/lean-workbench/elan/bin:$PATH`. This:
    - Resolves dependencies and writes `lake-manifest.json`
    - Clones dependency sources into `.lake/packages/`
    - Triggers mathlib's post-update hook, which runs
      `lake exe cache get`, downloading pre-compiled `.olean` files
      into `.lake/packages/<dep>/.lake/build/`
-4. Move the results into `/tmp/podserver/installations/mathlib/`:
+4. Move the results into `/tmp/lean-workbench/installations/mathlib/`:
    - `lake-manifest.json`
    - `.lake/packages/` (the entire tree — sources + oleans)
 5. Clean up the temp directory.
@@ -75,7 +75,7 @@ the host (Part 1).
 
 ```
 Admin runs mk-mathlib-installation.sh (once, on host)
-  └─> /tmp/podserver/installations/mathlib/
+  └─> /tmp/lean-workbench/installations/mathlib/
         lake-manifest.json
         .lake/packages/
           mathlib/           (source + .lake/build/)

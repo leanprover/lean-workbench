@@ -15,8 +15,8 @@ Usage: mk-mathlib-workspace.sh [OPTIONS]
 Create a test workspace from the mathlib template.
 
 Options:
-  --root DIR       Root directory for podserver state
-                   (default: $PODSERVER_ROOT or /tmp/podserver)
+  --root DIR       Root directory for lean-workbench state
+                   (default: $LEAN_WORKBENCH_ROOT or /tmp/lean-workbench)
   --user NAME      Username for the workspace (default: testuser)
   --id ID          Workspace ID (default: 00000000-0000-0000-0000-000000000000)
   --version VER    Lean version suffix, e.g. v4.28.0
@@ -29,7 +29,7 @@ EOF
   exit 0
 }
 
-ROOT="${PODSERVER_ROOT:-/tmp/podserver}"
+ROOT="${LEAN_WORKBENCH_ROOT:-/tmp/lean-workbench}"
 USER_NAME="testuser"
 WORKSPACE_ID="00000000-0000-0000-0000-000000000000"
 VERSION=""

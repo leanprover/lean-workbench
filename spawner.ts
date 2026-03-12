@@ -37,7 +37,7 @@ const BASE_PORT = 3010;
 // --- Setup state ---
 
 // DB is always created at startup (schema + first_run row)
-fs.mkdirSync(path.dirname(process.env.DB_PATH ?? "/data/db/podserver.db"), { recursive: true });
+fs.mkdirSync(path.dirname(process.env.DB_PATH ?? "/data/db/lean-workbench.db"), { recursive: true });
 initDb();
 
 let setupComplete = isFirstRunComplete();

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Create a shared mathlib package set for podserver.
+# Create a shared mathlib package set for lean-workbench.
 #
 # This prepares pre-built mathlib and its transitive dependencies so they
 # can be mounted into user sandboxes via --tmp-overlay.
@@ -29,11 +29,11 @@ usage() {
   cat <<'EOF'
 Usage: mk-mathlib-package.sh [OPTIONS]
 
-Create a shared mathlib package set for podserver.
+Create a shared mathlib package set for lean-workbench.
 
 Options:
-  --root DIR          Root directory for podserver state
-                      (default: $PODSERVER_ROOT or /tmp/podserver)
+  --root DIR          Root directory for lean-workbench state
+                      (default: $LEAN_WORKBENCH_ROOT or /tmp/lean-workbench)
   --lean-version VER  Lean version to use, e.g. v4.28.0
                       (default: auto-detect from elan stable)
   --help              Show this help message
@@ -45,7 +45,7 @@ EOF
   exit 0
 }
 
-ROOT="${PODSERVER_ROOT:-/tmp/podserver}"
+ROOT="${LEAN_WORKBENCH_ROOT:-/tmp/lean-workbench}"
 LEAN_VERSION=""
 
 while [[ $# -gt 0 ]]; do

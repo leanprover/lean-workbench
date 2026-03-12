@@ -133,7 +133,7 @@ run, starts spawner in background, runs nginx in foreground.
 **`Makefile`** - Three targets:
 - `build`: docker build
 - `serve`: docker run with SYS_ADMIN + seccomp/apparmor/systempaths
-  unconfined, single volume (`/tmp/podserver:/data`), env file.
+  unconfined, single volume (`/tmp/lean-workbench:/data`), env file.
   `NODE_ENV=production` (baked into image).
 - `dev`: same as serve but overrides `NODE_ENV=development` (enables
   dev-login)
@@ -164,7 +164,7 @@ and systempaths unconfined.
 
 ## Data Storage
 
-**SQLite** (`/data/db/podserver.db`) - users, auth, projects. WAL mode.
+**SQLite** (`/data/db/lean-workbench.db`) - users, auth, projects. WAL mode.
 
 **Workspace files** (`/data/workspaces/{username}/{projectId}/`) -
 persistent across container restarts via Docker volume. Contains the

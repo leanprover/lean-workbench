@@ -63,7 +63,7 @@ Steps:
    `{ "name": "Hello World", "description": "Minimal Lean project" }`.
 4. Create `$ROOT/workspaces/`, `$ROOT/db/` directories.
 
-Args: `--root DIR` (default `$PODSERVER_ROOT` or `/tmp/podserver`),
+Args: `--root DIR` (default `$LEAN_WORKBENCH_ROOT` or `/tmp/lean-workbench`),
 `--help`.
 
 This replaces the need for admins to run multiple scripts in sequence.

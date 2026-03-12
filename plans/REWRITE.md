@@ -23,7 +23,7 @@ is a host directory bind-mounted in.
   tarball. Entrypoint runs openvscode-server directly on port 3000 with
   `--without-connection-token`.
 - `Makefile` — `build` and `serve` targets. `serve` bind-mounts
-  `/tmp/podserver-workspace` to the server's default folder.
+  `/tmp/lean-workbench-workspace` to the server's default folder.
 
 **What to test**: Browse to `localhost:3000`. VS Code should load and
 you can edit files in the mounted workspace. Record baseline startup
@@ -49,7 +49,7 @@ of varying sizes.
   on empty files).
 
 **How to test**:
-1. `scripts/gen-workspace.sh /tmp/podserver-workspace`
+1. `scripts/gen-workspace.sh /tmp/lean-workbench-workspace`
 2. `make serve`
 3. Browse to `localhost:3000`, record time to interactive.
 4. Stop the container.
@@ -143,7 +143,7 @@ perhaps these are expected.
 
 **Goal**: Install elan/Lean and the lean4 VS Code extension in the
 Docker image. Mount the toolchain into the bwrap sandbox. Switch from
-ad-hoc workspace volume to the unified `/tmp/podserver` host directory
+ad-hoc workspace volume to the unified `/tmp/lean-workbench` host directory
 described in `LEAN-TOOLS.md`.
 
 **Files to modify**:
@@ -161,7 +161,7 @@ described in `LEAN-TOOLS.md`.
 - `start.sh` — seed `/data/elan/` from the image-baked copy on first
   run (so a fresh volume gets a working elan + default toolchain).
 - `Makefile` — replace the old workspace volume with a single volume:
-  `-v /tmp/podserver:/data`. Create `/tmp/podserver/workspaces/` on
+  `-v /tmp/lean-workbench:/data`. Create `/tmp/lean-workbench/workspaces/` on
   the host if needed.
 
 **What to test**: Open a session, verify Lean extension loads, create a
@@ -217,7 +217,7 @@ nginx routes correctly.
   templates (can copy from old-version, stripping GitHub-specific UI).
 - `public/style.css` — copy from old-version.
 - `Makefile` — add `dev` target. (The `/data` volume already exists
-    from Step 5; SQLite goes to `/data/db/podserver.db`.)
+    from Step 5; SQLite goes to `/data/db/lean-workbench.db`.)
 
 **What to test**: `localhost:3000` shows landing page, `/dev-login`
 logs in as "dev" user, profile page shows empty project list (no React

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Seed the podserver data volume with everything needed to run.
+# Seed the lean-workbench data volume with everything needed to run.
 #
 # This is the one-stop setup script. Run it before `make build` / `make serve`.
 # It is idempotent — safe to re-run.
@@ -22,17 +22,17 @@ usage() {
   cat <<'EOF'
 Usage: seed-volume.sh [OPTIONS]
 
-Seed the podserver data volume with elan, mathlib packages, and templates.
+Seed the lean-workbench data volume with elan, mathlib packages, and templates.
 
 Options:
-  --root DIR          Root directory for podserver state
-                      (default: $PODSERVER_ROOT or /tmp/podserver)
+  --root DIR          Root directory for lean-workbench state
+                      (default: $LEAN_WORKBENCH_ROOT or /tmp/lean-workbench)
   --help              Show this help message
 EOF
   exit 0
 }
 
-ROOT="${PODSERVER_ROOT:-/tmp/podserver}"
+ROOT="${LEAN_WORKBENCH_ROOT:-/tmp/lean-workbench}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
