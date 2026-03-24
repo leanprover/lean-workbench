@@ -22,6 +22,7 @@ import {
   type UserRow, type ProjectRow,
 } from "./db.ts";
 
+const SPAWNER_PORT = 3002;
 const OPENVSCODE_SERVER_ROOT = "/home/.openvscode-server";
 const EXTENSIONS_DIR = "/home/extensions";
 const DATA_DIR = "/data";
@@ -797,6 +798,6 @@ app.get("/:username/:projectName/", async (req: Request, res: Response) => {
   res.render("session", { username: user.username, projectName, avatarUrl });
 });
 
-app.listen(3002, "127.0.0.1", () => {
-  console.log("[spawner] Listening on 127.0.0.1:3002");
+app.listen(SPAWNER_PORT, "127.0.0.1", () => {
+  console.log(`[spawner] Spawner listening internally on 127.0.0.1:${SPAWNER_PORT}`);
 });
