@@ -17,6 +17,7 @@ import {
   getProjectsByUser, getProjectByUserAndName, createProject,
   getProjectById, updateProject, deleteProject, PROJECT_NAME_RE,
   getPackageSets, addPackageSet,
+  setProjectPublic, getPublicProjectsByUsername, getProjectByOwnerUsernameAndName,
   isFirstRunComplete, setFirstRunComplete,
   getAuthMethod, saveAuthMethod,
   type UserRow, type ProjectRow,
@@ -166,9 +167,9 @@ function isAlive(pid: number): boolean {
   }
 }
 
-function writeNginxConf(username: string, projectName: string, projectId: string, port: number): void {
+function writeNginxConf(viewerUsername: string, ownerUsername: string, projectName: string, projectId: string, port: number): void {
   const encodedName = encodeURIComponent(projectName);
-  const conf = `location /${username}/${encodedName}/_vs/ {
+  const conf = `location /_vs/${viewerUsername}/${ownerUsername}/${encodedName}/ {
     proxy_pass http://127.0.0.1:${port};
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
@@ -179,7 +180,7 @@ function writeNginxConf(username: string, projectName: string, projectId: string
     proxy_hide_header X-Frame-Options;
 }
 `;
-  fs.writeFileSync(`${NGINX_ROUTES_DIR}/${username}-${projectId}.conf`, conf);
+  fs.writeFileSync(`${NGINX_ROUTES_DIR}/${viewerUsername}-${projectId}.conf`, conf);
 }
 
 function reloadNginx(): void {
@@ -199,8 +200,8 @@ function ensureMachineSettings(workspace: string): void {
   }
 }
 
-function killSession(username: string, projectId: string): void {
-  const key = sessionKey(username, projectId);
+function killSession(viewerUsername: string, projectId: string): void {
+  const key = sessionKey(viewerUsername, projectId);
   const s = sessions.get(key);
   if (!s) return;
   try {
@@ -210,7 +211,7 @@ function killSession(username: string, projectId: string): void {
   }
   sessions.delete(key);
   try {
-    fs.unlinkSync(`${NGINX_ROUTES_DIR}/${username}-${projectId}.conf`);
+    fs.unlinkSync(`${NGINX_ROUTES_DIR}/${viewerUsername}-${projectId}.conf`);
     reloadNginx();
   } catch {
     // conf may not exist
@@ -296,21 +297,34 @@ function buildOverlayArgs(projectId: string, workspace: string, sandboxProject: 
   return args;
 }
 
-async function spawnProject(username: string, projectName: string, projectId: string): Promise<SessionInfo> {
-  const key = sessionKey(username, projectId);
+async function spawnProject(
+  viewerUsername: string,
+  ownerUsername: string,
+  projectName: string,
+  projectId: string,
+): Promise<SessionInfo> {
+  const key = sessionKey(viewerUsername, projectId);
   const existing = sessions.get(key);
   if (existing && isAlive(existing.pid)) return existing;
 
   // Clean up stale entry
   if (existing) sessions.delete(key);
 
+  const isOwner = viewerUsername === ownerUsername;
   const port = nextPort++;
-  const workspace = path.join(WORKSPACES_DIR, username, projectId);
+  const workspace = path.join(WORKSPACES_DIR, ownerUsername, projectId);
   fs.mkdirSync(workspace, { recursive: true });
-  ensureMachineSettings(workspace);
+  if (isOwner) {
+    ensureMachineSettings(workspace);
+  }
 
   const encodedName = encodeURIComponent(projectName);
   const sandboxProject = `/workspace/${projectName}`;
+
+  // Owner gets persistent bind mount; non-owner gets ephemeral CoW overlay
+  const workspaceMount = isOwner
+    ? ["--bind", workspace, sandboxProject]
+    : ["--overlay-src", workspace, "--tmp-overlay", sandboxProject];
 
   const overlayArgs = buildOverlayArgs(projectId, workspace, sandboxProject);
 
@@ -325,7 +339,7 @@ async function spawnProject(username: string, projectName: string, projectId: st
       "--ro-bind", OPENVSCODE_SERVER_ROOT, OPENVSCODE_SERVER_ROOT,
       "--ro-bind", ELAN_DIR, "/home/elan",
       "--ro-bind", EXTENSIONS_DIR, EXTENSIONS_DIR,
-      "--bind", workspace, sandboxProject,
+      ...workspaceMount,
       ...overlayArgs,
       "--proc", "/proc",
       "--dev", "/dev",
@@ -354,7 +368,7 @@ async function spawnProject(username: string, projectName: string, projectId: st
       "--host", "127.0.0.1",
       "--port", String(port),
       "--without-connection-token",
-      `--server-base-path=/${username}/${encodedName}/_vs/`,
+      `--server-base-path=/_vs/${viewerUsername}/${ownerUsername}/${encodedName}/`,
       "--default-folder", sandboxProject,
       "--extensions-dir", EXTENSIONS_DIR,
       "--server-data-dir", `${sandboxProject}/.vscode-data`,
@@ -366,7 +380,7 @@ async function spawnProject(username: string, projectName: string, projectId: st
   const info: SessionInfo = { port, pid: child.pid!, workspace, projectId };
   sessions.set(key, info);
 
-  writeNginxConf(username, projectName, projectId, port);
+  writeNginxConf(viewerUsername, ownerUsername, projectName, projectId, port);
   reloadNginx();
 
   await waitForPort(port);
@@ -737,6 +751,43 @@ app.delete("/api/projects/:projectId", (req: Request, res: Response) => {
   res.json({ ok: true });
 });
 
+app.put("/api/projects/:projectId/visibility", (req: Request, res: Response) => {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const project = getProjectById(req.params.projectId);
+  if (!project || project.user_id !== user.id) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  const { public: isPublic } = req.body;
+  if (typeof isPublic !== "boolean") {
+    res.status(400).json({ error: "\"public\" must be a boolean" });
+    return;
+  }
+
+  setProjectPublic(project.id, isPublic);
+  res.json({ ok: true });
+});
+
+app.get("/api/users/:username/projects", (req: Request, res: Response) => {
+  const viewer = requireAuth(req, res);
+  if (!viewer) return;
+
+  const { username } = req.params;
+  if (!USERNAME_RE.test(username)) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
+  if (viewer.username === username) {
+    res.json(getProjectsByUser(viewer.id));
+  } else {
+    res.json(getPublicProjectsByUsername(username));
+  }
+});
+
 // --- Page routes ---
 
 app.get("/", (req: Request, res: Response) => {
@@ -769,33 +820,67 @@ function requirePageOwner(req: Request, res: Response): UserRow | null {
 }
 
 app.get("/:username/", (req: Request, res: Response) => {
-  const user = requirePageOwner(req, res);
-  if (!user) return;
+  const { username } = req.params;
+  if (!USERNAME_RE.test(username)) {
+    res.redirect("/");
+    return;
+  }
+  if (!req.isAuthenticated || !req.isAuthenticated()) {
+    res.redirect("/");
+    return;
+  }
+  const viewer = req.user as UserRow;
+  const pageUser = getUserByUsername(username);
+  if (!pageUser) {
+    res.status(404).send("User not found");
+    return;
+  }
 
-  const avatarUrl = getAvatarUrl(user.id);
-  res.render("profile", { username: user.username, isAdmin: user.is_admin, avatarUrl });
+  const isOwner = viewer.username === username;
+  const avatarUrl = getAvatarUrl(viewer.id);
+  res.render("profile", { username, isAdmin: viewer.is_admin, avatarUrl, isOwner });
 });
 
 app.get("/:username/:projectName/", async (req: Request, res: Response) => {
-  const user = requirePageOwner(req, res);
-  if (!user) return;
+  const { username: ownerUsername, projectName } = req.params;
+  if (!USERNAME_RE.test(ownerUsername)) {
+    res.redirect("/");
+    return;
+  }
+  if (!req.isAuthenticated || !req.isAuthenticated()) {
+    res.redirect("/");
+    return;
+  }
+  const viewer = req.user as UserRow;
+  const owner = getUserByUsername(ownerUsername);
+  if (!owner) {
+    res.status(404).send("User not found");
+    return;
+  }
 
-  const { projectName } = req.params;
-  const project = getProjectByUserAndName(user.id, projectName);
+  const project = getProjectByUserAndName(owner.id, projectName);
   if (!project) {
-    res.redirect(`/${user.username}/`);
+    res.redirect(`/${ownerUsername}/`);
+    return;
+  }
+
+  const isOwner = viewer.username === ownerUsername;
+  if (!isOwner && !project.public) {
+    res.status(403).send("This project is private");
     return;
   }
 
   try {
-    await spawnProject(user.username, projectName, project.id);
+    await spawnProject(viewer.username, ownerUsername, projectName, project.id);
   } catch (err) {
     res.status(500).send("Failed to start session: " + (err as Error).message);
     return;
   }
 
-  const avatarUrl = getAvatarUrl(user.id);
-  res.render("session", { username: user.username, projectName, avatarUrl });
+  const encodedName = encodeURIComponent(projectName);
+  const iframeSrc = `/_vs/${viewer.username}/${ownerUsername}/${encodedName}/`;
+  const avatarUrl = getAvatarUrl(viewer.id);
+  res.render("session", { ownerUsername, viewerUsername: viewer.username, projectName, avatarUrl, iframeSrc, isOwner });
 });
 
 app.listen(SPAWNER_PORT, "127.0.0.1", () => {

@@ -11,24 +11,27 @@
 <nav>
   <a class="logo" href="/"><img src="/static/lean-logo.svg" alt="Lean" class="logo-img"><span class="logo-text">Lean Workbench</span></a>
   <span class="sep">/</span>
-  <a class="breadcrumb" href="/<%= username %>/"><%= username %></a>
+  <a class="breadcrumb" href="/<%= ownerUsername %>/"><%= ownerUsername %></a>
   <span class="sep">/</span>
-  <a class="breadcrumb project" href="/<%= username %>/<%= encodeURIComponent(projectName) %>/"><%= projectName %></a>
+  <a class="breadcrumb project" href="/<%= ownerUsername %>/<%= encodeURIComponent(projectName) %>/"><%= projectName %></a>
+  <% if (!isOwner) { %>
+  <span class="ephemeral-badge">ephemeral</span>
+  <% } %>
   <span class="spacer"></span>
   <div class="avatar-menu">
     <button class="avatar-btn">
     <% if (avatarUrl) { %>
-      <img src="<%= avatarUrl %>" alt="<%= username %>">
+      <img src="<%= avatarUrl %>" alt="<%= viewerUsername %>">
     <% } else { %>
-      <span class="avatar-placeholder"><%= username[0].toUpperCase() %></span>
+      <span class="avatar-placeholder"><%= viewerUsername[0].toUpperCase() %></span>
     <% } %>
     </button>
     <div class="avatar-dropdown">
-      <div class="avatar-dropdown-user"><%= username %></div>
+      <div class="avatar-dropdown-user"><%= viewerUsername %></div>
       <a href="/logout">Logout</a>
     </div>
   </div>
 </nav>
-<iframe src="/<%= username %>/<%= encodeURIComponent(projectName) %>/_vs/"></iframe>
+<iframe src="<%= iframeSrc %>"></iframe>
 </body>
 </html>

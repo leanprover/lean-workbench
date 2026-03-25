@@ -180,3 +180,13 @@ h1 + p { color: #607D8B; margin-top: 0; }
 /* === Session Page === */
 html:has(.page-session), .page-session { height: 100%; overflow: hidden; }
 .page-session iframe { width: 100%; height: calc(100% - 40px); border: none; display: block; }
+
+.ephemeral-badge {
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #ee4d2d;
+  background: #f4dad5;
+  border-radius: 0.25rem;
+}

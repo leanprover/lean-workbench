@@ -17,6 +17,7 @@ export interface ProjectRow {
   name: string;
   path: string;
   template: string;
+  public: number;
   created_at: string;
   updated_at: string;
 }
@@ -91,6 +92,13 @@ CREATE TABLE IF NOT EXISTS auth_methods (
   // Migration: add template column if it doesn't exist (for existing DBs)
   try {
     db.exec(`ALTER TABLE projects ADD COLUMN template TEXT NOT NULL DEFAULT 'blank'`);
+  } catch {
+    // column already exists
+  }
+
+  // Migration: add public column if it doesn't exist
+  try {
+    db.exec(`ALTER TABLE projects ADD COLUMN public INTEGER NOT NULL DEFAULT 0`);
   } catch {
     // column already exists
   }
@@ -236,6 +244,29 @@ export function updateProject(projectId: string, name: string): void {
 
 export function deleteProject(projectId: string): void {
   getDb().prepare(`DELETE FROM projects WHERE id = ?`).run(projectId);
+}
+
+export function setProjectPublic(projectId: string, isPublic: boolean): void {
+  getDb().prepare(
+    `UPDATE projects SET public = ?, updated_at = datetime('now') WHERE id = ?`
+  ).run(isPublic ? 1 : 0, projectId);
+}
+
+export function getPublicProjectsByUsername(username: string): ProjectRow[] {
+  return getDb().prepare(
+    `SELECT p.* FROM projects p
+     JOIN users u ON u.id = p.user_id
+     WHERE u.username = ? AND p.public = 1
+     ORDER BY p.created_at DESC`
+  ).all(username) as ProjectRow[];
+}
+
+export function getProjectByOwnerUsernameAndName(ownerUsername: string, name: string): ProjectRow | undefined {
+  return getDb().prepare(
+    `SELECT p.* FROM projects p
+     JOIN users u ON u.id = p.user_id
+     WHERE u.username = ? AND p.name = ?`
+  ).get(ownerUsername, name) as ProjectRow | undefined;
 }
 
 // --- Package set queries ---

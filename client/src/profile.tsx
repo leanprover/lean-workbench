@@ -3,10 +3,10 @@ import { ProfilePage } from "./ProfilePage.tsx";
 
 declare global {
   interface Window {
-    __DATA__: { username: string; isAdmin: boolean };
+    __DATA__: { username: string; isAdmin: boolean; isOwner: boolean };
   }
 }
 
-const { username, isAdmin } = window.__DATA__;
+const { username, isAdmin, isOwner } = window.__DATA__;
 
-createRoot(document.getElementById("root")!).render(<ProfilePage username={username} isAdmin={isAdmin} />);
+createRoot(document.getElementById("root")!).render(<ProfilePage username={username} isAdmin={isAdmin} isOwner={isOwner} />);

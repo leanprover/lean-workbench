@@ -1,15 +1,17 @@
 import { useState, useEffect, useRef } from "react";
 import {
   fetchProjects,
+  fetchUserProjects,
   fetchTemplates,
   createProject,
   updateProject,
   deleteProject,
+  setProjectVisibility,
   fetchStatus,
 } from "./api.ts";
 import type { Project, SessionStatus, TemplateInfo } from "./api.ts";
 
-export function ProfilePage({ username, isAdmin }: { username: string; isAdmin: boolean }) {
+export function ProfilePage({ username, isAdmin, isOwner }: { username: string; isAdmin: boolean; isOwner: boolean }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -17,10 +19,9 @@ export function ProfilePage({ username, isAdmin }: { username: string; isAdmin: 
   const [sessions, setSessions] = useState<Record<string, SessionStatus>>({});
 
   useEffect(() => {
-    Promise.all([
-      fetchProjects(),
-      fetchTemplates(),
-    ])
+    const projectsPromise = isOwner ? fetchProjects() : fetchUserProjects(username);
+    const templatesPromise = isOwner ? fetchTemplates() : Promise.resolve([]);
+    Promise.all([projectsPromise, templatesPromise])
       .then(([projects, templates]) => {
         setProjects(projects);
         setTemplates(templates);
@@ -30,7 +31,7 @@ export function ProfilePage({ username, isAdmin }: { username: string; isAdmin: 
     if (isAdmin) {
       fetchStatus().then(setSessions).catch(() => {});
     }
-  }, [username, isAdmin]);
+  }, [username, isAdmin, isOwner]);
 
   function handleCreated(project: Project) {
     setProjects((prev) => [...prev, project]);
@@ -46,6 +47,12 @@ export function ProfilePage({ username, isAdmin }: { username: string; isAdmin: 
     setProjects((prev) => prev.filter((p) => p.id !== id));
   }
 
+  function handleVisibilityChanged(id: string, isPublic: boolean) {
+    setProjects((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, public: isPublic ? 1 : 0 } : p)),
+    );
+  }
+
   if (loading) return <main style={{ maxWidth: 700 }}><p>Loading...</p></main>;
   if (error) return <main style={{ maxWidth: 700 }}><p>Error: {error}</p></main>;
 
@@ -55,22 +62,31 @@ export function ProfilePage({ username, isAdmin }: { username: string; isAdmin: 
       <p>{username}'s workspaces</p>
 
       {projects.length === 0 ? (
-        <p className="empty">No projects yet. Create one below.</p>
+        <p className="empty">{isOwner ? "No projects yet. Create one below." : "No public projects."}</p>
       ) : (
         <ul className="project-list">
           {projects.map((p) => (
-            <ProjectRow
-              key={p.id}
-              project={p}
-              username={username}
-              onUpdated={handleUpdated}
-              onDeleted={handleDeleted}
-            />
+            isOwner ? (
+              <ProjectRow
+                key={p.id}
+                project={p}
+                username={username}
+                onUpdated={handleUpdated}
+                onDeleted={handleDeleted}
+                onVisibilityChanged={handleVisibilityChanged}
+              />
+            ) : (
+              <li key={p.id}>
+                <div className="info">
+                  <a href={`/${username}/${encodeURIComponent(p.name)}/`}>{p.name}</a>
+                </div>
+              </li>
+            )
           ))}
         </ul>
       )}
 
-      <NewProjectInline onCreated={handleCreated} templates={templates} />
+      {isOwner && <NewProjectInline onCreated={handleCreated} templates={templates} />}
 
       {isAdmin && <ActiveSessions sessions={sessions} />}
     </main>
@@ -113,11 +129,13 @@ function ProjectRow({
   username,
   onUpdated,
   onDeleted,
+  onVisibilityChanged,
 }: {
   project: Project;
   username: string;
   onUpdated: (id: string, name: string) => void;
   onDeleted: (id: string) => void;
+  onVisibilityChanged: (id: string, isPublic: boolean) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(project.name);
@@ -164,6 +182,16 @@ function ProjectRow({
     }
   }
 
+  async function handleToggleVisibility() {
+    const newPublic = !project.public;
+    try {
+      await setProjectVisibility(project.id, newPublic);
+      onVisibilityChanged(project.id, newPublic);
+    } catch (e: any) {
+      alert(e.message);
+    }
+  }
+
   if (editing) {
     return (
       <li>
@@ -196,6 +224,7 @@ function ProjectRow({
         <a href={`/${username}/${encodeURIComponent(project.name)}/`}>{project.name}</a>
       </div>
       <div className="actions">
+        <button onClick={handleToggleVisibility}>{project.public ? "Public" : "Private"}</button>
         <button onClick={() => setEditing(true)}>Edit</button>
         <button className="delete" onClick={handleDelete}>Delete</button>
       </div>

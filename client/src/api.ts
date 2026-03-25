@@ -2,6 +2,7 @@ export interface Project {
   id: string;
   name: string;
   template: string;
+  public: number;
 }
 
 export interface TemplateInfo {
@@ -74,5 +75,23 @@ export async function deleteProject(projectId: string): Promise<void> {
   if (!res.ok) {
     const e = await res.json().catch(() => ({}));
     throw new Error(e.error || "Failed to delete project");
+  }
+}
+
+export async function fetchUserProjects(username: string): Promise<Project[]> {
+  const res = await fetch(`/api/users/${encodeURIComponent(username)}/projects`);
+  if (!res.ok) throw new Error("Failed to fetch projects");
+  return res.json();
+}
+
+export async function setProjectVisibility(projectId: string, isPublic: boolean): Promise<void> {
+  const res = await fetch(`${API_BASE}/${projectId}/visibility`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ public: isPublic }),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error || "Failed to update visibility");
   }
 }
