@@ -87,6 +87,16 @@ CREATE TABLE IF NOT EXISTS auth_methods (
   config     TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS settings (
+  key   TEXT NOT NULL PRIMARY KEY,
+  value TEXT NOT NULL
+);
+INSERT OR IGNORE INTO settings (key, value) VALUES ('registration_mode', 'open');
+
+CREATE TABLE IF NOT EXISTS allowed_users (
+  github_username TEXT NOT NULL PRIMARY KEY
+);
 `);
 
   // Migration: add template column if it doesn't exist (for existing DBs)
@@ -210,6 +220,20 @@ export function getUserCount(): number {
   return row.count;
 }
 
+export function getAllUsers(): UserRow[] {
+  const d = getDb();
+  const rows = d.prepare(`SELECT id, username, created_at, updated_at FROM users ORDER BY username`).all() as
+    { id: number; username: string; created_at: string; updated_at: string }[];
+  const adminSet = new Set(
+    (d.prepare(`SELECT user_id FROM admins`).all() as { user_id: number }[]).map(r => r.user_id)
+  );
+  return rows.map(r => ({ ...r, is_admin: adminSet.has(r.id) }));
+}
+
+export function deleteUser(userId: number): void {
+  getDb().prepare(`DELETE FROM users WHERE id = ?`).run(userId);
+}
+
 // --- Project queries ---
 
 export const PROJECT_NAME_RE = /^[\p{L}\p{N}][\p{L}\p{N}_-]{0,99}$/u;
@@ -314,4 +338,42 @@ export function saveAuthMethod(type: string, config: object): void {
     `INSERT INTO auth_methods (type, config) VALUES (?, ?)
      ON CONFLICT(type) DO UPDATE SET config = excluded.config`
   ).run(type, JSON.stringify(config));
+}
+
+// --- Settings queries ---
+
+export function getSetting(key: string): string | null {
+  const row = getDb().prepare(`SELECT value FROM settings WHERE key = ?`).get(key) as { value: string } | undefined;
+  return row?.value ?? null;
+}
+
+export function setSetting(key: string, value: string): void {
+  getDb().prepare(
+    `INSERT INTO settings (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+  ).run(key, value);
+}
+
+// --- Allowed users queries ---
+
+export function getAllowedUsers(): string[] {
+  const rows = getDb().prepare(`SELECT github_username FROM allowed_users ORDER BY github_username`).all() as { github_username: string }[];
+  return rows.map(r => r.github_username);
+}
+
+export function addAllowedUser(username: string): void {
+  getDb().prepare(
+    `INSERT OR IGNORE INTO allowed_users (github_username) VALUES (?)`
+  ).run(username.toLowerCase());
+}
+
+export function removeAllowedUser(username: string): void {
+  getDb().prepare(`DELETE FROM allowed_users WHERE github_username = ?`).run(username.toLowerCase());
+}
+
+export function isUserAllowed(username: string): boolean {
+  const mode = getSetting('registration_mode');
+  if (mode !== 'restricted') return true;
+  const row = getDb().prepare(`SELECT 1 FROM allowed_users WHERE github_username = ?`).get(username.toLowerCase());
+  return !!row;
 }

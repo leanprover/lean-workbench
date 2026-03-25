@@ -95,3 +95,76 @@ export async function setProjectVisibility(projectId: string, isPublic: boolean)
     throw new Error(e.error || "Failed to update visibility");
   }
 }
+
+// --- Admin API ---
+
+export async function fetchAdminSettings(): Promise<{ registrationMode: string }> {
+  const res = await fetch("/api/admin/settings");
+  if (!res.ok) throw new Error("Failed to fetch admin settings");
+  return res.json();
+}
+
+export async function updateAdminSettings(settings: { registrationMode: string }): Promise<void> {
+  const res = await fetch("/api/admin/settings", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(settings),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error || "Failed to update settings");
+  }
+}
+
+export async function fetchAllowedUsers(): Promise<string[]> {
+  const res = await fetch("/api/admin/allowed-users");
+  if (!res.ok) throw new Error("Failed to fetch allowed users");
+  return res.json();
+}
+
+export async function addAllowedUser(username: string): Promise<void> {
+  const res = await fetch("/api/admin/allowed-users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username }),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error || "Failed to add user");
+  }
+}
+
+export async function removeAllowedUser(username: string): Promise<void> {
+  const res = await fetch(`/api/admin/allowed-users/${encodeURIComponent(username)}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error || "Failed to remove user");
+  }
+}
+
+// --- Admin users API ---
+
+export interface AdminUser {
+  id: number;
+  username: string;
+  is_admin: boolean;
+  created_at: string;
+}
+
+export async function fetchUsers(): Promise<AdminUser[]> {
+  const res = await fetch("/api/admin/users");
+  if (!res.ok) throw new Error("Failed to fetch users");
+  return res.json();
+}
+
+export async function deleteUser(userId: number): Promise<void> {
+  const res = await fetch(`/api/admin/users/${userId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error || "Failed to delete user");
+  }
+}

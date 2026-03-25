@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title><%= username %> - Profile - Lean Workbench</title>
+<title>Admin - Lean Workbench</title>
 <link rel="icon" href="/static/favicon.ico">
 <link rel="stylesheet" href="/static/style.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap">
@@ -11,7 +11,7 @@
 <nav>
   <a class="logo" href="/"><img src="/static/lean-logo.svg" alt="Lean" class="logo-img"><span class="logo-text">Lean Workbench</span></a>
   <span class="sep">/</span>
-  <a class="breadcrumb" href="/<%= username %>/"><%= username %></a>
+  <span class="breadcrumb">Admin</span>
   <span class="spacer"></span>
   <div class="avatar-menu">
     <button class="avatar-btn">
@@ -23,13 +23,13 @@
     </button>
     <div class="avatar-dropdown">
       <div class="avatar-dropdown-user"><%= username %></div>
-      <% if (isAdmin) { %><a href="/admin">Admin</a><% } %>
+      <a href="/<%= username %>/">Profile</a>
       <a href="/logout">Logout</a>
     </div>
   </div>
 </nav>
 <div id="root"></div>
-<script>window.__DATA__ = { username: '<%- username %>', isAdmin: <%= isAdmin ? 'true' : 'false' %>, isOwner: <%= isOwner ? 'true' : 'false' %> };</script>
-<script type="module" src="/static/dist/profile.js"></script>
+<script>window.__DATA__ = { username: '<%- username %>' };</script>
+<script type="module" src="/static/dist/admin.js"></script>
 </body>
 </html>

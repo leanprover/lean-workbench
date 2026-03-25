@@ -9,14 +9,13 @@ import {
   setProjectVisibility,
   fetchStatus,
 } from "./api.ts";
-import type { Project, SessionStatus, TemplateInfo } from "./api.ts";
+import type { Project, TemplateInfo } from "./api.ts";
 
 export function ProfilePage({ username, isAdmin, isOwner }: { username: string; isAdmin: boolean; isOwner: boolean }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sessions, setSessions] = useState<Record<string, SessionStatus>>({});
 
   useEffect(() => {
     const projectsPromise = isOwner ? fetchProjects() : fetchUserProjects(username);
@@ -90,37 +89,6 @@ export function ProfilePage({ username, isAdmin, isOwner }: { username: string; 
 
       {isAdmin && <ActiveSessions sessions={sessions} />}
     </main>
-  );
-}
-
-function ActiveSessions({ sessions }: { sessions: Record<string, SessionStatus> }) {
-  const alive = Object.entries(sessions).filter(([, s]) => s.alive);
-
-  return (
-    <section style={{ marginTop: 32 }}>
-      <h2>Active sessions</h2>
-      {alive.length === 0 ? (
-        <p className="empty">No active sessions.</p>
-      ) : (
-        <ul className="project-list">
-          {alive.map(([key, s]) => {
-            const [user] = key.split("/");
-            return (
-              <li key={key}>
-                <div className="info">
-                  <a href={`/${user}/`}>{user}</a>
-                  <span style={{ color: "#90a4ae", margin: "0 0.25rem" }}>/</span>
-                  <span style={{ fontSize: "0.85rem", color: "#666" }}>{s.projectId.slice(0, 8)}</span>
-                </div>
-                <div className="actions">
-                  <span style={{ fontSize: "0.8rem", color: "#90a4ae" }}>port {s.port}</span>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </section>
   );
 }
 

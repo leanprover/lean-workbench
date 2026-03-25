@@ -14,12 +14,15 @@ import {
   initDb,
   ensureUser, getUserById, getUserByUsername, getAvatarUrl,
   upsertGithubUser, isAdmin as checkIsAdmin, setAdmin, getUserCount,
+  getAllUsers, deleteUser,
   getProjectsByUser, getProjectByUserAndName, createProject,
   getProjectById, updateProject, deleteProject, PROJECT_NAME_RE,
   getPackageSets, addPackageSet,
   setProjectPublic, getPublicProjectsByUsername, getProjectByOwnerUsernameAndName,
   isFirstRunComplete, setFirstRunComplete,
   getAuthMethod, saveAuthMethod,
+  getSetting, setSetting,
+  getAllowedUsers, addAllowedUser, removeAllowedUser, isUserAllowed,
   type UserRow, type ProjectRow,
 } from "./db.ts";
 
@@ -96,6 +99,11 @@ function registerGithubStrategy(config: GithubOAuthConfig): void {
         callbackURL: config.callbackUrl ?? "http://localhost:3000/auth/github/callback",
       },
       (accessToken: string, refreshToken: string, profile: any, done: VerifyCallback) => {
+        // Check allowlist before upserting
+        if (!isUserAllowed(profile.username)) {
+          done(null, false, { message: "not_allowed" } as any);
+          return;
+        }
         const user = upsertGithubUser({
           github_id: parseInt(profile.id, 10),
           github_username: profile.username,
@@ -412,6 +420,16 @@ function requireOwner(req: Request, res: Response): UserRow | null {
   return user;
 }
 
+function requireAdmin(req: Request, res: Response): UserRow | null {
+  const user = requireAuth(req, res);
+  if (!user) return null;
+  if (!user.is_admin) {
+    res.status(403).json({ error: "Forbidden" });
+    return null;
+  }
+  return user;
+}
+
 // --- Express app ---
 
 const app = express();
@@ -605,7 +623,7 @@ app.get(
       res.status(503).send("GitHub OAuth not configured");
       return;
     }
-    passport.authenticate("github", { failureRedirect: "/" })(req, res, next);
+    passport.authenticate("github", { failureRedirect: "/?error=not_allowed" })(req, res, next);
   },
   (req: Request, res: Response) => {
     const username = (req.user as UserRow)?.username ?? "";
@@ -616,14 +634,21 @@ app.get(
 if (process.env.NODE_ENV !== "production") {
   app.get("/dev-login", (req: Request, res: Response) => {
     const user = ensureUser("dev");
-    // First user to log in becomes admin
-    if (getUserCount() === 1 && !user.is_admin) {
+    req.login(user, (err) => {
+      if (err) { res.status(500).send("Login failed"); return; }
+      res.redirect("/dev/");
+    });
+  });
+
+  app.get("/dev-admin-login", (req: Request, res: Response) => {
+    const user = ensureUser("dev-admin");
+    if (!user.is_admin) {
       setAdmin(user.id, true);
       user.is_admin = true;
     }
     req.login(user, (err) => {
       if (err) { res.status(500).send("Login failed"); return; }
-      res.redirect("/dev/");
+      res.redirect("/dev-admin/");
     });
   });
 }
@@ -786,6 +811,115 @@ app.get("/api/users/:username/projects", (req: Request, res: Response) => {
   } else {
     res.json(getPublicProjectsByUsername(username));
   }
+});
+
+// --- Admin routes ---
+
+app.get("/admin", (req: Request, res: Response) => {
+  if (!req.isAuthenticated || !req.isAuthenticated()) {
+    res.redirect("/");
+    return;
+  }
+  const user = req.user as UserRow;
+  if (!user.is_admin) {
+    res.redirect("/");
+    return;
+  }
+  const avatarUrl = getAvatarUrl(user.id);
+  res.render("admin", { username: user.username, avatarUrl });
+});
+
+app.get("/api/admin/settings", (req: Request, res: Response) => {
+  const user = requireAdmin(req, res);
+  if (!user) return;
+  res.json({ registrationMode: getSetting("registration_mode") ?? "open" });
+});
+
+app.put("/api/admin/settings", (req: Request, res: Response) => {
+  const user = requireAdmin(req, res);
+  if (!user) return;
+  const { registrationMode } = req.body;
+  if (registrationMode !== "open" && registrationMode !== "restricted") {
+    res.status(400).json({ error: "Invalid registration mode" });
+    return;
+  }
+  setSetting("registration_mode", registrationMode);
+  res.json({ ok: true });
+});
+
+app.get("/api/admin/allowed-users", (req: Request, res: Response) => {
+  const user = requireAdmin(req, res);
+  if (!user) return;
+  res.json(getAllowedUsers());
+});
+
+app.post("/api/admin/allowed-users", (req: Request, res: Response) => {
+  const user = requireAdmin(req, res);
+  if (!user) return;
+  const { username } = req.body;
+  if (!username || typeof username !== "string") {
+    res.status(400).json({ error: "Username is required" });
+    return;
+  }
+  addAllowedUser(username.trim());
+  res.json({ ok: true });
+});
+
+app.delete("/api/admin/allowed-users/:username", (req: Request, res: Response) => {
+  const user = requireAdmin(req, res);
+  if (!user) return;
+  removeAllowedUser(req.params.username);
+  res.json({ ok: true });
+});
+
+app.get("/api/admin/users", (req: Request, res: Response) => {
+  const user = requireAdmin(req, res);
+  if (!user) return;
+  const users = getAllUsers().map(u => ({
+    id: u.id,
+    username: u.username,
+    is_admin: u.is_admin,
+    created_at: u.created_at,
+  }));
+  res.json(users);
+});
+
+app.delete("/api/admin/users/:id", (req: Request, res: Response) => {
+  const admin = requireAdmin(req, res);
+  if (!admin) return;
+
+  const targetId = Number(req.params.id);
+  if (isNaN(targetId)) {
+    res.status(400).json({ error: "Invalid user ID" });
+    return;
+  }
+  if (targetId === admin.id) {
+    res.status(400).json({ error: "Cannot delete yourself" });
+    return;
+  }
+
+  const target = getUserById(targetId);
+  if (!target) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  // Kill all active sessions for this user
+  for (const [key, s] of sessions) {
+    const [sessionUser] = key.split("/");
+    if (sessionUser === target.username) {
+      killSession(target.username, s.projectId);
+    }
+  }
+
+  // Remove workspace directory
+  const userWorkspaceDir = path.join(WORKSPACES_DIR, target.username);
+  fs.rmSync(userWorkspaceDir, { recursive: true, force: true });
+
+  // Delete from database (cascades to projects, admins, auth_github, etc.)
+  deleteUser(targetId);
+
+  res.json({ ok: true });
 });
 
 // --- Page routes ---

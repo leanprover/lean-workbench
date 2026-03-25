@@ -34,6 +34,12 @@
 <h1>Lean Workbench</h1>
 <p>Multi-user sandboxed VS Code server.</p>
 
+<script>
+if (new URLSearchParams(window.location.search).get('error') === 'not_allowed') {
+  document.write('<div style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:12px 16px;border-radius:8px;margin-bottom:16px;">Your GitHub account is not on the allowlist. Contact an administrator.</div>');
+}
+</script>
+
 <% if (user) { %>
   <div class="welcome">
     <h2>Welcome, <%= user.username %></h2>
@@ -46,6 +52,7 @@
 <% } %>
 <% if (devMode) { %>
   <a class="login-link" href="/dev-login">Dev Login</a>
+  <a class="login-link" href="/dev-admin-login">Dev Admin Login</a>
 <% } %>
 <% } %>
 </main>

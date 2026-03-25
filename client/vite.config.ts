@@ -8,9 +8,12 @@ export default defineConfig({
     outDir: "../public/dist",
     emptyOutDir: true,
     rollupOptions: {
-      input: "src/profile.tsx",
+      input: {
+        profile: "src/profile.tsx",
+        admin: "src/admin.tsx",
+      },
       output: {
-        entryFileNames: "profile.js",
+        entryFileNames: "[name].js",
       },
     },
   },
