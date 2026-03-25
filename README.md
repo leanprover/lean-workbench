@@ -356,10 +356,3 @@ boundary.** Each user session runs in a `bwrap` sandbox with:
 The Docker container runs with `--cap-add SYS_ADMIN` and relaxed
 seccomp/apparmor settings because bwrap needs these capabilities to
 create user namespaces and overlay mounts.
-
----
-
-## Archive
-
-Earlier experiments (direct gitpod base image, manual VS Code build)
-live in `archive/`.
