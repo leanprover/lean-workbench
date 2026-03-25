@@ -1,26 +1,17 @@
 # Lean Workbench
 
+⚠️ Warning: in progress and experimental. There are not yet guarantees
+of stable interfaces.
+
 This project aims to provide an online experience that facilitates
 familiar (i.e. vscode with the lean4 extension) and novel interfaces
 to the Lean proof assistant.
 
-A core part of this is a multi-user sandboxed VS Code server. Each
-user gets an isolated [OpenVSCode
+A core part of the system is a multi-user sandboxed VS Code server.
+Each user gets an isolated [OpenVSCode
 Server](https://github.com/gitpod-io/openvscode-server) instance
 inside a [bubblewrap](https://github.com/containers/bubblewrap)
 sandbox, reverse-proxied through nginx.
-
-The code here is still very much in progress and experimental!
-
-## Table of contents
-
-- [For administrators: production setup](#for-administrators-production-setup)
-- [For developers: local setup](#for-developers-local-setup)
-- [Architecture](#architecture)
-- [Data volume layout](#data-volume-layout)
-- [Security model](#security-model)
-
----
 
 ## For administrators: production setup
 
@@ -334,10 +325,12 @@ All persistent state lives under a single host directory (mounted as
 
 ---
 
-## Security model
+## Security Considerations
 
-**Docker is used for packaging. Bubblewrap is the security
-boundary.** Each user session runs in a `bwrap` sandbox with:
+Docker is used for convenience of deployment, not principally as a
+security boundary. Bubblewrap is the mechanism by which we isolate
+users from one another. Each user session runs in a `bwrap` sandbox
+with:
 
 - **User namespace isolation** (`--unshare-user`, `--unshare-pid`,
   `--unshare-uts`, `--unshare-cgroup`). UID/GID are remapped to
