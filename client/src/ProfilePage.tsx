@@ -7,7 +7,6 @@ import {
   updateProject,
   deleteProject,
   setProjectVisibility,
-  fetchStatus,
 } from "./api.ts";
 import type { Project, TemplateInfo } from "./api.ts";
 
@@ -27,9 +26,6 @@ export function ProfilePage({ username, isAdmin, isOwner }: { username: string; 
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-    if (isAdmin) {
-      fetchStatus().then(setSessions).catch(() => {});
-    }
   }, [username, isAdmin, isOwner]);
 
   function handleCreated(project: Project) {
@@ -87,7 +83,6 @@ export function ProfilePage({ username, isAdmin, isOwner }: { username: string; 
 
       {isOwner && <NewProjectInline onCreated={handleCreated} templates={templates} />}
 
-      {isAdmin && <ActiveSessions sessions={sessions} />}
     </main>
   );
 }
