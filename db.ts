@@ -1,4 +1,6 @@
 import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 import Database from "better-sqlite3";
 
 export const DB_PATH = process.env.DB_PATH ?? "/data/db/lean-workbench.db";
@@ -34,88 +36,53 @@ export function closeDb(): void {
   if (db) { db.close(); db = null; }
 }
 
-export function initDb(dbPath?: string): void {
+export const MIGRATIONS_DIR = process.env.MIGRATIONS_DIR ??
+  path.join(path.dirname(new URL(import.meta.url).pathname), "migrations");
+
+export function initDb(dbPath?: string, migrationsDir?: string): void {
   if (db) return;
   db = new Database(dbPath ?? DB_PATH);
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
+  runMigrations(db, migrationsDir ?? MIGRATIONS_DIR);
+}
 
-  db.exec(`
-CREATE TABLE IF NOT EXISTS users (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  username    TEXT NOT NULL UNIQUE,
-  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
-);
+function runMigrations(db: InstanceType<typeof Database>, migrationsDir: string): void {
+  db.exec(`CREATE TABLE IF NOT EXISTS schema_version (
+    version INTEGER NOT NULL
+  )`);
 
-CREATE TABLE IF NOT EXISTS admins (
-  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  PRIMARY KEY (user_id)
-);
+  const row = db.prepare(`SELECT version FROM schema_version`).get() as { version: number } | undefined;
+  const currentVersion = row?.version ?? 0;
 
-CREATE TABLE IF NOT EXISTS auth_github (
-  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  github_id   INTEGER NOT NULL UNIQUE,
-  github_username TEXT NOT NULL,
-  display_name TEXT,
-  email       TEXT,
-  avatar_url  TEXT,
-  PRIMARY KEY (user_id)
-);
+  const MIGRATION_RE = /^(\d+)-.*\.sql$/;
+  const allFiles = fs.readdirSync(migrationsDir);
+  for (const f of allFiles) {
+    if (!MIGRATION_RE.test(f)) {
+      console.error(`[db] migrations: unexpected file "${f}" does not match NNN-name.sql pattern`);
+    }
+  }
+  const migrations = allFiles
+    .map(f => { const m = MIGRATION_RE.exec(f); return m ? { num: parseInt(m[1], 10), file: f } : null; })
+    .filter(x => x !== null)
+    .sort((a, b) => a.num - b.num);
 
-CREATE TABLE IF NOT EXISTS projects (
-  id          TEXT PRIMARY KEY,
-  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  name        TEXT NOT NULL,
-  path        TEXT NOT NULL,
-  template    TEXT NOT NULL DEFAULT 'blank',
-  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(user_id, name)
-);
-
-CREATE TABLE IF NOT EXISTS project_package_sets (
-  project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  package_set TEXT NOT NULL,
-  PRIMARY KEY (project_id, package_set)
-);
-
-CREATE TABLE IF NOT EXISTS first_run (
-  id       INTEGER PRIMARY KEY CHECK (id = 1),
-  complete INTEGER NOT NULL DEFAULT 0
-);
-INSERT OR IGNORE INTO first_run (id, complete) VALUES (1, 0);
-
-CREATE TABLE IF NOT EXISTS auth_methods (
-  id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  type       TEXT NOT NULL UNIQUE,
-  config     TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS settings (
-  key   TEXT NOT NULL PRIMARY KEY,
-  value TEXT NOT NULL
-);
-INSERT OR IGNORE INTO settings (key, value) VALUES ('registration_mode', 'open');
-
-CREATE TABLE IF NOT EXISTS allowed_users (
-  github_username TEXT NOT NULL PRIMARY KEY
-);
-`);
-
-  // Migration: add template column if it doesn't exist (for existing DBs)
-  try {
-    db.exec(`ALTER TABLE projects ADD COLUMN template TEXT NOT NULL DEFAULT 'blank'`);
-  } catch {
-    // column already exists
+  for (const { num, file } of migrations) {
+    if (num <= currentVersion) continue;
+    const sql = fs.readFileSync(path.join(migrationsDir, file), "utf-8");
+    db.transaction(() => {
+      db.exec(sql);
+      if (currentVersion === 0 && num === 1) {
+        db.prepare(`INSERT INTO schema_version (version) VALUES (?)`).run(num);
+      } else {
+        db.prepare(`UPDATE schema_version SET version = ?`).run(num);
+      }
+    })();
   }
 
-  // Migration: add public column if it doesn't exist
-  try {
-    db.exec(`ALTER TABLE projects ADD COLUMN public INTEGER NOT NULL DEFAULT 0`);
-  } catch {
-    // column already exists
+  // Ensure version row exists for fresh DBs with no migrations
+  if (!db.prepare(`SELECT version FROM schema_version`).get()) {
+    db.prepare(`INSERT INTO schema_version (version) VALUES (0)`).run();
   }
 }
 

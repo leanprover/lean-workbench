@@ -1,3 +1,4 @@
+import path from "node:path";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   initDb, closeDb,
@@ -14,8 +15,10 @@ import {
   getAuthMethod, saveAuthMethod,
 } from "./db.ts";
 
+const migrationsDir = path.join(import.meta.dirname, "migrations");
+
 beforeEach(() => {
-  initDb(":memory:");
+  initDb(":memory:", migrationsDir);
 });
 
 afterEach(() => {
