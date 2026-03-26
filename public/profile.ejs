@@ -13,20 +13,7 @@
   <span class="sep">/</span>
   <a class="breadcrumb" href="/<%= username %>/"><%= username %></a>
   <span class="spacer"></span>
-  <div class="avatar-menu">
-    <button class="avatar-btn">
-    <% if (avatarUrl) { %>
-      <img src="<%= avatarUrl %>" alt="<%= username %>">
-    <% } else { %>
-      <span class="avatar-placeholder"><%= username[0].toUpperCase() %></span>
-    <% } %>
-    </button>
-    <div class="avatar-dropdown">
-      <div class="avatar-dropdown-user"><%= username %></div>
-      <% if (isAdmin) { %><a href="/admin">Admin</a><% } %>
-      <a href="/logout">Logout</a>
-    </div>
-  </div>
+  <%- include('_avatar-menu', { username, avatarUrl, isAdmin, links: [...(isAdmin ? [{ href: '/admin', label: 'Admin' }] : []), { href: '/logout', label: 'Logout' }] }) %>
 </nav>
 <div id="root"></div>
 <script>window.__DATA__ = { username: '<%- username %>', isAdmin: <%= isAdmin ? 'true' : 'false' %>, isOwner: <%= isOwner ? 'true' : 'false' %> };</script>

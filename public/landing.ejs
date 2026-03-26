@@ -12,20 +12,7 @@
   <a class="logo" href="/"><img src="/static/lean-logo.svg" alt="Lean" class="logo-img"><span class="logo-text">Lean Workbench</span></a>
   <span class="spacer"></span>
 <% if (user) { %>
-  <div class="avatar-menu">
-    <button class="avatar-btn">
-    <% if (user.avatarUrl) { %>
-      <img src="<%= user.avatarUrl %>" alt="<%= user.username %>">
-    <% } else { %>
-      <span class="avatar-placeholder"><%= user.username[0].toUpperCase() %></span>
-    <% } %>
-    </button>
-    <div class="avatar-dropdown">
-      <div class="avatar-dropdown-user"><%= user.username %></div>
-      <a href="/<%= user.username %>/">Profile</a>
-      <a href="/logout">Logout</a>
-    </div>
-  </div>
+  <%- include('_avatar-menu', { username: user.username, avatarUrl: user.avatarUrl, isAdmin: user.isAdmin, links: [{ href: '/' + user.username + '/', label: 'Profile' }, { href: '/logout', label: 'Logout' }] }) %>
 <% } else if (githubEnabled) { %>
   <a class="nav-link" href="/auth/github">Login</a>
 <% } %>

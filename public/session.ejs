@@ -18,19 +18,7 @@
   <span class="ephemeral-badge">ephemeral</span>
   <% } %>
   <span class="spacer"></span>
-  <div class="avatar-menu">
-    <button class="avatar-btn">
-    <% if (avatarUrl) { %>
-      <img src="<%= avatarUrl %>" alt="<%= viewerUsername %>">
-    <% } else { %>
-      <span class="avatar-placeholder"><%= viewerUsername[0].toUpperCase() %></span>
-    <% } %>
-    </button>
-    <div class="avatar-dropdown">
-      <div class="avatar-dropdown-user"><%= viewerUsername %></div>
-      <a href="/logout">Logout</a>
-    </div>
-  </div>
+  <%- include('_avatar-menu', { username: viewerUsername, avatarUrl, isAdmin, links: [{ href: '/logout', label: 'Logout' }] }) %>
 </nav>
 <iframe src="<%= iframeSrc %>"></iframe>
 </body>

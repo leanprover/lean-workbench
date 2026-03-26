@@ -826,7 +826,7 @@ app.get("/admin", (req: Request, res: Response) => {
     return;
   }
   const avatarUrl = getAvatarUrl(user.id);
-  res.render("admin", { username: user.username, avatarUrl });
+  res.render("admin", { username: user.username, avatarUrl, isAdmin: true });
 });
 
 app.get("/api/admin/settings", (req: Request, res: Response) => {
@@ -928,7 +928,7 @@ app.get("/", (req: Request, res: Response) => {
   let user: { username: string; avatarUrl: string | null } | null = null;
   if (req.isAuthenticated()) {
     const u = req.user as UserRow;
-    user = { username: u.username, avatarUrl: getAvatarUrl(u.id) };
+    user = { username: u.username, avatarUrl: getAvatarUrl(u.id), isAdmin: u.is_admin };
   }
   const devMode = process.env.NODE_ENV !== "production";
   const githubEnabled = !!githubConfig;
@@ -1014,7 +1014,7 @@ app.get("/:username/:projectName/", async (req: Request, res: Response) => {
   const encodedName = encodeURIComponent(projectName);
   const iframeSrc = `/_vs/${viewer.username}/${ownerUsername}/${encodedName}/`;
   const avatarUrl = getAvatarUrl(viewer.id);
-  res.render("session", { ownerUsername, viewerUsername: viewer.username, projectName, avatarUrl, iframeSrc, isOwner });
+  res.render("session", { ownerUsername, viewerUsername: viewer.username, projectName, avatarUrl, iframeSrc, isOwner, isAdmin: viewer.is_admin });
 });
 
 app.listen(SPAWNER_PORT, "127.0.0.1", () => {

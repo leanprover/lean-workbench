@@ -190,3 +190,15 @@ html:has(.page-session), .page-session { height: 100%; overflow: hidden; }
   background: #f4dad5;
   border-radius: 0.25rem;
 }
+
+.admin-badge {
+  margin-left: 0.35rem;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #386EE0;
+  background: rgba(56, 110, 224, 0.1);
+  border-radius: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
