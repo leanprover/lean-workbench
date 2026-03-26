@@ -29,9 +29,14 @@ function getDb(): InstanceType<typeof Database> {
   return db;
 }
 
-export function initDb(): void {
+/** Close and reset the db handle (for testing). */
+export function closeDb(): void {
+  if (db) { db.close(); db = null; }
+}
+
+export function initDb(dbPath?: string): void {
   if (db) return;
-  db = new Database(DB_PATH);
+  db = new Database(dbPath ?? DB_PATH);
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
 
