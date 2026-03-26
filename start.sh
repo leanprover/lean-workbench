@@ -5,13 +5,6 @@
 #
 set -e
 
-# Seed elan from the image-baked copy on first run
-if [ ! -d /data/elan/bin ]; then
-  echo "[start.sh] Copying /data/elan/ from image..."
-  mkdir -p /data/elan
-  cp -a /home/elan-image/. /data/elan/
-fi
-
 # Ensure data subdirs exist
 mkdir -p /data/workspaces /data/db /data/package-sets /data/templates
 

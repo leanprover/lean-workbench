@@ -55,17 +55,10 @@ mkdir -p "$ROOT"/{workspaces,db,package-sets,templates}
 echo "[progress 2/$TOTAL Installing elan]"
 ELAN_HOME="$ROOT/elan"
 if [ ! -x "$ELAN_HOME/bin/elan" ]; then
-  # Prefer the image-baked copy if available, otherwise download
-  if [ -d "/home/elan-image/bin" ]; then
-    echo "[seed-volume] Copying elan from Docker image..."
-    mkdir -p "$ELAN_HOME"
-    cp -a /home/elan-image/. "$ELAN_HOME/"
-  else
-    echo "[seed-volume] Downloading elan..."
-    mkdir -p "$ELAN_HOME"
-    curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
-      | ELAN_HOME="$ELAN_HOME" sh -s -- -y --default-toolchain leanprover/lean4:stable --no-modify-path
-  fi
+  echo "[seed-volume] Downloading elan + Lean toolchain..."
+  mkdir -p "$ELAN_HOME"
+  curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+    | ELAN_HOME="$ELAN_HOME" sh -s -- -y --default-toolchain leanprover/lean4:stable --no-modify-path
 else
   echo "[seed-volume] elan already installed."
 fi

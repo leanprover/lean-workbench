@@ -29,18 +29,6 @@ RUN arch=$(uname -m) && \
     mv -f ${RELEASE_TAG}-linux-${arch} ${OPENVSCODE_SERVER_ROOT} && \
     rm -f ${RELEASE_TAG}-linux-${arch}.tar.gz
 
-# Install elan and a stable Lean toolchain (baked into image, seeded to volume on first run)
-ENV ELAN_HOME=/home/elan-image
-RUN curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
-    | sh -s -- -y --default-toolchain leanprover/lean4:stable --no-modify-path
-RUN ELAN_HOME=/home/elan-image /home/elan-image/bin/lean --version
-# Pin the default toolchain to its concrete version so elan doesn't need
-# network access to resolve the "stable" alias at runtime.
-RUN RESOLVED=$(ls /home/elan-image/toolchains/) && \
-    TOOLCHAIN=$(echo "$RESOLVED" | sed 's|---|:|g' | sed 's|--|/|g') && \
-    sed -i "s|^default_toolchain = .*|default_toolchain = \"$TOOLCHAIN\"|" /home/elan-image/settings.toml
-RUN chmod a+rx /home/elan-image && chmod -R a+rX /home/elan-image
-
 # Pre-install the Lean4 VS Code extension
 ARG LEAN4_EXT_URL="https://github.com/leanprover/vscode-lean4/releases/download/v0.0.221/lean4-0.0.221.vsix"
 RUN mkdir -p /home/extensions \

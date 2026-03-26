@@ -1,3 +1,5 @@
+status: done
+
 # Plan: Remove elan from the Docker image
 
 ## Context

@@ -171,8 +171,8 @@ persistent across container restarts via Docker volume. Contains the
 Lean project files and `.vscode-data/` server state. Not cleaned up on
 project delete (intentional).
 
-**Elan** (`/data/elan/`) - Lean toolchain. Seeded from image-baked
-copy on first run, persisted via Docker volume.
+**Elan** (`/data/elan/`) - Lean toolchain. Downloaded during first-run
+setup (seed-volume.sh), persisted via Docker volume.
 
 ## API Routes
 
