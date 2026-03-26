@@ -1,6 +1,6 @@
 ## useful documents
 
-in `plans/`. Check the 'status:' field if present in the first few lines to see whether it's still relevant.
+in `branch-main/plans/`. Check the 'status:' field if present in the first few lines to see whether it's still relevant.
 
 ## ignore
 
@@ -16,3 +16,5 @@ git worktree operations, though.
 When working on a significant change, i.e. one that involves a plan,
 make it in a suitably named branch, in a fresh worktree, named
 branch-$BRANCHNAME. Clean up the worktree when done.
+
+Smaller changes can go on `branch-main`.
