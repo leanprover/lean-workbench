@@ -565,6 +565,7 @@ app.get("/api/setup/stream", (req: Request, res: Response) => {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
     "Connection": "keep-alive",
+    "X-Accel-Buffering": "no",
   });
 
   let cursor = 0;

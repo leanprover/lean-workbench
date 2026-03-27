@@ -51,33 +51,39 @@ TOTAL=7
 echo "[progress 1/$TOTAL Creating directories]"
 mkdir -p "$ROOT"/{workspaces,db,package-sets,templates}
 
-# --- Step 2: Install elan ---
-echo "[progress 2/$TOTAL Installing elan]"
+# --- Step 2: Resolve mathlib version ---
+# Mathlib tags lag behind Lean releases, so let the latest mathlib tag
+# drive the Lean toolchain version rather than the other way around.
+echo "[progress 2/$TOTAL Resolving mathlib version]"
+MATHLIB_REV=$(git ls-remote --tags https://github.com/leanprover-community/mathlib4 'v4.*' \
+  | sed 's|.*refs/tags/||' \
+  | grep -v '\^{}' \
+  | sort -V | tail -1)
+LEAN_VERSION="$MATHLIB_REV"
+TOOLCHAIN="leanprover/lean4:$LEAN_VERSION"
+echo "[seed-volume] Latest mathlib tag: $MATHLIB_REV (Lean $LEAN_VERSION)"
+
+# --- Step 3: Install elan ---
+echo "[progress 3/$TOTAL Installing elan]"
 ELAN_HOME="$ROOT/elan"
 if [ ! -x "$ELAN_HOME/bin/elan" ]; then
   echo "[seed-volume] Downloading elan + Lean toolchain..."
   mkdir -p "$ELAN_HOME"
   curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
-    | ELAN_HOME="$ELAN_HOME" sh -s -- -y --default-toolchain leanprover/lean4:stable --no-modify-path
+    | ELAN_HOME="$ELAN_HOME" sh -s -- -y --default-toolchain "$TOOLCHAIN" --no-modify-path
 else
   echo "[seed-volume] elan already installed."
 fi
 
 export ELAN_HOME
 export PATH="$ELAN_HOME/bin:$PATH"
-
-# --- Step 3: Resolve Lean version ---
-echo "[progress 3/$TOTAL Resolving Lean version]"
-lean --version
-RESOLVED_DIR=$(ls "$ELAN_HOME/toolchains/" | grep -v '\.lock$' | head -1)
-LEAN_VERSION=$(echo "$RESOLVED_DIR" | sed 's/.*---//')
-TOOLCHAIN="leanprover/lean4:$LEAN_VERSION"
-sed -i "s|^default_toolchain = .*|default_toolchain = \"$TOOLCHAIN\"|" "$ELAN_HOME/settings.toml"
+if ! elan toolchain list | grep -q "$LEAN_VERSION"; then
+  elan toolchain install "$TOOLCHAIN"
+fi
 echo "[seed-volume] Using Lean $LEAN_VERSION"
 
 # --- Step 4: Fetch mathlib source ---
 echo "[progress 4/$TOTAL Fetching mathlib source]"
-MATHLIB_REV="$LEAN_VERSION"
 WORK_DIR=$(mktemp -d)
 trap 'rm -rf "$WORK_DIR"' EXIT
 
@@ -99,8 +105,7 @@ EOF
 
 cd "$WORK_DIR"
 mkdir -p .lake/packages
-git clone --progress https://github.com/leanprover-community/mathlib4 .lake/packages/mathlib
-(cd .lake/packages/mathlib && git checkout "$MATHLIB_REV")
+git clone --depth 1 --branch "$MATHLIB_REV" --progress https://github.com/leanprover-community/mathlib4 .lake/packages/mathlib
 lake update
 
 # --- Step 5: Download pre-compiled oleans ---
