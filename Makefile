@@ -1,31 +1,35 @@
+DATA_DIR ?= /tmp/lean-workbench
+
 build:
 	docker build -t ghcr.io/leanprover/lean-workbench:latest .
 
 clean-install: build
-	sudo rm -rf /tmp/lean-workbench
-	./install.sh --no-pull --dir /tmp/lean-workbench --port 3000 $(if $(wildcard .env),--env-file .env,)
+	@test -n "$(DATA_DIR)" || { echo "ERROR: DATA_DIR is empty"; exit 1; }
+	@test "$(realpath $(DATA_DIR) 2>/dev/null)" != "/" || { echo "ERROR: DATA_DIR resolves to /"; exit 1; }
+	rm -rf $(DATA_DIR)
+	./install.sh --no-pull --dir $(DATA_DIR) --port 3000 $(if $(wildcard .env),--env-file .env,)
 
 serve:
-	mkdir -p /tmp/lean-workbench
+	mkdir -p $(DATA_DIR)
 	docker run -it --init \
 		--cap-add SYS_ADMIN \
 		--security-opt seccomp=unconfined \
 		--security-opt apparmor=unconfined \
 		--security-opt systempaths=unconfined \
 		-p 3000:3000 \
-		-v /tmp/lean-workbench:/data \
+		-v $(DATA_DIR):/data \
 		$(if $(wildcard .env),--env-file .env,) \
 		ghcr.io/leanprover/lean-workbench:latest
 
 dev:
-	mkdir -p /tmp/lean-workbench
+	mkdir -p $(DATA_DIR)
 	docker run -it --init \
 		--cap-add SYS_ADMIN \
 		--security-opt seccomp=unconfined \
 		--security-opt apparmor=unconfined \
 		--security-opt systempaths=unconfined \
 		-p 3000:3000 \
-		-v /tmp/lean-workbench:/data \
+		-v $(DATA_DIR):/data \
 		-e NODE_ENV=development \
 		$(if $(wildcard .env),--env-file .env,) \
 		ghcr.io/leanprover/lean-workbench:latest
@@ -36,6 +40,6 @@ enter:
 		--security-opt seccomp=unconfined \
 		--security-opt apparmor=unconfined \
 		--security-opt systempaths=unconfined \
-		-v /tmp/lean-workbench:/data \
+		-v $(DATA_DIR):/data \
 		--entrypoint bash \
 		ghcr.io/leanprover/lean-workbench:latest
