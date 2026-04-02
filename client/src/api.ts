@@ -108,6 +108,28 @@ export async function killSession(viewer: string, projectId: string): Promise<vo
   }
 }
 
+// --- Admin health API ---
+
+export interface HealthInfo {
+  activeSessions: number;
+  dataVolumeDisk: { total: string; used: string; available: string; percent: string };
+  uptime: number;
+  memory: { total: number; available: number; swapTotal: number; swapFree: number };
+  loadAvg: [number, number, number];
+}
+
+export async function fetchHealth(): Promise<HealthInfo> {
+  const res = await fetch("/api/admin/health");
+  if (!res.ok) throw new Error("Failed to fetch health info");
+  return res.json();
+}
+
+export async function fetchDiskUsage(): Promise<{ workspaces: string }> {
+  const res = await fetch("/api/admin/disk-usage");
+  if (!res.ok) throw new Error("Failed to fetch disk usage");
+  return res.json();
+}
+
 // --- Admin API ---
 
 export async function fetchAdminSettings(): Promise<{ registrationMode: string }> {

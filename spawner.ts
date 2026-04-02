@@ -38,6 +38,7 @@ const SCRIPTS_DIR = path.join(import.meta.dirname!, "scripts");
 const NGINX_ROUTES_DIR = "/etc/nginx/user-routes";
 const USERNAME_RE = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/;
 const BASE_PORT = 3010;
+const MAX_PORT = 3999;
 
 // --- Setup state ---
 
@@ -853,6 +854,73 @@ app.put("/api/admin/settings", (req: Request, res: Response) => {
   }
   setSetting("registration_mode", registrationMode);
   res.json({ ok: true });
+});
+
+function parseMeminfo(): Record<string, number> {
+  const text = fs.readFileSync("/proc/meminfo", "utf8");
+  const result: Record<string, number> = {};
+  for (const line of text.split("\n")) {
+    const m = line.match(/^(\w+):\s+(\d+)/);
+    if (m) result[m[1]] = parseInt(m[2], 10) * 1024; // kB -> bytes
+  }
+  return result;
+}
+
+app.get("/api/admin/health", (req: Request, res: Response) => {
+  const user = requireAdmin(req, res);
+  if (!user) return;
+
+  // Disk usage
+  let dataVolumeDisk = { total: "?", used: "?", available: "?", percent: "?" };
+  try {
+    const dfOut = execSync("df -h /data", { encoding: "utf8" });
+    const lines = dfOut.trim().split("\n");
+    if (lines.length >= 2) {
+      const parts = lines[1].split(/\s+/);
+      dataVolumeDisk = {
+        total: parts[1] ?? "?",
+        used: parts[2] ?? "?",
+        available: parts[3] ?? "?",
+        percent: parts[4] ?? "?",
+      };
+    }
+  } catch { /* ignore df failures */ }
+
+  // Memory from /proc/meminfo
+  const meminfo = parseMeminfo();
+
+  // Load average from /proc/loadavg
+  let loadAvg = [0, 0, 0];
+  try {
+    const text = fs.readFileSync("/proc/loadavg", "utf8");
+    const parts = text.split(" ");
+    loadAvg = [parseFloat(parts[0]), parseFloat(parts[1]), parseFloat(parts[2])];
+  } catch { /* ignore */ }
+
+  res.json({
+    activeSessions: sessions.size,
+    dataVolumeDisk,
+    uptime: process.uptime(),
+    memory: {
+      total: meminfo.MemTotal ?? 0,
+      available: meminfo.MemAvailable ?? 0,
+      swapTotal: meminfo.SwapTotal ?? 0,
+      swapFree: meminfo.SwapFree ?? 0,
+    },
+    loadAvg,
+  });
+});
+
+app.get("/api/admin/disk-usage", (req: Request, res: Response) => {
+  const user = requireAdmin(req, res);
+  if (!user) return;
+  try {
+    const out = execSync("du -sh /data/workspaces", { encoding: "utf8", timeout: 30_000 });
+    const size = out.split("\t")[0] ?? "?";
+    res.json({ workspaces: size });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 app.get("/api/admin/allowed-users", (req: Request, res: Response) => {

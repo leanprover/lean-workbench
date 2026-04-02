@@ -12,8 +12,10 @@ import {
   fetchOAuthConfig,
   updateOAuthConfig,
   setUserAdmin,
+  fetchHealth,
+  fetchDiskUsage,
 } from "./api.ts";
-import type { SessionStatus, AdminUser, OAuthConfig } from "./api.ts";
+import type { SessionStatus, AdminUser, OAuthConfig, HealthInfo } from "./api.ts";
 
 type ConfirmAction = {
   title: string;
@@ -75,6 +77,9 @@ export function AdminPage({ username }: { username: string }) {
   const [expandedUserId, setExpandedUserId] = useState<number | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const [newUser, setNewUser] = useState("");
+  const [health, setHealth] = useState<HealthInfo | null>(null);
+  const [workspacesSize, setWorkspacesSize] = useState<string | null>(null);
+  const [duLoading, setDuLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -87,17 +92,26 @@ export function AdminPage({ username }: { username: string }) {
       fetchAllowedUsers(),
       fetchUsers(),
       fetchOAuthConfig(),
+      fetchHealth(),
     ])
-      .then(([sessions, settings, allowedUsers, users, oauth]) => {
+      .then(([sessions, settings, allowedUsers, users, oauth, health]) => {
         setSessions(sessions);
         setRegistrationMode(settings.registrationMode);
         setSavedMode(settings.registrationMode);
         setAllowedUsers(allowedUsers);
         setUsers(users);
         setOauthConfig(oauth);
+        setHealth(health);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchHealth().then(setHealth).catch(() => { });
+    }, 30_000);
+    return () => clearInterval(interval);
   }, []);
 
   async function handleSaveMode() {
@@ -216,6 +230,22 @@ export function AdminPage({ username }: { username: string }) {
 
   const alive = Object.entries(sessions).filter(([, s]) => s.alive);
   const modeChanged = registrationMode !== savedMode;
+
+  function formatUptime(seconds: number): string {
+    const d = Math.floor(seconds / 86400);
+    const h = Math.floor((seconds % 86400) / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const parts: string[] = [];
+    if (d > 0) parts.push(`${d}d`);
+    if (h > 0) parts.push(`${h}h`);
+    parts.push(`${m}m`);
+    return parts.join(" ");
+  }
+
+  function formatBytes(bytes: number): string {
+    if (bytes >= 1024 * 1024 * 1024) return (bytes / 1024 / 1024 / 1024).toFixed(1) + " GB";
+    return (bytes / 1024 / 1024).toFixed(0) + " MB";
+  }
 
   return (
     <main className="admin-page">
@@ -407,6 +437,59 @@ export function AdminPage({ username }: { username: string }) {
           </ul>
         )}
       </section>
+
+      {health && (
+        <section>
+          <h2>System health</h2>
+          <table style={{ borderCollapse: "collapse", width: "100%" }}>
+            <tbody>
+              <tr>
+                <td style={{ padding: "4px 12px 4px 0", color: "#666" }}>Host Disk usage</td>
+                <td style={{ padding: "4px 0" }}>
+                  {health.dataVolumeDisk.used} / {health.dataVolumeDisk.total} ({health.dataVolumeDisk.percent})
+                </td>
+              </tr>
+              <tr>
+                <td style={{ padding: "4px 12px 4px 0", color: "#666" }}>Host Memory</td>
+                <td style={{ padding: "4px 0" }}>
+                  {formatBytes(health.memory.total - health.memory.available)} / {formatBytes(health.memory.total)} used
+                </td>
+              </tr>
+              {health.memory.swapTotal > 0 && (
+                <tr>
+                  <td style={{ padding: "4px 12px 4px 0", color: "#666" }}>Swap</td>
+                  <td style={{ padding: "4px 0" }}>
+                    {formatBytes(health.memory.swapTotal - health.memory.swapFree)} / {formatBytes(health.memory.swapTotal)} used
+                  </td>
+                </tr>
+              )}
+              <tr>
+                <td style={{ padding: "4px 12px 4px 0", color: "#666" }}>Workspaces size</td>
+                <td style={{ padding: "4px 0" }}>
+                  {workspacesSize ?? <button disabled={duLoading} onClick={async () => {
+                    setDuLoading(true);
+                    try {
+                      const { workspaces } = await fetchDiskUsage();
+                      setWorkspacesSize(workspaces);
+                    } catch { setWorkspacesSize("error"); }
+                    setDuLoading(false);
+                  }}>{duLoading ? "Computing..." : "Compute"}</button>}
+                </td>
+              </tr>
+              <tr>
+                <td style={{ padding: "4px 12px 4px 0", color: "#666" }}>Load average</td>
+                <td style={{ padding: "4px 0" }}>
+                  {health.loadAvg.map(n => n.toFixed(2)).join(", ")}
+                </td>
+              </tr>
+              <tr>
+                <td style={{ padding: "4px 12px 4px 0", color: "#666" }}>Workbench uptime</td>
+                <td style={{ padding: "4px 0" }}>{formatUptime(health.uptime)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      )}
 
       {confirmAction && (
         <ConfirmDialog action={confirmAction} onClose={() => setConfirmAction(null)} />
