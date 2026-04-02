@@ -8,6 +8,7 @@ import {
   removeAllowedUser,
   fetchUsers,
   deleteUser,
+  killSession,
 } from "./api.ts";
 import type { SessionStatus, AdminUser } from "./api.ts";
 
@@ -81,6 +82,21 @@ export function AdminPage({ username }: { username: string }) {
     }
   }
 
+  async function handleKillSession(key: string) {
+    const [viewer, projectId] = key.split("/");
+    setError(null);
+    try {
+      await killSession(viewer, projectId);
+      setSessions((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }
+
   async function handleDeleteUser(id: number) {
     setError(null);
     try {
@@ -120,6 +136,7 @@ export function AdminPage({ username }: { username: string }) {
                   </div>
                   <div className="actions">
                     <span style={{ fontSize: "0.8rem", color: "#90a4ae" }}>port {s.port}</span>
+                    <button className="delete" onClick={() => handleKillSession(key)}>Kill</button>
                   </div>
                 </li>
               );

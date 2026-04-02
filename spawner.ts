@@ -830,6 +830,13 @@ app.get("/admin", (req: Request, res: Response) => {
   res.render("admin", { username: user.username, avatarUrl, isAdmin: true });
 });
 
+app.delete("/api/admin/sessions/:viewer/:projectId", (req: Request, res: Response) => {
+  const user = requireAdmin(req, res);
+  if (!user) return;
+  killSession(req.params.viewer, req.params.projectId);
+  res.json({ ok: true });
+});
+
 app.get("/api/admin/settings", (req: Request, res: Response) => {
   const user = requireAdmin(req, res);
   if (!user) return;

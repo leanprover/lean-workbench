@@ -96,6 +96,18 @@ export async function setProjectVisibility(projectId: string, isPublic: boolean)
   }
 }
 
+// --- Admin sessions API ---
+
+export async function killSession(viewer: string, projectId: string): Promise<void> {
+  const res = await fetch(`/api/admin/sessions/${encodeURIComponent(viewer)}/${encodeURIComponent(projectId)}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error || "Failed to kill session");
+  }
+}
+
 // --- Admin API ---
 
 export async function fetchAdminSettings(): Promise<{ registrationMode: string }> {
