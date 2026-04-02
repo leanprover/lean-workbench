@@ -51,10 +51,9 @@ function ConfirmDialog({ action, onClose }: { action: ConfirmAction; onClose: ()
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <button onClick={onClose} disabled={busy}>Cancel</button>
         <button
-          className={action.danger ? "delete" : ""}
+          className={action.danger ? "danger" : "primary"}
           onClick={handleConfirm}
           disabled={busy}
-          style={action.danger ? { background: "#dc2626", color: "#fff", borderColor: "#dc2626" } : {}}
         >
           {busy ? "..." : action.confirmLabel}
         </button>

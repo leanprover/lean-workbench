@@ -81,6 +81,52 @@ nav a.nav-link:hover { color: #386EE0; background: rgba(56, 110, 224, 0.08); }
 main { margin: 40px auto; padding: 0 20px; }
 h1 { margin-bottom: 4px; }
 h1 + p { color: #607D8B; margin-top: 0; }
+h2 { padding-bottom: 8px; border-bottom: 1px solid #D1D9E2; margin-bottom: 16px; }
+
+/* === Form elements === */
+input[type="text"], input[type="password"], input[type="url"] {
+  padding: 5px 12px;
+  font-size: 14px;
+  line-height: 20px;
+  border: 1px solid #D1D9E2;
+  border-radius: 6px;
+  background: #fff;
+  font-family: inherit;
+  color: #333;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+input[type="text"]:focus, input[type="password"]:focus, input[type="url"]:focus {
+  outline: none;
+  border-color: #386EE0;
+  box-shadow: 0 0 0 3px rgba(56, 110, 224, 0.12);
+}
+button {
+  padding: 5px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  border: 1px solid #D1D9E2;
+  border-radius: 6px;
+  background: #f6f8fa;
+  color: #333;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, border-color 0.15s;
+}
+button:hover { background: #ebeef1; border-color: #b0bec5; }
+button:disabled { opacity: 0.5; cursor: default; }
+button.primary {
+  background: #386EE0;
+  color: #fff;
+  border-color: #386EE0;
+}
+button.primary:hover { background: #1D4ED8; border-color: #1D4ED8; }
+button.danger {
+  background: #dc2626;
+  color: #fff;
+  border-color: #dc2626;
+}
+button.danger:hover { background: #b91c1c; border-color: #b91c1c; }
 
 /* === Landing Page === */
 .login-link {
@@ -103,30 +149,9 @@ h1 + p { color: #607D8B; margin-top: 0; }
 /* === Projects Page === */
 .new-project { margin: 20px 0; padding: 16px; background: #f5f7fa; border: 1px solid #E4EBF3; border-radius: 0.5rem; }
 .new-project h3 { margin: 0 0 10px; }
-.new-project input {
-  display: block;
-  width: 100%;
-  margin-bottom: 8px;
-  padding: 8px 10px;
-  font-size: 14px;
-  border: 1px solid #D1D9E2;
-  border-radius: 0.5rem;
-  font-family: inherit;
-}
-.new-project input:focus { outline: none; border-color: #386EE0; box-shadow: 0 0 0 3px rgba(56, 110, 224, 0.12); }
-.new-project button {
-  padding: 8px 20px;
-  font-size: 14px;
-  background: #386EE0;
-  color: #fff;
-  border: none;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  font-weight: 500;
-  font-family: inherit;
-  transition: background 0.2s;
-}
-.new-project button:hover { background: #1D4ED8; }
+.new-project input { display: block; width: 100%; margin-bottom: 8px; }
+.new-project button { background: #386EE0; color: #fff; border-color: #386EE0; }
+.new-project button:hover { background: #1D4ED8; border-color: #1D4ED8; }
 .project-list { list-style: none; padding: 0; }
 .project-list li { padding: 12px 0; border-bottom: 1px solid #E4EBF3; display: flex; align-items: center; }
 .project-list li:last-child { border-bottom: none; }
@@ -137,14 +162,7 @@ h1 + p { color: #607D8B; margin-top: 0; }
   margin-left: 6px;
   padding: 4px 12px;
   font-size: 12px;
-  border: 1px solid #D1D9E2;
-  border-radius: 0.25rem;
-  background: #fff;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.2s;
 }
-.project-list .actions button:hover { background: #f0f4f8; border-color: #b0bec5; }
 .project-list .actions button.delete:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
 .empty { color: #90a4ae; margin: 16px 0; }
 
