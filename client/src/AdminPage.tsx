@@ -9,8 +9,10 @@ import {
   fetchUsers,
   deleteUser,
   killSession,
+  fetchOAuthConfig,
+  updateOAuthConfig,
 } from "./api.ts";
-import type { SessionStatus, AdminUser } from "./api.ts";
+import type { SessionStatus, AdminUser, OAuthConfig } from "./api.ts";
 
 export function AdminPage({ username }: { username: string }) {
   const [sessions, setSessions] = useState<Record<string, SessionStatus>>({});
@@ -18,6 +20,10 @@ export function AdminPage({ username }: { username: string }) {
   const [savedMode, setSavedMode] = useState<string>("open");
   const [allowedUsers, setAllowedUsers] = useState<string[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [oauthConfig, setOauthConfig] = useState<OAuthConfig>({ clientId: "", callbackUrl: "" });
+  const [oauthEditing, setOauthEditing] = useState(false);
+  const [oauthForm, setOauthForm] = useState({ clientId: "", clientSecret: "", callbackUrl: "" });
+  const [oauthSaving, setOauthSaving] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [newUser, setNewUser] = useState("");
   const [saving, setSaving] = useState(false);
@@ -31,13 +37,15 @@ export function AdminPage({ username }: { username: string }) {
       fetchAdminSettings(),
       fetchAllowedUsers(),
       fetchUsers(),
+      fetchOAuthConfig(),
     ])
-      .then(([sessions, settings, allowedUsers, users]) => {
+      .then(([sessions, settings, allowedUsers, users, oauth]) => {
         setSessions(sessions);
         setRegistrationMode(settings.registrationMode);
         setSavedMode(settings.registrationMode);
         setAllowedUsers(allowedUsers);
         setUsers(users);
+        setOauthConfig(oauth);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -108,6 +116,33 @@ export function AdminPage({ username }: { username: string }) {
     }
   }
 
+  function handleOauthEdit() {
+    setOauthForm({
+      clientId: oauthConfig.clientId,
+      clientSecret: "",
+      callbackUrl: oauthConfig.callbackUrl,
+    });
+    setOauthEditing(true);
+  }
+
+  async function handleOauthSave() {
+    setOauthSaving(true);
+    setError(null);
+    try {
+      await updateOAuthConfig({
+        clientId: oauthForm.clientId,
+        clientSecret: oauthForm.clientSecret || undefined,
+        callbackUrl: oauthForm.callbackUrl,
+      });
+      setOauthConfig({ clientId: oauthForm.clientId, callbackUrl: oauthForm.callbackUrl });
+      setOauthEditing(false);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setOauthSaving(false);
+    }
+  }
+
   if (loading) return <main style={{ maxWidth: 700 }}><p>Loading...</p></main>;
 
   const alive = Object.entries(sessions).filter(([, s]) => s.alive);
@@ -142,6 +177,58 @@ export function AdminPage({ username }: { username: string }) {
               );
             })}
           </ul>
+        )}
+      </section>
+
+      <section style={{ marginBottom: 32 }}>
+        <h2>OAuth Configuration</h2>
+        {oauthEditing ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <label>
+              Client ID
+              <input
+                type="text"
+                value={oauthForm.clientId}
+                onChange={(e) => setOauthForm({ ...oauthForm, clientId: e.target.value })}
+                style={{ width: "100%", marginTop: 4 }}
+              />
+            </label>
+            <label>
+              Client Secret
+              <input
+                type="password"
+                value={oauthForm.clientSecret}
+                onChange={(e) => setOauthForm({ ...oauthForm, clientSecret: e.target.value })}
+                placeholder="Leave empty to keep current"
+                style={{ width: "100%", marginTop: 4 }}
+              />
+            </label>
+            <label>
+              Callback URL
+              <input
+                type="text"
+                value={oauthForm.callbackUrl}
+                onChange={(e) => setOauthForm({ ...oauthForm, callbackUrl: e.target.value })}
+                style={{ width: "100%", marginTop: 4 }}
+              />
+            </label>
+            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+              <button onClick={handleOauthSave} disabled={oauthSaving}>
+                {oauthSaving ? "Saving..." : "Save"}
+              </button>
+              <button onClick={() => setOauthEditing(false)}>Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <p style={{ fontSize: "0.9rem", margin: "4px 0" }}>
+              <strong>Client ID:</strong> {oauthConfig.clientId || <em>not configured</em>}
+            </p>
+            <p style={{ fontSize: "0.9rem", margin: "4px 0" }}>
+              <strong>Callback URL:</strong> {oauthConfig.callbackUrl || <em>not configured</em>}
+            </p>
+            <button onClick={handleOauthEdit} style={{ marginTop: 8 }}>Edit</button>
+          </div>
         )}
       </section>
 

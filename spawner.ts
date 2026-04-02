@@ -892,6 +892,51 @@ app.get("/api/admin/users", (req: Request, res: Response) => {
   res.json(users);
 });
 
+app.get("/api/admin/auth/github", (req: Request, res: Response) => {
+  const user = requireAdmin(req, res);
+  if (!user) return;
+  const config = getAuthMethod("github_oauth") as GithubOAuthConfig | null;
+  if (!config) {
+    res.json({ clientId: "", callbackUrl: "" });
+    return;
+  }
+  // Never return the client secret
+  res.json({ clientId: config.clientId, callbackUrl: config.callbackUrl ?? "" });
+});
+
+app.put("/api/admin/auth/github", (req: Request, res: Response) => {
+  const user = requireAdmin(req, res);
+  if (!user) return;
+  const { clientId, clientSecret, callbackUrl } = req.body;
+  if (!clientId || typeof clientId !== "string") {
+    res.status(400).json({ error: "clientId is required" });
+    return;
+  }
+  if (!callbackUrl || typeof callbackUrl !== "string") {
+    res.status(400).json({ error: "callbackUrl is required" });
+    return;
+  }
+  // If clientSecret is omitted or empty, preserve the existing one
+  let resolvedSecret = clientSecret;
+  if (!resolvedSecret) {
+    const existing = getAuthMethod("github_oauth") as GithubOAuthConfig | null;
+    if (!existing?.clientSecret) {
+      res.status(400).json({ error: "clientSecret is required (no existing secret to preserve)" });
+      return;
+    }
+    resolvedSecret = existing.clientSecret;
+  }
+  const newConfig: GithubOAuthConfig = {
+    clientId,
+    clientSecret: resolvedSecret,
+    callbackUrl,
+  };
+  saveAuthMethod("github_oauth", newConfig);
+  githubConfig = newConfig;
+  registerGithubStrategy(newConfig);
+  res.json({ ok: true });
+});
+
 app.delete("/api/admin/users/:id", (req: Request, res: Response) => {
   const admin = requireAdmin(req, res);
   if (!admin) return;

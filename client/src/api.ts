@@ -180,3 +180,32 @@ export async function deleteUser(userId: number): Promise<void> {
     throw new Error(e.error || "Failed to delete user");
   }
 }
+
+// --- Admin OAuth API ---
+
+export interface OAuthConfig {
+  clientId: string;
+  callbackUrl: string;
+}
+
+export async function fetchOAuthConfig(): Promise<OAuthConfig> {
+  const res = await fetch("/api/admin/auth/github");
+  if (!res.ok) throw new Error("Failed to fetch OAuth config");
+  return res.json();
+}
+
+export async function updateOAuthConfig(config: {
+  clientId: string;
+  clientSecret?: string;
+  callbackUrl: string;
+}): Promise<void> {
+  const res = await fetch("/api/admin/auth/github", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(config),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error || "Failed to update OAuth config");
+  }
+}
