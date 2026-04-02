@@ -212,18 +212,18 @@ export function AdminPage({ username }: { username: string }) {
     }
   }
 
-  if (loading) return <main style={{ maxWidth: 700 }}><p>Loading...</p></main>;
+  if (loading) return <main className="admin-page"><p>Loading...</p></main>;
 
   const alive = Object.entries(sessions).filter(([, s]) => s.alive);
   const modeChanged = registrationMode !== savedMode;
 
   return (
-    <main style={{ maxWidth: 700 }}>
+    <main className="admin-page">
       <h1>Admin</h1>
 
       {error && <div style={{ color: "#dc2626", marginBottom: 16 }}>{error}</div>}
 
-      <section style={{ marginBottom: 32 }}>
+      <section>
         <h2>Active sessions</h2>
         {alive.length === 0 ? (
           <p className="empty">No active sessions.</p>
@@ -249,7 +249,7 @@ export function AdminPage({ username }: { username: string }) {
         )}
       </section>
 
-      <section style={{ marginBottom: 32 }}>
+      <section>
         <h2>OAuth Configuration</h2>
         {oauthEditing ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -301,7 +301,7 @@ export function AdminPage({ username }: { username: string }) {
         )}
       </section>
 
-      <section style={{ marginBottom: 32 }}>
+      <section>
         <h2>Access control</h2>
         <div style={{ display: "flex", gap: 16, marginBottom: 12 }}>
           <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
@@ -367,7 +367,7 @@ export function AdminPage({ username }: { username: string }) {
         </div>
       </section>
 
-      <section style={{ marginBottom: 32 }}>
+      <section>
         <h2>Registered users</h2>
         {users.length === 0 ? (
           <p className="empty">No users.</p>

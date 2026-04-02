@@ -82,6 +82,8 @@ main { margin: 40px auto; padding: 0 20px; }
 h1 { margin-bottom: 4px; }
 h1 + p { color: #607D8B; margin-top: 0; }
 h2 { padding-bottom: 8px; border-bottom: 1px solid #D1D9E2; margin-bottom: 16px; }
+.admin-page { max-width: 700px; }
+.admin-page > section { margin-bottom: 32px; }
 
 /* === Form elements === */
 input[type="text"], input[type="password"], input[type="url"] {
