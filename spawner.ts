@@ -937,6 +937,36 @@ app.put("/api/admin/auth/github", (req: Request, res: Response) => {
   res.json({ ok: true });
 });
 
+app.put("/api/admin/users/:id/admin", (req: Request, res: Response) => {
+  const admin = requireAdmin(req, res);
+  if (!admin) return;
+
+  const targetId = Number(req.params.id);
+  if (isNaN(targetId)) {
+    res.status(400).json({ error: "Invalid user ID" });
+    return;
+  }
+  if (targetId === admin.id) {
+    res.status(400).json({ error: "Cannot change your own admin status" });
+    return;
+  }
+
+  const target = getUserById(targetId);
+  if (!target) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  const { admin: value } = req.body;
+  if (typeof value !== "boolean") {
+    res.status(400).json({ error: "admin must be a boolean" });
+    return;
+  }
+
+  setAdmin(targetId, value);
+  res.json({ ok: true });
+});
+
 app.delete("/api/admin/users/:id", (req: Request, res: Response) => {
   const admin = requireAdmin(req, res);
   if (!admin) return;

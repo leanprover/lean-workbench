@@ -171,6 +171,18 @@ export async function fetchUsers(): Promise<AdminUser[]> {
   return res.json();
 }
 
+export async function setUserAdmin(userId: number, admin: boolean): Promise<void> {
+  const res = await fetch(`/api/admin/users/${userId}/admin`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ admin }),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error || "Failed to update admin status");
+  }
+}
+
 export async function deleteUser(userId: number): Promise<void> {
   const res = await fetch(`/api/admin/users/${userId}`, {
     method: "DELETE",

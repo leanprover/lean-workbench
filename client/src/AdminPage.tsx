@@ -11,8 +11,57 @@ import {
   killSession,
   fetchOAuthConfig,
   updateOAuthConfig,
+  setUserAdmin,
 } from "./api.ts";
 import type { SessionStatus, AdminUser, OAuthConfig } from "./api.ts";
+
+type ConfirmAction = {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  danger?: boolean;
+  onConfirm: () => Promise<void>;
+};
+
+function ConfirmDialog({ action, onClose }: { action: ConfirmAction; onClose: () => void }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    dialogRef.current?.showModal();
+  }, []);
+
+  async function handleConfirm() {
+    setBusy(true);
+    try {
+      await action.onConfirm();
+      onClose();
+    } catch {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <dialog ref={dialogRef} onClose={onClose} style={{
+      border: "1px solid #E4EBF3", borderRadius: 8, padding: 24, maxWidth: 400,
+      position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", margin: 0,
+    }}>
+      <h3 style={{ margin: "0 0 8px" }}>{action.title}</h3>
+      <p style={{ margin: "0 0 20px", color: "#555" }}>{action.message}</p>
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <button onClick={onClose} disabled={busy}>Cancel</button>
+        <button
+          className={action.danger ? "delete" : ""}
+          onClick={handleConfirm}
+          disabled={busy}
+          style={action.danger ? { background: "#dc2626", color: "#fff", borderColor: "#dc2626" } : {}}
+        >
+          {busy ? "..." : action.confirmLabel}
+        </button>
+      </div>
+    </dialog>
+  );
+}
 
 export function AdminPage({ username }: { username: string }) {
   const [sessions, setSessions] = useState<Record<string, SessionStatus>>({});
@@ -24,7 +73,8 @@ export function AdminPage({ username }: { username: string }) {
   const [oauthEditing, setOauthEditing] = useState(false);
   const [oauthForm, setOauthForm] = useState({ clientId: "", clientSecret: "", callbackUrl: "" });
   const [oauthSaving, setOauthSaving] = useState(false);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [expandedUserId, setExpandedUserId] = useState<number | null>(null);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const [newUser, setNewUser] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,15 +155,35 @@ export function AdminPage({ username }: { username: string }) {
     }
   }
 
-  async function handleDeleteUser(id: number) {
-    setError(null);
-    try {
-      await deleteUser(id);
-      setUsers((prev) => prev.filter((u) => u.id !== id));
-      setConfirmDeleteId(null);
-    } catch (e: any) {
-      setError(e.message);
-    }
+  function confirmToggleAdmin(u: AdminUser) {
+    const newValue = !u.is_admin;
+    setConfirmAction({
+      title: newValue ? "Promote to admin" : "Remove admin",
+      message: newValue
+        ? `Make ${u.username} an administrator? They will be able to manage all users and settings.`
+        : `Remove admin privileges from ${u.username}?`,
+      confirmLabel: newValue ? "Make admin" : "Remove admin",
+      async onConfirm() {
+        await setUserAdmin(u.id, newValue);
+        setUsers((prev) =>
+          prev.map((x) => (x.id === u.id ? { ...x, is_admin: newValue } : x)),
+        );
+      },
+    });
+  }
+
+  function confirmDeleteUser(u: AdminUser) {
+    setConfirmAction({
+      title: "Delete user",
+      message: `Permanently delete ${u.username} and all their projects? This cannot be undone.`,
+      confirmLabel: "Delete",
+      danger: true,
+      async onConfirm() {
+        await deleteUser(u.id);
+        setUsers((prev) => prev.filter((x) => x.id !== u.id));
+        setExpandedUserId(null);
+      },
+    });
   }
 
   function handleOauthEdit() {
@@ -304,34 +374,44 @@ export function AdminPage({ username }: { username: string }) {
           <p className="empty">No users.</p>
         ) : (
           <ul className="project-list">
-            {users.map((u) => (
-              <li key={u.id}>
-                <div className="info">
-                  <a href={`/${u.username}/`}>{u.username}</a>
-                  {u.is_admin && (
-                    <span style={{ fontSize: "0.75rem", color: "#666", marginLeft: 8 }}>(admin)</span>
+            {users.map((u) => {
+              const isExpanded = expandedUserId === u.id;
+              const isSelf = u.username === username;
+              return (
+                <li key={u.id} style={{ display: "block" }}>
+                  <div style={{ display: "flex", alignItems: "center", cursor: "pointer" }}
+                    onClick={() => setExpandedUserId(isExpanded ? null : u.id)}>
+                    <span style={{ width: 16, fontSize: "0.7rem", color: "#90a4ae" }}>
+                      {isExpanded ? "\u25BC" : "\u25B6"}
+                    </span>
+                    <div className="info" style={{ flex: 1 }}>
+                      <a href={`/${u.username}/`} onClick={(e) => e.stopPropagation()}>{u.username}</a>
+                      {isSelf && <span style={{ fontSize: "0.75rem", color: "#90a4ae", marginLeft: 8 }}>(you)</span>}
+                    </div>
+                    <span style={{ fontSize: "0.8rem", color: "#90a4ae" }}>
+                      {u.is_admin ? "admin" : "user"}
+                    </span>
+                  </div>
+                  {isExpanded && (
+                    <div style={{ padding: "12px 0 4px 16px", display: "flex", gap: 8 }}>
+                      <button disabled={isSelf} onClick={() => confirmToggleAdmin(u)}>
+                        {u.is_admin ? "Make normal user" : "Make admin"}
+                      </button>
+                      <button className="delete" disabled={isSelf} onClick={() => confirmDeleteUser(u)}>
+                        Delete user
+                      </button>
+                    </div>
                   )}
-                </div>
-                <div className="actions">
-                  {u.username === username ? (
-                    <span style={{ fontSize: "0.8rem", color: "#90a4ae" }}>you</span>
-                  ) : confirmDeleteId === u.id ? (
-                    <>
-                      <span style={{ fontSize: "0.85rem", color: "#dc2626", marginRight: 8 }}>
-                        Delete user and all their data?
-                      </span>
-                      <button className="delete" onClick={() => handleDeleteUser(u.id)}>Confirm</button>
-                      <button onClick={() => setConfirmDeleteId(null)} style={{ marginLeft: 4 }}>Cancel</button>
-                    </>
-                  ) : (
-                    <button className="delete" onClick={() => setConfirmDeleteId(u.id)}>Delete</button>
-                  )}
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
+
+      {confirmAction && (
+        <ConfirmDialog action={confirmAction} onClose={() => setConfirmAction(null)} />
+      )}
     </main>
   );
 }
