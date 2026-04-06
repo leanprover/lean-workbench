@@ -40,6 +40,8 @@ const USERNAME_RE = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/;
 const BASE_PORT = 3010;
 const MAX_PORT = 3999;
 
+const IS_PROD = process.env.NODE_ENV === "production"
+
 // --- Setup state ---
 
 // DB is always created at startup (schema + first_run row)
@@ -444,7 +446,8 @@ app.use(session({
   saveUninitialized: false,
   cookie: {
     // https://expressjs.com/en/advanced/best-practice-security.html#set-cookie-security-options
-    secure: process.env.NODE_ENV === "production",
+    // https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies#block_access_to_your_cookies
+    secure: IS_PROD,
     httpOnly: true,
   }
 }));
@@ -639,7 +642,7 @@ app.get(
   },
 );
 
-if (process.env.NODE_ENV !== "production") {
+if (!IS_PROD) {
   app.get("/dev-login", (req: Request, res: Response) => {
     const user = ensureUser("dev");
     req.login(user, (err) => {
@@ -1087,9 +1090,8 @@ app.get("/", (req: Request, res: Response) => {
     const u = req.user as UserRow;
     user = { username: u.username, avatarUrl: getAvatarUrl(u.id), isAdmin: u.is_admin };
   }
-  const devMode = process.env.NODE_ENV !== "production";
   const githubEnabled = !!githubConfig;
-  res.render("landing", { user, devMode, githubEnabled });
+  res.render("landing", { user, devMode: !IS_PROD, githubEnabled });
 });
 
 function requirePageOwner(req: Request, res: Response): UserRow | null {
