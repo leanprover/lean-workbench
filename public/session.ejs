@@ -14,7 +14,7 @@
   <span class="ephemeral-badge">ephemeral</span>
   <% } %>
   <span class="spacer"></span>
-  <%- include('_avatar-menu', { username: viewerUsername, avatarUrl, isAdmin, links: [{ href: '/logout', label: 'Logout' }] }) %>
+  <%- include('_avatar-menu', { username: viewerUsername, avatarUrl, isAdmin, links: [] }) %>
 </nav>
 <iframe src="<%= iframeSrc %>"></iframe>
 </body>

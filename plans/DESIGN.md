@@ -181,7 +181,7 @@ setup (seed-volume.sh), persisted via Docker volume.
 | GET | `/` | no | Landing page |
 | GET | `/auth/github` | no | Start OAuth flow |
 | GET | `/auth/github/callback` | no | OAuth callback |
-| GET | `/logout` | no | Destroy session |
+| POST | `/logout` | no | Destroy session |
 | GET | `/dev-login` | no | Dev-only login |
 | GET | `/api/health` | no | Health check |
 | GET | `/api/status` | admin | Active sessions |

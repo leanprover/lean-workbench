@@ -12,5 +12,6 @@
     <% for (const link of links) { %>
     <a href="<%= link.href %>"><%= link.label %></a>
     <% } %>
+    <form method="post" action="/logout"><button type="submit">Logout</button></form>
   </div>
 </div>

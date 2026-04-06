@@ -643,6 +643,7 @@ app.get(
 );
 
 if (!IS_PROD) {
+  // NOTE: GET requests should not modify state; but we don't care in dev mode.
   app.get("/dev-login", (req: Request, res: Response) => {
     const user = ensureUser("dev");
     req.login(user, (err) => {
@@ -664,7 +665,7 @@ if (!IS_PROD) {
   });
 }
 
-app.get("/logout", (req: Request, res: Response) => {
+app.post("/logout", (req: Request, res: Response) => {
   req.logout(() => {
     req.session.destroy(() => {
       res.clearCookie("connect.sid");
