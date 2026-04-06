@@ -437,10 +437,16 @@ const app = express();
 app.set("view engine", "ejs");
 app.set("views", path.join(import.meta.dirname!, "public"));
 
+// TODO: use a different session store. The default `MemoryStore` is "not designed for a production environment"
 app.use(session({
   secret: getSessionSecret(),
   resave: false,
   saveUninitialized: false,
+  cookie: {
+    // https://expressjs.com/en/advanced/best-practice-security.html#set-cookie-security-options
+    secure: process.env.NODE_ENV === "production",
+    httpOnly: true,
+  }
 }));
 
 app.use(passport.initialize());
@@ -1076,7 +1082,7 @@ app.delete("/api/admin/users/:id", (req: Request, res: Response) => {
 // --- Page routes ---
 
 app.get("/", (req: Request, res: Response) => {
-  let user: { username: string; avatarUrl: string | null } | null = null;
+  let user: { username: string; avatarUrl: string | null, isAdmin: boolean } | null = null;
   if (req.isAuthenticated()) {
     const u = req.user as UserRow;
     user = { username: u.username, avatarUrl: getAvatarUrl(u.id), isAdmin: u.is_admin };
