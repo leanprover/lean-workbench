@@ -29,7 +29,6 @@ if (new URLSearchParams(window.location.search).get('error') === 'not_allowed') 
     <p><a href="/<%= user.username %>/">Go to your profile</a></p>
   </div>
 <% } else { %>
-  <h2>Login</h2>
 <% if (githubEnabled) { %>
   <a class="login-link" href="/auth/github">Login with GitHub</a>
 <% } %>
