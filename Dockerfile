@@ -46,7 +46,7 @@ COPY client/ /tmp/client/
 RUN cd /tmp/client && npm install && npm run build
 
 COPY nginx.conf /etc/nginx/nginx.conf
-COPY package.json spawner.ts db.ts /usr/local/lib/spawner/
+COPY package.json spawner.ts db.ts editorSessionManager.ts /usr/local/lib/spawner/
 COPY migrations/ /usr/local/lib/spawner/migrations/
 COPY scripts/ /usr/local/lib/spawner/scripts/
 COPY public/ /usr/local/lib/spawner/public/

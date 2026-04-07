@@ -6,10 +6,11 @@ import passport from "passport";
 import { Strategy as GitHubStrategy } from "passport-github2";
 import type { VerifyCallback } from "passport-oauth2";
 import crypto from "node:crypto";
-import { spawn, execSync } from "node:child_process";
-import net from "node:net";
+import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { EditorSessionManager } from "./editorSessionManager.ts";
+import type { EditorSessionInfo } from "./editorSessionManager.ts";
 import {
   initDb,
   ensureUser, getUserById, getUserByUsername, getAvatarUrl,
@@ -133,101 +134,15 @@ if (setupComplete) {
 
 // --- Editor session management ---
 
-interface EditorSessionInfo {
-  port: number;
-  pid: number;
-  workspace: string;
-  projectId: string;
-}
-
-let nextPort = BASE_PORT;
-const editorSessions = new Map<string, EditorSessionInfo>();
-
-function sessionKey(username: string, projectId: string): string {
-  return `${username}/${projectId}`;
-}
-
-function waitForPort(port: number, timeoutMs = 10000): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const deadline = Date.now() + timeoutMs;
-    function attempt() {
-      if (Date.now() > deadline) {
-        reject(new Error(`Timeout waiting for port ${port}`));
-        return;
-      }
-      const socket = net.connect(port, "127.0.0.1");
-      socket.once("connect", () => {
-        socket.destroy();
-        resolve();
-      });
-      socket.once("error", () => {
-        socket.destroy();
-        setTimeout(attempt, 1000);
-      });
-    }
-    attempt();
-  });
-}
-
-function isAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function writeNginxConf(viewerUsername: string, ownerUsername: string, projectName: string, projectId: string, port: number): void {
-  const encodedName = encodeURIComponent(projectName);
-  const conf = `location /_vs/${viewerUsername}/${ownerUsername}/${encodedName}/ {
-    proxy_pass http://127.0.0.1:${port};
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection $connection_upgrade;
-    proxy_set_header Host $host;
-    proxy_buffering off;
-    proxy_read_timeout 86400;
-    proxy_hide_header X-Frame-Options;
-}
-`;
-  fs.writeFileSync(`${NGINX_ROUTES_DIR}/${viewerUsername}-${projectId}.conf`, conf);
-}
-
-function reloadNginx(): void {
-  execSync("nginx -s reload");
-}
-
-function ensureMachineSettings(workspace: string): void {
-  const machineSettingsDir = path.join(workspace, ".vscode-data", "data", "Machine");
-  const machineSettingsFile = path.join(machineSettingsDir, "settings.json");
-  if (!fs.existsSync(machineSettingsFile)) {
-    fs.mkdirSync(machineSettingsDir, { recursive: true });
-    fs.writeFileSync(machineSettingsFile, JSON.stringify({
-      "security.workspace.trust.enabled": false,
-      "workbench.startupEditor": "none",
-      "files.watcherExclude": { "/home/elan/**": true },
-    }, null, 2) + "\n");
-  }
-}
-
-function killEditorSession(viewerUsername: string, projectId: string): void {
-  const key = sessionKey(viewerUsername, projectId);
-  const s = editorSessions.get(key);
-  if (!s) return;
-  try {
-    process.kill(s.pid);
-  } catch {
-    // already dead
-  }
-  editorSessions.delete(key);
-  try {
-    fs.unlinkSync(`${NGINX_ROUTES_DIR}/${viewerUsername}-${projectId}.conf`);
-    reloadNginx();
-  } catch {
-    // conf may not exist
-  }
-}
+const editorSessions = new EditorSessionManager({
+  workspacesDir: WORKSPACES_DIR,
+  nginxRoutesDir: NGINX_ROUTES_DIR,
+  openvscodeServerRoot: OPENVSCODE_SERVER_ROOT,
+  extensionsDir: EXTENSIONS_DIR,
+  elanDir: ELAN_DIR,
+  basePort: BASE_PORT,
+  maxPort: MAX_PORT,
+});
 
 interface TemplateMetadata {
   name: string;
@@ -308,95 +223,6 @@ function buildOverlayArgs(projectId: string, workspace: string, sandboxProject: 
   return args;
 }
 
-async function spawnProject(
-  viewerUsername: string,
-  ownerUsername: string,
-  projectName: string,
-  projectId: string,
-): Promise<EditorSessionInfo> {
-  const key = sessionKey(viewerUsername, projectId);
-  const existing = editorSessions.get(key);
-  if (existing && isAlive(existing.pid)) return existing;
-
-  // Clean up stale entry
-  if (existing) editorSessions.delete(key);
-
-  const isOwner = viewerUsername === ownerUsername;
-  const port = nextPort++;
-  const workspace = path.join(WORKSPACES_DIR, ownerUsername, projectId);
-  fs.mkdirSync(workspace, { recursive: true });
-  if (isOwner) {
-    ensureMachineSettings(workspace);
-  }
-
-  const encodedName = encodeURIComponent(projectName);
-  const sandboxProject = `/workspace/${projectName}`;
-
-  // Owner gets persistent bind mount; non-owner gets ephemeral CoW overlay
-  const workspaceMount = isOwner
-    ? ["--bind", workspace, sandboxProject]
-    : ["--overlay-src", workspace, "--tmp-overlay", sandboxProject];
-
-  const overlayArgs = buildOverlayArgs(projectId, workspace, sandboxProject);
-
-  const child = spawn(
-    "bwrap",
-    [
-      "--ro-bind", "/usr", "/usr",
-      "--ro-bind", "/lib", "/lib",
-      "--ro-bind-try", "/lib64", "/lib64",
-      "--ro-bind", "/bin", "/bin",
-      "--ro-bind", "/etc", "/etc",
-      "--ro-bind", OPENVSCODE_SERVER_ROOT, OPENVSCODE_SERVER_ROOT,
-      "--ro-bind", ELAN_DIR, "/home/elan",
-      "--ro-bind", EXTENSIONS_DIR, EXTENSIONS_DIR,
-      ...workspaceMount,
-      ...overlayArgs,
-      "--proc", "/proc",
-      "--dev", "/dev",
-      "--tmpfs", "/tmp",
-      "--clearenv",
-      "--setenv", "HOME", sandboxProject,
-      "--setenv", "ELAN_HOME", "/home/elan",
-      "--setenv", "PATH", `/home/elan/bin:/usr/local/bin:/usr/bin:/bin`,
-      // FIXME: Git's "dubious ownership" check (CVE-2022-24765) rejects repos
-      // owned by a different uid. The overlay mounts cause an ownership mismatch
-      // that triggers this; safe.directory=* *should* be ok here since the sandbox
-      // is already isolated, but this should be considered more carefully.
-      "--setenv", "GIT_CONFIG_COUNT", "1",
-      "--setenv", "GIT_CONFIG_KEY_0", "safe.directory",
-      "--setenv", "GIT_CONFIG_VALUE_0", "*",
-      "--unshare-user",
-      "--uid", "1000",
-      "--gid", "1000",
-      "--unshare-pid",
-      "--unshare-uts",
-      "--unshare-cgroup",
-      "--die-with-parent",
-      "--new-session",
-      "--",
-      `${OPENVSCODE_SERVER_ROOT}/bin/openvscode-server`,
-      "--host", "127.0.0.1",
-      "--port", String(port),
-      "--without-connection-token",
-      `--server-base-path=/_vs/${viewerUsername}/${ownerUsername}/${encodedName}/`,
-      "--default-folder", sandboxProject,
-      "--extensions-dir", EXTENSIONS_DIR,
-      "--server-data-dir", `${sandboxProject}/.vscode-data`,
-    ],
-    { stdio: "inherit", detached: true },
-  );
-  child.unref();
-
-  const info: EditorSessionInfo = { port, pid: child.pid!, workspace, projectId };
-  editorSessions.set(key, info);
-
-  writeNginxConf(viewerUsername, ownerUsername, projectName, projectId, port);
-  reloadNginx();
-
-  await waitForPort(port);
-  return info;
-}
 
 // --- Auth helpers ---
 
@@ -679,8 +505,8 @@ app.get("/api/admin/status", (req: Request, res: Response) => {
   const user = requireAdmin(req, res);
   if (!user) return;
   const result: Record<string, EditorSessionInfo & { alive: boolean }> = {};
-  for (const [key, s] of editorSessions) {
-    result[key] = { ...s, alive: isAlive(s.pid) };
+  for (const { key, info, alive } of editorSessions.listSessions()) {
+    result[key] = { ...info, alive };
   }
   res.json({ editorSessions: result });
 });
@@ -747,7 +573,7 @@ app.put("/api/projects/:projectId", (req: Request, res: Response) => {
   }
 
   if (name !== project.name) {
-    killEditorSession(user.username, project.id);
+    editorSessions.killSession(user.username, project.id);
   }
 
   updateProject(project.id, name);
@@ -764,7 +590,7 @@ app.delete("/api/projects/:projectId", (req: Request, res: Response) => {
     return;
   }
 
-  killEditorSession(user.username, project.id);
+  editorSessions.killSession(user.username, project.id);
   deleteProject(project.id);
   res.json({ ok: true });
 });
@@ -819,7 +645,7 @@ app.put("/api/editor-sessions/:ownerUsername/:projectName", async (req: Request,
   }
 
   try {
-    await spawnProject(viewer.username, ownerUsername, projectName, project.id);
+    await editorSessions.startSession(viewer.username, ownerUsername, projectName, project.id, buildOverlayArgs);
   } catch (err) {
     res.status(500).json({ error: "Failed to start editor session: " + (err as Error).message });
     return;
@@ -858,7 +684,7 @@ app.get("/admin", (req: Request, res: Response) => {
 app.delete("/api/admin/editor-sessions/:viewer/:projectId", (req: Request, res: Response) => {
   const user = requireAdmin(req, res);
   if (!user) return;
-  killEditorSession(req.params.viewer, req.params.projectId);
+  editorSessions.killSession(req.params.viewer, req.params.projectId);
   res.json({ ok: true });
 });
 
@@ -922,7 +748,7 @@ app.get("/api/admin/health", (req: Request, res: Response) => {
   } catch { /* ignore */ }
 
   res.json({
-    activeEditorSessions: editorSessions.size,
+    activeEditorSessions: editorSessions.sessionCount,
     dataVolumeDisk,
     uptime: process.uptime(),
     memory: {
@@ -1080,10 +906,10 @@ app.delete("/api/admin/users/:id", (req: Request, res: Response) => {
   }
 
   // Kill all active editor sessions for this user
-  for (const [key, s] of editorSessions) {
+  for (const { key, info } of editorSessions.listSessions()) {
     const [sessionUser] = key.split("/");
     if (sessionUser === target.username) {
-      killEditorSession(target.username, s.projectId);
+      editorSessions.killSession(target.username, info.projectId);
     }
   }
 
