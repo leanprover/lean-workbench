@@ -690,13 +690,10 @@ app.get("/api/projects", (req: Request, res: Response) => {
   res.json(getProjectsByUser(user.id));
 });
 
+// TODO: move to /api/admin?
 app.get("/api/status", (req: Request, res: Response) => {
-  const user = requireAuth(req, res);
+  const user = requireAdmin(req, res);
   if (!user) return;
-  if (!user.is_admin) {
-    res.status(403).json({ error: "Forbidden" });
-    return;
-  }
   const result: Record<string, { port: number; pid: number; alive: boolean; workspace: string; projectId: string }> = {};
   for (const [key, s] of sessions) {
     result[key] = { ...s, alive: isAlive(s.pid) };
@@ -828,15 +825,8 @@ app.get("/api/users/:username/projects", (req: Request, res: Response) => {
 // --- Admin routes ---
 
 app.get("/admin", (req: Request, res: Response) => {
-  if (!req.isAuthenticated || !req.isAuthenticated()) {
-    res.redirect("/");
-    return;
-  }
-  const user = req.user as UserRow;
-  if (!user.is_admin) {
-    res.redirect("/");
-    return;
-  }
+  const user = requireAdmin(req, res);
+  if (!user) return;
   const avatarUrl = getAvatarUrl(user.id);
   res.render("admin", { username: user.username, avatarUrl, isAdmin: true });
 });
@@ -1101,11 +1091,8 @@ function requirePageOwner(req: Request, res: Response): UserRow | null {
     res.redirect("/");
     return null;
   }
-  if (!req.isAuthenticated || !req.isAuthenticated()) {
-    res.redirect("/");
-    return null;
-  }
-  const user = req.user as UserRow;
+  const user = requireAuth(req, res);
+  if (!user) return null;
   if (user.username !== username) {
     res.redirect("/");
     return null;
@@ -1119,11 +1106,8 @@ app.get("/:username/", (req: Request, res: Response) => {
     res.redirect("/");
     return;
   }
-  if (!req.isAuthenticated || !req.isAuthenticated()) {
-    res.redirect("/");
-    return;
-  }
-  const viewer = req.user as UserRow;
+  const viewer = requireAuth(req, res);
+  if (!viewer) return;
   const pageUser = getUserByUsername(username);
   if (!pageUser) {
     res.status(404).send("User not found");
@@ -1135,17 +1119,13 @@ app.get("/:username/", (req: Request, res: Response) => {
   res.render("profile", { username, isAdmin: viewer.is_admin, avatarUrl, isOwner });
 });
 
-app.get("/:username/:projectName/", async (req: Request, res: Response) => {
+app.get("/:username/:projectName/", (req: Request, res: Response) => {
   const { username: ownerUsername, projectName } = req.params;
   if (!USERNAME_RE.test(ownerUsername)) {
     res.redirect("/");
     return;
   }
-  if (!req.isAuthenticated || !req.isAuthenticated()) {
-    res.redirect("/");
-    return;
-  }
-  const viewer = req.user as UserRow;
+  const viewer = requireAuth(req, res);
   const owner = getUserByUsername(ownerUsername);
   if (!owner) {
     res.status(404).send("User not found");
