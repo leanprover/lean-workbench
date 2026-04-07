@@ -18,7 +18,7 @@
 </nav>
 <iframe id="editor-frame"></iframe>
 <script>
-  fetch("/api/sessions/<%= ownerUsername %>/<%= encodeURIComponent(projectName) %>", { method: "PUT" })
+  fetch("/api/editor-sessions/<%= ownerUsername %>/<%= encodeURIComponent(projectName) %>", { method: "PUT" })
     .then(r => { if (!r.ok) throw new Error(r.statusText); return r.json(); })
     .then(data => { document.getElementById("editor-frame").src = data.iframeSrc; })
     .catch(err => { document.getElementById("editor-frame").srcdoc = "<p>Failed to start editor session: " + err.message + "</p>"; });

@@ -85,7 +85,7 @@ function getGithubConfig(): GithubOAuthConfig | null {
   return null;
 }
 
-function getSessionSecret(): string {
+function getUserSessionSecret(): string {
   const row = getAuthMethod("session") as { secret: string } | null;
   if (row?.secret) return row.secret;
   return process.env.SESSION_SECRET ?? "lean-workbench-dev-secret";
@@ -131,9 +131,9 @@ if (setupComplete) {
   console.log("[spawner] First run — serving setup page.");
 }
 
-// --- Session management ---
+// --- Editor session management ---
 
-interface SessionInfo {
+interface EditorSessionInfo {
   port: number;
   pid: number;
   workspace: string;
@@ -141,7 +141,7 @@ interface SessionInfo {
 }
 
 let nextPort = BASE_PORT;
-const sessions = new Map<string, SessionInfo>();
+const editorSessions = new Map<string, EditorSessionInfo>();
 
 function sessionKey(username: string, projectId: string): string {
   return `${username}/${projectId}`;
@@ -211,16 +211,16 @@ function ensureMachineSettings(workspace: string): void {
   }
 }
 
-function killSession(viewerUsername: string, projectId: string): void {
+function killEditorSession(viewerUsername: string, projectId: string): void {
   const key = sessionKey(viewerUsername, projectId);
-  const s = sessions.get(key);
+  const s = editorSessions.get(key);
   if (!s) return;
   try {
     process.kill(s.pid);
   } catch {
     // already dead
   }
-  sessions.delete(key);
+  editorSessions.delete(key);
   try {
     fs.unlinkSync(`${NGINX_ROUTES_DIR}/${viewerUsername}-${projectId}.conf`);
     reloadNginx();
@@ -313,13 +313,13 @@ async function spawnProject(
   ownerUsername: string,
   projectName: string,
   projectId: string,
-): Promise<SessionInfo> {
+): Promise<EditorSessionInfo> {
   const key = sessionKey(viewerUsername, projectId);
-  const existing = sessions.get(key);
+  const existing = editorSessions.get(key);
   if (existing && isAlive(existing.pid)) return existing;
 
   // Clean up stale entry
-  if (existing) sessions.delete(key);
+  if (existing) editorSessions.delete(key);
 
   const isOwner = viewerUsername === ownerUsername;
   const port = nextPort++;
@@ -388,8 +388,8 @@ async function spawnProject(
   );
   child.unref();
 
-  const info: SessionInfo = { port, pid: child.pid!, workspace, projectId };
-  sessions.set(key, info);
+  const info: EditorSessionInfo = { port, pid: child.pid!, workspace, projectId };
+  editorSessions.set(key, info);
 
   writeNginxConf(viewerUsername, ownerUsername, projectName, projectId, port);
   reloadNginx();
@@ -426,7 +426,7 @@ app.set("views", path.join(import.meta.dirname!, "public"));
 
 // TODO: use a different session store. The default `MemoryStore` is "not designed for a production environment"
 app.use(session({
-  secret: getSessionSecret(),
+  secret: getUserSessionSecret(),
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -675,15 +675,14 @@ app.get("/api/projects", (req: Request, res: Response) => {
   res.json(getProjectsByUser(user.id));
 });
 
-// TODO: move to /api/admin?
-app.get("/api/status", (req: Request, res: Response) => {
+app.get("/api/admin/status", (req: Request, res: Response) => {
   const user = requireAdmin(req, res);
   if (!user) return;
-  const result: Record<string, { port: number; pid: number; alive: boolean; workspace: string; projectId: string }> = {};
-  for (const [key, s] of sessions) {
+  const result: Record<string, EditorSessionInfo & { alive: boolean }> = {};
+  for (const [key, s] of editorSessions) {
     result[key] = { ...s, alive: isAlive(s.pid) };
   }
-  res.json({ sessions: result });
+  res.json({ editorSessions: result });
 });
 
 app.post("/api/projects", (req: Request, res: Response) => {
@@ -748,7 +747,7 @@ app.put("/api/projects/:projectId", (req: Request, res: Response) => {
   }
 
   if (name !== project.name) {
-    killSession(user.username, project.id);
+    killEditorSession(user.username, project.id);
   }
 
   updateProject(project.id, name);
@@ -765,7 +764,7 @@ app.delete("/api/projects/:projectId", (req: Request, res: Response) => {
     return;
   }
 
-  killSession(user.username, project.id);
+  killEditorSession(user.username, project.id);
   deleteProject(project.id);
   res.json({ ok: true });
 });
@@ -790,7 +789,7 @@ app.put("/api/projects/:projectId/visibility", (req: Request, res: Response) => 
   res.json({ ok: true });
 });
 
-app.put("/api/sessions/:ownerUsername/:projectName", async (req: Request, res: Response) => {
+app.put("/api/editor-sessions/:ownerUsername/:projectName", async (req: Request, res: Response) => {
   const viewer = requireAuth(req, res);
   if (!viewer) return;
 
@@ -856,10 +855,10 @@ app.get("/admin", (req: Request, res: Response) => {
   res.render("admin", { username: user.username, avatarUrl, isAdmin: true });
 });
 
-app.delete("/api/admin/sessions/:viewer/:projectId", (req: Request, res: Response) => {
+app.delete("/api/admin/editor-sessions/:viewer/:projectId", (req: Request, res: Response) => {
   const user = requireAdmin(req, res);
   if (!user) return;
-  killSession(req.params.viewer, req.params.projectId);
+  killEditorSession(req.params.viewer, req.params.projectId);
   res.json({ ok: true });
 });
 
@@ -923,7 +922,7 @@ app.get("/api/admin/health", (req: Request, res: Response) => {
   } catch { /* ignore */ }
 
   res.json({
-    activeSessions: sessions.size,
+    activeEditorSessions: editorSessions.size,
     dataVolumeDisk,
     uptime: process.uptime(),
     memory: {
@@ -1080,11 +1079,11 @@ app.delete("/api/admin/users/:id", (req: Request, res: Response) => {
     return;
   }
 
-  // Kill all active sessions for this user
-  for (const [key, s] of sessions) {
+  // Kill all active editor sessions for this user
+  for (const [key, s] of editorSessions) {
     const [sessionUser] = key.split("/");
     if (sessionUser === target.username) {
-      killSession(target.username, s.projectId);
+      killEditorSession(target.username, s.projectId);
     }
   }
 

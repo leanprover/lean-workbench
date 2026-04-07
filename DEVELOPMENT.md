@@ -149,16 +149,18 @@ database and sets a session cookie.
 The callback upserts the user in the database and sets a session
 cookie.
 
-**Opening a project:** `GET /{username}/{projectName}/` checks auth,
-looks up the project in the database, then calls `spawnProject()`:
+**Opening a project:** `GET/{username}/{projectName}` renders `session.ejs`.
+JavaScript there sends `PUT /api/editor-sessions/{username}/{projectName}/`
+which checks auth, looks up the project in the database, then calls `spawnProject()`:
 1. If a session is already alive (in-memory map + PID liveness check),
    reuse it.
 2. Otherwise: allocate a port, create the workspace directory, write
    VS Code machine settings, spawn `bwrap` with openvscode-server
    inside, write an nginx route config, reload nginx, wait for the
    port to accept connections.
-3. Render `session.ejs` — an iframe pointing at
-   `/{username}/{projectName}/_vs/`.
+3. Return `iframeSrc: '_vs/{username}/{projectName}'`.
+
+JS then uses `iframeSrc` to embed the editor.
 
 ---
 

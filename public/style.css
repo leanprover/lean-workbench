@@ -75,7 +75,7 @@ nav a.nav-link:hover { color: #386EE0; background: rgba(56, 110, 224, 0.08); }
   display: block; padding: 0.5rem 0.75rem; font-size: 0.8rem;
   text-decoration: none; color: #333; transition: all 0.15s;
   background: none; border: none; width: 100%; text-align: left;
-  border-radius: none;
+  border-radius: 0px;
 }
 .avatar-dropdown :is(a, button):hover { background: rgba(56, 110, 224, 0.08); color: #386EE0; }
 
