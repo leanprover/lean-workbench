@@ -8,7 +8,7 @@
   <a class="logo" href="/"><img src="/static/lean-logo.svg" alt="Lean" class="logo-img"><span class="logo-text">Lean Workbench</span></a>
   <span class="spacer"></span>
 <% if (user) { %>
-  <%- include('_avatar-menu', { username: user.username, avatarUrl: user.avatarUrl, isAdmin: user.isAdmin, links: [{ href: '/' + user.username + '/', label: 'Profile' }, { href: '/logout', label: 'Logout' }] }) %>
+  <%- include('_avatar-menu', { username: user.username, avatarUrl: user.avatarUrl, isAdmin: user.isAdmin, links: [{ href: '/' + user.username + '/', label: 'Profile' }] }) %>
 <% } else if (githubEnabled) { %>
   <a class="nav-link" href="/auth/github">Login</a>
 <% } %>
@@ -29,7 +29,6 @@ if (new URLSearchParams(window.location.search).get('error') === 'not_allowed') 
     <p><a href="/<%= user.username %>/">Go to your profile</a></p>
   </div>
 <% } else { %>
-  <h2>Launch a session</h2>
 <% if (githubEnabled) { %>
   <a class="login-link" href="/auth/github">Login with GitHub</a>
 <% } %>

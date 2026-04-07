@@ -40,6 +40,8 @@ const USERNAME_RE = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/;
 const BASE_PORT = 3010;
 const MAX_PORT = 3999;
 
+const IS_PROD = process.env.NODE_ENV === "production"
+
 // --- Setup state ---
 
 // DB is always created at startup (schema + first_run row)
@@ -83,7 +85,7 @@ function getGithubConfig(): GithubOAuthConfig | null {
   return null;
 }
 
-function getSessionSecret(): string {
+function getUserSessionSecret(): string {
   const row = getAuthMethod("session") as { secret: string } | null;
   if (row?.secret) return row.secret;
   return process.env.SESSION_SECRET ?? "lean-workbench-dev-secret";
@@ -129,9 +131,9 @@ if (setupComplete) {
   console.log("[spawner] First run — serving setup page.");
 }
 
-// --- Session management ---
+// --- Editor session management ---
 
-interface SessionInfo {
+interface EditorSessionInfo {
   port: number;
   pid: number;
   workspace: string;
@@ -139,7 +141,7 @@ interface SessionInfo {
 }
 
 let nextPort = BASE_PORT;
-const sessions = new Map<string, SessionInfo>();
+const editorSessions = new Map<string, EditorSessionInfo>();
 
 function sessionKey(username: string, projectId: string): string {
   return `${username}/${projectId}`;
@@ -209,16 +211,16 @@ function ensureMachineSettings(workspace: string): void {
   }
 }
 
-function killSession(viewerUsername: string, projectId: string): void {
+function killEditorSession(viewerUsername: string, projectId: string): void {
   const key = sessionKey(viewerUsername, projectId);
-  const s = sessions.get(key);
+  const s = editorSessions.get(key);
   if (!s) return;
   try {
     process.kill(s.pid);
   } catch {
     // already dead
   }
-  sessions.delete(key);
+  editorSessions.delete(key);
   try {
     fs.unlinkSync(`${NGINX_ROUTES_DIR}/${viewerUsername}-${projectId}.conf`);
     reloadNginx();
@@ -311,13 +313,13 @@ async function spawnProject(
   ownerUsername: string,
   projectName: string,
   projectId: string,
-): Promise<SessionInfo> {
+): Promise<EditorSessionInfo> {
   const key = sessionKey(viewerUsername, projectId);
-  const existing = sessions.get(key);
+  const existing = editorSessions.get(key);
   if (existing && isAlive(existing.pid)) return existing;
 
   // Clean up stale entry
-  if (existing) sessions.delete(key);
+  if (existing) editorSessions.delete(key);
 
   const isOwner = viewerUsername === ownerUsername;
   const port = nextPort++;
@@ -386,8 +388,8 @@ async function spawnProject(
   );
   child.unref();
 
-  const info: SessionInfo = { port, pid: child.pid!, workspace, projectId };
-  sessions.set(key, info);
+  const info: EditorSessionInfo = { port, pid: child.pid!, workspace, projectId };
+  editorSessions.set(key, info);
 
   writeNginxConf(viewerUsername, ownerUsername, projectName, projectId, port);
   reloadNginx();
@@ -406,21 +408,6 @@ function requireAuth(req: Request, res: Response): UserRow | null {
   return req.user as UserRow;
 }
 
-function requireOwner(req: Request, res: Response): UserRow | null {
-  const { username } = req.params;
-  if (!USERNAME_RE.test(username)) {
-    res.status(404).json({ error: "Not found" });
-    return null;
-  }
-  const user = requireAuth(req, res);
-  if (!user) return null;
-  if (user.username !== username) {
-    res.status(403).json({ error: "Forbidden" });
-    return null;
-  }
-  return user;
-}
-
 function requireAdmin(req: Request, res: Response): UserRow | null {
   const user = requireAuth(req, res);
   if (!user) return null;
@@ -437,10 +424,17 @@ const app = express();
 app.set("view engine", "ejs");
 app.set("views", path.join(import.meta.dirname!, "public"));
 
+// TODO: use a different session store. The default `MemoryStore` is "not designed for a production environment"
 app.use(session({
-  secret: getSessionSecret(),
+  secret: getUserSessionSecret(),
   resave: false,
   saveUninitialized: false,
+  cookie: {
+    // https://expressjs.com/en/advanced/best-practice-security.html#set-cookie-security-options
+    // https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies#block_access_to_your_cookies
+    secure: IS_PROD,
+    httpOnly: true,
+  }
 }));
 
 app.use(passport.initialize());
@@ -633,7 +627,8 @@ app.get(
   },
 );
 
-if (process.env.NODE_ENV !== "production") {
+if (!IS_PROD) {
+  // NOTE: GET requests should not modify state; but we don't care in dev mode.
   app.get("/dev-login", (req: Request, res: Response) => {
     const user = ensureUser("dev");
     req.login(user, (err) => {
@@ -655,7 +650,7 @@ if (process.env.NODE_ENV !== "production") {
   });
 }
 
-app.get("/logout", (req: Request, res: Response) => {
+app.post("/logout", (req: Request, res: Response) => {
   req.logout(() => {
     req.session.destroy(() => {
       res.clearCookie("connect.sid");
@@ -680,18 +675,14 @@ app.get("/api/projects", (req: Request, res: Response) => {
   res.json(getProjectsByUser(user.id));
 });
 
-app.get("/api/status", (req: Request, res: Response) => {
-  const user = requireAuth(req, res);
+app.get("/api/admin/status", (req: Request, res: Response) => {
+  const user = requireAdmin(req, res);
   if (!user) return;
-  if (!user.is_admin) {
-    res.status(403).json({ error: "Forbidden" });
-    return;
-  }
-  const result: Record<string, { port: number; pid: number; alive: boolean; workspace: string; projectId: string }> = {};
-  for (const [key, s] of sessions) {
+  const result: Record<string, EditorSessionInfo & { alive: boolean }> = {};
+  for (const [key, s] of editorSessions) {
     result[key] = { ...s, alive: isAlive(s.pid) };
   }
-  res.json({ sessions: result });
+  res.json({ editorSessions: result });
 });
 
 app.post("/api/projects", (req: Request, res: Response) => {
@@ -756,7 +747,7 @@ app.put("/api/projects/:projectId", (req: Request, res: Response) => {
   }
 
   if (name !== project.name) {
-    killSession(user.username, project.id);
+    killEditorSession(user.username, project.id);
   }
 
   updateProject(project.id, name);
@@ -773,7 +764,7 @@ app.delete("/api/projects/:projectId", (req: Request, res: Response) => {
     return;
   }
 
-  killSession(user.username, project.id);
+  killEditorSession(user.username, project.id);
   deleteProject(project.id);
   res.json({ ok: true });
 });
@@ -798,6 +789,46 @@ app.put("/api/projects/:projectId/visibility", (req: Request, res: Response) => 
   res.json({ ok: true });
 });
 
+app.put("/api/editor-sessions/:ownerUsername/:projectName", async (req: Request, res: Response) => {
+  const viewer = requireAuth(req, res);
+  if (!viewer) return;
+
+  const { ownerUsername, projectName } = req.params;
+  if (!USERNAME_RE.test(ownerUsername)) {
+    res.status(400).json({ error: "Malformed username" });
+    return;
+  }
+
+  const owner = getUserByUsername(ownerUsername);
+  if (!owner) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  const project = getProjectByUserAndName(owner.id, projectName);
+  if (!project) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  const isOwner = viewer.username === ownerUsername;
+  if (!isOwner && !project.public) {
+    // NOTE: 404 to prevent enumeration
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  try {
+    await spawnProject(viewer.username, ownerUsername, projectName, project.id);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to start editor session: " + (err as Error).message });
+    return;
+  }
+
+  const encodedName = encodeURIComponent(projectName);
+  res.json({ iframeSrc: `/_vs/${viewer.username}/${ownerUsername}/${encodedName}/` });
+});
+
 app.get("/api/users/:username/projects", (req: Request, res: Response) => {
   const viewer = requireAuth(req, res);
   if (!viewer) return;
@@ -818,23 +849,16 @@ app.get("/api/users/:username/projects", (req: Request, res: Response) => {
 // --- Admin routes ---
 
 app.get("/admin", (req: Request, res: Response) => {
-  if (!req.isAuthenticated || !req.isAuthenticated()) {
-    res.redirect("/");
-    return;
-  }
-  const user = req.user as UserRow;
-  if (!user.is_admin) {
-    res.redirect("/");
-    return;
-  }
+  const user = requireAdmin(req, res);
+  if (!user) return;
   const avatarUrl = getAvatarUrl(user.id);
   res.render("admin", { username: user.username, avatarUrl, isAdmin: true });
 });
 
-app.delete("/api/admin/sessions/:viewer/:projectId", (req: Request, res: Response) => {
+app.delete("/api/admin/editor-sessions/:viewer/:projectId", (req: Request, res: Response) => {
   const user = requireAdmin(req, res);
   if (!user) return;
-  killSession(req.params.viewer, req.params.projectId);
+  killEditorSession(req.params.viewer, req.params.projectId);
   res.json({ ok: true });
 });
 
@@ -898,7 +922,7 @@ app.get("/api/admin/health", (req: Request, res: Response) => {
   } catch { /* ignore */ }
 
   res.json({
-    activeSessions: sessions.size,
+    activeEditorSessions: editorSessions.size,
     dataVolumeDisk,
     uptime: process.uptime(),
     memory: {
@@ -1055,11 +1079,11 @@ app.delete("/api/admin/users/:id", (req: Request, res: Response) => {
     return;
   }
 
-  // Kill all active sessions for this user
-  for (const [key, s] of sessions) {
+  // Kill all active editor sessions for this user
+  for (const [key, s] of editorSessions) {
     const [sessionUser] = key.split("/");
     if (sessionUser === target.username) {
-      killSession(target.username, s.projectId);
+      killEditorSession(target.username, s.projectId);
     }
   }
 
@@ -1076,14 +1100,13 @@ app.delete("/api/admin/users/:id", (req: Request, res: Response) => {
 // --- Page routes ---
 
 app.get("/", (req: Request, res: Response) => {
-  let user: { username: string; avatarUrl: string | null } | null = null;
+  let user: { username: string; avatarUrl: string | null, isAdmin: boolean } | null = null;
   if (req.isAuthenticated()) {
     const u = req.user as UserRow;
     user = { username: u.username, avatarUrl: getAvatarUrl(u.id), isAdmin: u.is_admin };
   }
-  const devMode = process.env.NODE_ENV !== "production";
   const githubEnabled = !!githubConfig;
-  res.render("landing", { user, devMode, githubEnabled });
+  res.render("landing", { user, devMode: !IS_PROD, githubEnabled });
 });
 
 function requirePageOwner(req: Request, res: Response): UserRow | null {
@@ -1092,11 +1115,8 @@ function requirePageOwner(req: Request, res: Response): UserRow | null {
     res.redirect("/");
     return null;
   }
-  if (!req.isAuthenticated || !req.isAuthenticated()) {
-    res.redirect("/");
-    return null;
-  }
-  const user = req.user as UserRow;
+  const user = requireAuth(req, res);
+  if (!user) return null;
   if (user.username !== username) {
     res.redirect("/");
     return null;
@@ -1110,11 +1130,8 @@ app.get("/:username/", (req: Request, res: Response) => {
     res.redirect("/");
     return;
   }
-  if (!req.isAuthenticated || !req.isAuthenticated()) {
-    res.redirect("/");
-    return;
-  }
-  const viewer = req.user as UserRow;
+  const viewer = requireAuth(req, res);
+  if (!viewer) return;
   const pageUser = getUserByUsername(username);
   if (!pageUser) {
     res.status(404).send("User not found");
@@ -1126,17 +1143,13 @@ app.get("/:username/", (req: Request, res: Response) => {
   res.render("profile", { username, isAdmin: viewer.is_admin, avatarUrl, isOwner });
 });
 
-app.get("/:username/:projectName/", async (req: Request, res: Response) => {
+app.get("/:username/:projectName/", (req: Request, res: Response) => {
   const { username: ownerUsername, projectName } = req.params;
   if (!USERNAME_RE.test(ownerUsername)) {
-    res.redirect("/");
+    res.status(400).send("Malformed username");
     return;
   }
-  if (!req.isAuthenticated || !req.isAuthenticated()) {
-    res.redirect("/");
-    return;
-  }
-  const viewer = req.user as UserRow;
+  const viewer = requireAuth(req, res);
   const owner = getUserByUsername(ownerUsername);
   if (!owner) {
     res.status(404).send("User not found");
@@ -1145,27 +1158,19 @@ app.get("/:username/:projectName/", async (req: Request, res: Response) => {
 
   const project = getProjectByUserAndName(owner.id, projectName);
   if (!project) {
-    res.redirect(`/${ownerUsername}/`);
+    res.status(404).send("Project not found");
     return;
   }
 
   const isOwner = viewer.username === ownerUsername;
   if (!isOwner && !project.public) {
-    res.status(403).send("This project is private");
+    // NOTE: 404 to prevent enumeration
+    res.status(404).send("Project not found");
     return;
   }
 
-  try {
-    await spawnProject(viewer.username, ownerUsername, projectName, project.id);
-  } catch (err) {
-    res.status(500).send("Failed to start session: " + (err as Error).message);
-    return;
-  }
-
-  const encodedName = encodeURIComponent(projectName);
-  const iframeSrc = `/_vs/${viewer.username}/${ownerUsername}/${encodedName}/`;
   const avatarUrl = getAvatarUrl(viewer.id);
-  res.render("session", { ownerUsername, viewerUsername: viewer.username, projectName, avatarUrl, iframeSrc, isOwner, isAdmin: viewer.is_admin });
+  res.render("session", { ownerUsername, viewerUsername: viewer.username, projectName, avatarUrl, isOwner, isAdmin: viewer.is_admin });
 });
 
 app.listen(SPAWNER_PORT, "127.0.0.1", () => {

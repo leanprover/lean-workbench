@@ -17,7 +17,7 @@ export async function fetchTemplates(): Promise<TemplateInfo[]> {
   return res.json();
 }
 
-export interface SessionStatus {
+export interface EditorSessionStatus {
   port: number;
   pid: number;
   alive: boolean;
@@ -25,11 +25,11 @@ export interface SessionStatus {
   projectId: string;
 }
 
-export async function fetchStatus(): Promise<Record<string, SessionStatus>> {
-  const res = await fetch("/api/status");
+export async function fetchStatus(): Promise<Record<string, EditorSessionStatus>> {
+  const res = await fetch("/api/admin/status");
   if (!res.ok) throw new Error("Failed to fetch status");
   const data = await res.json();
-  return data.sessions;
+  return data.editorSessions;
 }
 
 const API_BASE = "/api/projects";
@@ -96,22 +96,22 @@ export async function setProjectVisibility(projectId: string, isPublic: boolean)
   }
 }
 
-// --- Admin sessions API ---
+// --- Admin editor sessions API ---
 
-export async function killSession(viewer: string, projectId: string): Promise<void> {
-  const res = await fetch(`/api/admin/sessions/${encodeURIComponent(viewer)}/${encodeURIComponent(projectId)}`, {
+export async function killEditorSession(viewer: string, projectId: string): Promise<void> {
+  const res = await fetch(`/api/admin/editor-sessions/${encodeURIComponent(viewer)}/${encodeURIComponent(projectId)}`, {
     method: "DELETE",
   });
   if (!res.ok) {
     const e = await res.json().catch(() => ({}));
-    throw new Error(e.error || "Failed to kill session");
+    throw new Error(e.error || "Failed to kill editor session");
   }
 }
 
 // --- Admin health API ---
 
 export interface HealthInfo {
-  activeSessions: number;
+  activeEditorSessions: number;
   dataVolumeDisk: { total: string; used: string; available: string; percent: string };
   uptime: number;
   memory: { total: number; available: number; swapTotal: number; swapFree: number };

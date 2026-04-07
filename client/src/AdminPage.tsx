@@ -8,14 +8,14 @@ import {
   removeAllowedUser,
   fetchUsers,
   deleteUser,
-  killSession,
+  killEditorSession,
   fetchOAuthConfig,
   updateOAuthConfig,
   setUserAdmin,
   fetchHealth,
   fetchDiskUsage,
 } from "./api.ts";
-import type { SessionStatus, AdminUser, OAuthConfig, HealthInfo } from "./api.ts";
+import type { EditorSessionStatus, AdminUser, OAuthConfig, HealthInfo } from "./api.ts";
 
 type ConfirmAction = {
   title: string;
@@ -65,7 +65,7 @@ function ConfirmDialog({ action, onClose }: { action: ConfirmAction; onClose: ()
 }
 
 export function AdminPage({ username }: { username: string }) {
-  const [sessions, setSessions] = useState<Record<string, SessionStatus>>({});
+  const [sessions, setSessions] = useState<Record<string, EditorSessionStatus>>({});
   const [registrationMode, setRegistrationMode] = useState<string>("open");
   const [savedMode, setSavedMode] = useState<string>("open");
   const [allowedUsers, setAllowedUsers] = useState<string[]>([]);
@@ -157,7 +157,7 @@ export function AdminPage({ username }: { username: string }) {
     const [viewer, projectId] = key.split("/");
     setError(null);
     try {
-      await killSession(viewer, projectId);
+      await killEditorSession(viewer, projectId);
       setSessions((prev) => {
         const next = { ...prev };
         delete next[key];
@@ -254,9 +254,9 @@ export function AdminPage({ username }: { username: string }) {
       {error && <div style={{ color: "#dc2626", marginBottom: 16 }}>{error}</div>}
 
       <section>
-        <h2>Active sessions</h2>
+        <h2>Active editor sessions</h2>
         {alive.length === 0 ? (
-          <p className="empty">No active sessions.</p>
+          <p className="empty">No active editor sessions.</p>
         ) : (
           <ul className="project-list">
             {alive.map(([key, s]) => {

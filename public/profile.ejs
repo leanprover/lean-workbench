@@ -9,7 +9,7 @@
   <span class="sep">/</span>
   <a class="breadcrumb" href="/<%= username %>/"><%= username %></a>
   <span class="spacer"></span>
-  <%- include('_avatar-menu', { username, avatarUrl, isAdmin, links: [...(isAdmin ? [{ href: '/admin', label: 'Admin' }] : []), { href: '/logout', label: 'Logout' }] }) %>
+  <%- include('_avatar-menu', { username, avatarUrl, isAdmin, links: [...(isAdmin ? [{ href: '/admin', label: 'Admin' }] : [])] }) %>
 </nav>
 <div id="root"></div>
 <script>window.__DATA__ = { username: '<%- username %>', isAdmin: <%= isAdmin ? 'true' : 'false' %>, isOwner: <%= isOwner ? 'true' : 'false' %> };</script>
