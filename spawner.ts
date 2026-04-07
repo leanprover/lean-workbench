@@ -408,21 +408,6 @@ function requireAuth(req: Request, res: Response): UserRow | null {
   return req.user as UserRow;
 }
 
-function requireOwner(req: Request, res: Response): UserRow | null {
-  const { username } = req.params;
-  if (!USERNAME_RE.test(username)) {
-    res.status(404).json({ error: "Not found" });
-    return null;
-  }
-  const user = requireAuth(req, res);
-  if (!user) return null;
-  if (user.username !== username) {
-    res.status(403).json({ error: "Forbidden" });
-    return null;
-  }
-  return user;
-}
-
 function requireAdmin(req: Request, res: Response): UserRow | null {
   const user = requireAuth(req, res);
   if (!user) return null;
@@ -805,6 +790,46 @@ app.put("/api/projects/:projectId/visibility", (req: Request, res: Response) => 
   res.json({ ok: true });
 });
 
+app.put("/api/sessions/:ownerUsername/:projectName", async (req: Request, res: Response) => {
+  const viewer = requireAuth(req, res);
+  if (!viewer) return;
+
+  const { ownerUsername, projectName } = req.params;
+  if (!USERNAME_RE.test(ownerUsername)) {
+    res.status(400).json({ error: "Malformed username" });
+    return;
+  }
+
+  const owner = getUserByUsername(ownerUsername);
+  if (!owner) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  const project = getProjectByUserAndName(owner.id, projectName);
+  if (!project) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  const isOwner = viewer.username === ownerUsername;
+  if (!isOwner && !project.public) {
+    // NOTE: 404 to prevent enumeration
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  try {
+    await spawnProject(viewer.username, ownerUsername, projectName, project.id);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to start editor session: " + (err as Error).message });
+    return;
+  }
+
+  const encodedName = encodeURIComponent(projectName);
+  res.json({ iframeSrc: `/_vs/${viewer.username}/${ownerUsername}/${encodedName}/` });
+});
+
 app.get("/api/users/:username/projects", (req: Request, res: Response) => {
   const viewer = requireAuth(req, res);
   if (!viewer) return;
@@ -1122,7 +1147,7 @@ app.get("/:username/", (req: Request, res: Response) => {
 app.get("/:username/:projectName/", (req: Request, res: Response) => {
   const { username: ownerUsername, projectName } = req.params;
   if (!USERNAME_RE.test(ownerUsername)) {
-    res.redirect("/");
+    res.status(400).send("Malformed username");
     return;
   }
   const viewer = requireAuth(req, res);
@@ -1134,27 +1159,19 @@ app.get("/:username/:projectName/", (req: Request, res: Response) => {
 
   const project = getProjectByUserAndName(owner.id, projectName);
   if (!project) {
-    res.redirect(`/${ownerUsername}/`);
+    res.status(404).send("Project not found");
     return;
   }
 
   const isOwner = viewer.username === ownerUsername;
   if (!isOwner && !project.public) {
-    res.status(403).send("This project is private");
+    // NOTE: 404 to prevent enumeration
+    res.status(404).send("Project not found");
     return;
   }
 
-  try {
-    await spawnProject(viewer.username, ownerUsername, projectName, project.id);
-  } catch (err) {
-    res.status(500).send("Failed to start session: " + (err as Error).message);
-    return;
-  }
-
-  const encodedName = encodeURIComponent(projectName);
-  const iframeSrc = `/_vs/${viewer.username}/${ownerUsername}/${encodedName}/`;
   const avatarUrl = getAvatarUrl(viewer.id);
-  res.render("session", { ownerUsername, viewerUsername: viewer.username, projectName, avatarUrl, iframeSrc, isOwner, isAdmin: viewer.is_admin });
+  res.render("session", { ownerUsername, viewerUsername: viewer.username, projectName, avatarUrl, isOwner, isAdmin: viewer.is_admin });
 });
 
 app.listen(SPAWNER_PORT, "127.0.0.1", () => {
