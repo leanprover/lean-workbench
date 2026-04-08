@@ -4,3 +4,4 @@ old-version/public/dist/
 public/dist/
 TODO
 vendor
+.eslintcache

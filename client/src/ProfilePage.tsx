@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Project, TemplateInfo } from './api.ts'
+import type { Project, TemplateInfo } from './api'
 import {
   createProject,
   deleteProject,
@@ -8,7 +8,7 @@ import {
   fetchUserProjects,
   setProjectVisibility,
   updateProject,
-} from './api.ts'
+} from './api'
 
 export function ProfilePage({ username, isAdmin, isOwner }: { username: string; isAdmin: boolean; isOwner: boolean }) {
   const [projects, setProjects] = useState<Project[]>([])

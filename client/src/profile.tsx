@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client'
-import { ProfilePage } from './ProfilePage.tsx'
+import { ProfilePage } from './ProfilePage'
 
 declare global {
   interface Window {

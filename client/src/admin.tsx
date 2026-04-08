@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client'
-import { AdminPage } from './AdminPage.tsx'
+import { AdminPage } from './AdminPage'
 
 declare global {
   interface Window {

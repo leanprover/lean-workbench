@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { AdminUser, EditorSessionStatus, HealthInfo, OAuthConfig } from './api.ts'
+import type { AdminUser, EditorSessionStatus, HealthInfo, OAuthConfig } from './api'
 import {
   addAllowedUser,
   deleteUser,
@@ -15,7 +15,7 @@ import {
   setUserAdmin,
   updateAdminSettings,
   updateOAuthConfig,
-} from './api.ts'
+} from './api'
 
 type ConfirmAction = {
   title: string

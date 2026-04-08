@@ -35,9 +35,9 @@ import {
   setSetting,
   updateProject,
   upsertGithubUser,
-} from './db.ts'
+} from '../src/db'
 
-const migrationsDir = path.join(import.meta.dirname, 'migrations')
+const migrationsDir = path.join(import.meta.dirname, '..', 'migrations')
 
 beforeEach(() => {
   initDb(':memory:', migrationsDir)
@@ -198,12 +198,15 @@ describe('project visibility', () => {
   it('setProjectPublic / getPublicProjectsByUsername', () => {
     const user = ensureUser('vis')
     const p1 = createProject(user.id, 'public-proj', 'blank')
-    const p2 = createProject(user.id, 'private-proj', 'blank')
     setProjectPublic(p1.id, true)
+    const p2 = createProject(user.id, 'private-proj', 'blank')
 
-    const pub = getPublicProjectsByUsername('vis')
+    let pub = getPublicProjectsByUsername('vis')
     expect(pub).toHaveLength(1)
     expect(pub[0].id).toBe(p1.id)
+    setProjectPublic(p2.id, true)
+    pub = getPublicProjectsByUsername('vis')
+    expect(pub).toHaveLength(2)
   })
 
   it('getProjectByOwnerUsernameAndName', () => {
