@@ -546,7 +546,7 @@ app.post("/api/projects", (req: Request, res: Response) => {
   res.json(project);
 });
 
-app.put("/api/projects/:projectId", (req: Request, res: Response) => {
+app.put("/api/projects/:projectId", (req: Request<{projectId: string}>, res: Response) => {
   const user = requireAuth(req, res);
   if (!user) return;
 
@@ -570,7 +570,7 @@ app.put("/api/projects/:projectId", (req: Request, res: Response) => {
   res.json({ ok: true });
 });
 
-app.delete("/api/projects/:projectId", (req: Request, res: Response) => {
+app.delete("/api/projects/:projectId", (req: Request<{projectId: string}>, res: Response) => {
   const user = requireAuth(req, res);
   if (!user) return;
 
@@ -585,7 +585,7 @@ app.delete("/api/projects/:projectId", (req: Request, res: Response) => {
   res.json({ ok: true });
 });
 
-app.put("/api/projects/:projectId/visibility", (req: Request, res: Response) => {
+app.put("/api/projects/:projectId/visibility", (req: Request<{projectId: string}>, res: Response) => {
   const user = requireAuth(req, res);
   if (!user) return;
 
@@ -605,7 +605,8 @@ app.put("/api/projects/:projectId/visibility", (req: Request, res: Response) => 
   res.json({ ok: true });
 });
 
-app.put("/api/editor-sessions/:ownerUsername/:projectName", async (req: Request, res: Response) => {
+app.put("/api/editor-sessions/:ownerUsername/:projectName",
+    async (req: Request<{ownerUsername: string, projectName: string}>, res: Response) => {
   const viewer = requireAuth(req, res);
   if (!viewer) return;
 
@@ -645,7 +646,7 @@ app.put("/api/editor-sessions/:ownerUsername/:projectName", async (req: Request,
   res.json({ iframeSrc: `/_vs/${viewer.username}/${ownerUsername}/${encodedName}/` });
 });
 
-app.get("/api/users/:username/projects", (req: Request, res: Response) => {
+app.get("/api/users/:username/projects", (req: Request<{username: string}>, res: Response) => {
   const viewer = requireAuth(req, res);
   if (!viewer) return;
 
@@ -671,7 +672,8 @@ app.get("/admin", (req: Request, res: Response) => {
   res.render("admin", { username: user.username, avatarUrl, isAdmin: true });
 });
 
-app.delete("/api/admin/editor-sessions/:viewer/:projectId", (req: Request, res: Response) => {
+app.delete("/api/admin/editor-sessions/:viewer/:projectId",
+    (req: Request<{viewer: string, projectId: string}>, res: Response) => {
   const user = requireAdmin(req, res);
   if (!user) return;
   editorSessions.killSession(req.params.viewer, req.params.projectId);
@@ -781,7 +783,7 @@ app.post("/api/admin/allowed-users", (req: Request, res: Response) => {
   res.json({ ok: true });
 });
 
-app.delete("/api/admin/allowed-users/:username", (req: Request, res: Response) => {
+app.delete("/api/admin/allowed-users/:username", (req: Request<{username: string}>, res: Response) => {
   const user = requireAdmin(req, res);
   if (!user) return;
   removeAllowedUser(req.params.username);
@@ -925,22 +927,7 @@ app.get("/", (req: Request, res: Response) => {
   res.render("landing", { user, devMode: !IS_PROD, githubEnabled });
 });
 
-function requirePageOwner(req: Request, res: Response): UserRow | null {
-  const { username } = req.params;
-  if (!USERNAME_RE.test(username)) {
-    res.redirect("/");
-    return null;
-  }
-  const user = requireAuth(req, res);
-  if (!user) return null;
-  if (user.username !== username) {
-    res.redirect("/");
-    return null;
-  }
-  return user;
-}
-
-app.get("/:username/", (req: Request, res: Response) => {
+app.get("/:username/", (req: Request<{username: string}>, res: Response) => {
   const { username } = req.params;
   if (!USERNAME_RE.test(username)) {
     res.redirect("/");
@@ -959,7 +946,7 @@ app.get("/:username/", (req: Request, res: Response) => {
   res.render("profile", { username, isAdmin: viewer.is_admin, avatarUrl, isOwner });
 });
 
-app.get("/:username/:projectName/", (req: Request, res: Response) => {
+app.get("/:username/:projectName/", (req: Request<{username: string, projectName: string}>, res: Response) => {
   const { username: ownerUsername, projectName } = req.params;
   if (!USERNAME_RE.test(ownerUsername)) {
     res.status(400).send("Malformed username");
