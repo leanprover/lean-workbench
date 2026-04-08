@@ -12,20 +12,21 @@ export interface EditorSessionInfo {
 
 export interface EditorSessionManagerConfig {
   workspacesDir: string;
-  nginxRoutesDir: string;
-  openvscodeServerRoot: string;
-  extensionsDir: string;
   elanDir: string;
-  basePort: number;
-  maxPort: number;
 }
+
+const OPENVSCODE_SERVER_ROOT = "/home/.openvscode-server";
+const EXTENSIONS_DIR = "/home/extensions";
+const NGINX_ROUTES_DIR = "/etc/nginx/user-routes";
+const BASE_PORT = 3010;
+const MAX_PORT = 3999;
 
 export class EditorSessionManager {
   private editorSessions = new Map<string, EditorSessionInfo>();
   private nextPort: number;
 
   constructor(private config: EditorSessionManagerConfig) {
-    this.nextPort = config.basePort;
+    this.nextPort = BASE_PORT;
   }
 
   private static sessionKey(username: string, projectId: string): string {
@@ -52,7 +53,7 @@ export class EditorSessionManager {
 }
 `;
     fs.writeFileSync(
-      `${this.config.nginxRoutesDir}/${viewerUsername}-${projectId}.conf`,
+      `${NGINX_ROUTES_DIR}/${viewerUsername}-${projectId}.conf`,
       conf,
     );
   }
@@ -157,9 +158,9 @@ export class EditorSessionManager {
         "--ro-bind-try", "/lib64", "/lib64",
         "--ro-bind", "/bin", "/bin",
         "--ro-bind", "/etc", "/etc",
-        "--ro-bind", this.config.openvscodeServerRoot, this.config.openvscodeServerRoot,
+        "--ro-bind", OPENVSCODE_SERVER_ROOT, OPENVSCODE_SERVER_ROOT,
         "--ro-bind", this.config.elanDir, "/home/elan",
-        "--ro-bind", this.config.extensionsDir, this.config.extensionsDir,
+        "--ro-bind", EXTENSIONS_DIR, EXTENSIONS_DIR,
         ...workspaceMount,
         ...overlayArgs,
         "--proc", "/proc",
@@ -185,13 +186,13 @@ export class EditorSessionManager {
         "--die-with-parent",
         "--new-session",
         "--",
-        `${this.config.openvscodeServerRoot}/bin/openvscode-server`,
+        `${OPENVSCODE_SERVER_ROOT}/bin/openvscode-server`,
         "--host", "127.0.0.1",
         "--port", String(port),
         "--without-connection-token",
         `--server-base-path=/_vs/${viewerUsername}/${ownerUsername}/${encodedName}/`,
         "--default-folder", sandboxProject,
-        "--extensions-dir", this.config.extensionsDir,
+        "--extensions-dir", EXTENSIONS_DIR,
         "--server-data-dir", `${sandboxProject}/.vscode-data`,
       ],
       { stdio: "inherit", detached: true },
@@ -225,7 +226,7 @@ export class EditorSessionManager {
     this.editorSessions.delete(key);
     try {
       fs.unlinkSync(
-        `${this.config.nginxRoutesDir}/${viewerUsername}-${projectId}.conf`,
+        `${NGINX_ROUTES_DIR}/${viewerUsername}-${projectId}.conf`,
       );
       execSync("nginx -s reload");
     } catch {

@@ -6,7 +6,7 @@ import passport from "passport";
 import { Strategy as GitHubStrategy } from "passport-github2";
 import type { VerifyCallback } from "passport-oauth2";
 import crypto from "node:crypto";
-import { execSync } from "node:child_process";
+import { spawn, execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { EditorSessionManager } from "./editorSessionManager.ts";
@@ -14,32 +14,27 @@ import type { EditorSessionInfo } from "./editorSessionManager.ts";
 import {
   initDb,
   ensureUser, getUserById, getUserByUsername, getAvatarUrl,
-  upsertGithubUser, isAdmin as checkIsAdmin, setAdmin, getUserCount,
+  upsertGithubUser, setAdmin, getUserCount,
   getAllUsers, deleteUser,
   getProjectsByUser, getProjectByUserAndName, createProject,
   getProjectById, updateProject, deleteProject, PROJECT_NAME_RE,
   getPackageSets, addPackageSet,
-  setProjectPublic, getPublicProjectsByUsername, getProjectByOwnerUsernameAndName,
+  setProjectPublic, getPublicProjectsByUsername,
   isFirstRunComplete, setFirstRunComplete,
   getAuthMethod, saveAuthMethod,
   getSetting, setSetting,
   getAllowedUsers, addAllowedUser, removeAllowedUser, isUserAllowed,
-  type UserRow, type ProjectRow,
+  type UserRow,
 } from "./db.ts";
 
 const SPAWNER_PORT = 3002;
-const OPENVSCODE_SERVER_ROOT = "/home/.openvscode-server";
-const EXTENSIONS_DIR = "/home/extensions";
 const DATA_DIR = "/data";
 const ELAN_DIR = `${DATA_DIR}/elan`;
 const WORKSPACES_DIR = `${DATA_DIR}/workspaces`;
 const PACKAGE_SETS_DIR = `${DATA_DIR}/package-sets`;
 const TEMPLATES_DIR = `${DATA_DIR}/templates`;
 const SCRIPTS_DIR = path.join(import.meta.dirname!, "scripts");
-const NGINX_ROUTES_DIR = "/etc/nginx/user-routes";
 const USERNAME_RE = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/;
-const BASE_PORT = 3010;
-const MAX_PORT = 3999;
 
 const IS_PROD = process.env.NODE_ENV === "production"
 
@@ -136,12 +131,7 @@ if (setupComplete) {
 
 const editorSessions = new EditorSessionManager({
   workspacesDir: WORKSPACES_DIR,
-  nginxRoutesDir: NGINX_ROUTES_DIR,
-  openvscodeServerRoot: OPENVSCODE_SERVER_ROOT,
-  extensionsDir: EXTENSIONS_DIR,
   elanDir: ELAN_DIR,
-  basePort: BASE_PORT,
-  maxPort: MAX_PORT,
 });
 
 interface TemplateMetadata {
@@ -976,6 +966,7 @@ app.get("/:username/:projectName/", (req: Request, res: Response) => {
     return;
   }
   const viewer = requireAuth(req, res);
+  if (!viewer) return;
   const owner = getUserByUsername(ownerUsername);
   if (!owner) {
     res.status(404).send("User not found");
