@@ -1,38 +1,36 @@
-import { spawn, execSync } from "node:child_process";
-import net from "node:net";
-import fs from "node:fs";
-import path from "node:path";
+import { execSync, spawn } from 'node:child_process'
+import fs from 'node:fs'
+import net from 'node:net'
+import path from 'node:path'
 
 export interface EditorSessionInfo {
-  port: number;
-  pid: number;
-  workspace: string;
-  projectId: string;
+  port: number
+  pid: number
+  workspace: string
+  projectId: string
 }
 
 export interface EditorSessionManagerConfig {
-  workspacesDir: string;
-  elanDir: string;
+  workspacesDir: string
+  elanDir: string
 }
 
-const OPENVSCODE_SERVER_ROOT = "/home/.openvscode-server";
-const EXTENSIONS_DIR = "/home/extensions";
-const NGINX_ROUTES_DIR = "/etc/nginx/user-routes";
-const BASE_PORT = 3010;
-const MAX_PORT = 3999;
+const OPENVSCODE_SERVER_ROOT = '/home/.openvscode-server'
+const EXTENSIONS_DIR = '/home/extensions'
+const NGINX_ROUTES_DIR = '/etc/nginx/user-routes'
+const BASE_PORT = 3010
+const MAX_PORT = 3999
 
 export class EditorSessionManager {
-  private editorSessions = new Map<string, EditorSessionInfo>();
-  private availablePorts: Set<number>;
+  private editorSessions = new Map<string, EditorSessionInfo>()
+  private availablePorts: Set<number>
 
   constructor(private config: EditorSessionManagerConfig) {
-    this.availablePorts = new Set(
-      Array.from({ length: MAX_PORT - BASE_PORT + 1 }, (_, i) => BASE_PORT + i),
-    );
+    this.availablePorts = new Set(Array.from({ length: MAX_PORT - BASE_PORT + 1 }, (_, i) => BASE_PORT + i))
   }
 
   private static sessionKey(username: string, projectId: string): string {
-    return `${username}/${projectId}`;
+    return `${username}/${projectId}`
   }
 
   private writeNginxConf(
@@ -42,7 +40,7 @@ export class EditorSessionManager {
     projectId: string,
     port: number,
   ): void {
-    const encodedName = encodeURIComponent(projectName);
+    const encodedName = encodeURIComponent(projectName)
     const conf = `location /_vs/${viewerUsername}/${ownerUsername}/${encodedName}/ {
     proxy_pass http://127.0.0.1:${port};
     proxy_http_version 1.1;
@@ -53,67 +51,59 @@ export class EditorSessionManager {
     proxy_read_timeout 86400;
     proxy_hide_header X-Frame-Options;
 }
-`;
-    fs.writeFileSync(
-      `${NGINX_ROUTES_DIR}/${viewerUsername}-${projectId}.conf`,
-      conf,
-    );
+`
+    fs.writeFileSync(`${NGINX_ROUTES_DIR}/${viewerUsername}-${projectId}.conf`, conf)
   }
 
   private ensureMachineSettings(workspace: string): void {
-    const machineSettingsDir = path.join(
-      workspace,
-      ".vscode-data",
-      "data",
-      "Machine",
-    );
-    const machineSettingsFile = path.join(machineSettingsDir, "settings.json");
+    const machineSettingsDir = path.join(workspace, '.vscode-data', 'data', 'Machine')
+    const machineSettingsFile = path.join(machineSettingsDir, 'settings.json')
     if (!fs.existsSync(machineSettingsFile)) {
-      fs.mkdirSync(machineSettingsDir, { recursive: true });
+      fs.mkdirSync(machineSettingsDir, { recursive: true })
       fs.writeFileSync(
         machineSettingsFile,
         JSON.stringify(
           {
-            "security.workspace.trust.enabled": false,
-            "workbench.startupEditor": "none",
-            "files.watcherExclude": { "/home/elan/**": true },
+            'security.workspace.trust.enabled': false,
+            'workbench.startupEditor': 'none',
+            'files.watcherExclude': { '/home/elan/**': true },
           },
           null,
           2,
-        ) + "\n",
-      );
+        ) + '\n',
+      )
     }
   }
 
   private isAlive(pid: number): boolean {
     try {
-      process.kill(pid, 0);
-      return true;
+      process.kill(pid, 0)
+      return true
     } catch {
-      return false;
+      return false
     }
   }
 
   private waitForPort(port: number, timeoutMs = 10000): Promise<void> {
     return new Promise((resolve, reject) => {
-      const deadline = Date.now() + timeoutMs;
+      const deadline = Date.now() + timeoutMs
       function attempt() {
         if (Date.now() > deadline) {
-          reject(new Error(`Timeout waiting for port ${port}`));
-          return;
+          reject(new Error(`Timeout waiting for port ${port}`))
+          return
         }
-        const socket = net.connect(port, "127.0.0.1");
-        socket.once("connect", () => {
-          socket.destroy();
-          resolve();
-        });
-        socket.once("error", () => {
-          socket.destroy();
-          setTimeout(attempt, 1000);
-        });
+        const socket = net.connect(port, '127.0.0.1')
+        socket.once('connect', () => {
+          socket.destroy()
+          resolve()
+        })
+        socket.once('error', () => {
+          socket.destroy()
+          setTimeout(attempt, 1000)
+        })
       }
-      attempt();
-    });
+      attempt()
+    })
   }
 
   async startSession(
@@ -123,134 +113,166 @@ export class EditorSessionManager {
     projectId: string,
     buildOverlayArgs: (projectId: string, workspace: string, sandboxProject: string) => string[],
   ): Promise<EditorSessionInfo> {
-    const key = EditorSessionManager.sessionKey(viewerUsername, projectId);
-    const existing = this.editorSessions.get(key);
-    if (existing && this.isAlive(existing.pid)) return existing;
+    const key = EditorSessionManager.sessionKey(viewerUsername, projectId)
+    const existing = this.editorSessions.get(key)
+    if (existing && this.isAlive(existing.pid)) return existing
 
     // Clean up stale entry
     if (existing) {
-      this.editorSessions.delete(key);
-      this.availablePorts.add(existing.port);
+      this.editorSessions.delete(key)
+      this.availablePorts.add(existing.port)
     }
 
-    const isOwner = viewerUsername === ownerUsername;
-    const port = this.availablePorts.values().next().value;
-    if (port === undefined) throw new Error("No available ports");
-    this.availablePorts.delete(port);
-    const workspace = path.join(
-      this.config.workspacesDir,
-      ownerUsername,
-      projectId,
-    );
-    fs.mkdirSync(workspace, { recursive: true });
+    const isOwner = viewerUsername === ownerUsername
+    const port = this.availablePorts.values().next().value
+    if (port === undefined) throw new Error('No available ports')
+    this.availablePorts.delete(port)
+    const workspace = path.join(this.config.workspacesDir, ownerUsername, projectId)
+    fs.mkdirSync(workspace, { recursive: true })
     if (isOwner) {
-      this.ensureMachineSettings(workspace);
+      this.ensureMachineSettings(workspace)
     }
 
-    const encodedName = encodeURIComponent(projectName);
-    const sandboxProject = `/workspace/${projectName}`;
+    const encodedName = encodeURIComponent(projectName)
+    const sandboxProject = `/workspace/${projectName}`
 
     // Owner gets persistent bind mount; non-owner gets ephemeral CoW overlay
     const workspaceMount = isOwner
-      ? ["--bind", workspace, sandboxProject]
-      : ["--overlay-src", workspace, "--tmp-overlay", sandboxProject];
+      ? ['--bind', workspace, sandboxProject]
+      : ['--overlay-src', workspace, '--tmp-overlay', sandboxProject]
 
-    const overlayArgs = buildOverlayArgs(projectId, workspace, sandboxProject);
+    const overlayArgs = buildOverlayArgs(projectId, workspace, sandboxProject)
 
     const child = spawn(
-      "bwrap",
+      'bwrap',
       [
-        "--ro-bind", "/usr", "/usr",
-        "--ro-bind", "/lib", "/lib",
-        "--ro-bind-try", "/lib64", "/lib64",
-        "--ro-bind", "/bin", "/bin",
-        "--ro-bind", "/etc", "/etc",
-        "--ro-bind", OPENVSCODE_SERVER_ROOT, OPENVSCODE_SERVER_ROOT,
-        "--ro-bind", this.config.elanDir, "/home/elan",
-        "--ro-bind", EXTENSIONS_DIR, EXTENSIONS_DIR,
+        '--ro-bind',
+        '/usr',
+        '/usr',
+        '--ro-bind',
+        '/lib',
+        '/lib',
+        '--ro-bind-try',
+        '/lib64',
+        '/lib64',
+        '--ro-bind',
+        '/bin',
+        '/bin',
+        '--ro-bind',
+        '/etc',
+        '/etc',
+        '--ro-bind',
+        OPENVSCODE_SERVER_ROOT,
+        OPENVSCODE_SERVER_ROOT,
+        '--ro-bind',
+        this.config.elanDir,
+        '/home/elan',
+        '--ro-bind',
+        EXTENSIONS_DIR,
+        EXTENSIONS_DIR,
         ...workspaceMount,
         ...overlayArgs,
-        "--proc", "/proc",
-        "--dev", "/dev",
-        "--tmpfs", "/tmp",
-        "--clearenv",
-        "--setenv", "HOME", sandboxProject,
-        "--setenv", "ELAN_HOME", "/home/elan",
-        "--setenv", "PATH", `/home/elan/bin:/usr/local/bin:/usr/bin:/bin`,
+        '--proc',
+        '/proc',
+        '--dev',
+        '/dev',
+        '--tmpfs',
+        '/tmp',
+        '--clearenv',
+        '--setenv',
+        'HOME',
+        sandboxProject,
+        '--setenv',
+        'ELAN_HOME',
+        '/home/elan',
+        '--setenv',
+        'PATH',
+        `/home/elan/bin:/usr/local/bin:/usr/bin:/bin`,
         // FIXME: Git's "dubious ownership" check (CVE-2022-24765) rejects repos
         // owned by a different uid. The overlay mounts cause an ownership mismatch
         // that triggers this; safe.directory=* *should* be ok here since the sandbox
         // is already isolated, but this should be considered more carefully.
-        "--setenv", "GIT_CONFIG_COUNT", "1",
-        "--setenv", "GIT_CONFIG_KEY_0", "safe.directory",
-        "--setenv", "GIT_CONFIG_VALUE_0", "*",
-        "--unshare-user",
-        "--uid", "1000",
-        "--gid", "1000",
-        "--unshare-pid",
-        "--unshare-uts",
-        "--unshare-cgroup",
-        "--die-with-parent",
-        "--new-session",
-        "--",
+        '--setenv',
+        'GIT_CONFIG_COUNT',
+        '1',
+        '--setenv',
+        'GIT_CONFIG_KEY_0',
+        'safe.directory',
+        '--setenv',
+        'GIT_CONFIG_VALUE_0',
+        '*',
+        '--unshare-user',
+        '--uid',
+        '1000',
+        '--gid',
+        '1000',
+        '--unshare-pid',
+        '--unshare-uts',
+        '--unshare-cgroup',
+        '--die-with-parent',
+        '--new-session',
+        '--',
         `${OPENVSCODE_SERVER_ROOT}/bin/openvscode-server`,
-        "--host", "127.0.0.1",
-        "--port", String(port),
-        "--without-connection-token",
+        '--host',
+        '127.0.0.1',
+        '--port',
+        String(port),
+        '--without-connection-token',
         `--server-base-path=/_vs/${viewerUsername}/${ownerUsername}/${encodedName}/`,
-        "--default-folder", sandboxProject,
-        "--extensions-dir", EXTENSIONS_DIR,
-        "--server-data-dir", `${sandboxProject}/.vscode-data`,
+        '--default-folder',
+        sandboxProject,
+        '--extensions-dir',
+        EXTENSIONS_DIR,
+        '--server-data-dir',
+        `${sandboxProject}/.vscode-data`,
       ],
-      { stdio: "inherit", detached: true },
-    );
-    child.unref();
+      { stdio: 'inherit', detached: true },
+    )
+    child.unref()
 
     const info: EditorSessionInfo = {
       port,
       pid: child.pid!,
       workspace,
       projectId,
-    };
-    this.editorSessions.set(key, info);
+    }
+    this.editorSessions.set(key, info)
 
-    this.writeNginxConf(viewerUsername, ownerUsername, projectName, projectId, port);
-    execSync("nginx -s reload");
+    this.writeNginxConf(viewerUsername, ownerUsername, projectName, projectId, port)
+    execSync('nginx -s reload')
 
-    await this.waitForPort(port);
-    return info;
+    await this.waitForPort(port)
+    return info
   }
 
   killSession(viewerUsername: string, projectId: string): void {
-    const key = EditorSessionManager.sessionKey(viewerUsername, projectId);
-    const s = this.editorSessions.get(key);
-    if (!s) return;
+    const key = EditorSessionManager.sessionKey(viewerUsername, projectId)
+    const s = this.editorSessions.get(key)
+    if (!s) return
     try {
-      process.kill(s.pid);
+      process.kill(s.pid)
     } catch {
       // already dead
     }
-    this.editorSessions.delete(key);
-    this.availablePorts.add(s.port);
+    this.editorSessions.delete(key)
+    this.availablePorts.add(s.port)
     try {
-      fs.unlinkSync(
-        `${NGINX_ROUTES_DIR}/${viewerUsername}-${projectId}.conf`,
-      );
-      execSync("nginx -s reload");
+      fs.unlinkSync(`${NGINX_ROUTES_DIR}/${viewerUsername}-${projectId}.conf`)
+      execSync('nginx -s reload')
     } catch {
       // conf may not exist
     }
   }
 
   listSessions(): { key: string; info: EditorSessionInfo; alive: boolean }[] {
-    const result: { key: string; info: EditorSessionInfo; alive: boolean }[] = [];
+    const result: { key: string; info: EditorSessionInfo; alive: boolean }[] = []
     for (const [key, info] of this.editorSessions) {
-      result.push({ key, info, alive: this.isAlive(info.pid) });
+      result.push({ key, info, alive: this.isAlive(info.pid) })
     }
-    return result;
+    return result
   }
 
   get sessionCount(): number {
-    return this.editorSessions.size;
+    return this.editorSessions.size
   }
 }
