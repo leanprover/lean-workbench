@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prepare": "husky"
+    "prepare": "husky",
+    "lint": "prettier . --check && eslint --quiet"
   },
   "workspaces": [
     "client",

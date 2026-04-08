@@ -52,7 +52,7 @@ const ELAN_DIR = `${DATA_DIR}/elan`
 const WORKSPACES_DIR = `${DATA_DIR}/workspaces`
 const PACKAGE_SETS_DIR = `${DATA_DIR}/package-sets`
 const TEMPLATES_DIR = `${DATA_DIR}/templates`
-const SCRIPTS_DIR = path.join(import.meta.dirname!, 'scripts')
+const SCRIPTS_DIR = path.join(import.meta.dirname, 'scripts')
 const USERNAME_RE = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/
 
 const IS_PROD = process.env.NODE_ENV === 'production'
@@ -253,7 +253,7 @@ function requireAdmin(req: Request, res: Response): UserRow | null {
 
 const app = express()
 app.set('view engine', 'ejs')
-app.set('views', path.join(import.meta.dirname!, 'public'))
+app.set('views', path.join(import.meta.dirname, 'public'))
 
 // TODO: use a different session store. The default `MemoryStore` is "not designed for a production environment"
 app.use(
@@ -287,7 +287,7 @@ passport.deserializeUser((id, done) => {
 app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
 
-app.use('/static', express.static(path.join(import.meta.dirname!, 'public')))
+app.use('/static', express.static(path.join(import.meta.dirname, 'public')))
 
 // --- Setup routes (available before first-run is complete) ---
 

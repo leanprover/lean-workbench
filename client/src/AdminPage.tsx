@@ -65,7 +65,7 @@ function ConfirmDialog({ action, onClose }: { action: ConfirmAction; onClose: ()
         <button onClick={onClose} disabled={busy}>
           Cancel
         </button>
-        <button className={action.danger ? 'danger' : 'primary'} onClick={handleConfirm} disabled={busy}>
+        <button className={action.danger ? 'danger' : 'primary'} onClick={() => void handleConfirm()} disabled={busy}>
           {busy ? '...' : action.confirmLabel}
         </button>
       </div>
@@ -282,7 +282,7 @@ export function AdminPage({ username }: { username: string }) {
                   </div>
                   <div className="actions">
                     <span style={{ fontSize: '0.8rem', color: '#90a4ae' }}>port {s.port}</span>
-                    <button className="delete" onClick={() => handleKillSession(key)}>
+                    <button className="delete" onClick={() => void handleKillSession(key)}>
                       Kill
                     </button>
                   </div>
@@ -326,7 +326,7 @@ export function AdminPage({ username }: { username: string }) {
               />
             </label>
             <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-              <button onClick={handleOauthSave} disabled={oauthSaving}>
+              <button onClick={() => void handleOauthSave()} disabled={oauthSaving}>
                 {oauthSaving ? 'Saving...' : 'Save'}
               </button>
               <button onClick={() => setOauthEditing(false)}>Cancel</button>
@@ -372,7 +372,7 @@ export function AdminPage({ username }: { username: string }) {
           </label>
         </div>
         {modeChanged && (
-          <button onClick={handleSaveMode} disabled={saving}>
+          <button onClick={() => void handleSaveMode()} disabled={saving}>
             {saving ? 'Saving...' : 'Save'}
           </button>
         )}
@@ -391,7 +391,7 @@ export function AdminPage({ username }: { username: string }) {
               <li key={u}>
                 <div className="info">{u}</div>
                 <div className="actions">
-                  <button className="delete" onClick={() => handleRemoveUser(u)}>
+                  <button className="delete" onClick={() => void handleRemoveUser(u)}>
                     Remove
                   </button>
                 </div>
@@ -406,12 +406,12 @@ export function AdminPage({ username }: { username: string }) {
             value={newUser}
             onChange={e => setNewUser(e.target.value)}
             onKeyDown={e => {
-              if (e.key === 'Enter') handleAddUser()
+              if (e.key === 'Enter') void handleAddUser()
             }}
             placeholder="GitHub username"
             style={{ flex: 1 }}
           />
-          <button onClick={handleAddUser}>Add</button>
+          <button onClick={() => void handleAddUser()}>Add</button>
         </div>
       </section>
 
@@ -490,16 +490,18 @@ export function AdminPage({ username }: { username: string }) {
                   {workspacesSize ?? (
                     <button
                       disabled={duLoading}
-                      onClick={async () => {
-                        setDuLoading(true)
-                        try {
-                          const { workspaces } = await fetchDiskUsage()
-                          setWorkspacesSize(workspaces)
-                        } catch {
-                          setWorkspacesSize('error')
-                        }
-                        setDuLoading(false)
-                      }}
+                      onClick={() =>
+                        void (async () => {
+                          setDuLoading(true)
+                          try {
+                            const { workspaces } = await fetchDiskUsage()
+                            setWorkspacesSize(workspaces)
+                          } catch {
+                            setWorkspacesSize('error')
+                          }
+                          setDuLoading(false)
+                        })()
+                      }
                     >
                       {duLoading ? 'Computing...' : 'Compute'}
                     </button>

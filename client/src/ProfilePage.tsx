@@ -169,7 +169,7 @@ function ProjectRow({
             value={editName}
             onChange={e => setEditName(e.target.value)}
             onKeyDown={e => {
-              if (e.key === 'Enter') handleSave()
+              if (e.key === 'Enter') void handleSave()
               if (e.key === 'Escape') handleCancel()
             }}
             placeholder="Project name"
@@ -179,7 +179,7 @@ function ProjectRow({
           {editError && <div style={{ color: '#dc2626', fontSize: 13 }}>{editError}</div>}
         </div>
         <div className="actions">
-          <button onClick={handleSave} disabled={saving}>
+          <button onClick={() => void handleSave()} disabled={saving}>
             Save
           </button>
           <button onClick={handleCancel} disabled={saving}>
@@ -196,9 +196,9 @@ function ProjectRow({
         <a href={`/${username}/${encodeURIComponent(project.name)}/`}>{project.name}</a>
       </div>
       <div className="actions">
-        <button onClick={handleToggleVisibility}>{project.public ? 'Public' : 'Private'}</button>
+        <button onClick={() => void handleToggleVisibility()}>{project.public ? 'Public' : 'Private'}</button>
         <button onClick={() => setEditing(true)}>Edit</button>
-        <button className="delete" onClick={handleDelete}>
+        <button className="delete" onClick={() => void handleDelete()}>
           Delete
         </button>
       </div>
@@ -283,7 +283,7 @@ function NewProjectInline({
         value={name}
         onChange={e => setName(e.target.value)}
         onKeyDown={e => {
-          if (e.key === 'Enter') handleCreate()
+          if (e.key === 'Enter') void handleCreate()
           if (e.key === 'Escape') handleCancel()
         }}
         placeholder="Project name (letters, digits, hyphens, underscores)"
@@ -306,7 +306,7 @@ function NewProjectInline({
       </div>
       {error && <div style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{error}</div>}
       <div>
-        <button onClick={handleCreate} disabled={creating}>
+        <button onClick={() => void handleCreate()} disabled={creating}>
           Create
         </button>
         <button

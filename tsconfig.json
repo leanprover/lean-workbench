@@ -9,5 +9,6 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "noEmit": true
-  }
+  },
+  "files": ["eslint.config.js"]
 }
