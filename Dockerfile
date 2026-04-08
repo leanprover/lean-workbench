@@ -45,11 +45,11 @@ COPY templates/ /home/templates/
 COPY client/ /tmp/client/
 RUN cd /tmp/client && npm install && npm run build
 
-COPY nginx.conf /etc/nginx/nginx.conf
-COPY package.json spawner.ts db.ts editorSessionManager.ts /usr/local/lib/spawner/
-COPY migrations/ /usr/local/lib/spawner/migrations/
+COPY server/nginx.conf /etc/nginx/nginx.conf
+COPY server/package.json server/spawner.ts server/db.ts server/editorSessionManager.ts /usr/local/lib/spawner/
+COPY server/migrations/ /usr/local/lib/spawner/migrations/
 COPY scripts/ /usr/local/lib/spawner/scripts/
-COPY public/ /usr/local/lib/spawner/public/
+COPY server/public/ /usr/local/lib/spawner/public/
 # Copy built React bundle into public/dist/
 RUN cp -r /tmp/public/dist/ /usr/local/lib/spawner/public/dist/ && rm -rf /tmp/client /tmp/public
 RUN cd /usr/local/lib/spawner && npm install --production
