@@ -9,7 +9,7 @@ set -e
 mkdir -p /data/workspaces /data/db /data/package-sets /data/templates
 
 # Start the spawner API in the background
-node --experimental-strip-types /usr/local/lib/spawner/spawner.ts &
+node --experimental-transform-types /usr/local/lib/spawner/spawner.ts &
 
 # Give spawner a moment to bind
 sleep 1
