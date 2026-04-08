@@ -1,11 +1,24 @@
 {
-    "name": "@leanprover/workbench-repo",
-    "private": true,
-    "workspaces": [
-        "client",
-        "server"
+  "name": "@leanprover/workbench-repo",
+  "private": true,
+  "scripts": {
+    "prepare": "husky"
+  },
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.1",
+    "prettier-plugin-organize-imports": "^4.3.0",
+    "typescript": "^6.0.2"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js}": [
+      "prettier --write"
     ],
-    "devDependencies": {
-        "typescript": "^6.0.2"
-    }
+    "*.{json,css}": "prettier --write"
+  }
 }
