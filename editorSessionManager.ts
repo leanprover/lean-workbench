@@ -23,10 +23,12 @@ const MAX_PORT = 3999;
 
 export class EditorSessionManager {
   private editorSessions = new Map<string, EditorSessionInfo>();
-  private nextPort: number;
+  private availablePorts: Set<number>;
 
   constructor(private config: EditorSessionManagerConfig) {
-    this.nextPort = BASE_PORT;
+    this.availablePorts = new Set(
+      Array.from({ length: MAX_PORT - BASE_PORT + 1 }, (_, i) => BASE_PORT + i),
+    );
   }
 
   private static sessionKey(username: string, projectId: string): string {
@@ -126,10 +128,15 @@ export class EditorSessionManager {
     if (existing && this.isAlive(existing.pid)) return existing;
 
     // Clean up stale entry
-    if (existing) this.editorSessions.delete(key);
+    if (existing) {
+      this.editorSessions.delete(key);
+      this.availablePorts.add(existing.port);
+    }
 
     const isOwner = viewerUsername === ownerUsername;
-    const port = this.nextPort++;
+    const port = this.availablePorts.values().next().value;
+    if (port === undefined) throw new Error("No available ports");
+    this.availablePorts.delete(port);
     const workspace = path.join(
       this.config.workspacesDir,
       ownerUsername,
@@ -224,6 +231,7 @@ export class EditorSessionManager {
       // already dead
     }
     this.editorSessions.delete(key);
+    this.availablePorts.add(s.port);
     try {
       fs.unlinkSync(
         `${NGINX_ROUTES_DIR}/${viewerUsername}-${projectId}.conf`,

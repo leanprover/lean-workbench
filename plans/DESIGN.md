@@ -196,8 +196,6 @@ setup (seed-volume.sh), persisted via Docker volume.
 
 - **In-memory session store**: doesn't survive restarts, won't scale
   to multiple processes.
-- **Port allocation**: simple incrementing counter, no reuse. Ports
-  are not reclaimed when sessions die.
 - **No network isolation**: bwrap can't use `--unshare-net` because
   openvscode-server needs a TCP port visible to nginx. A Unix domain
   socket approach would fix this.
