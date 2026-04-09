@@ -147,8 +147,8 @@ if [ -d "$HELLO_DIR" ]; then
 else
   # Find hello template source: repo checkout (host) or Docker image
   HELLO_SRC="$SCRIPT_DIR/../templates/hello"
-  if [ ! -d "$HELLO_SRC" ] && [ -d "/home/templates/hello" ]; then
-    HELLO_SRC="/home/templates/hello"
+  if [ ! -d "$HELLO_SRC" ] && [ -d "/app/templates/hello" ]; then
+    HELLO_SRC="/app/templates/hello"
   fi
   if [ ! -d "$HELLO_SRC" ]; then
     echo "[seed-volume] WARNING: hello template source not found, skipping."
