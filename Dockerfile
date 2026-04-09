@@ -2,8 +2,11 @@ FROM buildpack-deps:24.04-curl
 
 # Install Node.js v24 (LTS)
 RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
-    && apt-get install -y --no-install-recommends nodejs nginx strace git \
-       meson ninja-build pkg-config libcap-dev xz-utils gcc g++ libc6-dev make \
+   && apt-get install -y nodejs
+
+# Install system packages
+RUN apt-get install -y --no-install-recommends nginx strace git \
+       meson ninja-build pkg-config libcap-dev xz-utils gcc g++ libc6-dev make gettext-base \
     && rm -rf /var/lib/apt/lists/*
 
 # Build bubblewrap 0.11.1 from source (need --tmp-overlay support; Ubuntu 24.04 only has 0.9.0)
@@ -42,16 +45,12 @@ RUN mkdir -p /app/.vscode-extensions \
 # Copy project templates (source files only; mathlib .lake is admin-managed on the host volume)
 COPY templates/ /app/templates/
 
-COPY server/nginx.conf /etc/nginx/nginx.conf
 # FIXME: rollup/esbuild the server?
-COPY server/package.json /usr/local/lib/server/
-COPY server/src/spawner.ts server/src/db.ts server/src/editorSessionManager.ts /usr/local/lib/server/src/
-COPY server/migrations/ /usr/local/lib/server/migrations/
-COPY server/public/ /usr/local/lib/server/public/
-COPY scripts/ /usr/local/lib/scripts/
+COPY --parents server/package.json server/src /usr/local/lib
 RUN cd /usr/local/lib/server && npm install --omit=dev
-COPY start.sh /usr/local/bin/start.sh
-RUN chmod +x /usr/local/bin/start.sh
+
+COPY --parents scripts server/nginx.conf.template server/start.sh server/migrations server/public /usr/local/lib
+RUN chmod +x /usr/local/lib/server/start.sh
 
 # Create the user-routes dir for dynamic nginx includes
 RUN mkdir -p /etc/nginx/user-routes
@@ -60,4 +59,4 @@ ENV NODE_ENV=production
 
 EXPOSE 3000
 
-ENTRYPOINT ["/usr/local/bin/start.sh"]
+ENTRYPOINT ["/usr/local/lib/server/start.sh"]

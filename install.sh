@@ -44,14 +44,10 @@ do_uninstall() {
   local data_dir="${1:-}"
 
   if [ -z "$data_dir" ]; then
-    # Try to find an existing installation
+    # Determine the installation directory
     local default="$HOME/.lean-workbench"
-    if [ -f "$default/docker-compose.yml" ]; then
-      data_dir="$default"
-    else
-      data_dir=$(ask_input "Where is Lean Workbench installed?" "$default")
-      data_dir="${data_dir/#\~/$HOME}"
-    fi
+    data_dir=$(ask_input "Where is Lean Workbench installed?" "$default")
+    data_dir="${data_dir/#\~/$HOME}"
   fi
 
   if [ ! -f "$data_dir/docker-compose.yml" ]; then
@@ -97,7 +93,7 @@ do_install() {
   fi
 
   # Prompt for configuration (skip if provided via flags)
-  DATA_DIR="${OPT_DIR:-$(ask_input "Where should Lean Workbench store its data?" "$HOME/.lean-workbench")}"
+  WORKBENCH_ROOT="${OPT_DIR:-$(ask_input "Where should Lean Workbench store its data?" "$HOME/.lean-workbench")}"
   PORT="${OPT_PORT:-$(ask_input "Which port should the server listen on?" "8080")}"
 
   # Validate port
@@ -106,15 +102,15 @@ do_install() {
   fi
 
   # Expand ~ if present
-  DATA_DIR="${DATA_DIR/#\~/$HOME}"
+  WORKBENCH_ROOT="${WORKBENCH_ROOT/#\~/$HOME}"
 
   info "Configuration:"
-  echo "  Data directory: $DATA_DIR"
+  echo "  Workbench root: $WORKBENCH_ROOT"
   echo "  Port: $PORT"
   echo ""
 
   # Create data directory
-  mkdir -p "$DATA_DIR"
+  mkdir -p "$WORKBENCH_ROOT"
 
   # Pull image (skip with --dev if using a locally-built image)
   if [ "${NO_PULL:-}" != "1" ]; then
@@ -128,9 +124,9 @@ do_install() {
   # the data directory, so don't use this in production)
   local ENV_FILE_SECTION=""
   if [ -n "$OPT_ENV_FILE" ]; then
-    cp "$OPT_ENV_FILE" "$DATA_DIR/.env"
-    chmod 600 "$DATA_DIR/.env"
-    info "Copied $OPT_ENV_FILE to $DATA_DIR/.env"
+    cp "$OPT_ENV_FILE" "$WORKBENCH_ROOT/.env"
+    chmod 600 "$WORKBENCH_ROOT/.env"
+    info "Copied $OPT_ENV_FILE to $WORKBENCH_ROOT/.env"
     ENV_FILE_SECTION=$'\n    env_file:\n      - .env'
   fi
 
@@ -158,37 +154,37 @@ EOF
 
   # Write compose files: localhost-only for setup, 0.0.0.0 for production
   info "Writing docker-compose.yml (localhost-only, for setup)..."
-  write_compose "$DATA_DIR/docker-compose.yml" "127.0.0.1"
+  write_compose "$WORKBENCH_ROOT/docker-compose.yml" "127.0.0.1"
 
   info "Writing docker-compose.prod.yml (all interfaces, for production)..."
-  write_compose "$DATA_DIR/docker-compose.prod.yml" "0.0.0.0"
+  write_compose "$WORKBENCH_ROOT/docker-compose.prod.yml" "0.0.0.0"
 
-  # Create data subdirectory (compose mounts ./data, not the dir itself)
-  mkdir -p "$DATA_DIR/data"
+  # Create data subdirectory (compose mounts ./data, not the workbench root)
+  mkdir -p "$WORKBENCH_ROOT/data"
 
   echo ""
   info "Lean Workbench is installed!"
   echo ""
   echo "  To start (localhost-only, for initial setup):"
-  echo "    cd $DATA_DIR && docker compose up -d"
+  echo "    cd $WORKBENCH_ROOT && docker compose up -d"
   echo ""
   echo "  Then open http://localhost:$PORT to configure authentication"
   echo "  and complete setup."
   echo ""
   echo "  After setup, you can switch to production mode:"
-  echo "    cd $DATA_DIR && docker compose down"
+  echo "    cd $WORKBENCH_ROOT && docker compose down"
   echo "    docker compose -f docker-compose.prod.yml up -d"
   echo ""
   echo "  Other commands:"
-  echo "    docker compose -f $DATA_DIR/docker-compose.yml logs -f     # view logs"
-  echo "    docker compose -f $DATA_DIR/docker-compose.yml pull        # update image"
+  echo "    docker compose -f $WORKBENCH_ROOT/docker-compose.yml logs -f     # view logs"
+  echo "    docker compose -f $WORKBENCH_ROOT/docker-compose.yml pull        # update image"
   echo ""
   echo "  To uninstall:"
   echo "    $(realpath "$0") --uninstall"
 
   # Offer to start now
   if ask_yesno "Start Lean Workbench now?"; then
-    docker compose -f "$DATA_DIR/docker-compose.yml" up -d
+    docker compose -f "$WORKBENCH_ROOT/docker-compose.yml" up -d
     echo ""
     info "Lean Workbench is running at http://localhost:$PORT"
     echo "  Open http://localhost:$PORT to configure authentication and complete setup."
@@ -212,10 +208,10 @@ while [ $# -gt 0 ]; do
       echo "Install Lean Workbench with Docker Compose."
       echo ""
       echo "Options:"
-      echo "  --dir DIR    Data directory (default: ~/.lean-workbench)"
+      echo "  --dir DIR    Workbench root directory (default: ~/.lean-workbench)"
       echo "  --port PORT  Server port (default: 8080)"
       echo "  --no-pull    Skip docker pull (use locally-built image)"
-      echo "  --env-file F Copy env file into data dir (dev only, not for production)"
+      echo "  --env-file F Copy env file into workbench root directory (dev only, not for production)"
       echo "  --uninstall  Stop and remove Lean Workbench"
       exit 0
       ;;

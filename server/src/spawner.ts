@@ -42,7 +42,7 @@ import {
   upsertGithubUser,
   type UserRow,
 } from './db.ts'
-import type { EditorSessionInfo } from './editorSessionManager.ts'
+import type { EditorSessionInfo, SandboxMode } from './editorSessionManager.ts'
 import { EditorSessionManager } from './editorSessionManager.ts'
 
 const SPAWNER_PORT = 3002
@@ -51,7 +51,8 @@ const SPAWNER_PORT = 3002
 const DATA_DIR = process.env.DATA_DIR ?? '/data'
 const OPENVSCODE_SERVER_DIR = process.env.OPENVSCODE_SERVER_DIR ?? '/app/.openvscode-server'
 const VSCODE_EXTENSIONS_DIR = process.env.VSCODE_EXTENSIONS_DIR ?? '/app/.vscode-extensions'
-const NGINX_ROUTES_DIR = process.env.NGINX_ROUTES_DIR ?? '/etc/nginx/user-routes'
+const NGINX_CONF_DIR = process.env.NGINX_CONF_DIR ?? '/etc/nginx'
+const NGINX_LOG_DIR = process.env.NGINX_LOG_DIR ?? '/var/log/nginx'
 
 // Derived paths
 const ELAN_DIR = path.join(DATA_DIR, 'elan')
@@ -69,6 +70,10 @@ const MIGRATIONS_DIR = path.join(import.meta.dirname, '..', 'migrations')
 const USERNAME_RE = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/
 
 const IS_PROD = process.env.NODE_ENV === 'production'
+const SANDBOX_MODE: SandboxMode = process.env.SANDBOX_MODE === 'off' ? 'off' : 'bubblewrap'
+if (SANDBOX_MODE === 'off') {
+  console.warn('[spawner] Sandboxing is off. VSCode sessions will have full access to the host machine.')
+}
 
 // --- Setup state ---
 
@@ -166,8 +171,10 @@ const editorSessions = new EditorSessionManager({
   elanDir: ELAN_DIR,
   openVscodeServerDir: OPENVSCODE_SERVER_DIR,
   vscodeExtensionsDir: VSCODE_EXTENSIONS_DIR,
-  nginxRoutesDir: NGINX_ROUTES_DIR,
+  nginxConfDir: NGINX_CONF_DIR,
+  nginxLogDir: NGINX_LOG_DIR,
   packageSetsDir: PACKAGE_SETS_DIR,
+  sandboxMode: SANDBOX_MODE,
 })
 
 interface TemplateMetadata {
@@ -666,7 +673,8 @@ app.put(
     try {
       await editorSessions.startSession(viewer.username, ownerUsername, projectName, project.id)
     } catch (err) {
-      res.status(500).json({ error: 'Failed to start editor session: ' + (err as Error).message })
+      console.error('Failed to start editor session:', (err as Error).message)
+      res.status(500).json({ error: 'Failed to start editor session' })
       return
     }
 
