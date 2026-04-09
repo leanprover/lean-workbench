@@ -67,8 +67,8 @@ mode.
 
 | Target | What it does |
 |--------|-------------|
-| `make` or `make build` | Build the Docker image |
-| `make dev` | Run with `NODE_ENV=development` (enables dev-login) |
+| `make` or `make container` | Build the Docker image |
+| `make dev` | Run with `NODE_ENV` unset (enables dev-login) |
 | `make serve` | Run with `NODE_ENV=production` |
 | `make enter` | Open a bash shell inside a fresh container (for debugging) |
 | `make clean-install` | Rebuild image, wipe data volume, and reinstall from scratch |
@@ -130,14 +130,14 @@ Three processes run inside the Docker container:
 
 | File | Purpose |
 |------|---------|
-| `spawner.ts` | Express app: auth, project API, session spawning, nginx config |
-| `db.ts` | SQLite schema and queries (users, projects, auth config, setup state) |
-| `migrations/` | Numbered SQL migration files, run in order at startup |
-| `nginx.conf` | Reverse proxy config with dynamic per-session includes |
+| `server/spawner.ts` | Express app: auth, project API, session spawning, nginx config |
+| `server/db.ts` | SQLite schema and queries (users, projects, auth config, setup state) |
+| `server/migrations/` | Numbered SQL migration files, run in order at startup |
+| `server/nginx.conf` | Reverse proxy config with dynamic per-session includes |
 | `start.sh` | Container entrypoint: starts spawner + nginx |
 | `scripts/seed-volume.sh` | First-run data volume setup (elan, Mathlib, templates) |
 | `client/src/` | React frontend for project management (ProfilePage) |
-| `public/*.ejs` | Server-rendered pages (landing, session, setup) |
+| `server/public/*.ejs` | Server-rendered pages (landing, session, setup) |
 | `install.sh` | End-user installer (generates Docker Compose files) |
 
 ### Request flow

@@ -25,14 +25,14 @@ Usage: seed-volume.sh [OPTIONS]
 Seed the lean-workbench data volume with elan, mathlib packages, and templates.
 
 Options:
-  --root DIR          Root directory for lean-workbench state
-                      (default: $LEAN_WORKBENCH_ROOT or /tmp/lean-workbench)
+  --data-dir DIR      Data directory for lean-workbench state
+                      (default: $DATA_DIR or /tmp/lean-workbench/data)
   --help              Show this help message
 EOF
   exit 0
 }
 
-ROOT="${LEAN_WORKBENCH_ROOT:-/tmp/lean-workbench}"
+ROOT="${DATA_DIR:-/tmp/lean-workbench/data}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -42,7 +42,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-echo "[seed-volume] Root: $ROOT"
+echo "[seed-volume] Data directory: $ROOT"
 echo ""
 
 TOTAL=7

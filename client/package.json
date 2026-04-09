@@ -1,5 +1,5 @@
 {
-  "name": "lean-workbench-client",
+  "name": "@leanprover/workbench-client",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,7 +14,6 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.0",
-    "typescript": "^5.9.3",
     "vite": "^6.0.0"
   }
 }

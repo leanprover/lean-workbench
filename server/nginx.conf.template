@@ -1,17 +1,17 @@
-worker_processes 1;
+worker_processes auto;
 daemon off;
-pid /tmp/nginx.pid;
+pid $NGINX_PID_PATH;
+error_log $NGINX_ERROR_LOG_PATH;
 
 events {
     worker_connections 1024;
 }
 
 http {
-    include /etc/nginx/mime.types;
+    access_log $NGINX_ACCESS_LOG_PATH;
     default_type application/octet-stream;
 
     sendfile on;
-    keepalive_timeout 65;
 
     map $http_upgrade $connection_upgrade {
         default upgrade;
@@ -23,7 +23,7 @@ http {
         server_name localhost;
 
         # Dynamic per-user routes (written by spawner)
-        include /etc/nginx/user-routes/*.conf;
+        include $NGINX_CONF_DIR/user-routes/*.conf;
 
         # Everything else -> spawner
         location / {

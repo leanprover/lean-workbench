@@ -1,55 +1,61 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from 'react'
+import type { Project, TemplateInfo } from './api'
 import {
-  fetchProjects,
-  fetchUserProjects,
-  fetchTemplates,
   createProject,
-  updateProject,
   deleteProject,
+  fetchProjects,
+  fetchTemplates,
+  fetchUserProjects,
   setProjectVisibility,
-} from "./api.ts";
-import type { Project, TemplateInfo } from "./api.ts";
+  updateProject,
+} from './api'
 
 export function ProfilePage({ username, isAdmin, isOwner }: { username: string; isAdmin: boolean; isOwner: boolean }) {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [templates, setTemplates] = useState<TemplateInfo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [projects, setProjects] = useState<Project[]>([])
+  const [templates, setTemplates] = useState<TemplateInfo[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const projectsPromise = isOwner ? fetchProjects() : fetchUserProjects(username);
-    const templatesPromise = isOwner ? fetchTemplates() : Promise.resolve([]);
+    const projectsPromise = isOwner ? fetchProjects() : fetchUserProjects(username)
+    const templatesPromise = isOwner ? fetchTemplates() : Promise.resolve([])
     Promise.all([projectsPromise, templatesPromise])
       .then(([projects, templates]) => {
-        setProjects(projects);
-        setTemplates(templates);
+        setProjects(projects)
+        setTemplates(templates)
       })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [username, isAdmin, isOwner]);
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
+  }, [username, isAdmin, isOwner])
 
   function handleCreated(project: Project) {
-    setProjects((prev) => [...prev, project]);
+    setProjects(prev => [...prev, project])
   }
 
   function handleUpdated(id: string, name: string) {
-    setProjects((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, name } : p)),
-    );
+    setProjects(prev => prev.map(p => (p.id === id ? { ...p, name } : p)))
   }
 
   function handleDeleted(id: string) {
-    setProjects((prev) => prev.filter((p) => p.id !== id));
+    setProjects(prev => prev.filter(p => p.id !== id))
   }
 
   function handleVisibilityChanged(id: string, isPublic: boolean) {
-    setProjects((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, public: isPublic ? 1 : 0 } : p)),
-    );
+    setProjects(prev => prev.map(p => (p.id === id ? { ...p, public: isPublic ? 1 : 0 } : p)))
   }
 
-  if (loading) return <main style={{ maxWidth: 700 }}><p>Loading...</p></main>;
-  if (error) return <main style={{ maxWidth: 700 }}><p>Error: {error}</p></main>;
+  if (loading)
+    return (
+      <main style={{ maxWidth: 700 }}>
+        <p>Loading...</p>
+      </main>
+    )
+  if (error)
+    return (
+      <main style={{ maxWidth: 700 }}>
+        <p>Error: {error}</p>
+      </main>
+    )
 
   return (
     <main style={{ maxWidth: 700 }}>
@@ -57,10 +63,10 @@ export function ProfilePage({ username, isAdmin, isOwner }: { username: string; 
       <p>{username}'s workspaces</p>
 
       {projects.length === 0 ? (
-        <p className="empty">{isOwner ? "No projects yet. Create one below." : "No public projects."}</p>
+        <p className="empty">{isOwner ? 'No projects yet. Create one below.' : 'No public projects.'}</p>
       ) : (
         <ul className="project-list">
-          {projects.map((p) => (
+          {projects.map(p =>
             isOwner ? (
               <ProjectRow
                 key={p.id}
@@ -76,15 +82,14 @@ export function ProfilePage({ username, isAdmin, isOwner }: { username: string; 
                   <a href={`/${username}/${encodeURIComponent(p.name)}/`}>{p.name}</a>
                 </div>
               </li>
-            )
-          ))}
+            ),
+          )}
         </ul>
       )}
 
       {isOwner && <NewProjectInline onCreated={handleCreated} templates={templates} />}
-
     </main>
-  );
+  )
 }
 
 function ProjectRow({
@@ -94,64 +99,64 @@ function ProjectRow({
   onDeleted,
   onVisibilityChanged,
 }: {
-  project: Project;
-  username: string;
-  onUpdated: (id: string, name: string) => void;
-  onDeleted: (id: string) => void;
-  onVisibilityChanged: (id: string, isPublic: boolean) => void;
+  project: Project
+  username: string
+  onUpdated: (id: string, name: string) => void
+  onDeleted: (id: string) => void
+  onVisibilityChanged: (id: string, isPublic: boolean) => void
 }) {
-  const [editing, setEditing] = useState(false);
-  const [editName, setEditName] = useState(project.name);
-  const [saving, setSaving] = useState(false);
-  const [editError, setEditError] = useState<string | null>(null);
-  const nameRef = useRef<HTMLInputElement>(null);
+  const [editing, setEditing] = useState(false)
+  const [editName, setEditName] = useState(project.name)
+  const [saving, setSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+  const nameRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (editing) nameRef.current?.focus();
-  }, [editing]);
+    if (editing) nameRef.current?.focus()
+  }, [editing])
 
   async function handleSave() {
-    const trimmed = editName.trim();
+    const trimmed = editName.trim()
     if (!trimmed) {
-      setEditError("Name is required");
-      return;
+      setEditError('Name is required')
+      return
     }
-    setSaving(true);
-    setEditError(null);
+    setSaving(true)
+    setEditError(null)
     try {
-      await updateProject(project.id, trimmed);
-      onUpdated(project.id, trimmed);
-      setEditing(false);
+      await updateProject(project.id, trimmed)
+      onUpdated(project.id, trimmed)
+      setEditing(false)
     } catch (e: any) {
-      setEditError(e.message);
+      setEditError(e.message)
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
   }
 
   function handleCancel() {
-    setEditName(project.name);
-    setEditError(null);
-    setEditing(false);
+    setEditName(project.name)
+    setEditError(null)
+    setEditing(false)
   }
 
   async function handleDelete() {
-    if (!confirm(`Delete project "${project.name}"? Workspace files will be kept.`)) return;
+    if (!confirm(`Delete project "${project.name}"? Workspace files will be kept.`)) return
     try {
-      await deleteProject(project.id);
-      onDeleted(project.id);
+      await deleteProject(project.id)
+      onDeleted(project.id)
     } catch (e: any) {
-      alert(e.message);
+      alert(e.message)
     }
   }
 
   async function handleToggleVisibility() {
-    const newPublic = !project.public;
+    const newPublic = !project.public
     try {
-      await setProjectVisibility(project.id, newPublic);
-      onVisibilityChanged(project.id, newPublic);
+      await setProjectVisibility(project.id, newPublic)
+      onVisibilityChanged(project.id, newPublic)
     } catch (e: any) {
-      alert(e.message);
+      alert(e.message)
     }
   }
 
@@ -162,23 +167,27 @@ function ProjectRow({
           <input
             ref={nameRef}
             value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSave();
-              if (e.key === "Escape") handleCancel();
+            onChange={e => setEditName(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') void handleSave()
+              if (e.key === 'Escape') handleCancel()
             }}
             placeholder="Project name"
-            style={{ width: "100%", marginBottom: 4 }}
+            style={{ width: '100%', marginBottom: 4 }}
             disabled={saving}
           />
-          {editError && <div style={{ color: "#dc2626", fontSize: 13 }}>{editError}</div>}
+          {editError && <div style={{ color: '#dc2626', fontSize: 13 }}>{editError}</div>}
         </div>
         <div className="actions">
-          <button onClick={handleSave} disabled={saving}>Save</button>
-          <button onClick={handleCancel} disabled={saving}>Cancel</button>
+          <button onClick={() => void handleSave()} disabled={saving}>
+            Save
+          </button>
+          <button onClick={handleCancel} disabled={saving}>
+            Cancel
+          </button>
         </div>
       </li>
-    );
+    )
   }
 
   return (
@@ -187,58 +196,60 @@ function ProjectRow({
         <a href={`/${username}/${encodeURIComponent(project.name)}/`}>{project.name}</a>
       </div>
       <div className="actions">
-        <button onClick={handleToggleVisibility}>{project.public ? "Public" : "Private"}</button>
+        <button onClick={() => void handleToggleVisibility()}>{project.public ? 'Public' : 'Private'}</button>
         <button onClick={() => setEditing(true)}>Edit</button>
-        <button className="delete" onClick={handleDelete}>Delete</button>
+        <button className="delete" onClick={() => void handleDelete()}>
+          Delete
+        </button>
       </div>
     </li>
-  );
+  )
 }
 
 function NewProjectInline({
   onCreated,
   templates,
 }: {
-  onCreated: (project: Project) => void;
-  templates: TemplateInfo[];
+  onCreated: (project: Project) => void
+  templates: TemplateInfo[]
 }) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const defaultTemplate = templates.find(t => t.id !== 'blank')?.id ?? 'blank';
-  const [template, setTemplate] = useState<string>(defaultTemplate);
-  const [creating, setCreating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const nameRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const defaultTemplate = templates.find(t => t.id !== 'blank')?.id ?? 'blank'
+  const [template, setTemplate] = useState<string>(defaultTemplate)
+  const [creating, setCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const nameRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (open) nameRef.current?.focus();
-  }, [open]);
+    if (open) nameRef.current?.focus()
+  }, [open])
 
   async function handleCreate() {
-    const trimmed = name.trim();
+    const trimmed = name.trim()
     if (!trimmed) {
-      setError("Name is required");
-      return;
+      setError('Name is required')
+      return
     }
-    setCreating(true);
-    setError(null);
+    setCreating(true)
+    setError(null)
     try {
-      const project = await createProject(trimmed, template);
-      onCreated(project);
-      setName("");
-      setTemplate(defaultTemplate);
-      setOpen(false);
+      const project = await createProject(trimmed, template)
+      onCreated(project)
+      setName('')
+      setTemplate(defaultTemplate)
+      setOpen(false)
     } catch (e: any) {
-      setError(e.message);
+      setError(e.message)
     } finally {
-      setCreating(false);
+      setCreating(false)
     }
   }
 
   function handleCancel() {
-    setName("");
-    setError(null);
-    setOpen(false);
+    setName('')
+    setError(null)
+    setOpen(false)
   }
 
   if (!open) {
@@ -247,21 +258,21 @@ function NewProjectInline({
         <button
           onClick={() => setOpen(true)}
           style={{
-            padding: "8px 20px",
+            padding: '8px 20px',
             fontSize: 14,
-            background: "#386EE0",
-            color: "#fff",
-            border: "none",
-            borderRadius: "0.5rem",
-            cursor: "pointer",
+            background: '#386EE0',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '0.5rem',
+            cursor: 'pointer',
             fontWeight: 500,
-            fontFamily: "inherit",
+            fontFamily: 'inherit',
           }}
         >
           + New project
         </button>
       </div>
-    );
+    )
   }
 
   return (
@@ -270,17 +281,17 @@ function NewProjectInline({
         ref={nameRef}
         type="text"
         value={name}
-        onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") handleCreate();
-          if (e.key === "Escape") handleCancel();
+        onChange={e => setName(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter') void handleCreate()
+          if (e.key === 'Escape') handleCancel()
         }}
         placeholder="Project name (letters, digits, hyphens, underscores)"
         maxLength={100}
         disabled={creating}
       />
       <div className="template-selector">
-        {templates.map((t) => (
+        {templates.map(t => (
           <button
             key={t.id}
             type="button"
@@ -293,28 +304,30 @@ function NewProjectInline({
           </button>
         ))}
       </div>
-      {error && <div style={{ color: "#dc2626", fontSize: 13, marginBottom: 8 }}>{error}</div>}
+      {error && <div style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{error}</div>}
       <div>
-        <button onClick={handleCreate} disabled={creating}>Create</button>
+        <button onClick={() => void handleCreate()} disabled={creating}>
+          Create
+        </button>
         <button
           onClick={handleCancel}
           disabled={creating}
           style={{
             marginLeft: 8,
-            padding: "8px 20px",
+            padding: '8px 20px',
             fontSize: 14,
-            background: "#fff",
-            color: "#333",
-            border: "1px solid #D1D9E2",
-            borderRadius: "0.5rem",
-            cursor: "pointer",
+            background: '#fff',
+            color: '#333',
+            border: '1px solid #D1D9E2',
+            borderRadius: '0.5rem',
+            cursor: 'pointer',
             fontWeight: 500,
-            fontFamily: "inherit",
+            fontFamily: 'inherit',
           }}
         >
           Cancel
         </button>
       </div>
     </div>
-  );
+  )
 }
