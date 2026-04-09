@@ -68,7 +68,7 @@ mode.
 | Target | What it does |
 |--------|-------------|
 | `make` or `make container` | Build the Docker image |
-| `make dev` | Run with `NODE_ENV` unset (enables dev-login) |
+| `make dev` | Run with `NODE_ENV` unset (enables dev-login), and the `server/` directory mounted inside the container. |
 | `make serve` | Run with `NODE_ENV=production` |
 | `make enter` | Open a bash shell inside a fresh container (for debugging) |
 | `make clean-install` | Rebuild image, wipe data volume, and reinstall from scratch |

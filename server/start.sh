@@ -7,6 +7,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 DATA_DIR="${DATA_DIR:-/data}"
+OPENVSCODE_SERVER_DIR="${OPENVSCODE_SERVER_DIR:-/app/.openvscode-server}"
 VSCODE_EXTENSIONS_DIR="${VSCODE_EXTENSIONS_DIR:-/app/.vscode-extensions}"
 NGINX_CONF_DIR="${NGINX_CONF_DIR:-/etc/nginx}"
 NGINX_LOG_DIR="${NGINX_LOG_DIR:-/var/log/nginx}"
@@ -16,22 +17,16 @@ NGINX_PID_PATH="${NGINX_LOG_DIR}/nginx.pid"
 NGINX_ERROR_LOG_PATH="${NGINX_LOG_DIR}/error.log"
 NGINX_ACCESS_LOG_PATH="${NGINX_LOG_DIR}/access.log"
 
-# Auto-detect openvscode-server binary
-if [ -z "${OPENVSCODE_SERVER_DIR:-}" ]; then
-  OVSC_BIN=$(which openvscode-server 2>/dev/null) || true
-  if [ -z "${OVSC_BIN}" ]; then
-    OPENVSCODE_SERVER_DIR="/app/.openvscode-server"
-  else
-    OPENVSCODE_SERVER_DIR="$(dirname "$(dirname "${OVSC_BIN}")")"
-  fi
-fi
-
 # Ensure data subdirs exist
 mkdir -p "${DATA_DIR}/workspaces" "${DATA_DIR}/db" "${DATA_DIR}/package-sets" "${DATA_DIR}/templates"
 
 # Start the spawner server in the background
 export DATA_DIR OPENVSCODE_SERVER_DIR VSCODE_EXTENSIONS_DIR NGINX_CONF_DIR NGINX_LOG_DIR
-node --experimental-transform-types ${SCRIPT_DIR}/src/spawner.ts &
+NODE_ARGS="--experimental-transform-types"
+if [ "$NODE_ENV" != "production" ]; then
+    NODE_ARGS="${NODE_ARGS} --watch"
+fi
+node ${NODE_ARGS} ${SCRIPT_DIR}/src/spawner.ts &
 SPAWNER_PID=$!
 trap 'kill $SPAWNER_PID 2>/dev/null' EXIT
 
