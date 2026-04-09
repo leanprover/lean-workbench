@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   base: '/static/dist/',
   build: {
-    outDir: '../public/dist',
+    outDir: '../server/public/dist',
     emptyOutDir: true,
     rollupOptions: {
       input: {

@@ -135,8 +135,7 @@ run, starts spawner in background, runs nginx in foreground.
 - `serve`: docker run with SYS_ADMIN + seccomp/apparmor/systempaths
   unconfined, single volume (`/tmp/lean-workbench:/data`), env file.
   `NODE_ENV=production` (baked into image).
-- `dev`: same as serve but overrides `NODE_ENV=development` (enables
-  dev-login)
+- `dev`: same as serve but unsets `NODE_ENV` (enables dev-login)
 
 ## Sandbox (bwrap) Configuration
 

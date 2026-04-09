@@ -35,7 +35,7 @@ import {
   setSetting,
   updateProject,
   upsertGithubUser,
-} from '../src/db'
+} from '../src/db.ts'
 
 const migrationsDir = path.join(import.meta.dirname, '..', 'migrations')
 

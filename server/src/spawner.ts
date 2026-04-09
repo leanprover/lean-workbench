@@ -42,9 +42,9 @@ import {
   updateProject,
   upsertGithubUser,
   type UserRow,
-} from './db'
-import type { EditorSessionInfo } from './editorSessionManager'
-import { EditorSessionManager } from './editorSessionManager'
+} from './db.ts'
+import type { EditorSessionInfo } from './editorSessionManager.ts'
+import { EditorSessionManager } from './editorSessionManager.ts'
 
 const SPAWNER_PORT = 3002
 const DATA_DIR = '/data'

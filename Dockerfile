@@ -41,17 +41,12 @@ RUN mkdir -p /home/extensions \
 # Copy project templates (source files only; mathlib .lake is admin-managed on the host volume)
 COPY templates/ /home/templates/
 
-# Build React client (outputs to /tmp/public/dist/)
-COPY client/ /tmp/client/
-RUN cd /tmp/client && npm install && npm run build
-
 COPY server/nginx.conf /etc/nginx/nginx.conf
-COPY server/package.json server/spawner.ts server/db.ts server/editorSessionManager.ts /usr/local/lib/spawner/
+# FIXME: rollup/esbuild the server?
+COPY server/package.json server/src/spawner.ts server/src/db.ts server/src/editorSessionManager.ts /usr/local/lib/spawner/
 COPY server/migrations/ /usr/local/lib/spawner/migrations/
 COPY scripts/ /usr/local/lib/spawner/scripts/
 COPY server/public/ /usr/local/lib/spawner/public/
-# Copy built React bundle into public/dist/
-RUN cp -r /tmp/public/dist/ /usr/local/lib/spawner/public/dist/ && rm -rf /tmp/client /tmp/public
 RUN cd /usr/local/lib/spawner && npm install --production
 COPY start.sh /usr/local/bin/start.sh
 RUN chmod +x /usr/local/bin/start.sh
