@@ -2,22 +2,24 @@ import { execSync, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import net from 'node:net'
 import path from 'node:path'
+import { getPackageSets } from './db.ts'
 
 export interface EditorSessionInfo {
   port: number
   pid: number
-  workspace: string
+  workspaceDir: string
   projectId: string
 }
 
 export interface EditorSessionManagerConfig {
   workspacesDir: string
   elanDir: string
+  openVscodeServerDir: string
+  vscodeExtensionsDir: string
+  nginxRoutesDir: string
+  packageSetsDir: string
 }
 
-const OPENVSCODE_SERVER_ROOT = '/home/.openvscode-server'
-const EXTENSIONS_DIR = '/home/extensions'
-const NGINX_ROUTES_DIR = '/etc/nginx/user-routes'
 const BASE_PORT = 3010
 const MAX_PORT = 3999
 
@@ -52,7 +54,7 @@ export class EditorSessionManager {
     proxy_hide_header X-Frame-Options;
 }
 `
-    fs.writeFileSync(`${NGINX_ROUTES_DIR}/${viewerUsername}-${projectId}.conf`, conf)
+    fs.writeFileSync(`${this.config.nginxRoutesDir}/${viewerUsername}-${projectId}.conf`, conf)
   }
 
   private ensureMachineSettings(workspace: string): void {
@@ -106,12 +108,33 @@ export class EditorSessionManager {
     })
   }
 
+  /** Build --overlay-src/--tmp-overlay args for the project's package sets. */
+  private buildOverlayArgs(projectId: string, workspaceDir: string, sandboxProjectDir: string): string[] {
+    const packageSets = getPackageSets(projectId)
+    const args: string[] = []
+    for (const setName of packageSets) {
+      const setDir = path.join(this.config.packageSetsDir, setName)
+      const packagesFile = path.join(setDir, 'packages.txt')
+      if (!fs.existsSync(packagesFile)) continue
+      const packages = fs.readFileSync(packagesFile, 'utf-8').split('\n').filter(Boolean)
+      for (const pkg of packages) {
+        fs.mkdirSync(path.join(workspaceDir, '.lake', 'packages', pkg), { recursive: true })
+        args.push(
+          '--overlay-src',
+          path.join(setDir, pkg),
+          '--tmp-overlay',
+          `${sandboxProjectDir}/.lake/packages/${pkg}`,
+        )
+      }
+    }
+    return args
+  }
+
   async startSession(
     viewerUsername: string,
     ownerUsername: string,
     projectName: string,
     projectId: string,
-    buildOverlayArgs: (projectId: string, workspace: string, sandboxProject: string) => string[],
   ): Promise<EditorSessionInfo> {
     const key = EditorSessionManager.sessionKey(viewerUsername, projectId)
     const existing = this.editorSessions.get(key)
@@ -127,21 +150,21 @@ export class EditorSessionManager {
     const port = this.availablePorts.values().next().value
     if (port === undefined) throw new Error('No available ports')
     this.availablePorts.delete(port)
-    const workspace = path.join(this.config.workspacesDir, ownerUsername, projectId)
-    fs.mkdirSync(workspace, { recursive: true })
+    const workspaceDir = path.join(this.config.workspacesDir, ownerUsername, projectId)
+    fs.mkdirSync(workspaceDir, { recursive: true })
     if (isOwner) {
-      this.ensureMachineSettings(workspace)
+      this.ensureMachineSettings(workspaceDir)
     }
 
     const encodedName = encodeURIComponent(projectName)
-    const sandboxProject = `/workspace/${projectName}`
+    const sandboxProjectDir = `/workspace/${projectName}`
 
     // Owner gets persistent bind mount; non-owner gets ephemeral CoW overlay
     const workspaceMount = isOwner
-      ? ['--bind', workspace, sandboxProject]
-      : ['--overlay-src', workspace, '--tmp-overlay', sandboxProject]
+      ? ['--bind', workspaceDir, sandboxProjectDir]
+      : ['--overlay-src', workspaceDir, '--tmp-overlay', sandboxProjectDir]
 
-    const overlayArgs = buildOverlayArgs(projectId, workspace, sandboxProject)
+    const overlayArgs = this.buildOverlayArgs(projectId, workspaceDir, sandboxProjectDir)
 
     const child = spawn(
       'bwrap',
@@ -152,18 +175,18 @@ export class EditorSessionManager {
         '--ro-bind-try', '/lib64', '/lib64',
         '--ro-bind', '/bin', '/bin',
         '--ro-bind', '/etc', '/etc',
-        '--ro-bind', OPENVSCODE_SERVER_ROOT, OPENVSCODE_SERVER_ROOT,
-        '--ro-bind', this.config.elanDir, '/home/elan',
-        '--ro-bind', EXTENSIONS_DIR, EXTENSIONS_DIR,
+        '--ro-bind', this.config.openVscodeServerDir, '/workspace/.openvscode-server',
+        '--ro-bind', this.config.elanDir, '/workspace/.elan',
+        '--ro-bind', this.config.vscodeExtensionsDir, '/workspace/.vscode-extensions',
         ...workspaceMount,
         ...overlayArgs,
         '--proc', '/proc',
         '--dev', '/dev',
         '--tmpfs', '/tmp',
         '--clearenv',
-        '--setenv', 'HOME', sandboxProject,
-        '--setenv', 'ELAN_HOME', '/home/elan',
-        '--setenv', 'PATH', `/home/elan/bin:/usr/local/bin:/usr/bin:/bin`,
+        '--setenv', 'HOME', '/workspace',
+        '--setenv', 'ELAN_HOME', '/workspace/.elan',
+        '--setenv', 'PATH', `/workspace/.elan/bin:/usr/local/bin:/usr/bin:/bin`,
         // FIXME: Git's "dubious ownership" check (CVE-2022-24765) rejects repos
         // owned by a different uid. The overlay mounts cause an ownership mismatch
         // that triggers this; safe.directory=* *should* be ok here since the sandbox
@@ -180,14 +203,15 @@ export class EditorSessionManager {
         '--die-with-parent',
         '--new-session',
         '--',
-        `${OPENVSCODE_SERVER_ROOT}/bin/openvscode-server`,
+        '/workspace/.openvscode-server/bin/openvscode-server',
         '--host', '127.0.0.1',
         '--port', String(port),
         '--without-connection-token',
         `--server-base-path=/_vs/${viewerUsername}/${ownerUsername}/${encodedName}/`,
-        '--default-folder', sandboxProject,
-        '--extensions-dir', EXTENSIONS_DIR,
-        '--server-data-dir', `${sandboxProject}/.vscode-data`,
+        '--default-folder', sandboxProjectDir,
+        '--extensions-dir', '/workspace/.vscode-extensions',
+        '--server-data-dir', `${sandboxProjectDir}/.vscode-data`,
+        // TODO: user-data-dir that is persisted per user
       ],
       { stdio: 'inherit', detached: true },
     )
@@ -196,7 +220,7 @@ export class EditorSessionManager {
     const info: EditorSessionInfo = {
       port,
       pid: child.pid!,
-      workspace,
+      workspaceDir,
       projectId,
     }
     this.editorSessions.set(key, info)
@@ -220,7 +244,7 @@ export class EditorSessionManager {
     this.editorSessions.delete(key)
     this.availablePorts.add(s.port)
     try {
-      fs.unlinkSync(`${NGINX_ROUTES_DIR}/${viewerUsername}-${projectId}.conf`)
+      fs.unlinkSync(`${this.config.nginxRoutesDir}/${viewerUsername}-${projectId}.conf`)
       execSync('nginx -s reload')
     } catch {
       // conf may not exist

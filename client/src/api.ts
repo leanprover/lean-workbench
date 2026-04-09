@@ -21,7 +21,7 @@ export interface EditorSessionStatus {
   port: number
   pid: number
   alive: boolean
-  workspace: string
+  workspaceDir: string
   projectId: string
 }
 

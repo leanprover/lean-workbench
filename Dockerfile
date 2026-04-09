@@ -27,15 +27,15 @@ RUN arch=$(uname -m) && \
     ovsc_tag="openvscode-server-v${OPENVSCODE_SERVER_VERSION}" && \
     wget https://github.com/gitpod-io/openvscode-server/releases/download/${ovsc_tag}/${ovsc_tag}-linux-${arch}.tar.gz && \
     tar -xzf ${ovsc_tag}-linux-${arch}.tar.gz && \
-    mv -f ${ovsc_tag}-linux-${arch} /app/openvscode-server && \
+    mv -f ${ovsc_tag}-linux-${arch} /app/.openvscode-server && \
     rm -f ${ovsc_tag}-linux-${arch}.tar.gz
 
 # Install the Lean4 VS Code extension
 ARG LEAN4_EXT_VERSION="0.0.229"
-RUN mkdir -p /app/vscode-extensions \
+RUN mkdir -p /app/.vscode-extensions \
     && wget -q -O /tmp/lean4.vsix https://github.com/leanprover/vscode-lean4/releases/download/v${LEAN4_EXT_VERSION}/lean4-${LEAN4_EXT_VERSION}.vsix \
-    && /app/openvscode-server/bin/openvscode-server \
-        --extensions-dir /app/vscode-extensions \
+    && /app/.openvscode-server/bin/openvscode-server \
+        --extensions-dir /app/.vscode-extensions \
         --install-extension /tmp/lean4.vsix \
     && rm /tmp/lean4.vsix
 
@@ -44,11 +44,12 @@ COPY templates/ /app/templates/
 
 COPY server/nginx.conf /etc/nginx/nginx.conf
 # FIXME: rollup/esbuild the server?
-COPY server/package.json server/src/spawner.ts server/src/db.ts server/src/editorSessionManager.ts /usr/local/lib/spawner/
-COPY server/migrations/ /usr/local/lib/spawner/migrations/
-COPY scripts/ /usr/local/lib/spawner/scripts/
-COPY server/public/ /usr/local/lib/spawner/public/
-RUN cd /usr/local/lib/spawner && npm install --omit=dev
+COPY server/package.json /usr/local/lib/server/
+COPY server/src/spawner.ts server/src/db.ts server/src/editorSessionManager.ts /usr/local/lib/server/src/
+COPY server/migrations/ /usr/local/lib/server/migrations/
+COPY server/public/ /usr/local/lib/server/public/
+COPY scripts/ /usr/local/lib/scripts/
+RUN cd /usr/local/lib/server && npm install --omit=dev
 COPY start.sh /usr/local/bin/start.sh
 RUN chmod +x /usr/local/bin/start.sh
 

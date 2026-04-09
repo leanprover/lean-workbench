@@ -20,7 +20,6 @@ import {
   getAllUsers,
   getAuthMethod,
   getAvatarUrl,
-  getPackageSets,
   getProjectById,
   getProjectByUserAndName,
   getProjectsByUser,
@@ -47,12 +46,26 @@ import type { EditorSessionInfo } from './editorSessionManager.ts'
 import { EditorSessionManager } from './editorSessionManager.ts'
 
 const SPAWNER_PORT = 3002
-const DATA_DIR = '/data'
-const ELAN_DIR = `${DATA_DIR}/elan`
-const WORKSPACES_DIR = `${DATA_DIR}/workspaces`
-const PACKAGE_SETS_DIR = `${DATA_DIR}/package-sets`
-const TEMPLATES_DIR = `${DATA_DIR}/templates`
-const SCRIPTS_DIR = path.join(import.meta.dirname, 'scripts')
+
+// Configurable paths
+const DATA_DIR = process.env.DATA_DIR ?? '/data'
+const OPENVSCODE_SERVER_DIR = process.env.OPENVSCODE_SERVER_DIR ?? '/app/.openvscode-server'
+const VSCODE_EXTENSIONS_DIR = process.env.VSCODE_EXTENSIONS_DIR ?? '/app/.vscode-extensions'
+const NGINX_ROUTES_DIR = process.env.NGINX_ROUTES_DIR ?? '/etc/nginx/user-routes'
+
+// Derived paths
+const ELAN_DIR = path.join(DATA_DIR, 'elan')
+const WORKSPACES_DIR = path.join(DATA_DIR, 'workspaces')
+const PACKAGE_SETS_DIR = path.join(DATA_DIR, 'package-sets')
+const TEMPLATES_DIR = path.join(DATA_DIR, 'templates')
+const DB_DIR = path.join(DATA_DIR, 'db')
+const DB_PATH = path.join(DB_DIR, 'lean-workbench.db')
+
+// Relative paths
+const SCRIPTS_DIR = path.join(import.meta.dirname, '..', '..', 'scripts')
+const PUBLIC_DIR = path.join(import.meta.dirname, '..', 'public')
+const MIGRATIONS_DIR = path.join(import.meta.dirname, '..', 'migrations')
+
 const USERNAME_RE = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/
 
 const IS_PROD = process.env.NODE_ENV === 'production'
@@ -60,8 +73,8 @@ const IS_PROD = process.env.NODE_ENV === 'production'
 // --- Setup state ---
 
 // DB is always created at startup (schema + first_run row)
-fs.mkdirSync(path.dirname(process.env.DB_PATH ?? '/data/db/lean-workbench.db'), { recursive: true })
-initDb()
+fs.mkdirSync(DB_DIR, { recursive: true })
+initDb(DB_PATH, MIGRATIONS_DIR)
 
 let setupComplete = isFirstRunComplete()
 let seedingInProgress = false
@@ -151,6 +164,10 @@ if (setupComplete) {
 const editorSessions = new EditorSessionManager({
   workspacesDir: WORKSPACES_DIR,
   elanDir: ELAN_DIR,
+  openVscodeServerDir: OPENVSCODE_SERVER_DIR,
+  vscodeExtensionsDir: VSCODE_EXTENSIONS_DIR,
+  nginxRoutesDir: NGINX_ROUTES_DIR,
+  packageSetsDir: PACKAGE_SETS_DIR,
 })
 
 interface TemplateMetadata {
@@ -212,23 +229,6 @@ function seedTemplate(username: string, projectId: string, template: string): st
   return packageSet
 }
 
-/** Build --overlay-src/--tmp-overlay args for the project's package sets. */
-function buildOverlayArgs(projectId: string, workspace: string, sandboxProject: string): string[] {
-  const packageSets = getPackageSets(projectId)
-  const args: string[] = []
-  for (const setName of packageSets) {
-    const setDir = path.join(PACKAGE_SETS_DIR, setName)
-    const packagesFile = path.join(setDir, 'packages.txt')
-    if (!fs.existsSync(packagesFile)) continue
-    const packages = fs.readFileSync(packagesFile, 'utf-8').split('\n').filter(Boolean)
-    for (const pkg of packages) {
-      fs.mkdirSync(path.join(workspace, '.lake', 'packages', pkg), { recursive: true })
-      args.push('--overlay-src', path.join(setDir, pkg), '--tmp-overlay', `${sandboxProject}/.lake/packages/${pkg}`)
-    }
-  }
-  return args
-}
-
 // --- Auth helpers ---
 
 function requireAuth(req: Request, res: Response): UserRow | null {
@@ -253,7 +253,7 @@ function requireAdmin(req: Request, res: Response): UserRow | null {
 
 const app = express()
 app.set('view engine', 'ejs')
-app.set('views', path.join(import.meta.dirname, 'public'))
+app.set('views', PUBLIC_DIR)
 
 // TODO: use a different session store. The default `MemoryStore` is "not designed for a production environment"
 app.use(
@@ -287,7 +287,7 @@ passport.deserializeUser((id, done) => {
 app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
 
-app.use('/static', express.static(path.join(import.meta.dirname, 'public')))
+app.use('/static', express.static(PUBLIC_DIR))
 
 // --- Setup routes (available before first-run is complete) ---
 
@@ -664,7 +664,7 @@ app.put(
     }
 
     try {
-      await editorSessions.startSession(viewer.username, ownerUsername, projectName, project.id, buildOverlayArgs)
+      await editorSessions.startSession(viewer.username, ownerUsername, projectName, project.id)
     } catch (err) {
       res.status(500).json({ error: 'Failed to start editor session: ' + (err as Error).message })
       return

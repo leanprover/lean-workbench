@@ -3,8 +3,6 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 
-export const DB_PATH = process.env.DB_PATH ?? '/data/db/lean-workbench.db'
-
 export interface UserRow {
   id: number
   username: string
@@ -39,15 +37,12 @@ export function closeDb(): void {
   }
 }
 
-export const MIGRATIONS_DIR =
-  process.env.MIGRATIONS_DIR ?? path.join(path.dirname(new URL(import.meta.url).pathname), 'migrations')
-
-export function initDb(dbPath?: string, migrationsDir?: string): void {
+export function initDb(dbPath: string, migrationsDir: string): void {
   if (db) return
-  db = new Database(dbPath ?? DB_PATH)
+  db = new Database(dbPath)
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')
-  runMigrations(db, migrationsDir ?? MIGRATIONS_DIR)
+  runMigrations(db, migrationsDir)
 }
 
 function runMigrations(db: InstanceType<typeof Database>, migrationsDir: string): void {
