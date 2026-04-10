@@ -7,39 +7,80 @@ datasource db {
   provider = "sqlite"
 }
 
+// Tables required by better-auth
+
 model User {
-  /// 128-bit UUID.
-  id        String      @id
-  username  String      @unique
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @default(now()) @updatedAt
-  isAdmin   Boolean
-  github    UserGithub?
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now()) @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+
+  // Workbench-specific fields
+  isAdmin  Boolean   @default(false)
   /// Projects owned by this user.
   /// TODO: The user may also have read/write access to other users' projects.
-  projects  Project[]
+  projects Project[]
+
+  @@map("user")
 }
 
-// TODO: store authenticated user sessions for better-auth.
+model Session {
+  id        String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
-/// User's GitHub account.
-model UserGithub {
-  userId         String  @id
-  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  /// ID assigned internally by GitHub. See https://caius.github.io/github_id/.
-  githubId       Int     @unique
-  githubUsername String
-  displayName    String?
-  email          String?
-  avatarUrl      String?
+  @@map("session")
 }
+
+model Account {
+  id                    String    @id
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  idToken               String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @default(now()) @updatedAt
+
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@map("verification")
+}
+
+// Workbench-specific tables
 
 model Project {
   /// 128-bit UUID.
   id          String              @id
-  userId      String
   /// Project's owner.
   user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
   name        String
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @default(now()) @updatedAt
@@ -49,18 +90,22 @@ model Project {
   packageSets ProjectPackageSet[]
 
   @@unique([userId, name])
+  @@map("project")
 }
 
 /// Package set pulled in by a given project.
 model ProjectPackageSet {
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId  String
   packageSet String
-  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@id([projectId, packageSet])
+  @@map("project_package_set")
 }
 
-/// GitHub account allowed to register when the registration mode is `restricted`.
+/// GitHub accounts allowed to register in `restricted` registration mode.
 model AllowedGithubUser {
   githubUsername String @id
+
+  @@map("allowed_github_user")
 }
