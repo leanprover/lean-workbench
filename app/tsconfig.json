@@ -18,5 +18,5 @@
     "moduleResolution": "bundler"
   },
   // NOTE: svelte-kit/tsconfig.json does not set `files`; it would be *overwritten* by this.
-  "files": ["svelte.config.js", "eslint.config.js"]
+  "files": ["prisma.config.ts", "svelte.config.js", "eslint.config.js"]
 }

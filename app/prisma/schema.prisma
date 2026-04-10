@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client"
+  output   = "./generated"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  /// 128-bit UUID.
+  id        String      @id
+  username  String      @unique
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @default(now()) @updatedAt
+  isAdmin   Boolean
+  github    UserGithub?
+  /// Projects owned by this user.
+  /// TODO: The user may also have read/write access to other users' projects.
+  projects  Project[]
+}
+
+// TODO: store authenticated user sessions for better-auth.
+
+/// User's GitHub account.
+model UserGithub {
+  userId         String  @id
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// ID assigned internally by GitHub. See https://caius.github.io/github_id/.
+  githubId       Int     @unique
+  githubUsername String
+  displayName    String?
+  email          String?
+  avatarUrl      String?
+}
+
+model Project {
+  /// 128-bit UUID.
+  id          String              @id
+  userId      String
+  /// Project's owner.
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @default(now()) @updatedAt
+  /// Which template the project was created from.
+  template    String              @default("blank")
+  isPublic    Boolean             @default(false)
+  packageSets ProjectPackageSet[]
+
+  @@unique([userId, name])
+}
+
+/// Package set pulled in by a given project.
+model ProjectPackageSet {
+  projectId  String
+  packageSet String
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, packageSet])
+}
+
+/// GitHub account allowed to register when the registration mode is `restricted`.
+model AllowedGithubUser {
+  githubUsername String @id
+}

@@ -7,7 +7,7 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "prepare": "svelte-kit sync && husky || echo ''",
+    "prepare": "husky && svelte-kit sync && prisma generate || echo ''",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "lint": "prettier --check . && eslint .",
@@ -21,6 +21,7 @@
     "@sveltejs/adapter-node": "^5.5.4",
     "@sveltejs/kit": "^2.57.0",
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^24",
     "eslint": "^10.2.0",
     "eslint-config-prettier": "^10.1.8",
@@ -31,6 +32,7 @@
     "prettier": "^3.8.1",
     "prettier-plugin-organize-imports": "^4.3.0",
     "prettier-plugin-svelte": "^3.5.1",
+    "prisma": "^7.7.0",
     "svelte": "^5.55.2",
     "svelte-check": "^4.4.6",
     "typescript": "^6.0.2",
@@ -44,5 +46,10 @@
       "prettier --write"
     ],
     "*.{json,css}": "prettier --write"
+  },
+  "dependencies": {
+    "@prisma/adapter-better-sqlite3": "^7.7.0",
+    "@prisma/client": "^7.7.0",
+    "better-auth": "^1.6.2"
   }
 }
