@@ -1,25 +1,58 @@
 -- CreateTable
-CREATE TABLE "User" (
+CREATE TABLE "user" (
     "id" TEXT NOT NULL PRIMARY KEY,
-    "username" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "emailVerified" BOOLEAN NOT NULL DEFAULT false,
+    "image" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "isAdmin" BOOLEAN NOT NULL
+    "isAdmin" BOOLEAN NOT NULL DEFAULT false
 );
 
 -- CreateTable
-CREATE TABLE "UserGithub" (
-    "userId" TEXT NOT NULL PRIMARY KEY,
-    "githubId" INTEGER NOT NULL,
-    "githubUsername" TEXT NOT NULL,
-    "displayName" TEXT,
-    "email" TEXT,
-    "avatarUrl" TEXT,
-    CONSTRAINT "UserGithub_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+CREATE TABLE "session" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "userId" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "expiresAt" DATETIME NOT NULL,
+    "ipAddress" TEXT,
+    "userAgent" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
-CREATE TABLE "Project" (
+CREATE TABLE "account" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "userId" TEXT NOT NULL,
+    "accountId" TEXT NOT NULL,
+    "providerId" TEXT NOT NULL,
+    "accessToken" TEXT,
+    "refreshToken" TEXT,
+    "accessTokenExpiresAt" DATETIME,
+    "refreshTokenExpiresAt" DATETIME,
+    "scope" TEXT,
+    "idToken" TEXT,
+    "password" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "verification" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "identifier" TEXT NOT NULL,
+    "value" TEXT NOT NULL,
+    "expiresAt" DATETIME NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CreateTable
+CREATE TABLE "project" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "userId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -27,29 +60,29 @@ CREATE TABLE "Project" (
     "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "template" TEXT NOT NULL DEFAULT 'blank',
     "isPublic" BOOLEAN NOT NULL DEFAULT false,
-    CONSTRAINT "Project_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    CONSTRAINT "project_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
-CREATE TABLE "ProjectPackageSet" (
+CREATE TABLE "project_package_set" (
     "projectId" TEXT NOT NULL,
     "packageSet" TEXT NOT NULL,
 
     PRIMARY KEY ("projectId", "packageSet"),
-    CONSTRAINT "ProjectPackageSet_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    CONSTRAINT "project_package_set_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
-CREATE TABLE "AllowedGithubUser" (
+CREATE TABLE "allowed_github_user" (
     "githubUsername" TEXT NOT NULL PRIMARY KEY
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "User_username_key" ON "User"("username");
+CREATE UNIQUE INDEX "user_email_key" ON "user"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "UserGithub_githubId_key" ON "UserGithub"("githubId");
+CREATE UNIQUE INDEX "session_token_key" ON "session"("token");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Project_userId_name_key" ON "Project"("userId", "name");
+CREATE UNIQUE INDEX "project_userId_name_key" ON "project"("userId", "name");
 
