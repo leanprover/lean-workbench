@@ -9,5 +9,11 @@ export const handle: Handle = async ({ event, resolve }) => {
     headers: event.request.headers,
   })
 
+  // Pass session data to other server hooks
+  if (session) {
+    event.locals.session = session.session
+    event.locals.user = session.user
+  }
+
   return svelteKitHandler({ event, resolve, auth, building })
 }

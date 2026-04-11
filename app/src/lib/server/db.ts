@@ -30,7 +30,7 @@ export function getDb(): PrismaClient {
       stdio: 'inherit',
     })
   } catch (e: unknown) {
-    throw new Error('Database migration failed', { cause: e })
+    throw new Error(`Database migration failed: ${String(e)}`, { cause: e })
   }
 
   const adapter = new PrismaBetterSqlite3({ url: dbUrl })

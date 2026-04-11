@@ -12,14 +12,20 @@ const zConfigDiskData = z.object({
 
 type ConfigDiskData = z.infer<typeof zConfigDiskData>
 
-/** Server configuration. */
-export interface Config extends ConfigDiskData {
-  dataDir: string
-}
-
 const defaults: ConfigDiskData = {
   registrationMode: 'open',
   isFirstRunComplete: false,
+}
+
+/** Server configuration. */
+export interface Config extends ConfigDiskData {
+  isDevMode: boolean
+  dataDir: string
+}
+
+/** Whether GitHub OAuth is set up. */
+export function isGithubEnabled(cfg: Config): cfg is Config & { githubClientId: string; githubClientSecret: string } {
+  return !!cfg.githubClientId && !!cfg.githubClientSecret
 }
 
 /** Initialized lazily in {@link readConfig}. */
@@ -34,20 +40,21 @@ export function getConfig(): Config {
     throw new Error('Environment variable LEAN_WORKBENCH_DATA_DIR must be set.')
   }
   const dataDir = path.resolve(env.LEAN_WORKBENCH_DATA_DIR)
+  const isDevMode = env.NODE_ENV !== 'production'
   if (!fs.existsSync(dataDir)) {
     throw new Error('Directory specified in LEAN_WORKBENCH_DATA_DIR does not exist.')
   }
   const configPath = path.join(dataDir, 'config.json')
   if (!fs.existsSync(configPath)) {
-    config = { ...defaults, dataDir }
+    config = { ...defaults, dataDir, isDevMode }
     saveConfig()
   } else {
     try {
       const raw: unknown = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
       const diskData = zConfigDiskData.partial().parse(raw)
-      config = { ...defaults, ...diskData, dataDir }
+      config = { ...defaults, ...diskData, dataDir, isDevMode }
     } catch (e: unknown) {
-      throw new Error('Failed to parse config.json', { cause: e })
+      throw new Error(`Failed to parse config.json: ${String(e)}`, { cause: e })
     }
   }
   return config
