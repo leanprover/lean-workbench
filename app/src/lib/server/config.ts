@@ -5,7 +5,7 @@ import z from 'zod'
 
 const zConfigDiskData = z.object({
   registrationMode: z.enum(['open', 'restricted']),
-  isFirstRunComplete: z.boolean(),
+  isSetupComplete: z.boolean(),
   githubClientId: z.string().optional(),
   githubClientSecret: z.string().optional(),
 })
@@ -14,7 +14,7 @@ type ConfigDiskData = z.infer<typeof zConfigDiskData>
 
 const defaults: ConfigDiskData = {
   registrationMode: 'open',
-  isFirstRunComplete: false,
+  isSetupComplete: false,
 }
 
 /** Server configuration. */
@@ -69,7 +69,7 @@ export function saveConfig() {
   const configPath = path.join(config.dataDir, 'config.json')
   const diskData: ConfigDiskData = {
     registrationMode: config.registrationMode,
-    isFirstRunComplete: config.isFirstRunComplete,
+    isSetupComplete: config.isSetupComplete,
     githubClientId: config.githubClientId,
     githubClientSecret: config.githubClientSecret,
   }

@@ -1,6 +1,7 @@
 import { type ChildProcess, spawn } from 'node:child_process'
 import path from 'node:path'
-import { getConfig, saveConfig } from './config.js'
+import { getConfig, isGithubEnabled, saveConfig } from './config'
+import { initAuth } from './auth'
 
 export interface SeedEvent {
   type: 'progress' | 'log' | 'done' | 'error'
@@ -29,7 +30,7 @@ export function startSeeding(): void {
   if (cfg.isSetupComplete) {
     throw new Error('Already seeded')
   }
-  if (!cfg.githubClientId || !cfg.githubClientSecret) {
+  if (!isGithubEnabled(cfg)) {
     throw new Error('Configure authentication first')
   }
   if (seedingInProgress) {
@@ -66,6 +67,8 @@ export function startSeeding(): void {
     if (code === 0) {
       cfg.isSetupComplete = true
       saveConfig()
+      // Reinitialize authentication handler with configuration provided during setup
+      initAuth()
       seedEvents.push({ type: 'done' })
     } else {
       seedEvents.push({ type: 'error', message: `seed-volume.sh exited with code ${code}` })

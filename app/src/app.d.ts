@@ -1,4 +1,4 @@
-import type { Session, User } from 'better-auth'
+import type { Session, User } from '$lib/server/auth'
 
 // See https://svelte.dev/docs/kit/types#app.d.ts
 declare global {
@@ -10,6 +10,8 @@ declare global {
     }
     interface PageData {
       isGithubEnabled: boolean
+      isDevMode: boolean
+      isSetupComplete: boolean
     }
     // interface PageState {}
     // interface Platform {}

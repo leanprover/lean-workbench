@@ -6,7 +6,7 @@ import fs from 'fs'
 import path from 'path'
 import { PrismaClient } from '../../../prisma/generated/client'
 
-// FIXME: if it becomes a problem,
+// NOTE: if it becomes a problem,
 // https://www.prisma.io/docs/orm/prisma-client/setup-and-configuration/databases-connections#prevent-hot-reloading-from-creating-new-instances-of-prismaclient
 let db: PrismaClient | null = null
 

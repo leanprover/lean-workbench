@@ -15,5 +15,7 @@ export const load: LayoutServerLoad = event => {
 
   return {
     isGithubEnabled: isGithubEnabled(cfg),
+    isDevMode: cfg.isDevMode,
+    isSetupComplete: cfg.isSetupComplete,
   }
 }
