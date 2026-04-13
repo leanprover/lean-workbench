@@ -1,4 +1,7 @@
+import WithNavbar from '@/component/WithNavbar'
+import '@/css/app.css'
 import type { Metadata } from 'next'
+import { type ReactNode } from 'react'
 
 export const metadata: Metadata = {
   title: 'Lean Workbench',
@@ -8,11 +11,16 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: ReactNode
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {/* "Donut pattern": WithNavbar must be RCC, children can be RSCs */}
+        <WithNavbar>
+          <main style={{ maxWidth: '600px' }}>{children}</main>
+        </WithNavbar>
+      </body>
     </html>
   )
 }

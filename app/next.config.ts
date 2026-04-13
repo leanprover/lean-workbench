@@ -7,6 +7,9 @@ const nextConfig: NextConfig = {
     // Without this, Turbopack uses the parent dir as root
     root: import.meta.dirname,
   },
+  images: {
+    remotePatterns: [{ protocol: 'https', hostname: 'avatars.githubusercontent.com', pathname: '/u/**' }],
+  },
 }
 
 export default nextConfig
