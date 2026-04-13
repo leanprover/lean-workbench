@@ -1,0 +1,5 @@
+# Package managers
+package-lock.json
+
+# Plans and documentation
+*.md
