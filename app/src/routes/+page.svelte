@@ -2,6 +2,10 @@
   import { page } from '$app/state'
   import { resolve } from '$app/paths'
   import authClient from '$lib/auth-client'
+  import {getBreadcrumbCtx} from '$lib/breadcrumbs'
+
+  const setBreadcrumbs = getBreadcrumbCtx()
+  setBreadcrumbs(null)
   
   const session = authClient.useSession()
 </script>

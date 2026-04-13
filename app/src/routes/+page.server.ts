@@ -12,8 +12,8 @@ const devLogin = (email: string, name: string, isAdmin: boolean) => async () => 
     const auth = getAuth()
     const db = getDb()
 
-    const exists = await db.user.findFirst({ where: { email } })
-    if (!exists) {
+    const user = await db.user.findFirst({ where: { email } })
+    if (!user) {
       const { user } = await auth.api.signUpEmail({ body: { email, name, password: 'dev' } })
       if (isAdmin) {
           await db.user.update({ where: { id: user.id }, data: { isAdmin: true } })
