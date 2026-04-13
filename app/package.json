@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prepare": "husky && next typegen",
+    "prepare": "husky && next typegen && prisma generate",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
