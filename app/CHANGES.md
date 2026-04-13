@@ -1,4 +1,4 @@
-Changes made during SvelteKit port.
+Ported from Express.js + React + EJS templates + raw SQLite + passport to SvelteKit + Prisma ORM + better-auth.
 
 ## DB Schema
 
@@ -8,3 +8,71 @@ Changes made during SvelteKit port.
 - Removed `is_first_run_complete` table. Use an `isFirstRunComplete` field in `config.json`.
 - Changed `User.id` from `INTEGER AUTOINCREMENT` to a `String` UUID.
 - Removed `auth_methods`. Store session secret in memory, OAuth client secret in `config.json` (TODO reconsider).
+
+## Web app
+
+- [x] Layout (navbar + avatar menu) + Landing page + Dev login
+  - Navbar is now in `+layout.svelte` (shared across all pages) rather than repeated in each EJS template.
+  - `AvatarMenu` is a reusable Svelte component in `$lib/components/`.
+  - Avatar menu always shows Profile + Admin links (old version passed page-specific links).
+  - Login uses better-auth's client-side `signIn.social()` (button) instead of a direct `<a href="/auth/github">` link.
+  - Logout uses better-auth's client-side `signOut()` instead of `POST /logout`.
+  - Dev login creates users and sessions directly in DB via Prisma (old version used `ensureUser()` + `req.login()`).
+  - `User.name` (from better-auth) is used where old code used `username` (GitHub username). These may differ since `name` can be the GitHub display name. A `username` field on User may be needed.
+  - `_head.ejs` partial was already missing; the HTML shell is `app.html`.
+  - CSS was already ported to `app/src/app.css`; updated `.nav-link` selector to work with both `<a>` and `<button>`.
+  - Old: `GET /` route in spawner.ts. New: `+page.svelte` + `+layout.server.ts`.
+- [x] Profile page with project CRUD API routes
+  - React `ProfilePage.tsx` ported to Svelte 5 `[username]/+page.svelte` with runes.
+  - Client-side `api.ts` fetch functions replaced by inline `fetch()` calls (SvelteKit pattern).
+  - Server data loaded via `+page.server.ts` instead of separate API calls on mount.
+  - Old `db.ts` raw SQL queries replaced by Prisma ORM (e.g., `db.project.findMany()` vs `SELECT * FROM projects`).
+  - Project field `public` (integer 0/1) became `isPublic` (boolean) per Prisma schema.
+  - `user_id` (integer) became `userId` (string UUID) per schema changes.
+  - Template listing logic duplicated between `/api/templates` and `[username]/+page.server.ts` (reads templates dir directly).
+  - `requireAuth`/`requireAdmin` helpers extracted to `$lib/server/auth-helpers.ts`.
+  - Old: editor sessions killed on rename/delete. New: not yet (editor session manager not ported).
+  - Old: workspace directory deletion on project delete. New: not yet.
+- [x] Editor session page + editor session management
+  - `EditorSessionManager` class ported to `$lib/server/editorSessions.ts` with lazy singleton via `getEditorSessionManager()`.
+  - Raw SQL `getPackageSets()` replaced by `db.projectPackageSet.findMany()` (Prisma).
+  - Config sourced from `getConfig().dataDir` (derived paths) + `$env/dynamic/private` (env-var paths like OPENVSCODE_SERVER_DIR), matching old spawner.ts pattern.
+  - Session page route: `[username]/[projectName]/+page.svelte` replaces `session.ejs`.
+  - Session start API: `PUT /api/editor-sessions/[ownerUsername]/[projectName]` replaces Express route.
+  - Breadcrumbs (owner/project) + ephemeral badge rendered conditionally in layout via `$page.data`.
+  - `page-session` body class set via `document.body.classList` in `$effect` (old code used EJS `<body class="page-session">`).
+  - `viewer.username` → `viewer.name` (better-auth user model).
+  - Old `getUserByUsername()` / `getProjectByUserAndName()` raw SQL → Prisma `findFirst()`.
+  - Admin session kill endpoint not ported here (deferred to admin task).
+- [x] Admin page with all admin API routes
+  - React `AdminPage.tsx` (527 lines) ported to Svelte 5 `admin/+page.svelte` with runes.
+  - All 14 admin API endpoints ported as SvelteKit `+server.ts` files under `api/admin/`.
+  - Old `client/src/api.ts` fetch functions replaced by inline `fetch()` calls.
+  - `ConfirmDialog` React component replaced by native `<dialog>` element with Svelte 5 bindings.
+  - Old `getSetting()`/`setSetting()` → `getConfig()`/`saveConfig()` (config.json, not settings table).
+  - Old `getAllowedUsers()`/`addAllowedUser()`/`removeAllowedUser()` raw SQL → `db.allowedGithubUser` Prisma model.
+  - Old `getAllUsers()`/`setAdmin()`/`deleteUser()` raw SQL → `db.user` Prisma queries.
+  - Old `getAuthMethod()`/`saveAuthMethod()` + passport strategy → `getConfig()`/`saveConfig()` (better-auth reads from config).
+  - OAuth config: removed `callbackUrl` field (better-auth computes callback URL automatically).
+  - User IDs: integer → string UUID. Old `Number(req.params.id)` validation removed.
+  - User field names: `username` → `name`, `is_admin` → `isAdmin`, `created_at` → `createdAt`.
+  - Old `danger` CSS class → reusing existing `delete` CSS class for danger buttons.
+  - Admin session kill endpoint ported here (deferred from editor session task).
+  - User deletion kills editor sessions and removes workspace directory, matching old behavior.
+- [x] Setup page (first-run wizard)
+  - Two-step wizard ported to Svelte 5 `setup/+page.svelte` with scoped CSS.
+  - Setup API routes: `status`, `config`, `seed`, `stream` ported as `+server.ts` files.
+  - SSE streaming: old Express `res.write()` → `ReadableStream` with `text/event-stream` response.
+  - Seeding state extracted to `$lib/server/seeding.ts` module (seedEvents array, progress regex parsing).
+  - Old `saveAuthMethod('github_oauth', ...)` + passport strategy → `getConfig()`/`saveConfig()` writing to config.json.
+  - Old `setFirstRunComplete()` raw SQL → `cfg.isFirstRunComplete = true; saveConfig()`.
+  - Old `getSetting('session')` session secret auto-generation removed (better-auth handles its own secrets).
+  - Callback URL field removed (better-auth computes it automatically).
+  - Setup guard: middleware in `hooks.server.ts` redirects all non-setup routes to `/setup` when `isFirstRunComplete` is false.
+  - Setup page CSS is scoped (`<style>` block) instead of inline in EJS template.
+- [x] Final cleanup
+  - Deleted `server/` directory (spawner.ts, db.ts, start.sh, migrations, nginx.conf.template, tests, package.json).
+  - Deleted `client/` directory (package.json, vite.config.ts, tsconfig.json).
+  - Updated root `package.json` workspaces to reference only `app`.
+  - Remaining root directories: `scripts/` (seed-volume.sh etc., still referenced by seeding.ts), `templates/` (hello template, referenced by seed-volume.sh), `plans/` (historical design docs).
+  - Root infrastructure files (Dockerfile, Makefile, install.sh) still reference old structure and will need updating for the SvelteKit app.

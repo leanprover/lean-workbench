@@ -7,6 +7,7 @@
   import type { Snippet } from 'svelte'
 
   const { children, data } = $props()
+
   let breadcrumbs: Snippet | null = $state(null)
   setBreadcrumbCtx(s => breadcrumbs = s)
   
