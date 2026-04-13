@@ -33,6 +33,6 @@
     {#if user.isAdmin}
       <a href={resolve('/admin')}>Admin interface</a>
     {/if}
-    <button onclick={handleLogout}>Logout</button>
+    <button onclick={handleLogout}>Sign out</button>
   </div>
 </div>

@@ -1,8 +1,10 @@
+import { getRequestEvent } from '$app/server'
 import { env } from '$env/dynamic/private'
 import { getConfig, isGithubEnabled } from '$lib/server/config'
 import { getDb } from '$lib/server/db'
 import { betterAuth, type SocialProviders } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
+import { sveltekitCookies } from 'better-auth/svelte-kit'
 
 function createAuth() {
   const config = getConfig()
@@ -20,6 +22,12 @@ function createAuth() {
       ? [env.ORIGIN.replace('https:', 'http:'), env.ORIGIN.replace('http:', 'https:')]
       : [],
     database: prismaAdapter(getDb(), { provider: 'sqlite' }),
+    // Email authentication in dev mode only
+    emailAndPassword: {
+      enabled: config.isDevMode,
+      minPasswordLength: 1,
+    },
+    plugins: [sveltekitCookies(getRequestEvent)],
     socialProviders,
     user: {
       additionalFields: {

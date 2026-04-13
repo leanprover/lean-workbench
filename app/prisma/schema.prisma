@@ -21,6 +21,7 @@ model User {
   accounts      Account[]
 
   // Workbench-specific fields
+  // FIXME: consider using https://better-auth.com/docs/plugins/admin.
   isAdmin  Boolean   @default(false)
   /// Projects owned by this user.
   /// TODO: The user may also have read/write access to other users' projects.
