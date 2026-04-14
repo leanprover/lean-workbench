@@ -2,11 +2,17 @@ import fs from 'fs'
 import path from 'path'
 import z from 'zod'
 
+const zGithubAuthConfig = z.object({
+  clientId: z.string(),
+  clientSecret: z.string(),
+})
+
+export type GithubAuthConfig = z.infer<typeof zGithubAuthConfig>
+
 const zConfigDiskData = z.object({
   registrationMode: z.enum(['open', 'restricted']),
   isSetupComplete: z.boolean(),
-  githubClientId: z.string().optional(),
-  githubClientSecret: z.string().optional(),
+  githubAuth: zGithubAuthConfig.optional(),
 })
 
 type ConfigDiskData = z.infer<typeof zConfigDiskData>
@@ -18,13 +24,16 @@ const defaults: ConfigDiskData = {
 
 /** Server configuration. */
 export interface Config extends ConfigDiskData {
-  isDevMode: boolean
   dataDir: string
 }
 
 /** Whether GitHub OAuth is set up. */
-export function isGithubEnabled(cfg: Config): cfg is Config & { githubClientId: string; githubClientSecret: string } {
-  return !!cfg.githubClientId && !!cfg.githubClientSecret
+export function hasGithubAuth(cfg: Config): cfg is Config & { githubAuth: GithubAuthConfig } {
+  return !!cfg.githubAuth
+}
+
+export function isDevMode(): boolean {
+  return process.env.NODE_ENV !== 'production'
 }
 
 /** Initialized lazily in {@link readConfig}. */
@@ -39,19 +48,18 @@ export function getConfig(): Config {
     throw new Error('Environment variable LEAN_WORKBENCH_DATA_DIR must be set.')
   }
   const dataDir = path.resolve(process.env.LEAN_WORKBENCH_DATA_DIR)
-  const isDevMode = process.env.NODE_ENV !== 'production'
   if (!fs.existsSync(dataDir)) {
     throw new Error('Directory specified in LEAN_WORKBENCH_DATA_DIR does not exist.')
   }
   const configPath = path.join(dataDir, 'config.json')
   if (!fs.existsSync(configPath)) {
-    config = { ...defaults, dataDir, isDevMode }
+    config = { ...defaults, dataDir }
     saveConfig()
   } else {
     try {
       const raw: unknown = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
       const diskData = zConfigDiskData.partial().parse(raw)
-      config = { ...defaults, ...diskData, dataDir, isDevMode }
+      config = { ...defaults, ...diskData, dataDir }
     } catch (e: unknown) {
       throw new Error(`Failed to parse config.json: ${String(e)}`, { cause: e })
     }
@@ -69,8 +77,7 @@ export function saveConfig() {
   const diskData: ConfigDiskData = {
     registrationMode: config.registrationMode,
     isSetupComplete: config.isSetupComplete,
-    githubClientId: config.githubClientId,
-    githubClientSecret: config.githubClientSecret,
+    githubAuth: config.githubAuth,
   }
   fs.writeFileSync(configPath, JSON.stringify(diskData, null, 2), 'utf-8')
 }

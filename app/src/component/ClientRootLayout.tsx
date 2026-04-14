@@ -1,20 +1,19 @@
 'use client'
 
 import authClient from '@/lib/auth-client'
-import { BreadcrumbsCtx } from '@/lib/contexts'
+import { BreadcrumbsCtx, Config, ConfigCtx } from '@/lib/contexts'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, type ReactNode } from 'react'
+import { useContext, useState, type ReactNode } from 'react'
 
 function AvatarMenu() {
   const router = useRouter()
-
   const session = authClient.useSession()
+  const cfg = useContext(ConfigCtx)
 
   if (!session.data) {
-    // TODO pagedata {:else if data.isSetupComplete && data.isGithubEnabled}
-    if (true)
+    if (cfg.isSetupComplete && cfg.hasGithubAuth)
       return (
         <button className="nav-link" onClick={() => authClient.signIn.social({ provider: 'github' })}>
           Sign in via GitHub
@@ -57,10 +56,10 @@ function AvatarMenu() {
   }
 }
 
-export default function WithNavbar({ children }: Readonly<{ children: ReactNode }>) {
+export default function ClientRootLayout({ cfg, children }: Readonly<{ cfg: Config; children: ReactNode }>) {
   const [breadcrumbs, setBreadcrumbs] = useState<ReactNode>(null)
   return (
-    <>
+    <ConfigCtx value={cfg}>
       <nav>
         <Link className="logo" href="/">
           <Image src="/lean-logo.svg" alt="Lean logo" width={70} height={20} />
@@ -71,6 +70,6 @@ export default function WithNavbar({ children }: Readonly<{ children: ReactNode 
         <AvatarMenu />
       </nav>
       <BreadcrumbsCtx value={setBreadcrumbs}>{children}</BreadcrumbsCtx>
-    </>
+    </ConfigCtx>
   )
 }

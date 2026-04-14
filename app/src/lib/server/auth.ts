@@ -1,4 +1,4 @@
-import { getConfig, isGithubEnabled } from '@/lib/server/config'
+import { getConfig, hasGithubAuth, isDevMode } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { betterAuth, type SocialProviders } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
@@ -7,11 +7,11 @@ import { nextCookies } from 'better-auth/next-js'
 function createAuth() {
   const config = getConfig()
   const socialProviders: SocialProviders = {}
-  if (isGithubEnabled(config)) {
+  if (hasGithubAuth(config)) {
     // FIXME: middleware to check db for allowed usernames
     socialProviders.github = {
-      clientId: config.githubClientId,
-      clientSecret: config.githubClientSecret,
+      clientId: config.githubAuth.clientId,
+      clientSecret: config.githubAuth.clientSecret,
     }
   }
   return betterAuth({
@@ -30,7 +30,7 @@ function createAuth() {
     },
     // Email authentication in dev mode only
     emailAndPassword: {
-      enabled: config.isDevMode,
+      enabled: isDevMode(),
       minPasswordLength: 1,
     },
     socialProviders,
