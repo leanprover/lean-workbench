@@ -28,7 +28,7 @@ function AvatarMenu() {
         <div className="avatar-menu">
           <button className="avatar-btn">
             {user.image ? (
-              <Image src={user.image} alt={user.name} width={28} height={28} />
+              <Image src={user.image} alt={user.name} width={28} height={28} loading='eager' />
             ) : (
               <span className="avatar-placeholder">{user.name[0].toUpperCase()}</span>
             )}
@@ -62,7 +62,7 @@ export default function ClientRootLayout({ cfg, children }: Readonly<{ cfg: Conf
     <ConfigCtx value={cfg}>
       <nav>
         <Link className="logo" href="/">
-          <Image src="/lean-logo.svg" alt="Lean logo" width={70} height={20} />
+          <Image src="/static/lean-logo.svg" alt="Lean logo" width={70} height={16} loading='eager' />
           <span className="logo-text">Lean Workbench</span>
         </Link>
         {breadcrumbs}

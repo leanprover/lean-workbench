@@ -424,52 +424,6 @@ app.get('/api/setup/stream', (req: Request, res: Response) => {
   req.on('close', () => clearInterval(interval))
 })
 
-// --- Setup guard: redirect everything else if setup not complete ---
-
-app.use((req: Request, res: Response, next: NextFunction) => {
-  if (setupComplete) {
-    next()
-    return
-  }
-
-  // Allow static assets and setup routes through
-  if (req.path.startsWith('/static/') || req.path.startsWith('/api/setup/') || req.path === '/api/health') {
-    next()
-    return
-  }
-
-  if (req.path.startsWith('/api/')) {
-    res.status(503).json({ error: 'Setup required' })
-    return
-  }
-
-  res.redirect('/setup')
-})
-
-// --- Auth routes ---
-
-app.get('/auth/github', (req: Request, res: Response, next: NextFunction) => {
-  if (!githubConfig) {
-    res.status(503).send('GitHub OAuth not configured')
-    return
-  }
-  passport.authenticate('github', { scope: ['user:email'] })(req, res, next)
-})
-
-app.get(
-  '/auth/github/callback',
-  (req: Request, res: Response, next: NextFunction) => {
-    if (!githubConfig) {
-      res.status(503).send('GitHub OAuth not configured')
-      return
-    }
-    passport.authenticate('github', { failureRedirect: '/?error=not_allowed' })(req, res, next)
-  },
-  (req: Request, res: Response) => {
-    const username = (req.user as UserRow)?.username ?? ''
-    res.redirect(`/${username}/`)
-  },
-)
 
 if (!IS_PROD) {
   // NOTE: GET requests should not modify state; but we don't care in dev mode.
@@ -499,15 +453,6 @@ if (!IS_PROD) {
     })
   })
 }
-
-app.post('/logout', (req: Request, res: Response) => {
-  req.logout(() => {
-    req.session.destroy(() => {
-      res.clearCookie('connect.sid')
-      res.redirect('/')
-    })
-  })
-})
 
 // --- API routes (must come before /:username/ params) ---
 

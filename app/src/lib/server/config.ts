@@ -39,7 +39,7 @@ export function isDevMode(): boolean {
 /** Initialized lazily in {@link readConfig}. */
 let config: Config | null = null
 
-/** Return the configuration, reading it from disk the first time.
+/** Return the server configuration, reading it from disk the first time.
  *
  * The object may be mutated. `saveConfig()` must be called after any modifications. */
 export function getConfig(): Config {
