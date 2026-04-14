@@ -34,9 +34,6 @@ nav .logo {
 nav .logo:hover {
   background: rgba(56, 110, 224, 0.08);
 }
-nav .logo img {
-  height: 16px;
-}
 nav .logo-text {
   font-weight: 600;
   font-size: 0.85rem;
