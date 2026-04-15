@@ -33,6 +33,7 @@
     "prettier": "^3.8.2",
     "prettier-plugin-organize-imports": "^4.3.0",
     "prisma": "^7.7.0",
+    "server-only": "^0.0.1",
     "typescript": "^5"
   },
   "lint-staged": {

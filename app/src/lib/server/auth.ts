@@ -1,3 +1,4 @@
+import 'server-only'
 import { getConfig, hasGithubAuth, isDevMode } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { betterAuth, type SocialProviders } from 'better-auth'

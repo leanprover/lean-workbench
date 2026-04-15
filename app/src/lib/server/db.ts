@@ -1,3 +1,4 @@
+import 'server-only'
 import { getConfig } from '@/lib/server/config'
 import { PrismaClient } from '@/prisma/generated/client'
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
