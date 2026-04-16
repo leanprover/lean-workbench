@@ -30,6 +30,7 @@ function createAuth() {
         create: {
           before: async user => {
             if (getConfig().registrationMode === 'restricted') {
+              if (isDevMode() && user.name === 'dev') return
               const allowed = await getDb().allowedGithubUser.findUnique({
                 where: { githubUsername: user.name },
               })
