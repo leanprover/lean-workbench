@@ -2,7 +2,7 @@ import { ActionResponse } from '@/lib/util'
 import { spawn } from 'node:child_process'
 import path from 'node:path'
 import 'server-only'
-import { getConfig, saveConfig } from './config'
+import { getConfig, getDataDir, saveConfig } from './config'
 
 export interface SeedEvent {
   type: 'log' | 'progress' | 'done' | 'error'
@@ -43,7 +43,7 @@ export function startSeed(): ActionResponse<boolean> {
   // scripts/ is a sibling directory
   const scriptsDir = path.join(process.cwd(), 'scripts')
 
-  const child = spawn('bash', [path.join(scriptsDir, 'seed-volume.sh'), '--data-dir', cfg.dataDir], {
+  const child = spawn('bash', [path.join(scriptsDir, 'seed-volume.sh'), '--data-dir', getDataDir()], {
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
@@ -64,10 +64,10 @@ export function startSeed(): ActionResponse<boolean> {
     for (const line of chunk.toString().split('\n')) processLine(line)
   })
 
-  child.on('close', code => {
+  child.on('close', async code => {
     if (code === 0) {
       cfg.isSetupComplete = true
-      saveConfig()
+      await saveConfig()
       seedState.events.push({ type: 'done' })
     } else {
       seedState.events.push({ type: 'error', message: `seed-volume.sh exited with code ${code}` })

@@ -19,6 +19,6 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     // Proxy all paths except static assets
-    '/(?!_next/static|static)/.*',
+    '/((?!_next/static/|static/).*)',
   ],
 }

@@ -1,3 +1,4 @@
+import chokidar, { type FSWatcher } from 'chokidar'
 import fs from 'fs'
 import path from 'path'
 import 'server-only'
@@ -14,26 +15,22 @@ const zGithubAuthConfig = z.object({
 
 export type GithubAuthConfig = z.infer<typeof zGithubAuthConfig>
 
-const zConfigDiskData = z.object({
+const zServerConfig = z.object({
   registrationMode: zRegistrationMode,
   isSetupComplete: z.boolean(),
   githubAuth: zGithubAuthConfig.optional(),
 })
 
-type ConfigDiskData = z.infer<typeof zConfigDiskData>
+/** Server configuration. Also stored on-disk in `$LEAN_WORKBENCH_DATA_DIR/config.json`. */
+type ServerConfig = z.infer<typeof zServerConfig>
 
-const defaults: ConfigDiskData = {
+const defaults: ServerConfig = {
   registrationMode: 'open',
   isSetupComplete: false,
 }
 
-/** Server configuration. */
-export interface Config extends ConfigDiskData {
-  dataDir: string
-}
-
 /** Whether GitHub OAuth is set up. */
-export function hasGithubAuth(cfg: Config): cfg is Config & { githubAuth: GithubAuthConfig } {
+export function hasGithubAuth(cfg: ServerConfig): cfg is ServerConfig & { githubAuth: GithubAuthConfig } {
   return !!cfg.githubAuth
 }
 
@@ -41,16 +38,7 @@ export function isDevMode(): boolean {
   return process.env.NODE_ENV !== 'production'
 }
 
-const g = globalThis as typeof globalThis & {
-  /** Initialized lazily in {@link getConfig}. */
-  __config?: Config
-}
-
-/** Return the server configuration, reading it from disk the first time.
- *
- * The object may be mutated. `saveConfig()` must be called after any modifications. */
-export function getConfig(): Config {
-  if (g.__config) return g.__config
+export function getDataDir(): string {
   if (!process.env.LEAN_WORKBENCH_DATA_DIR) {
     throw new Error('Environment variable LEAN_WORKBENCH_DATA_DIR must be set.')
   }
@@ -58,34 +46,75 @@ export function getConfig(): Config {
   if (!fs.existsSync(dataDir)) {
     throw new Error('Directory specified in LEAN_WORKBENCH_DATA_DIR does not exist.')
   }
-  const configPath = path.join(dataDir, 'config.json')
-  if (!fs.existsSync(configPath)) {
-    g.__config = { ...defaults, dataDir }
-    saveConfig()
-  } else {
-    try {
-      const raw: unknown = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
-      const diskData = zConfigDiskData.partial().parse(raw)
-      g.__config = { ...defaults, ...diskData, dataDir }
-    } catch (e: unknown) {
-      throw new Error(`Failed to parse config.json: ${String(e)}`, { cause: e })
-    }
-  }
-  return g.__config
-  // FIXME: config.json watcher
+  return dataDir
 }
 
-/** Save configuration to disk. */
-export function saveConfig() {
+function getConfigPath(): string {
+  return path.join(getDataDir(), 'config.json')
+}
+
+/** Load configuration from disk. Store in `g.__config`. */
+function loadConfig() {
+  try {
+    const raw: unknown = JSON.parse(fs.readFileSync(getConfigPath(), 'utf-8'))
+    const diskData = zServerConfig.partial().parse(raw)
+    g.__config = { ...defaults, ...diskData }
+  } catch (e: unknown) {
+    throw new Error(`Failed to parse config.json: ${String(e)}`, { cause: e })
+  }
+}
+
+function writeConfig() {
   const config = g.__config
   if (!config) {
     throw new Error('Tried to save config before initializing it.')
   }
-  const configPath = path.join(config.dataDir, 'config.json')
-  const diskData: ConfigDiskData = {
-    registrationMode: config.registrationMode,
-    isSetupComplete: config.isSetupComplete,
-    githubAuth: config.githubAuth,
+  fs.writeFileSync(getConfigPath(), JSON.stringify(config, null, 2), 'utf-8')
+}
+
+/** Save configuration to disk. */
+export async function saveConfig() {
+  // Stop the watcher across our own write so the change event doesn't bounce back.
+  await g.__configWatcher?.close()
+  g.__configWatcher = undefined
+  writeConfig()
+  ensureConfigWatcher()
+}
+
+/** Watch config.json for external changes and reload the in-memory cache. */
+function ensureConfigWatcher() {
+  if (g.__configWatcher) return
+  g.__configWatcher = chokidar.watch(getConfigPath(), {
+    ignoreInitial: true,
+    awaitWriteFinish: true,
+  }).on('change', () => {
+    try {
+      loadConfig()
+    } catch (e: unknown) {
+      console.error(`Failed to reload config: ${String(e)}`)
+    }
+  })
+}
+
+/** Return the server configuration.
+ *
+ * The object may be mutated. `saveConfig()` must be called after any modifications. */
+export function getConfig(): ServerConfig {
+  if (!g.__config) throw new Error('internal error: g.__config uninitialized')
+  return g.__config
+}
+
+const g = globalThis as typeof globalThis & {
+  __config?: ServerConfig
+  __configWatcher?: FSWatcher
+}
+if (!g.__config) {
+  if (!fs.existsSync(getConfigPath())) {
+    g.__config = { ...defaults }
+    writeConfig()
+  } else {
+    loadConfig()
   }
-  fs.writeFileSync(configPath, JSON.stringify(diskData, null, 2), 'utf-8')
+  ensureConfigWatcher()
+}
 }

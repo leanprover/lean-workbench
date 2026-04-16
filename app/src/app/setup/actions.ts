@@ -22,7 +22,7 @@ export async function saveSetupConfig(formData: FormData): Promise<ActionRespons
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
   cfg.githubAuth = parsed.data
-  saveConfig()
+  await saveConfig()
 
   // Reinitialize auth with new configuration
   initAuth()
