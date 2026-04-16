@@ -10,3 +10,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - For endpoints invoked via UI, prefer writing React Server Functions to explicit API routes.
   Only use API routes for functionality that a Server Function cannot provide.
 - Use Zod to validate input data and derive TypeScript types for it.
+- Our deployment is purely local, one-machine; not serverless or CDN-based.
+  Warnings about shared globals can be safely ignored.
+  
+# Agent instructions
+
+- Do not remove comments that link to documentation.
