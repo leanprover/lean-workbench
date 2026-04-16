@@ -18,10 +18,3 @@ make it in a suitably named branch, in a fresh worktree, named
 branch-$BRANCHNAME. Clean up the worktree when done.
 
 Smaller changes can go on `branch-main`.
-
-## database migrations
-
-Schema changes go in numbered SQL files under `migrations/` (e.g.
-`00002-add-foo.sql`). Never modify `initDb()` or existing migration
-files to change the schema. The migration runner in `db.ts` applies
-them in order, tracking progress in the `schema_version` table.

@@ -3,5 +3,6 @@ import { toNextJsHandler } from 'better-auth/next-js'
 
 export const { GET, POST } = toNextJsHandler(req => {
   // Retrieve the auth instance on each request, in case it had been re-initialized
-  return getAuth().handler(req)
+  const auth = getAuth()
+  return auth.handler(req)
 })
