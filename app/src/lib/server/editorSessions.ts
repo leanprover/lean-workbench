@@ -1,10 +1,9 @@
-import { ChildProcess, execSync, spawn } from 'node:child_process'
+import { getDb } from '@/lib/server/db'
+import { execSync, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import net from 'node:net'
 import path from 'node:path'
-import { getPackageSets } from './db.ts'
-
-export type SandboxMode = 'bubblewrap' | 'off'
+import 'server-only'
 
 export interface EditorSessionInfo {
   port: number
@@ -13,6 +12,7 @@ export interface EditorSessionInfo {
   projectId: string
 }
 
+// TODO: put paths in `lib/server/config`
 export interface EditorSessionManagerConfig {
   workspacesDir: string
   elanDir: string
@@ -21,7 +21,6 @@ export interface EditorSessionManagerConfig {
   nginxConfDir: string
   nginxLogDir: string
   packageSetsDir: string
-  sandboxMode: SandboxMode
 }
 
 const BASE_PORT = 3010
@@ -114,11 +113,15 @@ export class EditorSessionManager {
   }
 
   /** Build --overlay-src/--tmp-overlay args for the project's package sets. */
-  private buildOverlayArgs(projectId: string, workspaceDir: string, sandboxProjectDir: string): string[] {
-    const packageSets = getPackageSets(projectId)
+  private async buildOverlayArgs(
+    projectId: string,
+    workspaceDir: string,
+    sandboxProjectDir: string,
+  ): Promise<string[]> {
+    const packageSets = await getDb().projectPackageSet.findMany({ where: { projectId } })
     const args: string[] = []
-    for (const setName of packageSets) {
-      const setDir = path.join(this.config.packageSetsDir, setName)
+    for (const { packageSet } of packageSets) {
+      const setDir = path.join(this.config.packageSetsDir, packageSet)
       const packagesFile = path.join(setDir, 'packages.txt')
       if (!fs.existsSync(packagesFile)) continue
       const packages = fs.readFileSync(packagesFile, 'utf-8').split('\n').filter(Boolean)
@@ -166,88 +169,64 @@ export class EditorSessionManager {
 
     const encodedName = encodeURIComponent(projectName)
 
-    let child: ChildProcess
-    if (this.config.sandboxMode === 'bubblewrap') {
-      const sandboxProjectDir = `/workspace/${projectName}`
+    const sandboxProjectDir = `/workspace/${projectName}`
 
-      // Owner gets persistent bind mount; non-owner gets ephemeral CoW overlay
-      const workspaceMount = isOwner
-        ? ['--bind', workspaceDir, sandboxProjectDir]
-        : ['--overlay-src', workspaceDir, '--tmp-overlay', sandboxProjectDir]
+    // Owner gets persistent bind mount; non-owner gets ephemeral CoW overlay
+    const workspaceMount = isOwner
+      ? ['--bind', workspaceDir, sandboxProjectDir]
+      : ['--overlay-src', workspaceDir, '--tmp-overlay', sandboxProjectDir]
 
-      const overlayArgs = this.buildOverlayArgs(projectId, workspaceDir, sandboxProjectDir)
+    const overlayArgs = await this.buildOverlayArgs(projectId, workspaceDir, sandboxProjectDir)
 
-      child = spawn(
-        'bwrap',
-        // prettier-ignore
-        [
-          '--ro-bind', '/usr', '/usr',
-          '--ro-bind', '/lib', '/lib',
-          '--ro-bind-try', '/lib64', '/lib64',
-          '--ro-bind', '/bin', '/bin',
-          '--ro-bind', '/etc', '/etc',
-          '--ro-bind', this.config.openVscodeServerDir, '/workspace/.openvscode-server',
-          '--ro-bind', this.config.elanDir, '/workspace/.elan',
-          '--ro-bind', this.config.vscodeExtensionsDir, '/workspace/.vscode-extensions',
-          ...workspaceMount,
-          ...overlayArgs,
-          '--proc', '/proc',
-          '--dev', '/dev',
-          '--tmpfs', '/tmp',
-          '--clearenv',
-          '--setenv', 'HOME', '/workspace',
-          '--setenv', 'ELAN_HOME', '/workspace/.elan',
-          '--setenv', 'PATH', `/workspace/.elan/bin:/usr/local/bin:/usr/bin:/bin`,
-          // FIXME: Git's "dubious ownership" check (CVE-2022-24765) rejects repos
-          // owned by a different uid. The overlay mounts cause an ownership mismatch
-          // that triggers this; safe.directory=* *should* be ok here since the sandbox
-          // is already isolated, but this should be considered more carefully.
-          '--setenv', 'GIT_CONFIG_COUNT', '1',
-          '--setenv', 'GIT_CONFIG_KEY_0', 'safe.directory',
-          '--setenv', 'GIT_CONFIG_VALUE_0', '*',
-          '--unshare-user',
-          '--uid', '1000',
-          '--gid', '1000',
-          '--unshare-pid',
-          '--unshare-uts',
-          '--unshare-cgroup',
-          '--die-with-parent',
-          '--new-session',
-          '--',
-          '/workspace/.openvscode-server/bin/openvscode-server',
-          '--host', '127.0.0.1',
-          '--port', String(port),
-          '--without-connection-token',
-          `--server-base-path=/_vs/${viewerUsername}/${ownerUsername}/${encodedName}/`,
-          '--default-folder', sandboxProjectDir,
-          '--extensions-dir', '/workspace/.vscode-extensions',
-          '--server-data-dir', `${sandboxProjectDir}/.vscode-data`,
-          // TODO: user-data-dir that is persisted per user
-        ],
-        { stdio: 'inherit', detached: true },
-      )
-    } else {
-      child = spawn(
-        `${this.config.openVscodeServerDir}/bin/openvscode-server`,
-        // prettier-ignore
-        [
-          '--host', '127.0.0.1',
-          '--port', String(port),
-          '--without-connection-token',
-          `--server-base-path=/_vs/${viewerUsername}/${ownerUsername}/${encodedName}/`,
-          '--default-folder', workspaceDir,
-          '--extensions-dir', this.config.vscodeExtensionsDir,
-          '--server-data-dir', `${workspaceDir}/.vscode-data`,
-          // FIXME: symlink package sets?
-        ],
-        {
-          env: {
-            ELAN_HOME: this.config.elanDir,
-            PATH: `${this.config.elanDir}/bin:${process.env.PATH}`,
-          },
-        },
-      )
-    }
+    const child = spawn(
+      'bwrap',
+      // prettier-ignore
+      [
+        '--ro-bind', '/usr', '/usr',
+        '--ro-bind', '/lib', '/lib',
+        '--ro-bind-try', '/lib64', '/lib64',
+        '--ro-bind', '/bin', '/bin',
+        '--ro-bind', '/etc', '/etc',
+        '--ro-bind', this.config.openVscodeServerDir, '/workspace/.openvscode-server',
+        '--ro-bind', this.config.elanDir, '/workspace/.elan',
+        '--ro-bind', this.config.vscodeExtensionsDir, '/workspace/.vscode-extensions',
+        ...workspaceMount,
+        ...overlayArgs,
+        '--proc', '/proc',
+        '--dev', '/dev',
+        '--tmpfs', '/tmp',
+        '--clearenv',
+        '--setenv', 'HOME', '/workspace',
+        '--setenv', 'ELAN_HOME', '/workspace/.elan',
+        '--setenv', 'PATH', `/workspace/.elan/bin:/usr/local/bin:/usr/bin:/bin`,
+        // FIXME: Git's "dubious ownership" check (CVE-2022-24765) rejects repos
+        // owned by a different uid. The overlay mounts cause an ownership mismatch
+        // that triggers this; safe.directory=* *should* be ok here since the sandbox
+        // is already isolated, but this should be considered more carefully.
+        '--setenv', 'GIT_CONFIG_COUNT', '1',
+        '--setenv', 'GIT_CONFIG_KEY_0', 'safe.directory',
+        '--setenv', 'GIT_CONFIG_VALUE_0', '*',
+        '--unshare-user',
+        '--uid', '1000',
+        '--gid', '1000',
+        '--unshare-pid',
+        '--unshare-uts',
+        '--unshare-cgroup',
+        '--die-with-parent',
+        '--new-session',
+        '--',
+        '/workspace/.openvscode-server/bin/openvscode-server',
+        '--host', '127.0.0.1',
+        '--port', String(port),
+        '--without-connection-token',
+        `--server-base-path=/_vs/${viewerUsername}/${ownerUsername}/${encodedName}/`,
+        '--default-folder', sandboxProjectDir,
+        '--extensions-dir', '/workspace/.vscode-extensions',
+        '--server-data-dir', `${sandboxProjectDir}/.vscode-data`,
+        // TODO: user-data-dir that is persisted per user
+      ],
+      { stdio: 'inherit', detached: true },
+    )
 
     const info: EditorSessionInfo = {
       port,
