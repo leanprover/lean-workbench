@@ -401,6 +401,117 @@ html:has(.page-session),
   border-radius: 0.25rem;
 }
 
+/* === Setup Page === */
+.setup-form {
+  margin: 16px 0;
+}
+.setup-field {
+  margin-bottom: 12px;
+}
+.setup-field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.setup-field input {
+  width: 100%;
+}
+.setup-field input:disabled {
+  background: #f5f5f5;
+  color: #999;
+}
+.setup-hint {
+  font-size: 11px;
+  color: #90a4ae;
+  margin-top: 2px;
+}
+.setup-divider {
+  border: none;
+  border-top: 1px solid #e4ebf3;
+  margin: 24px 0;
+}
+.setup-done-msg {
+  margin: 16px 0;
+  padding: 12px 16px;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 0.5rem;
+  color: #166534;
+  font-weight: 500;
+}
+.setup-done-msg a {
+  color: #386ee0;
+  text-decoration: none;
+  font-weight: 600;
+}
+.setup-done-msg a:hover {
+  text-decoration: underline;
+}
+.setup-error-msg {
+  margin: 16px 0;
+  padding: 12px 16px;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 0.5rem;
+  color: #dc2626;
+  font-weight: 500;
+}
+.setup-progress {
+  margin: 20px 0;
+}
+.setup-progress-outer {
+  width: 100%;
+  height: 8px;
+  background: #e4ebf3;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.setup-progress-inner {
+  height: 100%;
+  width: 0%;
+  background: #386ee0;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+.setup-progress-label {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #607d8b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.setup-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #d1d9e2;
+  border-top-color: #386ee0;
+  border-radius: 50%;
+  animation: setup-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes setup-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.setup-log {
+  margin: 12px 0;
+  padding: 12px;
+  background: #1a1a2e;
+  color: #a0d0a0;
+  border-radius: 0.5rem;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
 .admin-badge {
   margin-left: 0.35rem;
   padding: 0.1rem 0.4rem;

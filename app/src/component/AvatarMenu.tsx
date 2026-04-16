@@ -13,7 +13,7 @@ export default function AvatarMenu() {
   const router = useRouter()
 
   if (!session.data) {
-    if (cfg.isSetupComplete && cfg.hasGithubAuth)
+    if (cfg.hasGithubAuth)
       return (
         <button className='nav-link' onClick={() => authClient.signIn.social({ provider: 'github' })}>
           Sign in via GitHub

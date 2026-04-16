@@ -36,7 +36,7 @@ ROOT="${DATA_DIR:-/tmp/lean-workbench/data}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --root) ROOT="$2"; shift 2 ;;
+    --data-dir) ROOT="$2"; shift 2 ;;
     --help) usage ;;
     *) echo "Unknown option: $1"; echo "Try --help"; exit 1 ;;
   esac

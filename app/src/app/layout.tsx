@@ -44,7 +44,7 @@ export default function RootLayout({
               </Link>
               <Breadcrumbs />
               <span className='spacer'></span>
-              <AvatarMenu />
+              {serverCfg.isSetupComplete && <AvatarMenu />}
             </nav>
             <main style={{ maxWidth: '600px' }}>{children}</main>
           </body>

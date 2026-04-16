@@ -1,9 +1,7 @@
 import 'dotenv/config'
-import type { NextFunction, Request, Response } from 'express'
+import type { Request, Response } from 'express'
 import express from 'express'
-import session from 'express-session'
-import { execSync, spawn } from 'node:child_process'
-import crypto from 'node:crypto'
+import { execSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import passport from 'passport'
@@ -28,14 +26,11 @@ import {
   getUserById,
   getUserByUsername,
   getUserCount,
-  initDb,
-  isFirstRunComplete,
   isUserAllowed,
   PROJECT_NAME_RE,
   removeAllowedUser,
   saveAuthMethod,
   setAdmin,
-  setFirstRunComplete,
   setProjectPublic,
   setSetting,
   updateProject,
@@ -59,13 +54,6 @@ const ELAN_DIR = path.join(DATA_DIR, 'elan')
 const WORKSPACES_DIR = path.join(DATA_DIR, 'workspaces')
 const PACKAGE_SETS_DIR = path.join(DATA_DIR, 'package-sets')
 const TEMPLATES_DIR = path.join(DATA_DIR, 'templates')
-const DB_DIR = path.join(DATA_DIR, 'db')
-const DB_PATH = path.join(DB_DIR, 'lean-workbench.db')
-
-// Relative paths
-const SCRIPTS_DIR = path.join(import.meta.dirname, '..', '..', 'scripts')
-const PUBLIC_DIR = path.join(import.meta.dirname, '..', 'public')
-const MIGRATIONS_DIR = path.join(import.meta.dirname, '..', 'migrations')
 
 const USERNAME_RE = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/
 
@@ -75,56 +63,7 @@ if (SANDBOX_MODE === 'off') {
   console.warn('[spawner] Sandboxing is off. VSCode sessions will have full access to the host machine.')
 }
 
-// --- Setup state ---
-
-// DB is always created at startup (schema + first_run row)
-fs.mkdirSync(DB_DIR, { recursive: true })
-initDb(DB_PATH, MIGRATIONS_DIR)
-
-let setupComplete = isFirstRunComplete()
-let seedingInProgress = false
-
-interface SeedEvent {
-  type: 'log' | 'progress' | 'done' | 'error'
-  line?: string
-  step?: number
-  total?: number
-  label?: string
-  message?: string
-}
-const seedEvents: SeedEvent[] = []
-const PROGRESS_RE = /^\[progress (\d+)\/(\d+) (.+)\]$/
-
 // --- OAuth config (from DB, falling back to env vars) ---
-
-interface GithubOAuthConfig {
-  clientId: string
-  clientSecret: string
-  callbackUrl?: string
-}
-
-function getGithubConfig(): GithubOAuthConfig | null {
-  // DB takes priority
-  const row = getAuthMethod('github_oauth') as GithubOAuthConfig | null
-  if (row?.clientId) return row
-  // Fall back to env vars (for development)
-  if (process.env.GITHUB_CLIENT_ID) {
-    return {
-      clientId: process.env.GITHUB_CLIENT_ID,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-      callbackUrl: process.env.CALLBACK_URL,
-    }
-  }
-  return null
-}
-
-function getUserSessionSecret(): string {
-  const row = getAuthMethod('session') as { secret: string } | null
-  if (row?.secret) return row.secret
-  return process.env.SESSION_SECRET ?? 'lean-workbench-dev-secret'
-}
-
-let githubConfig = getGithubConfig()
 
 function registerGithubStrategy(config: GithubOAuthConfig): void {
   passport.use(
@@ -156,12 +95,6 @@ function registerGithubStrategy(config: GithubOAuthConfig): void {
       },
     ),
   )
-}
-
-if (setupComplete) {
-  console.log('[spawner] Setup complete, ready.')
-} else {
-  console.log('[spawner] First run — serving setup page.')
 }
 
 // --- Editor session management ---
@@ -259,171 +192,6 @@ function requireAdmin(req: Request, res: Response): UserRow | null {
 // --- Express app ---
 
 const app = express()
-app.set('view engine', 'ejs')
-app.set('views', PUBLIC_DIR)
-
-// TODO: use a different session store. The default `MemoryStore` is "not designed for a production environment"
-app.use(
-  session({
-    secret: getUserSessionSecret(),
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      // https://expressjs.com/en/advanced/best-practice-security.html#set-cookie-security-options
-      // https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies#block_access_to_your_cookies
-      secure: IS_PROD,
-      httpOnly: true,
-    },
-  }),
-)
-
-app.use(passport.initialize())
-app.use(passport.session())
-
-// Register GitHub strategy if config already exists
-if (githubConfig) {
-  registerGithubStrategy(githubConfig)
-}
-
-passport.serializeUser((user, done) => done(null, (user as UserRow).id))
-passport.deserializeUser((id, done) => {
-  const user = getUserById(id as number)
-  done(null, user ?? false)
-})
-
-app.use(express.json())
-app.use(express.urlencoded({ extended: false }))
-
-app.use('/static', express.static(PUBLIC_DIR))
-
-// --- Setup routes (available before first-run is complete) ---
-
-app.get('/setup', (_req: Request, res: Response) => {
-  if (setupComplete) {
-    res.redirect('/')
-    return
-  }
-  res.render('setup')
-})
-
-app.get('/api/setup/status', (_req: Request, res: Response) => {
-  res.json({
-    configSaved: !!githubConfig,
-    seeded: setupComplete,
-    seeding: seedingInProgress,
-  })
-})
-
-app.post('/api/setup/config', (req: Request, res: Response) => {
-  if (setupComplete) {
-    res.status(400).json({ error: 'Setup already complete' })
-    return
-  }
-
-  const { githubClientId, githubClientSecret, callbackUrl } = req.body
-  if (!githubClientId || !githubClientSecret) {
-    res.status(400).json({ error: 'Client ID and Client Secret are required' })
-    return
-  }
-
-  const config: GithubOAuthConfig = {
-    clientId: githubClientId,
-    clientSecret: githubClientSecret,
-    callbackUrl: callbackUrl || undefined,
-  }
-  saveAuthMethod('github_oauth', config)
-
-  // Auto-generate session secret if not already stored
-  if (!getAuthMethod('session')) {
-    saveAuthMethod('session', { secret: crypto.randomBytes(32).toString('base64') })
-  }
-
-  githubConfig = config
-  registerGithubStrategy(config)
-
-  res.json({ ok: true })
-})
-
-app.post('/api/setup/seed', (_req: Request, res: Response) => {
-  if (setupComplete) {
-    res.status(400).json({ error: 'Already seeded' })
-    return
-  }
-  if (!githubConfig) {
-    res.status(400).json({ error: 'Configure authentication first' })
-    return
-  }
-  if (seedingInProgress) {
-    res.status(409).json({ error: 'Seeding already in progress' })
-    return
-  }
-
-  seedingInProgress = true
-  seedEvents.length = 0
-
-  const child = spawn('bash', [path.join(SCRIPTS_DIR, 'seed-volume.sh'), '--root', DATA_DIR], {
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
-
-  function processLine(line: string) {
-    if (!line) return
-    const m = PROGRESS_RE.exec(line)
-    if (m) {
-      seedEvents.push({ type: 'progress', step: parseInt(m[1]), total: parseInt(m[2]), label: m[3] })
-    } else {
-      seedEvents.push({ type: 'log', line })
-    }
-  }
-
-  child.stdout.on('data', (chunk: Buffer) => {
-    for (const line of chunk.toString().split('\n')) processLine(line)
-  })
-  child.stderr.on('data', (chunk: Buffer) => {
-    for (const line of chunk.toString().split('\n')) processLine(line)
-  })
-
-  child.on('close', code => {
-    seedingInProgress = false
-    if (code === 0) {
-      setFirstRunComplete()
-      setupComplete = true
-      seedEvents.push({ type: 'done' })
-    } else {
-      seedEvents.push({ type: 'error', message: `seed-volume.sh exited with code ${code}` })
-    }
-  })
-
-  res.json({ ok: true })
-})
-
-app.get('/api/setup/stream', (req: Request, res: Response) => {
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    Connection: 'keep-alive',
-    'X-Accel-Buffering': 'no',
-  })
-
-  let cursor = 0
-  const interval = setInterval(() => {
-    while (cursor < seedEvents.length) {
-      const event = seedEvents[cursor++]
-      res.write(`data: ${JSON.stringify(event)}\n\n`)
-      if (event.type === 'done' || event.type === 'error') {
-        clearInterval(interval)
-        res.end()
-        return
-      }
-    }
-    if (!seedingInProgress && cursor >= seedEvents.length) {
-      clearInterval(interval)
-      res.end()
-    }
-  }, 500)
-
-  req.on('close', () => clearInterval(interval))
-})
-
 
 if (!IS_PROD) {
   // NOTE: GET requests should not modify state; but we don't care in dev mode.
@@ -904,16 +672,6 @@ app.delete('/api/admin/users/:id', (req: Request, res: Response) => {
 })
 
 // --- Page routes ---
-
-app.get('/', (req: Request, res: Response) => {
-  let user: { username: string; avatarUrl: string | null; isAdmin: boolean } | null = null
-  if (req.isAuthenticated()) {
-    const u = req.user as UserRow
-    user = { username: u.username, avatarUrl: getAvatarUrl(u.id), isAdmin: u.is_admin }
-  }
-  const githubEnabled = !!githubConfig
-  res.render('landing', { user, devMode: !IS_PROD, githubEnabled })
-})
 
 app.get('/:username/', (req: Request<{ username: string }>, res: Response) => {
   const { username } = req.params

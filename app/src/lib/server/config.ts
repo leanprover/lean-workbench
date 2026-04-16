@@ -1,6 +1,6 @@
-import 'server-only'
 import fs from 'fs'
 import path from 'path'
+import 'server-only'
 import z from 'zod'
 
 const zGithubAuthConfig = z.object({
@@ -37,14 +37,16 @@ export function isDevMode(): boolean {
   return process.env.NODE_ENV !== 'production'
 }
 
-/** Initialized lazily in {@link readConfig}. */
-let config: Config | null = null
+const g = globalThis as typeof globalThis & {
+  /** Initialized lazily in {@link getConfig}. */
+  __config?: Config
+}
 
 /** Return the server configuration, reading it from disk the first time.
  *
  * The object may be mutated. `saveConfig()` must be called after any modifications. */
 export function getConfig(): Config {
-  if (config) return config
+  if (g.__config) return g.__config
   if (!process.env.LEAN_WORKBENCH_DATA_DIR) {
     throw new Error('Environment variable LEAN_WORKBENCH_DATA_DIR must be set.')
   }
@@ -54,23 +56,24 @@ export function getConfig(): Config {
   }
   const configPath = path.join(dataDir, 'config.json')
   if (!fs.existsSync(configPath)) {
-    config = { ...defaults, dataDir }
+    g.__config = { ...defaults, dataDir }
     saveConfig()
   } else {
     try {
       const raw: unknown = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
       const diskData = zConfigDiskData.partial().parse(raw)
-      config = { ...defaults, ...diskData, dataDir }
+      g.__config = { ...defaults, ...diskData, dataDir }
     } catch (e: unknown) {
       throw new Error(`Failed to parse config.json: ${String(e)}`, { cause: e })
     }
   }
-  return config
+  return g.__config
   // FIXME: config.json watcher
 }
 
 /** Save configuration to disk. */
 export function saveConfig() {
+  const config = g.__config
   if (!config) {
     throw new Error('Tried to save config before initializing it.')
   }
