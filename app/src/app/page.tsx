@@ -23,7 +23,7 @@ export default function Root() {
           </p>
         </div>
       )}
-      {!session.data && (
+      {!session.data && !session.isPending && (
         <>
           <h2>Sign in options</h2>
           {cfg.hasGithubAuth && (

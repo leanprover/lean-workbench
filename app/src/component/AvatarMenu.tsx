@@ -12,15 +12,7 @@ export default function AvatarMenu() {
   const cfg = useContext(ConfigCtx)
   const router = useRouter()
 
-  if (!session.data) {
-    if (cfg.hasGithubAuth)
-      return (
-        <button className='nav-link' onClick={() => authClient.signIn.social({ provider: 'github' })}>
-          Sign in via GitHub
-        </button>
-      )
-    else return <></>
-  } else {
+  if (session.data) {
     const user = session.data.user
     return (
       <>
@@ -63,5 +55,13 @@ export default function AvatarMenu() {
         </div>
       </>
     )
+  } else if (!session.isPending && cfg.hasGithubAuth) {
+    return (
+      <button className='nav-link' onClick={() => authClient.signIn.social({ provider: 'github' })}>
+        Sign in via GitHub
+      </button>
+    )
+  } else {
+    return <></>
   }
 }
