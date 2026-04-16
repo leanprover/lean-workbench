@@ -3,6 +3,10 @@ import path from 'path'
 import 'server-only'
 import z from 'zod'
 
+const zRegistrationMode = z.enum(['open', 'restricted'])
+
+export type RegistrationMode = z.infer<typeof zRegistrationMode>
+
 const zGithubAuthConfig = z.object({
   clientId: z.string(),
   clientSecret: z.string(),
@@ -11,7 +15,7 @@ const zGithubAuthConfig = z.object({
 export type GithubAuthConfig = z.infer<typeof zGithubAuthConfig>
 
 const zConfigDiskData = z.object({
-  registrationMode: z.enum(['open', 'restricted']),
+  registrationMode: zRegistrationMode,
   isSetupComplete: z.boolean(),
   githubAuth: zGithubAuthConfig.optional(),
 })

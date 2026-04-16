@@ -30,6 +30,7 @@ export default function RootLayout({
     isSetupComplete: serverCfg.isSetupComplete,
     isDevMode: isDevMode(),
     hasGithubAuth: hasGithubAuth(serverCfg),
+    registrationMode: serverCfg.registrationMode,
   }
   return (
     <html lang='en' className={openSans.className}>

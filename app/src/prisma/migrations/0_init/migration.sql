@@ -7,6 +7,7 @@ CREATE TABLE "user" (
     "image" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "displayName" TEXT,
     "isAdmin" BOOLEAN NOT NULL DEFAULT false
 );
 
@@ -76,6 +77,9 @@ CREATE TABLE "project_package_set" (
 CREATE TABLE "allowed_github_user" (
     "githubUsername" TEXT NOT NULL PRIMARY KEY
 );
+
+-- CreateIndex
+CREATE UNIQUE INDEX "user_name_key" ON "user"("name");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "user_email_key" ON "user"("email");

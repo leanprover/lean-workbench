@@ -11,7 +11,9 @@ datasource db {
 
 model User {
   id            String    @id
-  name          String
+  /// Better-auth does not require uniqueness but we do:
+  /// we use the username as a namespace for projects.
+  name          String    @unique
   email         String    @unique
   emailVerified Boolean   @default(false)
   image         String?
@@ -21,11 +23,12 @@ model User {
   accounts      Account[]
 
   // Workbench-specific fields
+  displayName String?
   // FIXME: consider using https://better-auth.com/docs/plugins/admin.
-  isAdmin  Boolean   @default(false)
+  isAdmin     Boolean   @default(false)
   /// Projects owned by this user.
   /// TODO: The user may also have read/write access to other users' projects.
-  projects Project[]
+  projects    Project[]
 
   @@map("user")
 }

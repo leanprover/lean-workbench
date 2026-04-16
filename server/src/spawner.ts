@@ -4,16 +4,12 @@ import express from 'express'
 import { execSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import passport from 'passport'
-import { Strategy as GitHubStrategy } from 'passport-github2'
-import type { VerifyCallback } from 'passport-oauth2'
 import {
   addAllowedUser,
   addPackageSet,
   createProject,
   deleteProject,
   deleteUser,
-  ensureUser,
   getAllowedUsers,
   getAllUsers,
   getAuthMethod,
@@ -25,8 +21,6 @@ import {
   getSetting,
   getUserById,
   getUserByUsername,
-  getUserCount,
-  isUserAllowed,
   PROJECT_NAME_RE,
   removeAllowedUser,
   saveAuthMethod,
@@ -34,7 +28,6 @@ import {
   setProjectPublic,
   setSetting,
   updateProject,
-  upsertGithubUser,
   type UserRow,
 } from './db.ts'
 import type { EditorSessionInfo, SandboxMode } from './editorSessionManager.ts'
@@ -57,44 +50,9 @@ const TEMPLATES_DIR = path.join(DATA_DIR, 'templates')
 
 const USERNAME_RE = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/
 
-const IS_PROD = process.env.NODE_ENV === 'production'
 const SANDBOX_MODE: SandboxMode = process.env.SANDBOX_MODE === 'off' ? 'off' : 'bubblewrap'
 if (SANDBOX_MODE === 'off') {
   console.warn('[spawner] Sandboxing is off. VSCode sessions will have full access to the host machine.')
-}
-
-// --- OAuth config (from DB, falling back to env vars) ---
-
-function registerGithubStrategy(config: GithubOAuthConfig): void {
-  passport.use(
-    new GitHubStrategy(
-      {
-        clientID: config.clientId,
-        clientSecret: config.clientSecret,
-        callbackURL: config.callbackUrl ?? 'http://localhost:3000/auth/github/callback',
-      },
-      (accessToken: string, refreshToken: string, profile: any, done: VerifyCallback) => {
-        // Check allowlist before upserting
-        if (!isUserAllowed(profile.username)) {
-          done(null, false, { message: 'not_allowed' } as any)
-          return
-        }
-        const user = upsertGithubUser({
-          github_id: parseInt(profile.id, 10),
-          github_username: profile.username,
-          display_name: profile.displayName,
-          email: profile.emails?.[0]?.value,
-          avatar_url: profile.photos?.[0]?.value,
-        })
-        // First user to log in becomes admin
-        if (getUserCount() === 1 && !user.is_admin) {
-          setAdmin(user.id, true)
-          user.is_admin = true
-        }
-        done(null, user)
-      },
-    ),
-  )
 }
 
 // --- Editor session management ---
@@ -193,40 +151,7 @@ function requireAdmin(req: Request, res: Response): UserRow | null {
 
 const app = express()
 
-if (!IS_PROD) {
-  // NOTE: GET requests should not modify state; but we don't care in dev mode.
-  app.get('/dev-login', (req: Request, res: Response) => {
-    const user = ensureUser('dev')
-    req.login(user, err => {
-      if (err) {
-        res.status(500).send('Login failed')
-        return
-      }
-      res.redirect('/dev/')
-    })
-  })
-
-  app.get('/dev-admin-login', (req: Request, res: Response) => {
-    const user = ensureUser('dev-admin')
-    if (!user.is_admin) {
-      setAdmin(user.id, true)
-      user.is_admin = true
-    }
-    req.login(user, err => {
-      if (err) {
-        res.status(500).send('Login failed')
-        return
-      }
-      res.redirect('/dev-admin/')
-    })
-  })
-}
-
 // --- API routes (must come before /:username/ params) ---
-
-app.get('/api/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok' })
-})
 
 app.get('/api/templates', (_req: Request, res: Response) => {
   res.json(listTemplates())

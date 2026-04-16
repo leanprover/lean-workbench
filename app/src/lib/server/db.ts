@@ -1,17 +1,18 @@
-import 'server-only'
 import { getConfig } from '@/lib/server/config'
 import { PrismaClient } from '@/prisma/generated/client'
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 import { execSync } from 'child_process'
 import fs from 'fs'
 import path from 'path'
+import 'server-only'
 
-// NOTE: if it becomes a problem,
 // https://www.prisma.io/docs/orm/prisma-client/setup-and-configuration/databases-connections#prevent-hot-reloading-from-creating-new-instances-of-prismaclient
-let db: PrismaClient | null = null
+const g = globalThis as typeof globalThis & {
+  __db?: PrismaClient
+}
 
 export function getDb(): PrismaClient {
-  if (db) return db
+  if (g.__db) return g.__db
 
   const config = getConfig()
   // Ensure db directory exists
@@ -32,6 +33,6 @@ export function getDb(): PrismaClient {
   }
 
   const adapter = new PrismaBetterSqlite3({ url: dbUrl })
-  db = new PrismaClient({ adapter })
-  return db
+  g.__db = new PrismaClient({ adapter })
+  return g.__db
 }
