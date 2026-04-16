@@ -9,7 +9,6 @@ import { useContext } from 'react'
 export default function Root() {
   const cfg = useContext(ConfigCtx)
   const session = authClient.useSession()
-  console.log(cfg)
 
   return (
     <>
@@ -40,14 +39,18 @@ export default function Root() {
             </a>
           )}
           {cfg.isDevMode && (
-            <>
-              <a className='login-link' href='/dev-login'>
-                Dev
-              </a>
-              <a className='login-link' href='/dev-admin-login'>
-                Dev admin
-              </a>
-            </>
+            <a
+              className='login-link'
+              onClick={async () => {
+                const email = 'dev@dev.localhost'
+                const name = 'dev'
+                const password = 'dev'
+                await authClient.signUp.email({ email, name, password })
+                await authClient.signIn.email({ email, password })
+              }}
+            >
+              [DEV]
+            </a>
           )}
         </>
       )}

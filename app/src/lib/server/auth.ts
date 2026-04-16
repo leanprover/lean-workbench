@@ -1,13 +1,14 @@
-import 'server-only'
 import { getConfig, hasGithubAuth, isDevMode } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { betterAuth, type SocialProviders } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { nextCookies } from 'better-auth/next-js'
+import 'server-only'
 
 function createAuth() {
   const config = getConfig()
   const socialProviders: SocialProviders = {}
+
   if (hasGithubAuth(config)) {
     // FIXME: middleware to check db for allowed usernames
     socialProviders.github = {
@@ -15,6 +16,7 @@ function createAuth() {
       clientSecret: config.githubAuth.clientSecret,
     }
   }
+
   return betterAuth({
     database: prismaAdapter(getDb(), { provider: 'sqlite' }),
     user: {
@@ -30,6 +32,7 @@ function createAuth() {
       },
     },
     // Email authentication in dev mode only
+    // NOTE: if ever enabled in prod, make sure to clean up dev accounts with known passwords.
     emailAndPassword: {
       enabled: isDevMode(),
       minPasswordLength: 1,
