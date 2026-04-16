@@ -40,8 +40,8 @@ export function startSeed(): ActionResponse<boolean> {
   seedState.inProgress = true
   seedState.events.length = 0
 
-  // scripts/ is at the repo root
-  const scriptsDir = path.resolve(process.cwd(), '..', 'scripts')
+  // scripts/ is a sibling directory
+  const scriptsDir = path.join(process.cwd(), 'scripts')
 
   const child = spawn('bash', [path.join(scriptsDir, 'seed-volume.sh'), '--data-dir', cfg.dataDir], {
     stdio: ['ignore', 'pipe', 'pipe'],
