@@ -24,7 +24,7 @@ async function createAuth() {
     }
   }
 
-  if (config.authSessionSecret === '') {
+  if (!config.authSessionSecret) {
     console.log('Generating new authentication session secret..')
     config.authSessionSecret = crypto.randomBytes(32).toString('hex')
     await saveConfig()
@@ -74,7 +74,7 @@ async function createAuth() {
       minPasswordLength: 1,
     },
     socialProviders,
-    // baseURL: process.env.ORIGIN,
+    baseURL: config.baseUrl,
     // FIXME: Trust both HTTP and HTTPS in dev mode; reverse proxy causes issues otherwise.
     // trustedOrigins: config.isDevMode
     //   ? [env.ORIGIN.replace('https:', 'http:'), env.ORIGIN.replace('http:', 'https:')]

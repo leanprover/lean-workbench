@@ -7,8 +7,9 @@ import { ActionResponse } from '@/lib/util'
 import z from 'zod'
 
 const zSetupConfig = z.object({
-  clientId: z.string().min(1, 'Client ID is required').trim(),
-  clientSecret: z.string().min(1, 'Client Secret is required').trim(),
+  baseUrl: z.url('Invalid base URL'),
+  clientId: z.string().min(1, 'Invalid GitHub client ID').trim(),
+  clientSecret: z.string().min(1, 'Invalid GitHub client secret').trim(),
 })
 
 export async function saveSetupConfig(formData: FormData): Promise<ActionResponse<boolean>> {
@@ -16,12 +17,15 @@ export async function saveSetupConfig(formData: FormData): Promise<ActionRespons
   if (cfg.isSetupComplete) return { error: 'Setup already completed' }
 
   const parsed = zSetupConfig.safeParse({
+    baseUrl: formData.get('baseUrl'),
     clientId: formData.get('clientId'),
     clientSecret: formData.get('clientSecret'),
   })
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  cfg.githubAuth = parsed.data
+  const { baseUrl, ...githubAuth } = parsed.data
+  cfg.baseUrl = baseUrl
+  cfg.githubAuth = githubAuth
   await saveConfig()
 
   // Reinitialize auth with new configuration

@@ -74,7 +74,11 @@ const zServerConfig = z.object({
   registrationMode: zRegistrationMode,
   isSetupComplete: z.boolean(),
   githubAuth: zGithubAuthConfig.optional(),
-  authSessionSecret: z.string(),
+  authSessionSecret: z.string().optional(),
+  /** The scheme, hostname, and port through which the browser will access our server.
+   * Requests made through other URLs may misbehave,
+   * e.g. better-auth will reject authentication requests. */
+  baseUrl: z.url(),
 })
 
 /** Server configuration. Also stored on-disk in `$LEAN_WORKBENCH_DATA_DIR/config.json`. */
@@ -83,7 +87,7 @@ type ServerConfig = z.infer<typeof zServerConfig>
 const defaults: ServerConfig = {
   registrationMode: 'open',
   isSetupComplete: false,
-  authSessionSecret: '',
+  baseUrl: 'http://localhost:3000',
 }
 
 /** Whether GitHub OAuth is set up. */
