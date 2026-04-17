@@ -1,4 +1,4 @@
-import { getDataDir } from '@/lib/server/config'
+import { getDbDir } from '@/lib/server/config'
 import { PrismaClient } from '@/prisma/generated/client'
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 import { execSync } from 'child_process'
@@ -15,7 +15,7 @@ export function getDb(): PrismaClient {
   if (g.__db) return g.__db
 
   // Ensure db directory exists
-  const dbDir = path.join(getDataDir(), 'db')
+  const dbDir = getDbDir()
   fs.mkdirSync(dbDir, { recursive: true })
   const dbUrl = `file:${path.join(dbDir, 'lean-workbench.db')}`
 

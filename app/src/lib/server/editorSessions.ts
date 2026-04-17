@@ -1,3 +1,12 @@
+import {
+  getElanDir,
+  getNginxConfDir,
+  getNginxLogDir,
+  getOpenVscodeServerDir,
+  getPackageSetsDir,
+  getVscodeExtensionsDir,
+  getWorkspacesDir,
+} from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { execSync, spawn } from 'node:child_process'
 import fs from 'node:fs'
@@ -12,25 +21,25 @@ export interface EditorSessionInfo {
   projectId: string
 }
 
-// TODO: put paths in `lib/server/config`
-export interface EditorSessionManagerConfig {
-  workspacesDir: string
-  elanDir: string
-  openVscodeServerDir: string
-  vscodeExtensionsDir: string
-  nginxConfDir: string
-  nginxLogDir: string
-  packageSetsDir: string
-}
-
 const BASE_PORT = 3010
 const MAX_PORT = 3999
+
+const g = globalThis as typeof globalThis & {
+  __editorSessionManager?: EditorSessionManager
+}
+
+/** Get or create the EditorSessionManager singleton. */
+export function getEditorSessionManager(): EditorSessionManager {
+  if (g.__editorSessionManager) return g.__editorSessionManager
+  g.__editorSessionManager = new EditorSessionManager()
+  return g.__editorSessionManager
+}
 
 export class EditorSessionManager {
   private editorSessions = new Map<string, EditorSessionInfo>()
   private availablePorts: Set<number>
 
-  constructor(private config: EditorSessionManagerConfig) {
+  constructor() {
     this.availablePorts = new Set(Array.from({ length: MAX_PORT - BASE_PORT + 1 }, (_, i) => BASE_PORT + i))
   }
 
@@ -57,7 +66,7 @@ export class EditorSessionManager {
     proxy_hide_header X-Frame-Options;
 }
 `
-    fs.writeFileSync(`${this.config.nginxConfDir}/user-routes/${viewerUsername}-${projectId}.conf`, conf)
+    fs.writeFileSync(`${getNginxConfDir()}/user-routes/${viewerUsername}-${projectId}.conf`, conf)
   }
 
   private ensureMachineSettings(workspace: string): void {
@@ -72,7 +81,7 @@ export class EditorSessionManager {
           {
             'security.workspace.trust.enabled': false,
             'workbench.startupEditor': 'none',
-            'files.watcherExclude': { '/home/elan/**': true },
+            'files.watcherExclude': { '/workspace/.elan/**': true },
           },
           null,
           2,
@@ -121,7 +130,7 @@ export class EditorSessionManager {
     const packageSets = await getDb().projectPackageSet.findMany({ where: { projectId } })
     const args: string[] = []
     for (const { packageSet } of packageSets) {
-      const setDir = path.join(this.config.packageSetsDir, packageSet)
+      const setDir = path.join(getPackageSetsDir(), packageSet)
       const packagesFile = path.join(setDir, 'packages.txt')
       if (!fs.existsSync(packagesFile)) continue
       const packages = fs.readFileSync(packagesFile, 'utf-8').split('\n').filter(Boolean)
@@ -138,7 +147,7 @@ export class EditorSessionManager {
   }
 
   reloadNginx() {
-    execSync(`nginx -e ${this.config.nginxLogDir}/error.log -c ${this.config.nginxConfDir}/nginx.conf -s reload`)
+    execSync(`nginx -e ${getNginxLogDir()}/error.log -c ${getNginxConfDir()}/nginx.conf -s reload`)
   }
 
   async startSession(
@@ -161,7 +170,7 @@ export class EditorSessionManager {
     const port = this.availablePorts.values().next().value
     if (port === undefined) throw new Error('No available ports')
     this.availablePorts.delete(port)
-    const workspaceDir = path.join(this.config.workspacesDir, ownerUsername, projectId)
+    const workspaceDir = path.join(getWorkspacesDir(), ownerUsername, projectId)
     fs.mkdirSync(workspaceDir, { recursive: true })
     if (isOwner) {
       this.ensureMachineSettings(workspaceDir)
@@ -187,9 +196,9 @@ export class EditorSessionManager {
         '--ro-bind-try', '/lib64', '/lib64',
         '--ro-bind', '/bin', '/bin',
         '--ro-bind', '/etc', '/etc',
-        '--ro-bind', this.config.openVscodeServerDir, '/workspace/.openvscode-server',
-        '--ro-bind', this.config.elanDir, '/workspace/.elan',
-        '--ro-bind', this.config.vscodeExtensionsDir, '/workspace/.vscode-extensions',
+        '--ro-bind', getOpenVscodeServerDir(), '/workspace/.openvscode-server',
+        '--ro-bind', getElanDir(), '/workspace/.elan',
+        '--ro-bind', getVscodeExtensionsDir(), '/workspace/.vscode-extensions',
         ...workspaceMount,
         ...overlayArgs,
         '--proc', '/proc',
@@ -255,7 +264,7 @@ export class EditorSessionManager {
     this.editorSessions.delete(key)
     this.availablePorts.add(s.port)
     try {
-      fs.unlinkSync(`${this.config.nginxConfDir}/user-routes/${viewerUsername}-${projectId}.conf`)
+      fs.unlinkSync(`${getNginxConfDir()}/user-routes/${viewerUsername}-${projectId}.conf`)
       this.reloadNginx()
     } catch {
       // conf may not exist

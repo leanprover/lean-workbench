@@ -4,6 +4,61 @@ import path from 'path'
 import 'server-only'
 import z from 'zod'
 
+// --- Directories ---
+
+export function getDataDir(): string {
+  if (!process.env.LEAN_WORKBENCH_DATA_DIR) {
+    throw new Error('Environment variable LEAN_WORKBENCH_DATA_DIR must be set.')
+  }
+  const dataDir = path.resolve(process.env.LEAN_WORKBENCH_DATA_DIR)
+  if (!fs.existsSync(dataDir)) {
+    throw new Error('Directory specified in LEAN_WORKBENCH_DATA_DIR does not exist.')
+  }
+  return dataDir
+}
+
+export function getWorkspacesDir(): string {
+  return path.join(getDataDir(), 'workspaces')
+}
+
+export function getTemplatesDir(): string {
+  return path.join(getDataDir(), 'templates')
+}
+
+export function getPackageSetsDir(): string {
+  return path.join(getDataDir(), 'package-sets')
+}
+
+export function getDbDir(): string {
+  return path.join(getDataDir(), 'db')
+}
+
+export function getElanDir(): string {
+  return path.join(getDataDir(), 'elan')
+}
+
+export function getOpenVscodeServerDir(): string {
+  return process.env.OPENVSCODE_SERVER_DIR ?? '/app/.openvscode-server'
+}
+
+export function getVscodeExtensionsDir(): string {
+  return process.env.VSCODE_EXTENSIONS_DIR ?? '/app/.vscode-extensions'
+}
+
+export function getNginxConfDir(): string {
+  return process.env.NGINX_CONF_DIR ?? '/etc/nginx'
+}
+
+export function getNginxLogDir(): string {
+  return process.env.NGINX_LOG_DIR ?? '/var/log/nginx'
+}
+
+// --- Configuration ---
+
+export function isDevMode(): boolean {
+  return process.env.NODE_ENV !== 'production'
+}
+
 const zRegistrationMode = z.enum(['open', 'restricted'])
 
 export type RegistrationMode = z.infer<typeof zRegistrationMode>
@@ -32,21 +87,6 @@ const defaults: ServerConfig = {
 /** Whether GitHub OAuth is set up. */
 export function hasGithubAuth(cfg: ServerConfig): cfg is ServerConfig & { githubAuth: GithubAuthConfig } {
   return !!cfg.githubAuth
-}
-
-export function isDevMode(): boolean {
-  return process.env.NODE_ENV !== 'production'
-}
-
-export function getDataDir(): string {
-  if (!process.env.LEAN_WORKBENCH_DATA_DIR) {
-    throw new Error('Environment variable LEAN_WORKBENCH_DATA_DIR must be set.')
-  }
-  const dataDir = path.resolve(process.env.LEAN_WORKBENCH_DATA_DIR)
-  if (!fs.existsSync(dataDir)) {
-    throw new Error('Directory specified in LEAN_WORKBENCH_DATA_DIR does not exist.')
-  }
-  return dataDir
 }
 
 function getConfigPath(): string {
@@ -116,5 +156,4 @@ if (!g.__config) {
     loadConfig()
   }
   ensureConfigWatcher()
-}
 }
