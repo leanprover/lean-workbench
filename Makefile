@@ -18,20 +18,20 @@ DOCKER_RUN = docker run --init --interactive --tty \
 	--security-opt seccomp=unconfined \
 	--security-opt apparmor=unconfined \
 	--security-opt systempaths=unconfined \
-	-v $(WORKBENCH_ROOT)/data:/data \
+	-v $(WORKBENCH_ROOT):/data \
 	$(if $(wildcard .env.docker),--env-file .env.docker,)
 
 clean-install: clean container
 	./install.sh --no-pull --dir $(WORKBENCH_ROOT) --port 3000
 
 serve: container
-	mkdir -p $(WORKBENCH_ROOT)/data
+	mkdir -p $(WORKBENCH_ROOT)
 	$(DOCKER_RUN) -p 3000:3000 $(IMAGE_TAG)
 
 dev: container
-	mkdir -p $(WORKBENCH_ROOT)/data
+	mkdir -p $(WORKBENCH_ROOT)
 	$(DOCKER_RUN) -p 3000:3000 -e NODE_ENV $(IMAGE_TAG)
 
 enter: container
-	mkdir -p $(WORKBENCH_ROOT)/data
+	mkdir -p $(WORKBENCH_ROOT)
 	$(DOCKER_RUN) --rm --entrypoint bash $(IMAGE_TAG)
