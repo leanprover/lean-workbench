@@ -81,8 +81,9 @@ function createAuth() {
 }
 
 export type AuthInstance = ReturnType<typeof createAuth>
-export type Session = AuthInstance['$Infer']['Session']['session']
-export type User = AuthInstance['$Infer']['Session']['user']
+export type SessionAndUser = AuthInstance['$Infer']['Session']
+export type Session = SessionAndUser['session']
+export type User = SessionAndUser['user']
 
 const g = globalThis as typeof globalThis & {
   __auth?: AuthInstance

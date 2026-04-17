@@ -2,11 +2,18 @@
 
 'use server'
 
-import { getAuth } from '@/lib/server/auth'
+import { getAuth, type SessionAndUser } from '@/lib/server/auth'
 import { getDb } from '@/lib/server/db'
 import { headers } from 'next/headers'
 import { forbidden, unauthorized } from 'next/navigation'
 import { isDevMode } from './config'
+
+/** Require an authenticated session. Throws `unauthorized()` if not logged in. */
+export async function requireAuth(): Promise<SessionAndUser> {
+  const session = await getAuth().api.getSession({ headers: await headers() })
+  if (!session) unauthorized()
+  return session
+}
 
 /** Set `isAdmin` on the requesting user. Dev mode only. */
 export async function setIsAdmin(isAdmin: boolean) {
@@ -14,13 +21,7 @@ export async function setIsAdmin(isAdmin: boolean) {
     forbidden()
   }
 
-  const auth = getAuth()
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  })
-  if (!session) {
-    unauthorized()
-  }
+  const session = await requireAuth()
 
   const db = getDb()
   await db.user.update({
