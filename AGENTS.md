@@ -26,9 +26,19 @@ This version has breaking changes — APIs, conventions, and file structure may 
   review it to determine whether it could have been simpler and shorter.
 - Never remove comments that link to documentation,
   except when removing *all* of the associated code.
+- Ignore `TODO`s and `FIXME`s in the codebase.
   
 ## Refactoring
 
-- When moving code from an RCC to an RSC,
-  some of the Server Actions invoked by the RCC may no longer need `'use server'`;
-  inline them in the RSC in this case.
+- After moving code from an RCC to an RSC,
+  some of the Server Actions previously invoked over the network by the RCC
+  may now be possible to call directly in the RSC;
+  move them to the RSC file in this case.
+  
+## Git
+
+- Don't commit or push, let the user do that. You can automate git worktree operations, though.
+- When working on a significant change, i.e. one that involves a plan,
+  make it in a suitably named branch, in a fresh worktree named branch-$BRANCHNAME.
+  Clean up the worktree when done.
+- Smaller changes can go into the working tree directly.

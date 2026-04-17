@@ -1,27 +1,44 @@
 {
-  "name": "@leanprover/workbench-repo",
+  "name": "@leanprover/workbench-app",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "prepare": "husky",
-    "lint": "prettier . --check && eslint --quiet"
+    "prepare": "husky && next typegen && prisma generate",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "prettier --check . && eslint"
   },
-  "workspaces": [
-    "client",
-    "server"
-  ],
+  "dependencies": {
+    "@prisma/adapter-better-sqlite3": "^7.7.0",
+    "@prisma/client": "^7.7.0",
+    "better-auth": "^1.6.2",
+    "chokidar": "^5.0.0",
+    "next": "16.2.3",
+    "prisma": "^7.7.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "swr": "^2.4.1",
+    "zod": "^4.3.6"
+  },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "eslint": "^10.2.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "babel-plugin-react-compiler": "1.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.3",
+    "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
-    "prettier": "^3.8.1",
+    "prettier": "^3.8.2",
     "prettier-plugin-organize-imports": "^4.3.0",
-    "typescript": "^6.0.2",
-    "typescript-eslint": "^8.58.1"
+    "typescript": "^5"
   },
   "lint-staged": {
-    "*.{ts,tsx,js}": [
+    "*.{js,jsx,ts,tsx}": [
       "eslint --cache --fix",
       "prettier --write"
     ],
