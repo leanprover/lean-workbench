@@ -43,8 +43,8 @@ export class EditorSessionManager {
     this.availablePorts = new Set(Array.from({ length: MAX_PORT - BASE_PORT + 1 }, (_, i) => BASE_PORT + i))
   }
 
-  private static sessionKey(username: string, projectId: string): string {
-    return `${username}/${projectId}`
+  private static sessionKey(viewerUsername: string, projectId: string): string {
+    return `${viewerUsername}/${projectId}`
   }
 
   private writeNginxConf(
@@ -139,7 +139,7 @@ export class EditorSessionManager {
         // prettier-ignore
         args.push(
           '--overlay-src', path.join(setDir, pkg),
-          '--tmp-overlay', `${sandboxProjectDir}/.lake/packages/${pkg}`,
+          '--tmp-overlay', path.join(sandboxProjectDir, '.lake', 'packages', pkg),
         )
       }
     }

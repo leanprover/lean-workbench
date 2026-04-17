@@ -15,4 +15,6 @@ This version has breaking changes — APIs, conventions, and file structure may 
   
 # Agent instructions
 
+- Less code is better. After writing any new piece of code,
+  review it to determine whether it could have been simpler and shorter.
 - Do not remove comments that link to documentation.
