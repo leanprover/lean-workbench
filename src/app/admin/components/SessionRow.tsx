@@ -1,9 +1,9 @@
 'use client'
 
+import type { EditorSessionInfo } from '@/lib/server/editorSessions'
 import { useServerAction } from '@/lib/util'
 import { useRouter } from 'next/navigation'
 import { startTransition } from 'react'
-import type { EditorSessionInfo } from '@/lib/server/editorSessions'
 import { killEditorSession } from '../actions'
 
 type SessionEntry = { key: string; info: EditorSessionInfo; alive: boolean }

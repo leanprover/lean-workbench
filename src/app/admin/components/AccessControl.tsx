@@ -7,9 +7,8 @@ import { RegistrationModeControl } from './RegistrationModeControl'
 export async function AccessControl() {
   await requireAdmin()
   const mode = getConfig().registrationMode
-  const allowed = mode === 'restricted'
-    ? await getDb().allowedGithubUser.findMany({ orderBy: { githubUsername: 'asc' } })
-    : []
+  const allowed =
+    mode === 'restricted' ? await getDb().allowedGithubUser.findMany({ orderBy: { githubUsername: 'asc' } }) : []
   return (
     <>
       <section>
@@ -19,9 +18,7 @@ export async function AccessControl() {
       {mode === 'restricted' && (
         <section>
           <h3>Allowed users</h3>
-          <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: 12 }}>
-            GitHub usernames allowed to register.
-          </p>
+          <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: 12 }}>GitHub usernames allowed to register.</p>
           <AllowlistEditor users={allowed.map(u => u.githubUsername)} />
         </section>
       )}

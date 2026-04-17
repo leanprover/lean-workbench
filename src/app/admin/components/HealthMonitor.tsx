@@ -57,8 +57,8 @@ export function HealthMonitor() {
             <tr>
               <td style={labelStyle}>Swap</td>
               <td style={valueStyle}>
-                {formatBytes(health.memory.swapTotal - health.memory.swapFree)} /{' '}
-                {formatBytes(health.memory.swapTotal)} used
+                {formatBytes(health.memory.swapTotal - health.memory.swapFree)} / {formatBytes(health.memory.swapTotal)}{' '}
+                used
               </td>
             </tr>
           )}

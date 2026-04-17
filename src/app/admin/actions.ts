@@ -88,10 +88,7 @@ const zUpdateOAuth = z.object({
   clientSecret: z.string().optional(),
 })
 
-export async function updateOAuthConfig(
-  clientId: string,
-  clientSecret: string | undefined,
-): Promise<ActionResponse> {
+export async function updateOAuthConfig(clientId: string, clientSecret: string | undefined): Promise<ActionResponse> {
   await requireAdmin()
   const parsed = zUpdateOAuth.safeParse({ clientId, clientSecret })
   if (!parsed.success) return { error: parsed.error.issues[0].message }

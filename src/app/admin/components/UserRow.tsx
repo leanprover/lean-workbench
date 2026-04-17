@@ -38,10 +38,7 @@ export function UserRow({ user, isSelf }: { user: User; isSelf: boolean }) {
 
   return (
     <li style={{ display: 'block' }}>
-      <div
-        style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
-        onClick={() => setExpanded(x => !x)}
-      >
+      <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => setExpanded(x => !x)}>
         <span style={{ width: 16, fontSize: '0.7rem', color: '#90a4ae' }}>{expanded ? '\u25BC' : '\u25B6'}</span>
         <div className='info' style={{ flex: 1 }}>
           <span>{user.name}</span>

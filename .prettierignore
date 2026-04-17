@@ -3,3 +3,6 @@ package-lock.json
 
 # Plans and documentation
 *.md
+
+# Git
+branch-*

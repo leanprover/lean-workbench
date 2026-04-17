@@ -124,16 +124,18 @@ export async function saveConfig() {
 /** Watch config.json for external changes and reload the in-memory cache. */
 function ensureConfigWatcher() {
   if (g.__configWatcher) return
-  g.__configWatcher = chokidar.watch(getConfigPath(), {
-    ignoreInitial: true,
-    awaitWriteFinish: true,
-  }).on('change', () => {
-    try {
-      loadConfig()
-    } catch (e: unknown) {
-      console.error(`Failed to reload config: ${String(e)}`)
-    }
-  })
+  g.__configWatcher = chokidar
+    .watch(getConfigPath(), {
+      ignoreInitial: true,
+      awaitWriteFinish: true,
+    })
+    .on('change', () => {
+      try {
+        loadConfig()
+      } catch (e: unknown) {
+        console.error(`Failed to reload config: ${String(e)}`)
+      }
+    })
 }
 
 /** Return the server configuration.
