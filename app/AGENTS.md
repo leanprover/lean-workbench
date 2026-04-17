@@ -12,9 +12,17 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - Use Zod to validate input data and derive TypeScript types for it.
 - Our deployment is purely local, one-machine; not serverless or CDN-based.
   Warnings about shared globals can be safely ignored.
+- Whenever possible,
+  prefer Server Components that do server-side computation and rendering in the same file
+  to Client Components that invoke Server Functions/Actions.
+- For UI actions that hit the server,
+  prefer `useServerAction` (`@/lib/util`) or (if `useServerAction` doesn't work) `useActionState`
+  over manually storing response/error state with `useState`.
+- To call Server Functions on mount, use SWR.
   
 # Agent instructions
 
 - Less code is better. After writing any new piece of code,
   review it to determine whether it could have been simpler and shorter.
-- Do not remove comments that link to documentation.
+- Never remove comments that link to documentation,
+  except when removing *all* of the associated code.

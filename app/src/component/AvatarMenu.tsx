@@ -4,6 +4,7 @@ import authClient from '@/lib/auth-client'
 import { ConfigCtx } from '@/lib/contexts'
 import { setIsAdmin } from '@/lib/server/actions'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useContext } from 'react'
 
@@ -27,7 +28,7 @@ export default function AvatarMenu() {
           </button>
           <div className='avatar-dropdown'>
             <div className='avatar-dropdown-user'>{user.name}</div>
-            {/* TODO admin route {user.isAdmin && <Link href='/admin'>Admin interface</Link>} */}
+            {user.isAdmin && <Link href='/admin'>Admin interface</Link>}
             {cfg.isDevMode && (
               <button
                 onClick={async () => {
