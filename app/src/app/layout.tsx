@@ -1,5 +1,5 @@
 import AvatarMenu from '@/component/AvatarMenu'
-import { Breadcrumbs, WithBreadcrumbsCtx } from '@/component/Breadcrumbs'
+import { Breadcrumbs } from '@/component/Breadcrumbs'
 import '@/css/app.css'
 import { ConfigCtx } from '@/lib/contexts'
 import { getConfig, hasGithubAuth, isDevMode } from '@/lib/server/config'
@@ -34,22 +34,20 @@ export default function RootLayout({
   }
   return (
     <html lang='en' className={openSans.className}>
+      {/* https://nextjs.org/docs/app/getting-started/server-and-client-components#interleaving-server-and-client-components */}
       <ConfigCtx value={clientCfg}>
-        {/* https://nextjs.org/docs/app/getting-started/server-and-client-components#interleaving-server-and-client-components */}
-        <WithBreadcrumbsCtx>
-          <body>
-            <nav>
-              <Link className='logo' href='/'>
-                <Image src='/static/lean-logo.svg' alt='Lean logo' width={70} height={16} loading='eager' />
-                <span className='logo-text'>Lean Workbench</span>
-              </Link>
-              <Breadcrumbs />
-              <span className='spacer'></span>
-              {serverCfg.isSetupComplete && <AvatarMenu />}
-            </nav>
-            <main style={{ maxWidth: '600px' }}>{children}</main>
-          </body>
-        </WithBreadcrumbsCtx>
+        <body>
+          <nav>
+            <Link className='logo' href='/'>
+              <Image src='/static/lean-logo.svg' alt='Lean logo' width={70} height={16} loading='eager' />
+              <span className='logo-text'>Lean Workbench</span>
+            </Link>
+            <Breadcrumbs />
+            <span className='spacer'></span>
+            {serverCfg.isSetupComplete && <AvatarMenu />}
+          </nav>
+          <main style={{ maxWidth: '600px' }}>{children}</main>
+        </body>
       </ConfigCtx>
     </html>
   )

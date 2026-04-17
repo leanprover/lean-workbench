@@ -56,7 +56,7 @@ nav a.breadcrumb:hover {
   color: #386ee0;
   background: rgba(56, 110, 224, 0.08);
 }
-nav a.breadcrumb.project {
+nav a.breadcrumb.last {
   color: #386ee0;
 }
 nav .spacer {

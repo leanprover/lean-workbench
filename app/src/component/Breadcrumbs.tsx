@@ -1,24 +1,26 @@
 'use client'
 
-import { createContext, useContext, useState, type ReactNode } from 'react'
-
-const BreadcrumbsValCtx = createContext<ReactNode>(null)
-const BreadcrumbsSetCtx = createContext<(_: ReactNode) => void>(() => {})
-
-/** Use to set breadcrumbs in the navbar. */
-export function useSetBreadcrumbs(): (_: ReactNode) => void {
-  return useContext(BreadcrumbsSetCtx)
-}
-
-export function WithBreadcrumbsCtx({ children }: Readonly<{ children: ReactNode }>) {
-  const [breadcrumbs, setBreadcrumbs] = useState<ReactNode>(null)
-  return (
-    <BreadcrumbsSetCtx value={setBreadcrumbs}>
-      <BreadcrumbsValCtx value={breadcrumbs}>{children}</BreadcrumbsValCtx>
-    </BreadcrumbsSetCtx>
-  )
-}
+import type { Route } from 'next'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { Fragment } from 'react'
 
 export function Breadcrumbs() {
-  return useContext(BreadcrumbsValCtx)
+  const pathname = usePathname()
+  const segments = pathname.split('/').filter(c => c !== '')
+  return (
+    <>
+      {segments.map((segment, i) => {
+        const href = '/' + segments.slice(0, i + 1).join('/') + '/'
+        return (
+          <Fragment key={href}>
+            <span className='sep'>/</span>
+            <Link className={'breadcrumb ' + (i + 1 === segments.length ? 'last ' : '')} href={href as Route}>
+              {decodeURIComponent(segment)}
+            </Link>
+          </Fragment>
+        )
+      })}
+    </>
+  )
 }
