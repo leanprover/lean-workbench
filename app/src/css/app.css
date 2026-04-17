@@ -291,15 +291,6 @@ button.danger:hover {
   width: 100%;
   margin-bottom: 8px;
 }
-.new-project button {
-  background: #386ee0;
-  color: #fff;
-  border-color: #386ee0;
-}
-.new-project button:hover {
-  background: #1d4ed8;
-  border-color: #1d4ed8;
-}
 .project-list {
   list-style: none;
   padding: 0;
@@ -379,14 +370,12 @@ button.danger:hover {
 }
 
 /* === Session Page === */
-html:has(.page-session),
-.page-session {
-  height: 100%;
-  overflow: hidden;
-}
-.page-session iframe {
-  width: 100%;
-  height: calc(100% - 40px);
+.editor-session-iframe {
+  position: fixed;
+  top: 40px; /* nav height */
+  left: 0;
+  width: 100vw;
+  height: calc(100vh - 40px);
   border: none;
   display: block;
 }
