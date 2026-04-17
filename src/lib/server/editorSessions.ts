@@ -60,7 +60,7 @@ export class EditorSessionManager {
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection $connection_upgrade;
-    proxy_set_header Host $host;
+    proxy_set_header Host $http_host;
     proxy_buffering off;
     proxy_read_timeout 86400;
     proxy_hide_header X-Frame-Options;

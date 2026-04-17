@@ -12,7 +12,7 @@ export function getDataDir(): string {
   }
   const dataDir = path.resolve(process.env.LEAN_WORKBENCH_DATA_DIR)
   if (!fs.existsSync(dataDir)) {
-    throw new Error('Directory specified in LEAN_WORKBENCH_DATA_DIR does not exist.')
+    throw new Error(`Directory specified in LEAN_WORKBENCH_DATA_DIR="${dataDir}" does not exist.`)
   }
   return dataDir
 }
