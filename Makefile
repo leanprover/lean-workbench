@@ -5,7 +5,7 @@ IMAGE_TAG = ghcr.io/leanprover/lean-workbench:latest
 .PHONY: clean container clean-install serve dev enter
 
 clean:
-	rm -rf node_modules/ .next/
+	rm -rf node_modules/ .next/ next-env.d.ts src/prisma/generated
 	@test -n "$(WORKBENCH_ROOT)" || { echo "ERROR: WORKBENCH_ROOT is empty"; exit 1; }
 	@test "$(realpath $(WORKBENCH_ROOT) 2>/dev/null)" != "/" || { echo "ERROR: WORKBENCH_ROOT resolves to /"; exit 1; }
 	rm -rf $(WORKBENCH_ROOT)
