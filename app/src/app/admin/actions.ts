@@ -20,22 +20,12 @@ export async function requireAdmin() {
 
 // --- User management ---
 
-export async function listUsers() {
-  await requireAdmin()
-  const db = getDb()
-  const users = await db.user.findMany({
-    select: { id: true, name: true, isAdmin: true, createdAt: true },
-    orderBy: { createdAt: 'asc' },
-  })
-  return users
-}
-
 const zToggleAdmin = z.object({
   userId: z.string(),
   isAdmin: z.boolean(),
 })
 
-export async function toggleAdmin(userId: string, isAdmin: boolean): Promise<ActionResponse<void>> {
+export async function toggleAdmin(userId: string, isAdmin: boolean): Promise<ActionResponse> {
   const session = await requireAdmin()
   const parsed = zToggleAdmin.safeParse({ userId, isAdmin })
   if (!parsed.success) return { error: parsed.error.issues[0].message }
@@ -54,7 +44,7 @@ const zDeleteUser = z.object({
   userId: z.string(),
 })
 
-export async function deleteUser(userId: string): Promise<ActionResponse<void>> {
+export async function deleteUser(userId: string): Promise<ActionResponse> {
   const session = await requireAdmin()
   const parsed = zDeleteUser.safeParse({ userId })
   if (!parsed.success) return { error: parsed.error.issues[0].message }
@@ -96,13 +86,12 @@ export async function fetchOAuthConfig() {
 const zUpdateOAuth = z.object({
   clientId: z.string().min(1, 'Client ID is required'),
   clientSecret: z.string().optional(),
-  callbackUrl: z.string().optional(),
 })
 
 export async function updateOAuthConfig(
   clientId: string,
   clientSecret: string | undefined,
-): Promise<ActionResponse<void>> {
+): Promise<ActionResponse> {
   await requireAdmin()
   const parsed = zUpdateOAuth.safeParse({ clientId, clientSecret })
   if (!parsed.success) return { error: parsed.error.issues[0].message }
@@ -128,18 +117,12 @@ export async function updateOAuthConfig(
 
 // --- Editor sessions ---
 
-export async function listEditorSessions() {
-  await requireAdmin()
-  const mgr = getEditorSessionManager()
-  return mgr.listSessions()
-}
-
 const zKillEditorSession = z.object({
   viewer: z.string().min(1),
   projectId: z.string().min(1),
 })
 
-export async function killEditorSession(viewer: string, projectId: string): Promise<ActionResponse<void>> {
+export async function killEditorSession(viewer: string, projectId: string): Promise<ActionResponse> {
   await requireAdmin()
   const parsed = zKillEditorSession.safeParse({ viewer, projectId })
   if (!parsed.success) return { error: parsed.error.issues[0].message }
@@ -198,10 +181,7 @@ export async function fetchHealth() {
     /* ignore */
   }
 
-  const mgr = getEditorSessionManager()
-
   return {
-    activeEditorSessions: mgr.sessionCount,
     dataVolumeDisk,
     uptime: process.uptime(),
     memory: {
@@ -214,15 +194,15 @@ export async function fetchHealth() {
   }
 }
 
-export async function fetchDiskUsage() {
+export async function fetchDiskUsage(): Promise<ActionResponse<{ workspaces: string }>> {
   await requireAdmin()
   const workspacesDir = getWorkspacesDir()
   try {
     const out = execFileSync('du', ['-sh', workspacesDir], { encoding: 'utf8', timeout: 30_000 })
     const size = out.split('\t')[0] ?? '?'
-    return { workspaces: size }
+    return { ok: { workspaces: size } }
   } catch (e: unknown) {
-    throw new Error(`Failed to compute disk usage: ${e instanceof Error ? e.message : String(e)}`)
+    return { error: `Failed to compute disk usage: ${e instanceof Error ? e.message : String(e)}` }
   }
 }
 
@@ -230,12 +210,7 @@ export async function fetchDiskUsage() {
 
 const zRegistrationMode = z.enum(['open', 'restricted'])
 
-export async function fetchRegistrationMode() {
-  await requireAdmin()
-  return getConfig().registrationMode
-}
-
-export async function setRegistrationMode(mode: string): Promise<ActionResponse<void>> {
+export async function setRegistrationMode(mode: string): Promise<ActionResponse> {
   await requireAdmin()
   const parsed = zRegistrationMode.safeParse(mode)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
@@ -247,14 +222,6 @@ export async function setRegistrationMode(mode: string): Promise<ActionResponse<
 
 // --- Allowed users ---
 
-export async function listAllowedUsers() {
-  await requireAdmin()
-  const users = await getDb().allowedGithubUser.findMany({
-    orderBy: { githubUsername: 'asc' },
-  })
-  return users.map(u => u.githubUsername)
-}
-
 const zAddAllowedUser = z.object({
   username: z
     .string()
@@ -262,7 +229,7 @@ const zAddAllowedUser = z.object({
     .pipe(z.string().min(1, 'Username is required')),
 })
 
-export async function addAllowedUser(username: string): Promise<ActionResponse<void>> {
+export async function addAllowedUser(username: string): Promise<ActionResponse> {
   await requireAdmin()
   const parsed = zAddAllowedUser.safeParse({ username })
   if (!parsed.success) return { error: parsed.error.issues[0].message }
@@ -278,7 +245,7 @@ const zRemoveAllowedUser = z.object({
   username: z.string().min(1),
 })
 
-export async function removeAllowedUser(username: string): Promise<ActionResponse<void>> {
+export async function removeAllowedUser(username: string): Promise<ActionResponse> {
   await requireAdmin()
   const parsed = zRemoveAllowedUser.safeParse({ username })
   if (!parsed.success) return { error: parsed.error.issues[0].message }

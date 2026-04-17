@@ -12,8 +12,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - Use Zod to validate input data and derive TypeScript types for it.
 - Our deployment is purely local, one-machine; not serverless or CDN-based.
   Warnings about shared globals can be safely ignored.
-- Whenever possible,
-  prefer Server Components that do server-side computation and rendering in the same file
+- Whenever it simplifies the implementation,
+  Prefer Server Components that do server-side computation and rendering in the same file
   to Client Components that invoke Server Functions/Actions.
 - For UI actions that hit the server,
   prefer `useServerAction` (`@/lib/util`) or (if `useServerAction` doesn't work) `useActionState`
@@ -26,3 +26,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
   review it to determine whether it could have been simpler and shorter.
 - Never remove comments that link to documentation,
   except when removing *all* of the associated code.
+  
+## Refactoring
+
+- When moving code from an RCC to an RSC,
+  some of the Server Actions invoked by the RCC may no longer need `'use server'`;
+  inline them in the RSC in this case.

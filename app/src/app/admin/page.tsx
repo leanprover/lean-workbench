@@ -1,7 +1,20 @@
-import { AdminPanel } from './AdminPanel'
 import { requireAdmin } from './actions'
+import { AccessControl } from './components/AccessControl'
+import { HealthMonitor } from './components/HealthMonitor'
+import { OAuthConfig } from './components/OAuthConfig'
+import { SessionViewer } from './components/SessionViewer'
+import { UserManagement } from './components/UserManagement'
 
 export default async function AdminPage() {
-  const session = await requireAdmin()
-  return <AdminPanel currentUserId={session.user.id} />
+  await requireAdmin()
+  return (
+    <div className='admin-page'>
+      <h1>Admin</h1>
+      <UserManagement />
+      <OAuthConfig />
+      <SessionViewer />
+      <AccessControl />
+      <HealthMonitor />
+    </div>
+  )
 }
