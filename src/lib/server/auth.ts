@@ -1,11 +1,12 @@
-import { getConfig, hasGithubAuth, isDevMode } from '@/lib/server/config'
+import { getConfig, hasGithubAuth, isDevMode, saveConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { betterAuth, type SocialProviders } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { nextCookies } from 'better-auth/next-js'
+import crypto from 'crypto'
 import 'server-only'
 
-function createAuth() {
+async function createAuth() {
   const config = getConfig()
   const socialProviders: SocialProviders = {}
 
@@ -23,8 +24,15 @@ function createAuth() {
     }
   }
 
+  if (config.authSessionSecret === '') {
+    console.log('Generating new authentication session secret..')
+    config.authSessionSecret = crypto.randomBytes(32).toString('hex')
+    await saveConfig()
+  }
+
   return betterAuth({
     database: prismaAdapter(getDb(), { provider: 'sqlite' }),
+    secret: config.authSessionSecret,
     databaseHooks: {
       user: {
         create: {
@@ -80,7 +88,7 @@ function createAuth() {
   })
 }
 
-export type AuthInstance = ReturnType<typeof createAuth>
+export type AuthInstance = Awaited<ReturnType<typeof createAuth>>
 export type SessionAndUser = AuthInstance['$Infer']['Session']
 export type Session = SessionAndUser['session']
 export type User = SessionAndUser['user']
@@ -89,12 +97,12 @@ const g = globalThis as typeof globalThis & {
   __auth?: AuthInstance
 }
 
-export function initAuth(): AuthInstance {
-  g.__auth = createAuth()
+export async function initAuth(): Promise<AuthInstance> {
+  g.__auth = await createAuth()
   return g.__auth
 }
 
-export function getAuth(): AuthInstance {
+export async function getAuth(): Promise<AuthInstance> {
   if (g.__auth) return g.__auth
   return initAuth()
 }

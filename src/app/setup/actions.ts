@@ -7,8 +7,8 @@ import { ActionResponse } from '@/lib/util'
 import z from 'zod'
 
 const zSetupConfig = z.object({
-  clientId: z.string().min(1, 'Client ID is required'),
-  clientSecret: z.string().min(1, 'Client Secret is required'),
+  clientId: z.string().min(1, 'Client ID is required').trim(),
+  clientSecret: z.string().min(1, 'Client Secret is required').trim(),
 })
 
 export async function saveSetupConfig(formData: FormData): Promise<ActionResponse<boolean>> {
@@ -25,7 +25,7 @@ export async function saveSetupConfig(formData: FormData): Promise<ActionRespons
   await saveConfig()
 
   // Reinitialize auth with new configuration
-  initAuth()
+  await initAuth()
 
   return { ok: true }
 }

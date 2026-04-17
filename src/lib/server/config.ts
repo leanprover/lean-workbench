@@ -74,6 +74,7 @@ const zServerConfig = z.object({
   registrationMode: zRegistrationMode,
   isSetupComplete: z.boolean(),
   githubAuth: zGithubAuthConfig.optional(),
+  authSessionSecret: z.string(),
 })
 
 /** Server configuration. Also stored on-disk in `$LEAN_WORKBENCH_DATA_DIR/config.json`. */
@@ -82,6 +83,7 @@ type ServerConfig = z.infer<typeof zServerConfig>
 const defaults: ServerConfig = {
   registrationMode: 'open',
   isSetupComplete: false,
+  authSessionSecret: '',
 }
 
 /** Whether GitHub OAuth is set up. */

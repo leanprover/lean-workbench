@@ -88,6 +88,7 @@ const zUpdateOAuth = z.object({
   clientSecret: z.string().optional(),
 })
 
+// FIXME: dedup with saveSetupConfig action somehow?
 export async function updateOAuthConfig(clientId: string, clientSecret: string | undefined): Promise<ActionResponse> {
   await requireAdmin()
   const parsed = zUpdateOAuth.safeParse({ clientId, clientSecret })
@@ -108,7 +109,7 @@ export async function updateOAuthConfig(clientId: string, clientSecret: string |
     clientSecret: resolvedSecret,
   }
   await saveConfig()
-  initAuth()
+  await initAuth()
   return { ok: undefined }
 }
 
