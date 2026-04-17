@@ -144,7 +144,7 @@ function ensureConfigWatcher() {
  *
  * The object may be mutated. `saveConfig()` must be called after any modifications. */
 export function getConfig(): ServerConfig {
-  if (!g.__config) throw new Error('internal error: g.__config uninitialized')
+  if (!g.__config) throw new Error('internal error: config module uninitialized')
   return g.__config
 }
 
@@ -152,7 +152,9 @@ const g = globalThis as typeof globalThis & {
   __config?: ServerConfig
   __configWatcher?: FSWatcher
 }
-if (!g.__config) {
+
+export function initConfig() {
+  if (g.__config) throw new Error('internal error: attempted to reinitialize config module')
   if (!fs.existsSync(getConfigPath())) {
     g.__config = { ...defaults }
     writeConfig()

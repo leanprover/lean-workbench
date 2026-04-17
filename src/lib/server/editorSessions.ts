@@ -28,10 +28,13 @@ const g = globalThis as typeof globalThis & {
   __editorSessionManager?: EditorSessionManager
 }
 
-/** Get or create the EditorSessionManager singleton. */
-export function getEditorSessionManager(): EditorSessionManager {
-  if (g.__editorSessionManager) return g.__editorSessionManager
+export function initEditorSessions() {
+  if (g.__editorSessionManager) throw new Error('internal error: attempted to reinitialize editorSessions module')
   g.__editorSessionManager = new EditorSessionManager()
+}
+
+export function getEditorSessionManager(): EditorSessionManager {
+  if (!g.__editorSessionManager) throw new Error('internal error: editorSessions module uninitialized')
   return g.__editorSessionManager
 }
 

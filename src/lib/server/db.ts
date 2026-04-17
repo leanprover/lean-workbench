@@ -11,8 +11,8 @@ const g = globalThis as typeof globalThis & {
   __db?: PrismaClient
 }
 
-export function getDb(): PrismaClient {
-  if (g.__db) return g.__db
+export function initDb() {
+  if (g.__db) throw new Error('internal error: attempted to reinitialize db module')
 
   // Ensure db directory exists
   const dbDir = getDbDir()
@@ -28,10 +28,14 @@ export function getDb(): PrismaClient {
       stdio: 'inherit',
     })
   } catch (e: unknown) {
-    throw new Error(`Database migration failed: ${String(e)}`, { cause: e })
+    throw new Error(`Database migration failed: ${String(e)}`)
   }
 
   const adapter = new PrismaBetterSqlite3({ url: dbUrl })
   g.__db = new PrismaClient({ adapter })
+}
+
+export function getDb(): PrismaClient {
+  if (!g.__db) throw new Error('internal error: db module uninitialized')
   return g.__db
 }

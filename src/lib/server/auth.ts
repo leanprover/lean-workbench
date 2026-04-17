@@ -97,12 +97,12 @@ const g = globalThis as typeof globalThis & {
   __auth?: AuthInstance
 }
 
-export async function initAuth(): Promise<AuthInstance> {
+/** (Re)initialize the authentication state. */
+export async function initAuth(): Promise<void> {
   g.__auth = await createAuth()
-  return g.__auth
 }
 
 export async function getAuth(): Promise<AuthInstance> {
-  if (g.__auth) return g.__auth
-  return initAuth()
+  if (!g.__auth) throw new Error('internal error: auth module uninitialized')
+  return g.__auth
 }
