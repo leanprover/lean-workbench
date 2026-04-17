@@ -10,15 +10,19 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - For endpoints invoked via UI, prefer writing React Server Functions to explicit API routes.
   Only use API routes for functionality that a Server Function cannot provide.
 - Use Zod to validate input data and derive TypeScript types for it.
-- Our deployment is purely local, one-machine; not serverless or CDN-based.
-  Warnings about shared globals can be safely ignored.
+- Our deployment is one-machine; not serverless or CDN-based.
+  Hence warnings about shared globals can be safely ignored.
 - Whenever it simplifies the implementation,
   Prefer Server Components that do server-side computation and rendering in the same file
   to Client Components that invoke Server Functions/Actions.
-- For UI actions that hit the server,
-  prefer `useServerAction` (`@/lib/util`) or (if `useServerAction` doesn't work) `useActionState`
-  over manually storing response/error state with `useState`.
-- To call Server Functions on mount, use SWR.
+- Reduce the possible states of UI components by using algebraic sum types.
+  For example, prefer one state of type `'loading' | { error: E } | { result: T }`
+  to `[loading, setLoading] = useState(); [error, setError] = useState(); [result, setResult] = useState()`.
+  - As one case of this principle,
+    for UI actions that hit the server,
+    prefer `useServerAction` (`@/lib/util`) or (if `useServerAction` doesn't work) `useActionState`
+    over manually storing response/error state with `useState`.
+- To call Server Functions on mount (e.g. to fetch data), use SWR.
   
 # Agent instructions
 
