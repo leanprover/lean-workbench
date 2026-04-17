@@ -103,6 +103,6 @@ export async function initAuth(): Promise<void> {
 }
 
 export async function getAuth(): Promise<AuthInstance> {
-  if (!g.__auth) throw new Error('internal error: auth module uninitialized')
-  return g.__auth
+  if (!g.__auth) await initAuth()
+  return g.__auth!
 }

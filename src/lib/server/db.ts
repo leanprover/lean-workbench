@@ -36,6 +36,6 @@ export function initDb() {
 }
 
 export function getDb(): PrismaClient {
-  if (!g.__db) throw new Error('internal error: db module uninitialized')
-  return g.__db
+  if (!g.__db) initDb()
+  return g.__db!
 }

@@ -34,8 +34,8 @@ export function initEditorSessions() {
 }
 
 export function getEditorSessionManager(): EditorSessionManager {
-  if (!g.__editorSessionManager) throw new Error('internal error: editorSessions module uninitialized')
-  return g.__editorSessionManager
+  if (!g.__editorSessionManager) initEditorSessions()
+  return g.__editorSessionManager!
 }
 
 export class EditorSessionManager {

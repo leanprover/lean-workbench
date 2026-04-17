@@ -144,8 +144,8 @@ function ensureConfigWatcher() {
  *
  * The object may be mutated. `saveConfig()` must be called after any modifications. */
 export function getConfig(): ServerConfig {
-  if (!g.__config) throw new Error('internal error: config module uninitialized')
-  return g.__config
+  if (!g.__config) initConfig()
+  return g.__config!
 }
 
 const g = globalThis as typeof globalThis & {
