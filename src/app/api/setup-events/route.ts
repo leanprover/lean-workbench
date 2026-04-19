@@ -1,7 +1,5 @@
 import { getSeedState } from '@/lib/server/seed'
 
-export const dynamic = 'force-dynamic'
-
 export async function GET() {
   const encoder = new TextEncoder()
 
