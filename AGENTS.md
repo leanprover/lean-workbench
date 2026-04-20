@@ -6,22 +6,28 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # Server best practices
 
-- Do not store any state in JS module globals. Use `globalThis` instead.
-- For endpoints invoked via UI, prefer writing React Server Functions to explicit API routes.
+- For server endpoints invoked by UI components,
+  prefer React Server Functions to named API routes.
   Only use API routes for functionality that a Server Function cannot provide.
 - Use Zod to validate input data and derive TypeScript types for it.
 - Our deployment is one-machine; not serverless or CDN-based.
-  Hence warnings about shared globals can be safely ignored.
-- Whenever it simplifies the implementation,
-  Prefer Server Components that do server-side computation and rendering in the same file
-  to Client Components that invoke Server Functions/Actions.
+  Any warnings about shared globals can be safely ignored.
+- Store global server state in `globalThis` instead of top-level variable bindings.
+  This ensures state is preserved across HMR reloads.
+  It's ok to re-export it, e.g. `export const foo = globalThis.__foo`.
+  
+# React best practices
+
+- Prefer Server Components (RSCs) that do server-side computation and rendering in the same file
+  to Client Components (RCCs) that invoke Server Functions/Actions.
+  - But prefer fully client-side components when the associated Server Component
+    is merely a very thin wrapper around the Client Component.
 - Reduce the possible states of UI components by using algebraic sum types.
   For example, prefer one state of type `'loading' | { error: E } | { result: T }`
-  to `[loading, setLoading] = useState(); [error, setError] = useState(); [result, setResult] = useState()`.
-  - As one case of this principle,
-    for UI actions that hit the server,
-    prefer `useServerAction` (`@/lib/util`) or (if `useServerAction` doesn't work) `useActionState`
-    over manually storing response/error state with `useState`.
+  to three states `[loading, setLoading] = useState(); [error, setError] = useState(); [result, setResult] = useState()`.
+- For UI actions that hit the server,
+prefer `useServerAction` (`@/lib/util`) or (if `useServerAction` doesn't work) `useActionState`
+over manually storing response/error state with `useState`.
 - To call Server Functions on mount (e.g. to fetch data), use SWR.
   
 # Agent instructions
@@ -37,7 +43,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - After moving code from an RCC to an RSC,
   some of the Server Actions previously invoked over the network by the RCC
   may now be possible to call directly in the RSC;
-  move them to the RSC file in this case.
+  if no other RCC still needs these Server Actions, move them to the RSC file.
   
 ## Git
 
