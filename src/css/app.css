@@ -249,12 +249,13 @@ button.danger:hover {
 /* === Landing Page === */
 .login-link {
   display: inline-block;
-  margin: 20px 0;
+  margin-right: 10px;
   padding: 10px 20px;
   font-size: 14px;
   background: #386ee0;
   color: #fff;
   text-decoration: none;
+  border: 0px;
   border-radius: 0.5rem;
   font-weight: 500;
   transition: background 0.2s;

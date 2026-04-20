@@ -57,11 +57,7 @@ export default function AvatarMenu() {
       </>
     )
   } else if (!session.isPending && cfg.hasGithubAuth) {
-    return (
-      <button className='nav-link' onClick={() => authClient.signIn.social({ provider: 'github' })}>
-        Sign in via GitHub
-      </button>
-    )
+    return <button onClick={() => authClient.signIn.social({ provider: 'github' })}>Sign in via GitHub</button>
   } else {
     return <></>
   }

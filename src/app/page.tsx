@@ -66,7 +66,7 @@ export default function Root() {
         <>
           <h2>Sign in options</h2>
           {cfg.hasGithubAuth && (
-            <a
+            <button
               className='login-link'
               onClick={() => {
                 authClient.signIn.social({
@@ -75,10 +75,10 @@ export default function Root() {
               }}
             >
               GitHub
-            </a>
+            </button>
           )}
           {cfg.isDevMode && (
-            <a
+            <button
               className='login-link'
               onClick={async () => {
                 const email = 'dev@dev.localhost'
@@ -89,7 +89,7 @@ export default function Root() {
               }}
             >
               [DEV]
-            </a>
+            </button>
           )}
         </>
       )}
