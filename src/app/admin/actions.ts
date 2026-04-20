@@ -2,7 +2,7 @@
 
 import { requireAuth } from '@/lib/server/actions'
 import { initAuth } from '@/lib/server/auth'
-import { getConfig, getDataDir, getWorkspacesDir, saveConfig } from '@/lib/server/config'
+import { getConfig, getDataDir, getWorkspacesDir, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
 import { type ActionResponse } from '@/lib/util'
@@ -84,8 +84,8 @@ export async function fetchOAuthConfig() {
 }
 
 const zUpdateOAuth = z.object({
-  clientId: z.string().min(1, 'Client ID is required'),
-  clientSecret: z.string().optional(),
+  clientId: zGithubAuthConfig.shape.clientId,
+  clientSecret: zGithubAuthConfig.shape.clientSecret.optional(),
 })
 
 // FIXME: dedup with saveSetupConfig action somehow?

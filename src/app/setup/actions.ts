@@ -1,15 +1,14 @@
 'use server'
 
 import { initAuth } from '@/lib/server/auth'
-import { getConfig, hasGithubAuth, saveConfig } from '@/lib/server/config'
+import { getConfig, hasGithubAuth, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
 import { startSeed as doStartSeed, getSeedState } from '@/lib/server/seed'
 import { ActionResponse } from '@/lib/util'
 import z from 'zod'
 
 const zSetupConfig = z.object({
   baseUrl: z.url('Invalid base URL'),
-  clientId: z.string().min(1, 'Invalid GitHub client ID').trim(),
-  clientSecret: z.string().min(1, 'Invalid GitHub client secret').trim(),
+  ...zGithubAuthConfig.shape,
 })
 
 export async function saveSetupConfig(formData: FormData): Promise<ActionResponse<boolean>> {
