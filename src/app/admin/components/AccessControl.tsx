@@ -1,14 +1,9 @@
-import * as CacheTag from '@/lib/server/cacheTags'
 import { getConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
-import { cacheTag } from 'next/cache'
 import { AllowlistEditor } from './AllowlistEditor'
 import { RegistrationModeControl } from './RegistrationModeControl'
 
 export async function AccessControl() {
-  'use cache'
-  cacheTag(CacheTag.serverConfig, CacheTag.allowedGithubUser)
-
   const mode = getConfig().registrationMode
   const allowed =
     mode === 'restricted' ? await getDb().allowedGithubUser.findMany({ orderBy: { githubUsername: 'asc' } }) : []

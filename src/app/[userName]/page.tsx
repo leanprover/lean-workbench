@@ -3,7 +3,6 @@ import { getDb } from '@/lib/server/db'
 import { Route } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Suspense } from 'react'
 import { NewProjectForm } from './NewProjectForm'
 import { ProjectRow } from './ProjectRow'
 
@@ -11,15 +10,7 @@ interface Params {
   userName: string
 }
 
-export default function ProfilePage({ params }: { params: Promise<Params> }) {
-  return (
-    <Suspense fallback={<p>Loading...</p>}>
-      <ProfileBody params={params} />
-    </Suspense>
-  )
-}
-
-async function ProfileBody({ params }: { params: Promise<Params> }) {
+export default async function ProfileBody({ params }: { params: Promise<Params> }) {
   const viewerSession = await requireAuth()
 
   const { userName } = await params

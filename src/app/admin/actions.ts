@@ -2,12 +2,10 @@
 
 import { requireAuth } from '@/lib/server/actions'
 import { initAuth } from '@/lib/server/auth'
-import * as CacheTag from '@/lib/server/cacheTags'
 import { getConfig, getDataDir, getWorkspacesDir, saveConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
 import { type ActionResponse } from '@/lib/util'
-import { updateTag } from 'next/cache'
 import { forbidden } from 'next/navigation'
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
@@ -239,7 +237,6 @@ export async function addAllowedUser(username: string): Promise<ActionResponse> 
     create: { githubUsername: parsed.data.username },
     update: {},
   })
-  updateTag(CacheTag.allowedGithubUser)
   return { ok: undefined }
 }
 
@@ -254,6 +251,5 @@ export async function removeAllowedUser(username: string): Promise<ActionRespons
   await getDb().allowedGithubUser.delete({
     where: { githubUsername: parsed.data.username },
   })
-  updateTag(CacheTag.allowedGithubUser)
   return { ok: undefined }
 }

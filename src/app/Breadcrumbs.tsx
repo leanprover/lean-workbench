@@ -3,17 +3,9 @@
 import type { Route } from 'next'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Fragment, Suspense } from 'react'
+import { Fragment } from 'react'
 
-export function Breadcrumbs() {
-  return (
-    <Suspense fallback={<></>}>
-      <BreadcrumbsBody />
-    </Suspense>
-  )
-}
-
-function BreadcrumbsBody() {
+export default function Breadcrumbs() {
   const pathname = usePathname()
   const segments = pathname.split('/').filter(c => c !== '')
   return (

@@ -1,11 +1,9 @@
 'use server'
 
 import { initAuth } from '@/lib/server/auth'
-import * as CacheTag from '@/lib/server/cacheTags'
 import { getConfig, hasGithubAuth, saveConfig } from '@/lib/server/config'
 import { startSeed as doStartSeed, getSeedState } from '@/lib/server/seed'
 import { ActionResponse } from '@/lib/util'
-import { updateTag } from 'next/cache'
 import z from 'zod'
 
 const zSetupConfig = z.object({
@@ -38,14 +36,6 @@ export async function saveSetupConfig(formData: FormData): Promise<ActionRespons
 
 export async function startSeed(): Promise<ActionResponse<boolean>> {
   return doStartSeed()
-}
-
-export async function finalizeSeed() {
-  // Re-render components that read the server configuration, e.g. the root layout.
-  // Cannot be done in `on('close')` in `seed.ts`
-  // since that runs after the parent Server Function returns,
-  // so `updateTag` there would be a no-op.
-  updateTag(CacheTag.serverConfig)
 }
 
 export async function fetchSetupStatus() {

@@ -1,7 +1,6 @@
 import { requireAuth } from '@/lib/server/actions'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
-import { Suspense } from 'react'
 import z from 'zod'
 
 const zParams = z.object({
@@ -30,15 +29,7 @@ interface Params {
   projectName: string
 }
 
-export default function EditorSession({ params }: { params: Promise<Params> }) {
-  return (
-    <Suspense fallback={<p>Starting editor...</p>}>
-      <EditorSessionBody params={params} />
-    </Suspense>
-  )
-}
-
-async function EditorSessionBody({ params: params_ }: { params: Promise<Params> }) {
+export default async function EditorSession({ params: params_ }: { params: Promise<Params> }) {
   const parsed = zParams.safeParse(await params_)
   if (!parsed.success) return <Error msg={parsed.error.issues[0].message} />
   const params = parsed.data

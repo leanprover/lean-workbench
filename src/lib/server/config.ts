@@ -1,7 +1,5 @@
-import * as CacheTag from '@/lib/server/cacheTags'
 import chokidar, { type FSWatcher } from 'chokidar'
 import fs from 'fs'
-import { revalidateTag } from 'next/cache'
 import path from 'path'
 import 'server-only'
 import z from 'zod'
@@ -127,12 +125,6 @@ export async function saveConfig() {
   g.__configWatcher = undefined
   writeConfig()
   ensureConfigWatcher()
-  try {
-    revalidateTag(CacheTag.serverConfig, { expire: 0 })
-  } catch {
-    // `revalidateTag` throws when called outside a Server Function or Route Handler;
-    // just leave the cache stale in that case.
-  }
 }
 
 /** Watch config.json for external changes and reload the in-memory cache. */

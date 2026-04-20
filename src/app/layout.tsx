@@ -1,15 +1,14 @@
-import AvatarMenu from '@/component/AvatarMenu'
-import { Breadcrumbs } from '@/component/Breadcrumbs'
 import '@/css/app.css'
 import { ConfigCtx } from '@/lib/contexts'
-import * as CacheTag from '@/lib/server/cacheTags'
 import { getConfig, hasGithubAuth, isDevMode } from '@/lib/server/config'
 import type { Metadata } from 'next'
-import { cacheTag } from 'next/cache'
 import { Open_Sans } from 'next/font/google'
 import Image from 'next/image'
 import Link from 'next/link'
-import { type ReactNode } from 'react'
+import { connection } from 'next/server'
+import { Suspense, type ReactNode } from 'react'
+import AvatarMenu from './AvatarMenu'
+import Breadcrumbs from './Breadcrumbs'
 
 const openSans = Open_Sans({
   subsets: ['latin'],
@@ -27,8 +26,24 @@ export default async function RootLayout({
 }: Readonly<{
   children: ReactNode
 }>) {
-  'use cache'
-  cacheTag(CacheTag.serverConfig)
+  // https://nextjs.org/docs/app/getting-started/caching#opting-out-of-the-static-shell
+  return (
+    <Suspense fallback={null}>
+      <RootLayoutBody>{children}</RootLayoutBody>
+    </Suspense>
+  )
+}
+
+async function RootLayoutBody({
+  children,
+}: Readonly<{
+  children: ReactNode
+}>) {
+  // NOTE: together with the Suspense above, this makes the entire app dynamic:
+  // nothing is pre-rendered and every request recomputes its output HTML.
+  // This means we don't have to worry about cache invalidation,
+  // but will need fixing if it becomes a perf issue.
+  await connection()
 
   const serverCfg = getConfig()
   const clientCfg = {

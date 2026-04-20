@@ -5,7 +5,7 @@ import { type Config, ConfigCtx } from '@/lib/contexts'
 import { Route } from 'next'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { Suspense, useContext } from 'react'
+import { useContext } from 'react'
 
 type ErrorParam = 'unable_to_create_user' | string
 
@@ -21,37 +21,27 @@ function errorParamToMsg(e: ErrorParam, cfg: Config): string {
   }
 }
 
-function MaybeError() {
-  const cfg = useContext(ConfigCtx)
-  const error = useSearchParams().get('error')
-
-  if (error)
-    return (
-      <div
-        style={{
-          background: '#fee',
-          border: '1px solid #c00',
-          color: '#900',
-          padding: '0.75em 1em',
-          borderRadius: '4px',
-          marginBottom: '1em',
-        }}
-      >
-        Error: {errorParamToMsg(error, cfg)}
-      </div>
-    )
-  else return <></>
-}
-
 export default function Root() {
   const cfg = useContext(ConfigCtx)
   const session = authClient.useSession()
+  const error = useSearchParams().get('error')
 
   return (
     <>
-      <Suspense>
-        <MaybeError />
-      </Suspense>
+      {error && (
+        <div
+          style={{
+            background: '#fee',
+            border: '1px solid #c00',
+            color: '#900',
+            padding: '0.75em 1em',
+            borderRadius: '4px',
+            marginBottom: '1em',
+          }}
+        >
+          Error: {errorParamToMsg(error, cfg)}
+        </div>
+      )}
       <h1>Lean Workbench</h1>
       <p>Multi-user sandboxed VS Code server.</p>
       {session.data && (

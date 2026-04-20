@@ -5,7 +5,7 @@ import { useServerAction } from '@/lib/util'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { useContext, useEffect, useRef, useState } from 'react'
-import { fetchSetupStatus, finalizeSeed, saveSetupConfig, startSeed } from './actions'
+import { fetchSetupStatus, saveSetupConfig, startSeed } from './actions'
 
 type Phase = 'config' | 'seeding' | 'done' | 'error'
 
@@ -58,7 +58,6 @@ export default function Setup() {
         source.close()
         setProgress({ pct: 100, label: '' })
         setPhase('done')
-        void finalizeSeed()
       } else if (data.type === 'error') {
         source.close()
         setSeedError(data.message)
