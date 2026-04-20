@@ -36,7 +36,7 @@ ROOT="${DATA_DIR:-/tmp/lean-workbench/data}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --root) ROOT="$2"; shift 2 ;;
+    --data-dir) ROOT="$2"; shift 2 ;;
     --help) usage ;;
     *) echo "Unknown option: $1"; echo "Try --help"; exit 1 ;;
   esac
@@ -145,11 +145,8 @@ HELLO_DIR="$ROOT/templates/hello"
 if [ -d "$HELLO_DIR" ]; then
   echo "[seed-volume] hello template already exists, skipping."
 else
-  # Find hello template source: repo checkout (host) or Docker image
+  # scripts/ and templates/ are sibling directories.
   HELLO_SRC="$SCRIPT_DIR/../templates/hello"
-  if [ ! -d "$HELLO_SRC" ] && [ -d "/app/templates/hello" ]; then
-    HELLO_SRC="/app/templates/hello"
-  fi
   if [ ! -d "$HELLO_SRC" ]; then
     echo "[seed-volume] WARNING: hello template source not found, skipping."
   else

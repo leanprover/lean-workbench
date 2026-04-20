@@ -63,7 +63,7 @@ settings:
 - **Homepage URL:** `https://your-domain.example.com` (or your actual
   URL).
 - **Authorization callback URL:**
-  `https://your-domain.example.com/auth/github/callback` — the setup
+  `https://your-domain.example.com/api/auth/callback/github` — the setup
   page shows the exact URL to use.
 
 Copy the **Client ID** and **Client Secret** from GitHub into the

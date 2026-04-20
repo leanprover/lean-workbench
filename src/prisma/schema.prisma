@@ -1,0 +1,115 @@
+generator client {
+  provider = "prisma-client"
+  output   = "./generated"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// Tables required by better-auth
+
+model User {
+  id            String    @id
+  /// Better-auth does not require uniqueness but we do:
+  /// we use the username as a namespace for projects.
+  name          String    @unique
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now()) @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+
+  // Workbench-specific fields
+  displayName String?
+  // FIXME: consider using https://better-auth.com/docs/plugins/admin.
+  isAdmin     Boolean   @default(false)
+  /// Projects owned by this user.
+  /// TODO: The user may also have read/write access to other users' projects.
+  projects    Project[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  idToken               String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @default(now()) @updatedAt
+
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@map("verification")
+}
+
+// Workbench-specific tables
+
+model Project {
+  /// 128-bit UUID.
+  id          String              @id
+  /// Project's owner.
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  name        String
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @default(now()) @updatedAt
+  /// Which template the project was created from.
+  template    String              @default("blank")
+  isPublic    Boolean             @default(false)
+  packageSets ProjectPackageSet[]
+
+  @@unique([userId, name])
+  @@map("project")
+}
+
+/// Package set pulled in by a given project.
+model ProjectPackageSet {
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId  String
+  packageSet String
+
+  @@id([projectId, packageSet])
+  @@map("project_package_set")
+}
+
+/// GitHub accounts allowed to register in `restricted` registration mode.
+model AllowedGithubUser {
+  githubUsername String @id
+
+  @@map("allowed_github_user")
+}

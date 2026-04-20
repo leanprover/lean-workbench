@@ -1,2 +1,8 @@
+# Package managers
+package-lock.json
+
+# Plans and documentation
 *.md
-.claude/
+
+# Git
+branch-*

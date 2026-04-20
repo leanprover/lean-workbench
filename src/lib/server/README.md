@@ -1,0 +1,1 @@
+Code in this directory accesses server state, so may only run server-side.

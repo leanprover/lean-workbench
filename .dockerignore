@@ -1,2 +1,10 @@
-client/node_modules
-public/dist
+.git
+.github
+.husky
+.next
+.vscode
+branch-*
+node_modules
+plans
+.env*
+.eslintcache
