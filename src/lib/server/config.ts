@@ -142,6 +142,7 @@ function ensureConfigWatcher() {
         console.error(`Failed to reload config: ${String(e)}`)
       }
     })
+  // FIXME: reinit auth; general reactivity (nanostores?).
 }
 
 /** Return the server configuration.

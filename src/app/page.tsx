@@ -55,18 +55,18 @@ export default function Root() {
       {!session.data && !session.isPending && (
         <>
           <h2>Sign in options</h2>
-          {cfg.hasGithubAuth && (
-            <button
-              className='login-link'
-              onClick={() => {
-                authClient.signIn.social({
-                  provider: 'github',
-                })
-              }}
-            >
-              GitHub
-            </button>
-          )}
+          <button
+            className='login-link'
+            disabled={!cfg.hasGithubAuth}
+            title={!cfg.hasGithubAuth ? 'Ask your administrator to set up GitHub authentication.' : undefined}
+            onClick={() => {
+              authClient.signIn.social({
+                provider: 'github',
+              })
+            }}
+          >
+            GitHub
+          </button>
           {cfg.isDevMode && (
             <button
               className='login-link'
