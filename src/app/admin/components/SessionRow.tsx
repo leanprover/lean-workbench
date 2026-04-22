@@ -16,9 +16,11 @@ export function SessionRow({ info }: { info: EditorSessionInfo }) {
   return (
     <li>
       <div className='info'>
-        <a href={`/${info.viewerUsername}/`}>{info.viewerUsername}</a>
+        <a href={`/${info.viewerUsername}`}>{info.viewerUsername}</a>
+        <span style={{ color: '#90a4ae', margin: '0 0.25rem' }}>editing</span>
+        <a href={`/${info.ownerUsername}`}>{info.ownerUsername}</a>
         <span style={{ color: '#90a4ae', margin: '0 0.25rem' }}>/</span>
-        <span style={{ fontSize: '0.85rem', color: '#666' }}>{info.projectId}</span>
+        <a href={`/${info.ownerUsername}/${info.projectName}`}>{info.projectName}</a>
       </div>
       <div className='actions'>
         <span style={{ fontSize: '0.8rem', color: '#90a4ae' }}>port {info.port}</span>

@@ -27,8 +27,10 @@ interface EditorSession {
 
 /** Admin-visible information about an editor session. */
 export interface EditorSessionInfo extends EditorSession {
-  projectId: string
   viewerUsername: string
+  ownerUsername: string
+  projectId: string
+  projectName: string
 }
 
 const BASE_PORT = 3010
@@ -266,12 +268,24 @@ export class EditorSessionManager {
   async listSessions(): Promise<EditorSessionInfo[]> {
     const result: EditorSessionInfo[] = []
     for (const [projectId, sessions] of this.editorSessions) {
+      const project = await getDb().project.findUnique({
+        where: { id: projectId },
+        select: { name: true, user: { select: { name: true } } },
+      })
+      if (!project) throw new Error(`internal error: unknown project ID ${projectId}`)
       for (const s of sessions) {
         const viewer = await getDb().user.findUnique({
           where: { id: s.viewerId },
           select: { name: true },
         })
-        result.push({ ...s, projectId, viewerUsername: viewer?.name ?? '?' })
+        if (!viewer) throw new Error(`internal error: unknown user ID ${s.viewerId}`)
+        result.push({
+          ...s,
+          viewerUsername: viewer.name,
+          ownerUsername: project.user.name,
+          projectId,
+          projectName: project.name,
+        })
       }
     }
     return result
