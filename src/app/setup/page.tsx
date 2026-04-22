@@ -178,9 +178,9 @@ export default function Setup() {
               <div className='setup-progress-outer'>
                 <div className='setup-progress-inner' style={{ width: `${progress.pct}%` }} />
               </div>
-              {phase === 'seeding' && (
+              {(phase === 'seeding' || phase === 'error') && (
                 <div className='setup-progress-label'>
-                  <span className='setup-spinner' />
+                  {phase === 'seeding' && <span className='setup-spinner' />}
                   <span>{progress.label || 'Starting...'}</span>
                 </div>
               )}
