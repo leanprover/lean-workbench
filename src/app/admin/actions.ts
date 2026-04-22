@@ -57,10 +57,9 @@ export async function deleteUser(userId: string): Promise<ActionResponse> {
 
   // Kill active editor sessions for this user
   const mgr = getEditorSessionManager()
-  for (const s of mgr.listSessions()) {
-    const [viewer] = s.key.split('/')
-    if (viewer === target.name) {
-      mgr.killSession(viewer, s.info.projectId)
+  for (const s of await mgr.listSessions()) {
+    if (s.viewerId === target.id) {
+      mgr.killSession(target.id, s.projectId)
     }
   }
 
@@ -116,16 +115,16 @@ export async function updateOAuthConfig(clientId: string, clientSecret: string |
 // --- Editor sessions ---
 
 const zKillEditorSession = z.object({
-  viewer: z.string().min(1),
+  viewerId: z.string().min(1),
   projectId: z.string().min(1),
 })
 
-export async function killEditorSession(viewer: string, projectId: string): Promise<ActionResponse> {
+export async function killEditorSession(viewerId: string, projectId: string): Promise<ActionResponse> {
   await requireAdmin()
-  const parsed = zKillEditorSession.safeParse({ viewer, projectId })
+  const parsed = zKillEditorSession.safeParse({ viewerId, projectId })
   if (!parsed.success) return { error: parsed.error.issues[0].message }
   const mgr = getEditorSessionManager()
-  mgr.killSession(parsed.data.viewer, parsed.data.projectId)
+  mgr.killSession(parsed.data.viewerId, parsed.data.projectId)
   return { ok: undefined }
 }
 

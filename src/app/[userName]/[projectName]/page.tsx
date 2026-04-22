@@ -54,14 +54,13 @@ export default async function EditorSession({ params: params_ }: { params: Promi
   }
 
   const manager = getEditorSessionManager()
+  let iframeSrc = null
   try {
-    await manager.startSession(viewer.name, params.userName, params.projectName, project.id)
+    iframeSrc = await manager.ensureSession(viewer, owner, project)
   } catch (err) {
     console.error('Failed to start editor session:', (err as Error).message)
     return <Error msg={String(err)} />
   }
 
-  const encodedName = encodeURIComponent(params.projectName)
-  const iframeSrc = `/_vs/${viewer.name}/${params.userName}/${encodedName}/`
   return <iframe id='editor-frame' src={iframeSrc} className='editor-session-iframe' />
 }

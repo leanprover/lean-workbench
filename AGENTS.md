@@ -15,6 +15,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - Store global server state in `globalThis` instead of top-level variable bindings.
   This ensures state is preserved across HMR reloads.
   It's ok to re-export it, e.g. `export const foo = globalThis.__foo`.
+- Prefer using server-generated unique IDs to user-provided names
+  for identifying entities (users, projects, etc) internally.
   
 # React best practices
 
@@ -34,6 +36,7 @@ over manually storing response/error state with `useState`.
 
 - Less code is better. After writing any new piece of code,
   review it to determine whether it could have been simpler and shorter.
+- Factor out string or path literal constructions that appear more than once into functions.
 - Never remove comments that link to documentation,
   except when removing *all* of the associated code.
 - Ignore `TODO`s and `FIXME`s in the codebase.
