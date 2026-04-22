@@ -7,7 +7,7 @@
 #
 # What it does:
 #   1. Creates the directory structure under $ROOT
-#   2. Runs mk-mathlib-package.sh to populate package-sets/ and templates/
+#   2. Populates package-sets/ and templates/
 #   3. Seeds the "hello" template into templates/
 #
 # Progress markers:
@@ -26,17 +26,21 @@ Seed the lean-workbench data volume with elan, mathlib packages, and templates.
 
 Options:
   --data-dir DIR      Data directory for lean-workbench state
-                      (default: $DATA_DIR or /tmp/lean-workbench/data)
+                      (default: /tmp/lean-workbench/data)
+  --lean-version REV  Lean version to preinstall (must have a corresponding mathlib tag)
+                      (default: latest v4.* tag on mathlib4)
   --help              Show this help message
 EOF
   exit 0
 }
 
-ROOT="${DATA_DIR:-/tmp/lean-workbench/data}"
+ROOT="/tmp/lean-workbench/data"
+LEAN_VERSION=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --data-dir) ROOT="$2"; shift 2 ;;
+    --lean-version) LEAN_VERSION="$2"; shift 2 ;;
     --help) usage ;;
     *) echo "Unknown option: $1"; echo "Try --help"; exit 1 ;;
   esac
@@ -52,16 +56,20 @@ echo "[progress 1/$TOTAL Creating directories]"
 mkdir -p "$ROOT"/{workspaces,db,package-sets,templates}
 
 # --- Step 2: Resolve mathlib version ---
-# Mathlib tags lag behind Lean releases, so let the latest mathlib tag
-# drive the Lean toolchain version rather than the other way around.
 echo "[progress 2/$TOTAL Resolving mathlib version]"
-MATHLIB_REV=$(git ls-remote --tags https://github.com/leanprover-community/mathlib4 'v4.*' \
-  | sed 's|.*refs/tags/||' \
-  | grep -v '\^{}' \
-  | sort -V | tail -1)
-LEAN_VERSION="$MATHLIB_REV"
+if [ -z "$LEAN_VERSION" ]; then
+  # Mathlib tags lag behind Lean releases, so let the latest mathlib tag
+  # drive the Lean toolchain version rather than the other way around.
+  MATHLIB_REV=$(curl -sSf \
+    "https://github.com/leanprover-community/mathlib4/info/refs?service=git-upload-pack" \
+    | sed -n 's|.*refs/tags/\(v4\.[^^[:space:]]*\).*|\1|p' \
+    | sort -u -V | tail -1)
+  LEAN_VERSION="$MATHLIB_REV"
+else
+  MATHLIB_REV="$LEAN_VERSION"
+fi
 TOOLCHAIN="leanprover/lean4:$LEAN_VERSION"
-echo "[seed-volume] Latest mathlib tag: $MATHLIB_REV (Lean $LEAN_VERSION)"
+echo "[seed-volume] Installing mathlib tag: $MATHLIB_REV (Lean $LEAN_VERSION)"
 
 # --- Step 3: Install elan ---
 echo "[progress 3/$TOTAL Installing elan]"
@@ -77,7 +85,7 @@ fi
 
 export ELAN_HOME
 export PATH="$ELAN_HOME/bin:$PATH"
-if ! elan toolchain list | grep -q "$LEAN_VERSION"; then
+if ! elan toolchain list | grep -Fq -- "$LEAN_VERSION"; then
   elan toolchain install "$TOOLCHAIN"
 fi
 echo "[seed-volume] Using Lean $LEAN_VERSION"

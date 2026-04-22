@@ -27,6 +27,9 @@ if [ "${NODE_ENV}" = "production" ]; then
 else
     # Dev mode: ${SCRIPT_DIR} is mounted read-only by the host.
     # Make build-time container writes succeed by putting them on tmpfs.
+    # NOTE: also tried a full tmpfs overlay on ${SCRIPT_DIR};
+    # but inotify events for HMR don't propagate in that case;
+    # and per https://github.com/vercel/next.js/issues/80665, polling doesn't work.
     for d in node_modules .next src/prisma/generated; do
         mount -t tmpfs tmpfs "${SCRIPT_DIR}/$d"
     done
