@@ -22,7 +22,22 @@ mkdir -p "${LEAN_WORKBENCH_DATA_DIR}/workspaces" "${LEAN_WORKBENCH_DATA_DIR}/db"
 
 # Start the Next.js app in the background
 export LEAN_WORKBENCH_DATA_DIR OPENVSCODE_SERVER_DIR VSCODE_EXTENSIONS_DIR NGINX_CONF_DIR NGINX_LOG_DIR
-cd "${SCRIPT_DIR}" && node_modules/.bin/next start -p 3002 &
+if [ "${NODE_ENV}" = "production" ]; then
+    cd "${SCRIPT_DIR}" && node_modules/.bin/next start --port 3002 &
+else
+    # Dev mode: ${SCRIPT_DIR} is mounted read-only by the host.
+    # Make build-time container writes succeed by putting them on tmpfs.
+    for d in node_modules .next src/prisma/generated; do
+        mount -t tmpfs tmpfs "${SCRIPT_DIR}/$d"
+    done
+    mkdir -p /tmp/workbench.tmpfs
+    for f in package.json package-lock.json next-env.d.ts; do
+        cp "${SCRIPT_DIR}/$f" "/tmp/workbench.tmpfs/$f"
+        mount --bind "/tmp/workbench.tmpfs/$f" "${SCRIPT_DIR}/$f"
+    done
+
+    cd "${SCRIPT_DIR}" && npm install && npm run dev -- --port 3002 &
+fi
 APP_PID=$!
 trap 'kill $APP_PID 2>/dev/null' EXIT
 
@@ -36,9 +51,9 @@ envsubst '$NGINX_PID_PATH $NGINX_ERROR_LOG_PATH $NGINX_ACCESS_LOG_PATH $NGINX_CO
 # Start Nginx in the background
 nginx -e "${NGINX_ERROR_LOG_PATH}" -c "${NGINX_CONF_DIR}/nginx.conf" &
 NGINX_PID=$!
-trap 'kill $NGINX_PID 2>/dev/null' EXIT
+# Replaces previous trap
+trap 'kill $APP_PID $NGINX_PID 2>/dev/null' EXIT
 
 echo "[start.sh] Nginx listening on http://localhost:3000"
 
-wait $APP_PID
-wait $NGINX_PID
+wait -n $APP_PID $NGINX_PID

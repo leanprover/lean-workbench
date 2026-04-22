@@ -40,6 +40,8 @@ over manually storing response/error state with `useState`.
 - Never remove comments that link to documentation,
   except when removing *all* of the associated code.
 - Ignore `TODO`s and `FIXME`s in the codebase.
+- Don't set `NODE_ENV` to anything besides `production`
+  (https://nodejs.org/learn/getting-started/nodejs-the-difference-between-development-and-production).
   
 ## Refactoring
 
