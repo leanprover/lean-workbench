@@ -22,10 +22,15 @@ http {
         listen 3000;
         server_name localhost;
 
-        # Dynamic per-user routes (written by spawner)
+        # Dynamic per-user routes (written by main server)
         include $NGINX_CONF_DIR/user-routes/*.conf;
+        
+        # Block unmatched /_vs/* — only allow user routes installed above
+        location /_vs/ {
+            return 404;
+        }
 
-        # Everything else -> spawner
+        # Everything else -> main server
         location / {
             proxy_pass http://127.0.0.1:3002;
             proxy_http_version 1.1;
