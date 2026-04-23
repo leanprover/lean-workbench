@@ -38,11 +38,7 @@ export function getElanDir(): string {
 }
 
 export function getOpenVscodeServerDir(): string {
-  return process.env.OPENVSCODE_SERVER_DIR ?? '/app/.openvscode-server'
-}
-
-export function getVscodeExtensionsDir(): string {
-  return process.env.VSCODE_EXTENSIONS_DIR ?? '/app/.vscode-extensions'
+  return process.env.OPENVSCODE_SERVER_DIR ?? '/app/openvscode-server'
 }
 
 export function getNginxConfDir(): string {

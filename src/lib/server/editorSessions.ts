@@ -1,194 +1,176 @@
+import { User } from '@/lib/server/auth'
 import {
   getElanDir,
   getNginxConfDir,
   getNginxLogDir,
   getOpenVscodeServerDir,
   getPackageSetsDir,
-  getVscodeExtensionsDir,
   getWorkspacesDir,
 } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
+import { Project } from '@/prisma/generated/client'
 import { execSync, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import net from 'node:net'
 import path from 'node:path'
 import 'server-only'
 
-export interface EditorSessionInfo {
+interface EditorSession {
+  /** Port on which `openvscode-server` listens. */
   port: number
+  /** PID of `bubblewrap`. */
   pid: number
-  workspaceDir: string
+  /** ID of the viewing user. */
+  viewerId: string
+}
+
+/** Admin-visible information about an editor session. */
+export interface EditorSessionInfo extends EditorSession {
+  viewerUsername: string
+  ownerUsername: string
   projectId: string
+  projectName: string
 }
 
 const BASE_PORT = 3010
 const MAX_PORT = 3999
 
-const g = globalThis as typeof globalThis & {
-  __editorSessionManager?: EditorSessionManager
+async function waitForPort(port: number, timeoutMs = 10_000): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const deadline = Date.now() + timeoutMs
+    function attempt() {
+      if (Date.now() > deadline) {
+        reject(new Error(`Timeout waiting for port ${port}`))
+        return
+      }
+      const socket = net.connect(port, '127.0.0.1')
+      socket.once('connect', () => {
+        socket.destroy()
+        resolve()
+      })
+      socket.once('error', () => {
+        socket.destroy()
+        setTimeout(attempt, 1000)
+      })
+    }
+    attempt()
+  })
 }
 
-export function initEditorSessions() {
-  if (g.__editorSessionManager) throw new Error('internal error: attempted to reinitialize editorSessions module')
-  g.__editorSessionManager = new EditorSessionManager()
+function vscodeIframePath(viewerUsername: string, ownerUsername: string, projectName: string) {
+  const encodedName = encodeURIComponent(projectName)
+  return `/_vs/${viewerUsername}/${ownerUsername}/${encodedName}/`
 }
 
-export function getEditorSessionManager(): EditorSessionManager {
-  if (!g.__editorSessionManager) initEditorSessions()
-  return g.__editorSessionManager!
+function nginxUserRoutePath(viewerId: string, projectId: string) {
+  return `${getNginxConfDir()}/user-routes/${viewerId}-${projectId}.conf`
 }
 
-export class EditorSessionManager {
-  private editorSessions = new Map<string, EditorSessionInfo>()
-  private availablePorts: Set<number>
-
-  constructor() {
-    this.availablePorts = new Set(Array.from({ length: MAX_PORT - BASE_PORT + 1 }, (_, i) => BASE_PORT + i))
-  }
-
-  private static sessionKey(viewerUsername: string, projectId: string): string {
-    return `${viewerUsername}/${projectId}`
-  }
-
-  private writeNginxConf(
-    viewerUsername: string,
-    ownerUsername: string,
-    projectName: string,
-    projectId: string,
-    port: number,
-  ): void {
-    const encodedName = encodeURIComponent(projectName)
-    const conf = `location /_vs/${viewerUsername}/${ownerUsername}/${encodedName}/ {
-    proxy_pass http://127.0.0.1:${port};
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection $connection_upgrade;
-    proxy_set_header Host $http_host;
-    proxy_buffering off;
-    proxy_read_timeout 86400;
-    proxy_hide_header X-Frame-Options;
+function writeNginxUserRoute(
+  viewerId: string,
+  viewerUsername: string,
+  ownerUsername: string,
+  projectName: string,
+  projectId: string,
+  port: number,
+): void {
+  const conf = `location ${vscodeIframePath(viewerUsername, ownerUsername, projectName)} {
+  proxy_pass http://127.0.0.1:${port};
+  proxy_http_version 1.1;
+  proxy_set_header Upgrade $http_upgrade;
+  proxy_set_header Connection $connection_upgrade;
+  proxy_set_header Host $http_host;
+  proxy_buffering off;
+  proxy_read_timeout 86400;
+  proxy_hide_header X-Frame-Options;
 }
 `
-    fs.writeFileSync(`${getNginxConfDir()}/user-routes/${viewerUsername}-${projectId}.conf`, conf)
-  }
+  fs.writeFileSync(nginxUserRoutePath(viewerId, projectId), conf)
+}
 
-  private ensureMachineSettings(workspace: string): void {
-    const machineSettingsDir = path.join(workspace, '.vscode-data', 'data', 'Machine')
-    const machineSettingsFile = path.join(machineSettingsDir, 'settings.json')
-    if (!fs.existsSync(machineSettingsFile)) {
-      fs.mkdirSync(machineSettingsDir, { recursive: true })
-      fs.writeFileSync(
-        machineSettingsFile,
-        // TODO: pretty sure this doesn't do anything
-        JSON.stringify(
-          {
-            'security.workspace.trust.enabled': false,
-            'workbench.startupEditor': 'none',
-            'files.watcherExclude': { '/workspace/.elan/**': true },
-          },
-          null,
-          2,
-        ) + '\n',
+function reloadNginx() {
+  execSync(`nginx -e ${getNginxLogDir()}/error.log -c ${getNginxConfDir()}/nginx.conf -s reload`)
+}
+
+function ensureMachineSettings(serverDataDir: string): void {
+  const machineSettingsDir = path.join(serverDataDir, 'data', 'Machine')
+  const machineSettingsFile = path.join(machineSettingsDir, 'settings.json')
+  if (!fs.existsSync(machineSettingsFile)) {
+    fs.mkdirSync(machineSettingsDir, { recursive: true })
+    fs.writeFileSync(
+      machineSettingsFile,
+      JSON.stringify(
+        {
+          // Start with a blank tab
+          'workbench.startupEditor': 'none',
+        },
+        null,
+        2,
+      ) + '\n',
+    )
+  }
+}
+
+/** Build `--overlay-src/--tmp-overlay` args for the project's package sets.
+ * These mount each package in the package set in the `bubblewrap` sandbox.
+ * Writes go to a tmpfs and are discarded when the container exits. */
+async function buildOverlayArgs(projectId: string, projectDir: string, sandboxProjectDir: string): Promise<string[]> {
+  const packageSets = await getDb().projectPackageSet.findMany({ where: { projectId } })
+  const args: string[] = []
+  for (const { packageSet } of packageSets) {
+    const setDir = path.join(getPackageSetsDir(), packageSet)
+    const packagesFile = path.join(setDir, 'packages.txt')
+    if (!fs.existsSync(packagesFile)) continue
+    const packages = fs.readFileSync(packagesFile, 'utf-8').split('\n').filter(Boolean)
+    for (const pkg of packages) {
+      fs.mkdirSync(path.join(projectDir, '.lake', 'packages', pkg), { recursive: true })
+      // prettier-ignore
+      args.push(
+        '--overlay-src', path.join(setDir, pkg),
+        '--tmp-overlay', path.join(sandboxProjectDir, '.lake', 'packages', pkg),
       )
     }
   }
+  return args
+}
 
-  private isAlive(pid: number): boolean {
-    try {
-      process.kill(pid, 0)
-      return true
-    } catch {
-      return false
-    }
-  }
+export class EditorSessionManager {
+  /** projectId ↦ [sessions for that project]
+   *
+   * Invariant: each session corresponds to a running process. */
+  // FIXME: index by fresh session ID to prevent races
+  private editorSessions = new Map<string, EditorSession[]>()
+  private availablePorts = new Set<number>(Array.from({ length: MAX_PORT - BASE_PORT + 1 }, (_, i) => BASE_PORT + i))
 
-  private waitForPort(port: number, timeoutMs = 10000): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const deadline = Date.now() + timeoutMs
-      function attempt() {
-        if (Date.now() > deadline) {
-          reject(new Error(`Timeout waiting for port ${port}`))
-          return
-        }
-        const socket = net.connect(port, '127.0.0.1')
-        socket.once('connect', () => {
-          socket.destroy()
-          resolve()
-        })
-        socket.once('error', () => {
-          socket.destroy()
-          setTimeout(attempt, 1000)
-        })
-      }
-      attempt()
-    })
-  }
+  /** Start a session for `viewer` to read/edit `project` owned by `owner`,
+   * reusing a current session if one already exists.
+   * Assumes that `viewer` has permissions to view `project`.
+   * Returns the path to the corresponding VSCode `iframe`. */
+  async ensureSession(viewer: User, owner: User, project: Project): Promise<string> {
+    const session = (this.editorSessions.get(project.id) ?? []).find(s => s.viewerId === viewer.id)
+    if (session) return vscodeIframePath(viewer.name, owner.name, project.name)
 
-  /** Build --overlay-src/--tmp-overlay args for the project's package sets. */
-  private async buildOverlayArgs(
-    projectId: string,
-    workspaceDir: string,
-    sandboxProjectDir: string,
-  ): Promise<string[]> {
-    const packageSets = await getDb().projectPackageSet.findMany({ where: { projectId } })
-    const args: string[] = []
-    for (const { packageSet } of packageSets) {
-      const setDir = path.join(getPackageSetsDir(), packageSet)
-      const packagesFile = path.join(setDir, 'packages.txt')
-      if (!fs.existsSync(packagesFile)) continue
-      const packages = fs.readFileSync(packagesFile, 'utf-8').split('\n').filter(Boolean)
-      for (const pkg of packages) {
-        fs.mkdirSync(path.join(workspaceDir, '.lake', 'packages', pkg), { recursive: true })
-        // prettier-ignore
-        args.push(
-          '--overlay-src', path.join(setDir, pkg),
-          '--tmp-overlay', path.join(sandboxProjectDir, '.lake', 'packages', pkg),
-        )
-      }
-    }
-    return args
-  }
-
-  reloadNginx() {
-    execSync(`nginx -e ${getNginxLogDir()}/error.log -c ${getNginxConfDir()}/nginx.conf -s reload`)
-  }
-
-  async startSession(
-    viewerUsername: string,
-    ownerUsername: string,
-    projectName: string,
-    projectId: string,
-  ): Promise<EditorSessionInfo> {
-    const key = EditorSessionManager.sessionKey(viewerUsername, projectId)
-    const existing = this.editorSessions.get(key)
-    if (existing && this.isAlive(existing.pid)) return existing
-
-    // Clean up stale entry
-    if (existing) {
-      this.editorSessions.delete(key)
-      this.availablePorts.add(existing.port)
-    }
-
-    const isOwner = viewerUsername === ownerUsername
     const port = this.availablePorts.values().next().value
     if (port === undefined) throw new Error('No available ports')
     this.availablePorts.delete(port)
-    const workspaceDir = path.join(getWorkspacesDir(), ownerUsername, projectId)
-    fs.mkdirSync(workspaceDir, { recursive: true })
-    if (isOwner) {
-      this.ensureMachineSettings(workspaceDir)
-    }
 
-    const encodedName = encodeURIComponent(projectName)
+    const isOwner = viewer.id === owner.id
+    const projectDir = path.join(getWorkspacesDir(), owner.name, project.id)
+    if (!fs.existsSync(projectDir)) throw new Error(`Project directory '${projectDir}' does not exist`)
 
-    const sandboxProjectDir = `/workspace/${projectName}`
+    // Every user gets their own VSCode server configuration, and set of installed extensions.
+    // Openvscode-server derives --user-data-dir and --extensions-dir from --server-data-dir:
+    // https://github.com/gitpod-io/openvscode-server/blob/2bfb814c5215c51a10e80c2cb1b58ed91068ad8b/src/vs/server/node/server.main.ts
+    const vscServerDataDir = path.join(getWorkspacesDir(), viewer.name, 'vscode-remote')
+    fs.mkdirSync(vscServerDataDir, { recursive: true })
+    ensureMachineSettings(vscServerDataDir)
 
+    const sandboxProjectDir = `/workspace/${project.name}`
     // Owner gets persistent bind mount; non-owner gets ephemeral CoW overlay
     const workspaceMount = isOwner
-      ? ['--bind', workspaceDir, sandboxProjectDir]
-      : ['--overlay-src', workspaceDir, '--tmp-overlay', sandboxProjectDir]
-
-    const overlayArgs = await this.buildOverlayArgs(projectId, workspaceDir, sandboxProjectDir)
+      ? ['--bind', projectDir, sandboxProjectDir]
+      : ['--overlay-src', projectDir, '--tmp-overlay', sandboxProjectDir]
+    const overlayArgs = await buildOverlayArgs(project.id, projectDir, sandboxProjectDir)
 
     const child = spawn(
       'bwrap',
@@ -201,7 +183,7 @@ export class EditorSessionManager {
         '--ro-bind', '/etc', '/etc',
         '--ro-bind', getOpenVscodeServerDir(), '/workspace/.openvscode-server',
         '--ro-bind', getElanDir(), '/workspace/.elan',
-        '--ro-bind', getVscodeExtensionsDir(), '/workspace/.vscode-extensions',
+        '--bind', vscServerDataDir, '/workspace/.vscode-remote',
         ...workspaceMount,
         ...overlayArgs,
         '--proc', '/proc',
@@ -231,58 +213,100 @@ export class EditorSessionManager {
         '--host', '127.0.0.1',
         '--port', String(port),
         '--without-connection-token',
-        `--server-base-path=/_vs/${viewerUsername}/${ownerUsername}/${encodedName}/`,
+        `--server-base-path=${vscodeIframePath(viewer.name, owner.name, project.name)}`,
+        '--server-data-dir', '/workspace/.vscode-remote',
         '--default-folder', sandboxProjectDir,
-        '--extensions-dir', '/workspace/.vscode-extensions',
-        '--server-data-dir', `${sandboxProjectDir}/.vscode-data`,
-        // TODO: user-data-dir that is persisted per user
       ],
-      { stdio: 'inherit', detached: true },
+      // FIXME: pipe into a log file?
+      { stdio: 'inherit' },
     )
 
-    const info: EditorSessionInfo = {
+    const newSession: EditorSession = {
       port,
       pid: child.pid!,
-      workspaceDir,
-      projectId,
+      viewerId: viewer.id,
     }
-    this.editorSessions.set(key, info)
+    this.editorSessions.set(project.id, [...(this.editorSessions.get(project.id) ?? []), newSession])
+    writeNginxUserRoute(viewer.id, viewer.name, owner.name, project.name, project.id, port)
+    reloadNginx()
 
-    this.writeNginxConf(viewerUsername, ownerUsername, projectName, projectId, port)
-    this.reloadNginx()
+    child.on('close', () => {
+      const sessions = this.editorSessions.get(project.id) ?? []
+      this.editorSessions.set(
+        project.id,
+        sessions.filter(s => s.viewerId !== viewer.id),
+      )
+      this.availablePorts.add(port)
+      try {
+        fs.unlinkSync(nginxUserRoutePath(viewer.id, project.id))
+        reloadNginx()
+      } catch {
+        // conf may not exist
+      }
+    })
+    child.on('error', err => {
+      console.error(
+        `Failed to spawn editor session for viewer '${viewer.name}', project '${owner.name}/${project.name}':`,
+        err,
+      )
+    })
 
-    await this.waitForPort(port)
-    return info
+    await waitForPort(port)
+    return vscodeIframePath(viewer.name, owner.name, project.name)
   }
 
-  killSession(viewerUsername: string, projectId: string): void {
-    const key = EditorSessionManager.sessionKey(viewerUsername, projectId)
-    const s = this.editorSessions.get(key)
-    if (!s) return
+  killSession(viewerId: string, projectId: string): void {
+    const projectSessions = this.editorSessions.get(projectId) ?? []
+    const session = projectSessions.find(s => s.viewerId === viewerId)
+    if (!session) return
     try {
-      process.kill(s.pid)
-    } catch {
-      // already dead
-    }
-    this.editorSessions.delete(key)
-    this.availablePorts.add(s.port)
-    try {
-      fs.unlinkSync(`${getNginxConfDir()}/user-routes/${viewerUsername}-${projectId}.conf`)
-      this.reloadNginx()
-    } catch {
-      // conf may not exist
-    }
+      process.kill(session.pid)
+    } catch {}
   }
 
-  listSessions(): { key: string; info: EditorSessionInfo; alive: boolean }[] {
-    const result: { key: string; info: EditorSessionInfo; alive: boolean }[] = []
-    for (const [key, info] of this.editorSessions) {
-      result.push({ key, info, alive: this.isAlive(info.pid) })
+  async listSessions(): Promise<EditorSessionInfo[]> {
+    const result: EditorSessionInfo[] = []
+    for (const [projectId, sessions] of this.editorSessions) {
+      const project = await getDb().project.findUnique({
+        where: { id: projectId },
+        select: { name: true, user: { select: { name: true } } },
+      })
+      if (!project) throw new Error(`internal error: unknown project ID ${projectId}`)
+      for (const s of sessions) {
+        const viewer = await getDb().user.findUnique({
+          where: { id: s.viewerId },
+          select: { name: true },
+        })
+        if (!viewer) throw new Error(`internal error: unknown user ID ${s.viewerId}`)
+        result.push({
+          ...s,
+          viewerUsername: viewer.name,
+          ownerUsername: project.user.name,
+          projectId,
+          projectName: project.name,
+        })
+      }
     }
     return result
   }
+}
 
-  get sessionCount(): number {
-    return this.editorSessions.size
+const g = globalThis as typeof globalThis & {
+  __editorSessionManager?: EditorSessionManager
+}
+
+export function initEditorSessions() {
+  if (!g.__editorSessionManager) {
+    g.__editorSessionManager = new EditorSessionManager()
+  } else {
+    // On HMR the module re-evaluates and `EditorSessionManager` becomes a fresh class;
+    // rebind so that the global instance picks up updated methods.
+    Object.setPrototypeOf(g.__editorSessionManager, EditorSessionManager.prototype)
   }
 }
+
+export function getEditorSessionManager(): EditorSessionManager {
+  return g.__editorSessionManager!
+}
+
+initEditorSessions()
