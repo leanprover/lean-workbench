@@ -18,9 +18,6 @@ container:
 container-dev:
 	docker build --tag $(IMAGE_NAME):$(IMAGE_DEV_TAG) --target runner-dev .
 
-clean-install: clean container
-	./install.sh --no-pull --dir $(WORKBENCH_ROOT) --port 3000
-
 DOCKER_RUN = docker run --rm --init --interactive --tty \
 	--cap-add SYS_ADMIN \
 	--security-opt seccomp=unconfined \

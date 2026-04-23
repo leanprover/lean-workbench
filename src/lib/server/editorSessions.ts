@@ -159,7 +159,8 @@ export class EditorSessionManager {
     if (!fs.existsSync(projectDir)) throw new Error(`Project directory '${projectDir}' does not exist`)
 
     // Every user gets their own VSCode server configuration, and set of installed extensions.
-    // Openvscode-server derives --user-data-dir and --extensions-dir from --server-data-dir.
+    // Openvscode-server derives --user-data-dir and --extensions-dir from --server-data-dir:
+    // https://github.com/gitpod-io/openvscode-server/blob/2bfb814c5215c51a10e80c2cb1b58ed91068ad8b/src/vs/server/node/server.main.ts
     const vscServerDataDir = path.join(getWorkspacesDir(), viewer.name, 'vscode-remote')
     fs.mkdirSync(vscServerDataDir, { recursive: true })
     ensureMachineSettings(vscServerDataDir)
