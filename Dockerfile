@@ -53,6 +53,14 @@ RUN mkdir -p /app/.vscode-extensions \
         --install-extension /tmp/lean4.vsix \
     && rm /tmp/lean4.vsix
 
+# Install open-collaboration-server from source (self-contained esbuild bundle)
+RUN git clone --depth 1 https://github.com/eclipse-oct/open-collaboration-tools.git /tmp/oct \
+    && cd /tmp/oct \
+    && npm ci \
+    && npm run build \
+    && mv /tmp/oct/packages/open-collaboration-server /app/open-collaboration-server \
+    && rm -rf /tmp/oct
+
 # Create the user-routes dir for dynamic nginx includes
 RUN mkdir -p /etc/nginx/user-routes
 
