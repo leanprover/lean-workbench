@@ -5,7 +5,6 @@ import {
   getNginxLogDir,
   getOpenVscodeServerDir,
   getPackageSetsDir,
-  getVscodeExtensionsDir,
   getWorkspacesDir,
 } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
@@ -93,8 +92,8 @@ function reloadNginx() {
   execSync(`nginx -e ${getNginxLogDir()}/error.log -c ${getNginxConfDir()}/nginx.conf -s reload`)
 }
 
-function ensureMachineSettings(projectDir: string): void {
-  const machineSettingsDir = path.join(projectDir, '.vscode-data', 'data', 'Machine')
+function ensureMachineSettings(serverDataDir: string): void {
+  const machineSettingsDir = path.join(serverDataDir, 'data', 'Machine')
   const machineSettingsFile = path.join(machineSettingsDir, 'settings.json')
   if (!fs.existsSync(machineSettingsFile)) {
     fs.mkdirSync(machineSettingsDir, { recursive: true })
@@ -102,10 +101,8 @@ function ensureMachineSettings(projectDir: string): void {
       machineSettingsFile,
       JSON.stringify(
         {
-          // TODO: `workspace.trust.enabled` doesn't seem to do anything
-          'security.workspace.trust.enabled': false,
+          // Start with a blank tab
           'workbench.startupEditor': 'none',
-          'files.watcherExclude': { '/workspace/.elan/**': true },
         },
         null,
         2,
@@ -159,10 +156,13 @@ export class EditorSessionManager {
 
     const isOwner = viewer.id === owner.id
     const projectDir = path.join(getWorkspacesDir(), owner.name, project.id)
-    fs.mkdirSync(projectDir, { recursive: true })
-    if (isOwner) {
-      ensureMachineSettings(projectDir)
-    }
+    if (!fs.existsSync(projectDir)) throw new Error(`Project directory '${projectDir}' does not exist`)
+
+    // Every user gets their own VSCode server configuration, and set of installed extensions.
+    // Openvscode-server derives --user-data-dir and --extensions-dir from --server-data-dir.
+    const vscServerDataDir = path.join(getWorkspacesDir(), viewer.name, 'vscode-remote')
+    fs.mkdirSync(vscServerDataDir, { recursive: true })
+    ensureMachineSettings(vscServerDataDir)
 
     const sandboxProjectDir = `/workspace/${project.name}`
     // Owner gets persistent bind mount; non-owner gets ephemeral CoW overlay
@@ -182,7 +182,7 @@ export class EditorSessionManager {
         '--ro-bind', '/etc', '/etc',
         '--ro-bind', getOpenVscodeServerDir(), '/workspace/.openvscode-server',
         '--ro-bind', getElanDir(), '/workspace/.elan',
-        '--ro-bind', getVscodeExtensionsDir(), '/workspace/.vscode-extensions',
+        '--bind', vscServerDataDir, '/workspace/.vscode-remote',
         ...workspaceMount,
         ...overlayArgs,
         '--proc', '/proc',
@@ -213,10 +213,8 @@ export class EditorSessionManager {
         '--port', String(port),
         '--without-connection-token',
         `--server-base-path=${vscodeIframePath(viewer.name, owner.name, project.name)}`,
+        '--server-data-dir', '/workspace/.vscode-remote',
         '--default-folder', sandboxProjectDir,
-        '--extensions-dir', '/workspace/.vscode-extensions',
-        '--server-data-dir', `${sandboxProjectDir}/.vscode-data`,
-        // TODO: user-data-dir that is persisted per user
       ],
       // FIXME: pipe into a log file?
       { stdio: 'inherit' },
@@ -297,11 +295,17 @@ const g = globalThis as typeof globalThis & {
 }
 
 export function initEditorSessions() {
-  if (g.__editorSessionManager) throw new Error('internal error: attempted to reinitialize editorSessions module')
-  g.__editorSessionManager = new EditorSessionManager()
+  if (!g.__editorSessionManager) {
+    g.__editorSessionManager = new EditorSessionManager()
+  } else {
+    // On HMR the module re-evaluates and `EditorSessionManager` becomes a fresh class;
+    // rebind so that the global instance picks up updated methods.
+    Object.setPrototypeOf(g.__editorSessionManager, EditorSessionManager.prototype)
+  }
 }
 
 export function getEditorSessionManager(): EditorSessionManager {
-  if (!g.__editorSessionManager) initEditorSessions()
   return g.__editorSessionManager!
 }
+
+initEditorSessions()
