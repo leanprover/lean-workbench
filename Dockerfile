@@ -27,7 +27,7 @@ RUN curl -sSfL https://github.com/containers/bubblewrap/releases/download/v${BUB
 FROM base AS runner-base
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        nginx strace git libcap2 gettext-base \
+        nginx strace git libcap2 gettext-base unzip \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app/
@@ -41,17 +41,19 @@ RUN arch=$(uname -m) && \
     ovsc_tag="openvscode-server-v${OPENVSCODE_SERVER_VERSION}" && \
     wget https://github.com/gitpod-io/openvscode-server/releases/download/${ovsc_tag}/${ovsc_tag}-linux-${arch}.tar.gz && \
     tar -xzf ${ovsc_tag}-linux-${arch}.tar.gz && \
-    mv -f ${ovsc_tag}-linux-${arch} /app/.openvscode-server && \
+    mv -f ${ovsc_tag}-linux-${arch} /app/openvscode-server && \
     rm -f ${ovsc_tag}-linux-${arch}.tar.gz
 
-# Install the Lean4 VS Code extension
-ARG LEAN4_EXT_VERSION="0.0.234"
-RUN mkdir -p /app/.vscode-extensions \
-    && wget -q -O /tmp/lean4.vsix https://github.com/leanprover/vscode-lean4/releases/download/v${LEAN4_EXT_VERSION}/lean4-${LEAN4_EXT_VERSION}.vsix \
-    && /app/.openvscode-server/bin/openvscode-server \
-        --extensions-dir /app/.vscode-extensions \
-        --install-extension /tmp/lean4.vsix \
-    && rm /tmp/lean4.vsix
+# Install builtin VS Code extensions. Everyone uses the same on-disk copy of these.
+# Cannot use `--install-builtin-extension` which behaves identically to `--install-extension`.
+RUN install_vsix_as_builtin() { \
+        wget -q -O /tmp/ext.vsix "https://open-vsx.org/api/$1/$2/$3/file/$1.$2-$3.vsix" \
+        && unzip -q /tmp/ext.vsix "extension/*" -d /tmp \
+        && mv /tmp/extension "/app/openvscode-server/extensions/$1.$2-$3-universal" \
+        && rm -rf /tmp/ext.vsix; \
+    } \
+    && install_vsix_as_builtin "leanprover" "lean4" "0.0.234" \
+    && install_vsix_as_builtin "tamasfe" "even-better-toml" "0.21.2"
 
 # Install open-collaboration-server from source (self-contained esbuild bundle)
 RUN git clone --depth 1 https://github.com/eclipse-oct/open-collaboration-tools.git /tmp/oct \
