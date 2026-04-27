@@ -28,7 +28,7 @@ DOCKER_RUN = docker run --rm --init --interactive --tty \
 
 serve: container
 	mkdir -p $(WORKBENCH_ROOT)
-	$(DOCKER_RUN) -p 3000:3000 $(IMAGE_NAME):$(IMAGE_TAG)
+	$(DOCKER_RUN) -p 127.0.0.1:3000:3000 $(IMAGE_NAME):$(IMAGE_TAG)
 
 enter: container
 	mkdir -p $(WORKBENCH_ROOT)
@@ -36,4 +36,9 @@ enter: container
 
 dev: container-dev
 	mkdir -p $(WORKBENCH_ROOT)
-	$(DOCKER_RUN) -p 3000:3000 -v $(CURDIR):/app/workbench:ro $(IMAGE_NAME):$(IMAGE_DEV_TAG)
+# 3000: Nginx
+# 9229: Node.js debugger
+	$(DOCKER_RUN) -p 127.0.0.1:3000:3000 \
+		-p 127.0.0.1:9229:9229 \
+		-v $(CURDIR):/app/workbench:ro \
+		$(IMAGE_NAME):$(IMAGE_DEV_TAG)

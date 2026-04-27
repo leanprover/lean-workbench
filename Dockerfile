@@ -58,7 +58,7 @@ RUN install_vsix_as_builtin() { \
 # Install open-collaboration-server from source (self-contained esbuild bundle)
 RUN git clone --depth 1 https://github.com/eclipse-oct/open-collaboration-tools.git /tmp/oct \
     && cd /tmp/oct \
-    && npm ci \
+    && npm clean-install \
     && npm run build \
     && mv /tmp/oct/packages/open-collaboration-server /app/open-collaboration-server \
     && rm -rf /tmp/oct
@@ -80,11 +80,9 @@ FROM builder-base AS builder-prod
 
 WORKDIR /app/workbench
 COPY . .
-RUN npm ci --ignore-scripts && npm rebuild better-sqlite3 \
+RUN npm clean-install \
     && mkdir -p /tmp/build-dummy \
-    && npx prisma generate \
     && LEAN_WORKBENCH_DATA_DIR=/tmp/build-dummy \
-       BETTER_AUTH_SECRET=build-dummy \
        npx next build \
     && npm prune --omit=dev
 

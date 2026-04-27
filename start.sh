@@ -38,7 +38,7 @@ else
         mount --bind "/tmp/workbench.tmpfs/$f" "${SCRIPT_DIR}/$f"
     done
 
-    cd "${SCRIPT_DIR}" && npm install && npm run dev -- --port 3002 &
+    cd "${SCRIPT_DIR}" && npm clean-install && npm run dev -- --port 3002 &
 fi
 APP_PID=$!
 trap 'kill $APP_PID 2>/dev/null' EXIT
