@@ -6,8 +6,10 @@ import {
   getOpenVscodeServerDir,
   getPackageSetsDir,
   getWorkspacesDir,
+  isDevMode,
 } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
+import { readProcesses } from '@/lib/server/util'
 import { Project } from '@/prisma/generated/client'
 import { execSync, spawn } from 'node:child_process'
 import fs from 'node:fs'
@@ -172,6 +174,17 @@ export class EditorSessionManager {
       : ['--overlay-src', projectDir, '--tmp-overlay', sandboxProjectDir]
     const overlayArgs = await buildOverlayArgs(project.id, projectDir, sandboxProjectDir)
 
+    const devArgs = isDevMode()
+      ? [
+          // Instructs Node to bind its debugger to this address, when debugging is enabled.
+          // FIXME: VSC also passes --experimental-network-inspection to the extension host,
+          // but that is disallowed in NODE_OPTIONS.
+          '--setenv',
+          'NODE_OPTIONS',
+          '--inspect-port=0.0.0.0:9229',
+        ]
+      : []
+
     const child = spawn(
       'bwrap',
       // prettier-ignore
@@ -200,6 +213,7 @@ export class EditorSessionManager {
         '--setenv', 'GIT_CONFIG_COUNT', '1',
         '--setenv', 'GIT_CONFIG_KEY_0', 'safe.directory',
         '--setenv', 'GIT_CONFIG_VALUE_0', '*',
+        ...devArgs,
         '--unshare-user',
         '--uid', '1000',
         '--gid', '1000',
@@ -258,10 +272,35 @@ export class EditorSessionManager {
   killSession(viewerId: string, projectId: string): void {
     const projectSessions = this.editorSessions.get(projectId) ?? []
     const session = projectSessions.find(s => s.viewerId === viewerId)
-    if (!session) return
+    if (!session) {
+      console.warn(`Tried to kill nonexistent session '${viewerId} editing ${projectId}'`)
+      return
+    }
     try {
       process.kill(session.pid)
     } catch {}
+  }
+
+  /** Start a debugger in the extension host of the given VSCode session. */
+  debugSession(viewerId: string, projectId: string) {
+    const projectSessions = this.editorSessions.get(projectId) ?? []
+    const session = projectSessions.find(s => s.viewerId === viewerId)
+    if (!session) {
+      console.warn(`Tried to debug nonexistent session '${viewerId} editing ${projectId}'`)
+      return
+    }
+    // Send SIGUSR1 to the (assumed unique) extension host descendant of openvscode-server.
+    const root = readProcesses().get(session.pid)
+    const stack = root ? [root] : []
+    while (stack.length > 0) {
+      const proc = stack.pop()!
+      if (proc.cmdline.includes('--type=extensionHost')) {
+        process.kill(proc.pid, 'SIGUSR1')
+        return
+      }
+      stack.push(...proc.children)
+    }
+    console.warn(`Extension host not found for session '${viewerId} editing ${projectId}'`)
   }
 
   async listSessions(): Promise<EditorSessionInfo[]> {

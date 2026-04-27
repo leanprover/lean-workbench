@@ -42,6 +42,7 @@ over manually storing response/error state with `useState`.
 - Ignore `TODO`s and `FIXME`s in the codebase.
 - Don't set `NODE_ENV` to anything besides `production`
   (https://nodejs.org/learn/getting-started/nodejs-the-difference-between-development-and-production).
+- Prefer full CLI flag and command names in scripts. More self-documenting.
   
 ## Refactoring
 

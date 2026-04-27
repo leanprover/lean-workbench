@@ -10,6 +10,7 @@ It describes how to locally run and test the workbench software.
 ## Running the workbench server
 
 ```bash
+npm install # install dependencies and generate types
 make dev # build and run the container in development mode
 ```
 

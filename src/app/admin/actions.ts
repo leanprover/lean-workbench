@@ -114,17 +114,26 @@ export async function updateOAuthConfig(clientId: string, clientSecret: string |
 
 // --- Editor sessions ---
 
-const zKillEditorSession = z.object({
+const zEditorSession = z.object({
   viewerId: z.string().min(1),
   projectId: z.string().min(1),
 })
 
 export async function killEditorSession(viewerId: string, projectId: string): Promise<ActionResponse> {
   await requireAdmin()
-  const parsed = zKillEditorSession.safeParse({ viewerId, projectId })
+  const parsed = zEditorSession.safeParse({ viewerId, projectId })
   if (!parsed.success) return { error: parsed.error.issues[0].message }
   const mgr = getEditorSessionManager()
   mgr.killSession(parsed.data.viewerId, parsed.data.projectId)
+  return { ok: undefined }
+}
+
+export async function debugEditorSession(viewerId: string, projectId: string): Promise<ActionResponse> {
+  await requireAdmin()
+  const parsed = zEditorSession.safeParse({ viewerId, projectId })
+  if (!parsed.success) return { error: parsed.error.issues[0].message }
+  const mgr = getEditorSessionManager()
+  mgr.debugSession(parsed.data.viewerId, parsed.data.projectId)
   return { ok: undefined }
 }
 
