@@ -38,6 +38,14 @@ Open `http://localhost:3000`. You'll see the setup page.
 The data volume is stored in `/tmp/lean-workbench/` on the host by default.
 Set the `WORKBENCH_ROOT` Makefile argument to customize this.
 
+## Debugging
+
+In dev mode (`make dev`), the admin panel displays a "Debug" button on each editor session.
+This launches a debugger in the [extension host](https://code.visualstudio.com/api/advanced-topics/extension-host)
+of that VSCode server.
+Use the "Attach to Node process" VSCode launch target configured in this workspace
+to attach to the debugger after launching it.
+
 ## Resetting the data volume
 
 The data volume is preserved on the host across development sessions,
