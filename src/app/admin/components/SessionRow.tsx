@@ -36,7 +36,7 @@ export function SessionRow({ info }: { info: EditorSessionInfo }) {
         </button>
         {cfg.isDevMode && (
           <button disabled={debugPending} onClick={() => startTransition(debugAction)}>
-            [DEV] Debug
+            [DEV] Enable debugger
           </button>
         )}
       </div>

@@ -4,9 +4,18 @@
     {
       "type": "node",
       "request": "attach",
-      "name": "Attach to Node process",
+      "name": "Attach to extension host",
       "address": "localhost",
-      "port": 9229
+      "port": 9229,
+      "localRoot": "${workspaceFolder}/vscode-lean4/vscode-lean4/",
+      // The extension dir as seen by bubblewrap
+      "remoteRoot": "/workspace/.openvscode-server/extensions/leanprover.lean4-universal/",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/vscode-lean4/*/dist/**/*.js"],
+      "sourceMapPathOverrides": {
+        // Cursed. Caused by our webpack config. Maybe undo those hacks.
+        "file:////*": "/*"
+      }
     }
   ]
 }
