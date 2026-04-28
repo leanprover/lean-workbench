@@ -3,12 +3,15 @@
 # --- base image: Node.js installation shared between builders and runners ---
 FROM buildpack-deps:24.04-curl AS base
 RUN curl -sSfL https://deb.nodesource.com/setup_24.x | bash - \
-    && apt-get install -y --no-install-recommends nodejs
+    && apt-get update \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
 
 # --- base builder image: build and download prerequisites ---
 FROM base AS builder-base
 
-RUN apt-get install -y --no-install-recommends \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
         meson ninja-build pkg-config libcap-dev xz-utils gcc g++ libc6-dev make unzip
         
 # Will be copied to runner images
@@ -19,7 +22,7 @@ ARG BUBBLEWRAP_VERSION="0.11.1"
 RUN curl -sSfL https://github.com/containers/bubblewrap/releases/download/v${BUBBLEWRAP_VERSION}/bubblewrap-${BUBBLEWRAP_VERSION}.tar.xz \
     | tar -xJ \
     && cd bubblewrap-${BUBBLEWRAP_VERSION} \
-    && meson setup _build --prefix=/usr \
+    && meson setup _build --prefix=/usr --buildtype=release \
     && ninja -C _build \
     && ninja -C _build install \
     && cd / && rm -rf /bubblewrap-${BUBBLEWRAP_VERSION}
@@ -32,7 +35,7 @@ RUN arch=$(uname -m) && \
     else echo "unsupported architecture: ${arch}" >&2; exit 1; \
     fi && \
     ovsc_tag="openvscode-server-v${OPENVSCODE_SERVER_VERSION}" && \
-    wget https://github.com/gitpod-io/openvscode-server/releases/download/${ovsc_tag}/${ovsc_tag}-linux-${arch}.tar.gz && \
+    wget -q https://github.com/gitpod-io/openvscode-server/releases/download/${ovsc_tag}/${ovsc_tag}-linux-${arch}.tar.gz && \
     tar -xzf ${ovsc_tag}-linux-${arch}.tar.gz && \
     mv -f ${ovsc_tag}-linux-${arch} /app/openvscode-server && \
     rm -f ${ovsc_tag}-linux-${arch}.tar.gz
@@ -41,7 +44,7 @@ RUN arch=$(uname -m) && \
 # Cannot use `--install-builtin-extension` as it does not store in the builtin directory
 # (behaves identically to `--install-extension`).
 RUN install_vsix_as_builtin() { \
-        wget -O /tmp/ext.vsix "https://open-vsx.org/api/$1/$2/$3/file/$1.$2-$3.vsix" \
+        wget -q -O /tmp/ext.vsix "https://open-vsx.org/api/$1/$2/$3/file/$1.$2-$3.vsix" \
         && unzip -q /tmp/ext.vsix "extension/*" -d /tmp \
         && mv /tmp/extension "/app/openvscode-server/extensions/$1.$2-universal" \
         && rm -rf /tmp/ext.vsix; \
@@ -52,7 +55,8 @@ RUN install_vsix_as_builtin() { \
 # --- base runner image: minimal runtime, no build tools ---
 FROM base AS runner-base
 
-RUN apt-get install -y --no-install-recommends \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
         nginx strace git libcap2 gettext-base \
     && rm -rf /var/lib/apt/lists/*
 
