@@ -49,7 +49,7 @@ RUN arch=$(uname -m) && \
 RUN install_vsix_as_builtin() { \
         wget -q -O /tmp/ext.vsix "https://open-vsx.org/api/$1/$2/$3/file/$1.$2-$3.vsix" \
         && unzip -q /tmp/ext.vsix "extension/*" -d /tmp \
-        && mv /tmp/extension "/app/openvscode-server/extensions/$1.$2-$3-universal" \
+        && mv /tmp/extension "/app/openvscode-server/extensions/$1.$2-universal" \
         && rm -rf /tmp/ext.vsix; \
     } \
     && install_vsix_as_builtin "leanprover" "lean4" "0.0.234" \

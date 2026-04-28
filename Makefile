@@ -41,4 +41,5 @@ dev: container-dev
 	$(DOCKER_RUN) -p 127.0.0.1:3000:3000 \
 		-p 127.0.0.1:9229:9229 \
 		-v $(CURDIR):/app/workbench:ro \
+		-v $(CURDIR)/vscode-lean4/vscode-lean4:/app/openvscode-server/extensions/leanprover.lean4-universal:ro \
 		$(IMAGE_NAME):$(IMAGE_DEV_TAG)
