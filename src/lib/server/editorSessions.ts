@@ -175,13 +175,11 @@ export class EditorSessionManager {
     const overlayArgs = await buildOverlayArgs(project.id, projectDir, sandboxProjectDir)
 
     const devArgs = isDevMode()
-      ? [
+      ? /* prettier-ignore */ [
           // Instructs Node to bind its debugger to this address, when debugging is enabled.
           // FIXME: VSC also passes --experimental-network-inspection to the extension host,
           // but that is disallowed in NODE_OPTIONS.
-          '--setenv',
-          'NODE_OPTIONS',
-          '--inspect-port=0.0.0.0:9229',
+          '--setenv', 'NODE_OPTIONS', '--inspect-port=0.0.0.0:9229',
         ]
       : []
 

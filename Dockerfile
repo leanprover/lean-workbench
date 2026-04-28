@@ -10,6 +10,9 @@ FROM base AS builder-base
 
 RUN apt-get install -y --no-install-recommends \
         meson ninja-build pkg-config libcap-dev xz-utils gcc g++ libc6-dev make unzip
+        
+# Will be copied to runner images
+RUN mkdir /app
 
 # Build bubblewrap 0.11.1 from source (need --tmp-overlay support; Ubuntu 24.04 only has 0.9.0)
 ARG BUBBLEWRAP_VERSION="0.11.1"
@@ -31,7 +34,7 @@ RUN arch=$(uname -m) && \
     ovsc_tag="openvscode-server-v${OPENVSCODE_SERVER_VERSION}" && \
     wget https://github.com/gitpod-io/openvscode-server/releases/download/${ovsc_tag}/${ovsc_tag}-linux-${arch}.tar.gz && \
     tar -xzf ${ovsc_tag}-linux-${arch}.tar.gz && \
-    mv -f ${ovsc_tag}-linux-${arch} /tmp/openvscode-server && \
+    mv -f ${ovsc_tag}-linux-${arch} /app/openvscode-server && \
     rm -f ${ovsc_tag}-linux-${arch}.tar.gz
 
 # Install builtin VS Code extensions. Workbench users get a read-only view of these.
@@ -40,7 +43,7 @@ RUN arch=$(uname -m) && \
 RUN install_vsix_as_builtin() { \
         wget -O /tmp/ext.vsix "https://open-vsx.org/api/$1/$2/$3/file/$1.$2-$3.vsix" \
         && unzip -q /tmp/ext.vsix "extension/*" -d /tmp \
-        && mv /tmp/extension "/tmp/openvscode-server/extensions/$1.$2-universal" \
+        && mv /tmp/extension "/app/openvscode-server/extensions/$1.$2-universal" \
         && rm -rf /tmp/ext.vsix; \
     } \
     && install_vsix_as_builtin "leanprover" "lean4" "0.0.234" \
@@ -67,7 +70,7 @@ ENTRYPOINT ["/app/workbench/start.sh"]
 # --- dev runner image: /app/workbench and vscode-workbench are empty, expect host mounts ---
 FROM runner-base AS runner-dev
 
-COPY --from=builder-base /tmp/openvscode-server /app/openvscode-server
+COPY --from=builder-base /app /app
 
 # --- prod builder image: bundle the extension and the Next.js server ---
 FROM builder-base AS builder-prod
@@ -75,12 +78,12 @@ FROM builder-base AS builder-prod
 # Install production build of workbench extension
 COPY ./vscode-workbench.vsix /tmp/ext.vsix
 RUN unzip -q /tmp/ext.vsix "extension/*" -d /tmp \
-    && mv /tmp/extension /tmp/openvscode-server/extensions/leanprover.workbench-universal \
+    && mv /tmp/extension /app/openvscode-server/extensions/leanprover.workbench-universal \
     && rm -rf /tmp/ext.vsix
 
-WORKDIR /app/workbench
-COPY . .
-RUN npm clean-install \
+COPY . /app/workbench
+RUN cd /app/workbench \
+    && npm clean-install \
     && mkdir -p /tmp/build-dummy \
     && LEAN_WORKBENCH_DATA_DIR=/tmp/build-dummy \
        npx next build \
@@ -91,5 +94,4 @@ FROM runner-base AS runner-prod
 
 ENV NODE_ENV=production
 
-COPY --from=builder-prod /tmp/openvscode-server /app/openvscode-server
-COPY --from=builder-prod --parents /app/workbench /
+COPY --from=builder-prod /app /app
