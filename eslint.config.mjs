@@ -9,12 +9,15 @@ const eslintConfig = defineConfig([
   prettier,
   // Override default ignores of eslint-config-next.
   globalIgnores([
+    // vscode-workbench:
+    '*/dist/',
+    '*/.vscode-test/',
     // Default ignores of eslint-config-next:
-    '.next/**',
-    'out/**',
-    'build/**',
+    '.next/',
+    'out/',
+    'build/',
     'next-env.d.ts',
-    'branch-*',
+    'branch-*/',
   ]),
 ])
 

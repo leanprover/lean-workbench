@@ -4,18 +4,14 @@
     {
       "type": "node",
       "request": "attach",
-      "name": "Attach to extension host",
+      "name": "Attach to vscode-workbench",
       "address": "localhost",
       "port": 9229,
-      "localRoot": "${workspaceFolder}/vscode-lean4/vscode-lean4/",
+      "localRoot": "${workspaceFolder}/vscode-workbench/",
       // The extension dir as seen by bubblewrap
-      "remoteRoot": "/workspace/.openvscode-server/extensions/leanprover.lean4-universal/",
+      "remoteRoot": "/workspace/.openvscode-server/extensions/leanprover.workbench-universal/",
       "sourceMaps": true,
-      "outFiles": ["${workspaceFolder}/vscode-lean4/*/dist/**/*.js"],
-      "sourceMapPathOverrides": {
-        // Cursed. Caused by our webpack config. Maybe undo those hacks.
-        "file:////*": "/*"
-      }
+      "outFiles": ["${workspaceFolder}/vscode-workbench/dist/**/*.js"]
     }
   ]
 }

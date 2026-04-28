@@ -44,8 +44,8 @@ In dev mode (`make dev`),
 each editor session in the admin panel has an "Enable debugger" button.
 Clicking it causes the [extension host](https://code.visualstudio.com/api/advanced-topics/extension-host) of that VSCode server
 to start a debugger on port 9229.
-Use the "Attach to extension host" launch target configured in this workspace to attach.
-You can set breakpoints in the vscode-lean4 extension.
+Use the "Attach to vscode-workbench" launch target configured in this workspace to attach.
+You can set breakpoints in the vscode-workbench/ extension.
 
 ## Resetting the data volume
 

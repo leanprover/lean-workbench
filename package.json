@@ -3,10 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "workspaces": [
+    "vscode-workbench"
+  ],
   "scripts": {
     "prepare": "husky && next typegen && prisma generate",
+    "watch": "concurrently --names vscode-workbench,next 'npm run watch:vscode-workbench' 'npm run dev'",
+    "watch:vscode-workbench": "npm --workspace vscode-workbench run watch",
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm --workspace vscode-workbench run build && next build",
     "start": "next start",
     "lint": "prettier --check . && eslint"
   },
@@ -28,6 +33,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
+    "concurrently": "^9.2.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.3",
     "eslint-config-prettier": "^10.1.8",

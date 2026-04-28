@@ -1,0 +1,37 @@
+{
+  "name": "workbench",
+  "displayName": "Lean 4 - Workbench",
+  "description": "Lean Workbench integration for VS Code",
+  "version": "0.0.1",
+  "private": true,
+  "publisher": "leanprover",
+  "engines": {
+    "vscode": "^1.109.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/leanprover/lean-workbench"
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "scripts": {
+    "watch": "concurrently --names esbuild,tsc 'npm run watch:esbuild' 'npm run watch:tsc'",
+    "watch:esbuild": "node esbuild.mjs --watch",
+    "watch:tsc": "tsc --noEmit --watch --preserveWatchOutput",
+    "build": "tsc --noEmit && node esbuild.mjs --production",
+    "test": "tsc && vscode-test",
+    "vscode:prepublish": "npm run build"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0",
+    "@types/vscode": "^1.109",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5",
+    "esbuild": "^0.28"
+  }
+}
