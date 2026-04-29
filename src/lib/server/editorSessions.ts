@@ -15,6 +15,7 @@ import { execSync, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import net from 'node:net'
 import path from 'node:path'
+import type Stream from 'node:stream'
 import 'server-only'
 
 interface EditorSession {
@@ -156,7 +157,6 @@ export class EditorSessionManager {
     if (port === undefined) throw new Error('No available ports')
     this.availablePorts.delete(port)
 
-    const isOwner = viewer.id === owner.id
     const projectDir = path.join(getWorkspacesDir(), owner.name, project.id)
     if (!fs.existsSync(projectDir)) throw new Error(`Project directory '${projectDir}' does not exist`)
 
@@ -168,10 +168,6 @@ export class EditorSessionManager {
     ensureMachineSettings(vscServerDataDir)
 
     const sandboxProjectDir = `/workspace/${project.name}`
-    // Owner gets persistent bind mount; non-owner gets ephemeral CoW overlay
-    const workspaceMount = isOwner
-      ? ['--bind', projectDir, sandboxProjectDir]
-      : ['--overlay-src', projectDir, '--tmp-overlay', sandboxProjectDir]
     const overlayArgs = await buildOverlayArgs(project.id, projectDir, sandboxProjectDir)
 
     const devArgs = isDevMode()
@@ -194,8 +190,14 @@ export class EditorSessionManager {
         '--ro-bind', '/etc', '/etc',
         '--ro-bind', getOpenVscodeServerDir(), '/workspace/.openvscode-server',
         '--ro-bind', getElanDir(), '/workspace/.elan',
+        // VSCode workspace configuration. Ephemeral, so not need to store on host.
+        // The filename must be friendly: it shows up in VSC with (AFAICT) no way to override.
+        '--ro-bind-data', '3', '/workspace/projects.code-workspace',
         '--bind', vscServerDataDir, '/workspace/.vscode-remote',
-        ...workspaceMount,
+        // The filesystem gets a read-only view of the project.
+        // Writes are mediated through the collaboration server,
+        // which `WorkbenchFileSystemProvider` in our extension connects to.
+        '--ro-bind', projectDir, sandboxProjectDir,
         ...overlayArgs,
         '--proc', '/proc',
         '--dev', '/dev',
@@ -227,10 +229,22 @@ export class EditorSessionManager {
         '--without-connection-token',
         `--server-base-path=${vscodeIframePath(viewer.name, owner.name, project.name)}`,
         '--server-data-dir', '/workspace/.vscode-remote',
-        '--default-folder', sandboxProjectDir,
+        '--default-workspace', '/workspace/projects.code-workspace',
       ],
       // FIXME: pipe into a log file?
-      { stdio: 'inherit' },
+      // stdin, stdout, stderr, ro-bind-data
+      { stdio: ['inherit', 'inherit', 'inherit', 'pipe'] },
+    )
+    const workspaceConfigPipe = child.stdio[3] as Stream.Writable
+    workspaceConfigPipe.end(
+      JSON.stringify({
+        folders: [
+          {
+            name: project.name,
+            uri: 'wrkbnch:///',
+          },
+        ],
+      }),
     )
 
     const newSession: EditorSession = {
