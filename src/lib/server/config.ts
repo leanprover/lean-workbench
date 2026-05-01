@@ -41,6 +41,10 @@ export function getOpenVscodeServerDir(): string {
   return process.env.OPENVSCODE_SERVER_DIR ?? '/app/openvscode-server'
 }
 
+export function getCollabServerDir(): string {
+  return '/app/collab-server'
+}
+
 export function getNginxConfDir(): string {
   return process.env.NGINX_CONF_DIR ?? '/etc/nginx'
 }
