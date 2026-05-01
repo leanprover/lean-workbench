@@ -48,4 +48,5 @@ dev: container-dev
 			-p 127.0.0.1:9229:9229 \
 			-v $(CURDIR):/app/workbench:ro \
 			-v $(CURDIR)/vscode-workbench:/app/openvscode-server/extensions/leanprover.workbench-universal:ro \
+			-v $(CURDIR)/collab-server:/app/collab-server:ro \
 			$(IMAGE_NAME):$(IMAGE_DEV_TAG)'
