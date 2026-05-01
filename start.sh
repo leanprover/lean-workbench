@@ -29,16 +29,14 @@ else
     # NOTE: also tried a full tmpfs overlay on ${SCRIPT_DIR};
     # but inotify events for HMR don't propagate in that case;
     # and per https://github.com/vercel/next.js/issues/80665, polling doesn't work.
-    for d in node_modules .next src/prisma/generated; do
-        mount -t tmpfs tmpfs "${SCRIPT_DIR}/$d"
-    done
     mkdir -p /tmp/workbench.tmpfs
-    for f in package.json package-lock.json next-env.d.ts; do
-        cp "${SCRIPT_DIR}/$f" "/tmp/workbench.tmpfs/$f"
+    for f in node_modules .next package.json package-lock.json next-env.d.ts; do
+        cp -r "${SCRIPT_DIR}/$f" "/tmp/workbench.tmpfs/$f"
         mount --bind "/tmp/workbench.tmpfs/$f" "${SCRIPT_DIR}/$f"
     done
 
-    cd "${SCRIPT_DIR}" && npm clean-install && npm run dev -- --port 3002 &
+    # Rebuild native SQLite bindings before starting
+    cd "${SCRIPT_DIR}" && npm rebuild better-sqlite3 && npm run dev -- --port 3002 &
 fi
 APP_PID=$!
 trap 'kill $APP_PID 2>/dev/null' EXIT
