@@ -1,25 +1,18 @@
 'use client'
 
-import { ConfigCtx } from '@/lib/contexts'
 import type { EditorSessionInfo } from '@/lib/server/editorSessions'
 import { useServerAction } from '@/lib/util'
 import { useRouter } from 'next/navigation'
-import { startTransition, use } from 'react'
-import { debugEditorSession, killEditorSession } from '../actions'
+import { startTransition } from 'react'
+import { killEditorSession } from '../actions'
 
 export function SessionRow({ info }: { info: EditorSessionInfo }) {
   const router = useRouter()
-  const cfg = use(ConfigCtx)
   const [killError, killAction, killPending] = useServerAction(
-    () => killEditorSession(info.viewerId, info.projectId),
-    () => router.refresh(),
-  )
-  const [debugError, debugAction, debugPending] = useServerAction(
-    () => debugEditorSession(info.viewerId, info.projectId),
+    () => killEditorSession(info.projectId, info.sessionId),
     () => router.refresh(),
   )
 
-  const error = killError && debugError
   return (
     <li>
       <div className='info'>
@@ -34,13 +27,8 @@ export function SessionRow({ info }: { info: EditorSessionInfo }) {
         <button className='delete' disabled={killPending} onClick={() => startTransition(killAction)}>
           Kill
         </button>
-        {cfg.isDevMode && (
-          <button disabled={debugPending} onClick={() => startTransition(debugAction)}>
-            [DEV] Enable debugger
-          </button>
-        )}
       </div>
-      {error && <div style={{ color: '#dc2626', fontSize: 13 }}>{error}</div>}
+      {killError && <div style={{ color: '#dc2626', fontSize: 13 }}>{killError}</div>}
     </li>
   )
 }

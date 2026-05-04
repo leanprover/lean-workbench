@@ -1,0 +1,320 @@
+import {
+  getElanDir,
+  getNginxConfDir,
+  getNginxLogDir,
+  getOpenVscodeServerDir,
+  getPackageSetsDir,
+  getWorkspacesDir,
+  isDevMode,
+} from '@/lib/server/config'
+import { getDb } from '@/lib/server/db'
+import { BWRAP_ARGS, readProcesses } from '@/lib/server/util'
+import { Project } from '@/prisma/generated/client'
+import { User } from 'better-auth'
+import { ChildProcess, exec, spawn } from 'node:child_process'
+import fs from 'node:fs/promises'
+import { request } from 'node:http'
+import path from 'node:path'
+import type Stream from 'node:stream'
+import { promisify } from 'node:util'
+
+/** Create a VSCode machine settings file if one doesn't exist. */
+async function ensureMachineSettings(serverDataDir: string): Promise<void> {
+  const machineSettingsDir = path.join(serverDataDir, 'data', 'Machine')
+  const machineSettingsFile = path.join(machineSettingsDir, 'settings.json')
+  try {
+    await fs.access(machineSettingsFile)
+  } catch {
+    await fs.mkdir(machineSettingsDir, { recursive: true })
+    await fs.writeFile(
+      machineSettingsFile,
+      JSON.stringify(
+        {
+          // Start with a blank tab
+          'workbench.startupEditor': 'none',
+        },
+        null,
+        2,
+      ) + '\n',
+    )
+  }
+}
+
+async function reloadNginx(): Promise<void> {
+  await promisify(exec)(`nginx -e ${getNginxLogDir()}/error.log -c ${getNginxConfDir()}/nginx.conf -s reload`)
+}
+
+async function waitForNginxRoute(path: string, timeoutMs = 10_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs
+  let status = null
+  while (Date.now() < deadline) {
+    status = await new Promise<number | null>(resolve => {
+      // `agent: false` creates a new HTTP client, ensuring we connect to the reloaded Nginx.
+      const req = request({ host: '127.0.0.1', port: 3000, path, method: 'GET', agent: false }, res => {
+        res.resume()
+        resolve(res.statusCode ?? null)
+      })
+      req.on('error', () => resolve(null))
+      req.end()
+    })
+    if (status !== null && status === 200) return
+    await new Promise(r => setTimeout(r, 100))
+  }
+  throw new Error(`Timeout waiting for Nginx route ${path} (last HTTP status=${status})`)
+}
+
+/** Manages an `openvscode-server` instance.
+ * Non-reusable; construct a new handle to start a new server. */
+export class VscodeServerHandle {
+  /** Unique ID of this VSCode server instance. */
+  readonly uuid = crypto.randomUUID()
+  /** Route that Nginx exposes the VSCode server on. */
+  readonly vscodeIframePath = `/_vs/${this.uuid}/`
+
+  constructor(
+    readonly viewer: User,
+    readonly owner: User,
+    readonly project: Project,
+    readonly projectDir: string,
+    /** `collab-server` UDS directory. */
+    readonly collabSocketDir: string,
+    /** Port on which `openvscode-server` listens. */
+    // TODO(security): use UDS via `--socket-path` instead.
+    readonly port: number,
+  ) {}
+
+  /** The `bwrap` process. Defined iff the process is running. */
+  private proc: ChildProcess | undefined
+  /** Defined after {@link start} has been called. */
+  private starting: Promise<void> | undefined
+  /** Defined after {@link dispose} has been called. */
+  private disposing: Promise<void> | undefined
+  /** Resources allocated for the server. */
+  private disposables = new AsyncDisposableStack()
+
+  private get nginxUserRoutePath(): string {
+    return `${getNginxConfDir()}/user-routes/openvscode-server-${this.uuid}.conf`
+  }
+
+  private get description(): string {
+    return `openvscode-server ${this.uuid} (project ${this.project.id}, viewer ${this.viewer.id})`
+  }
+
+  private async writeNginxUserRoute() {
+    const conf = `location ${this.vscodeIframePath} {
+    proxy_pass http://127.0.0.1:${this.port};
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_set_header Host $http_host;
+    proxy_buffering off;
+    proxy_read_timeout 86400;
+    proxy_hide_header X-Frame-Options;
+  }
+  `
+    await fs.writeFile(this.nginxUserRoutePath, conf)
+  }
+
+  /** Build `--overlay-src/--tmp-overlay` args for the associated project's package sets.
+   * These mount each package in the package set in the `bubblewrap` sandbox.
+   * Writes go to a tmpfs and are discarded when the container exits. */
+  private async buildOverlayArgs(sandboxProjectDir: string): Promise<string[]> {
+    const packageSets = await getDb().projectPackageSet.findMany({ where: { projectId: this.project.id } })
+    const args: string[] = []
+    for (const { packageSet } of packageSets) {
+      const setDir = path.join(getPackageSetsDir(), packageSet)
+      const packagesFile = path.join(setDir, 'packages.txt')
+      try {
+        await fs.access(packagesFile)
+      } catch {
+        continue
+      }
+      const packages = (await fs.readFile(packagesFile, 'utf-8')).split('\n').filter(Boolean)
+      for (const pkg of packages) {
+        await fs.mkdir(path.join(this.projectDir, '.lake', 'packages', pkg), { recursive: true })
+        // prettier-ignore
+        args.push(
+          '--overlay-src', path.join(setDir, pkg),
+          '--tmp-overlay', path.join(sandboxProjectDir, '.lake', 'packages', pkg),
+        )
+      }
+    }
+    return args
+  }
+
+  /** Signal the server to start.
+   * The returned promise resolves after the server has started listening on its port,
+   * and the Nginx route for {@link vscodeIframePath} has been set up.
+   * Repeated calls produce the same promise. */
+  async start() {
+    if (this.starting) return this.starting
+    this.starting = (async () => {
+      try {
+        await fs.access(this.projectDir)
+      } catch (err) {
+        throw new Error(`Could not open project directory '${this.projectDir}': ${String(err)}`)
+      }
+
+      // Every user gets their own VSCode server configuration, and set of installed extensions.
+      // Openvscode-server derives --user-data-dir and --extensions-dir from --server-data-dir:
+      // https://github.com/gitpod-io/openvscode-server/blob/2bfb814c5215c51a10e80c2cb1b58ed91068ad8b/src/vs/server/node/server.main.ts
+      const vscServerDataDir = path.join(getWorkspacesDir(), this.viewer.name, 'vscode-remote')
+      await fs.mkdir(vscServerDataDir, { recursive: true })
+      await ensureMachineSettings(vscServerDataDir)
+
+      const sandboxProjectDir = `/workspace/${this.project.name}/`
+      const overlayArgs = await this.buildOverlayArgs(sandboxProjectDir)
+
+      const devArgs = isDevMode()
+        ? /* prettier-ignore */ [
+            // Instructs Node to bind its debugger to this address, when debugging is enabled.
+            // FIXME: VSC also passes --experimental-network-inspection to the extension host,
+            // but that is disallowed in NODE_OPTIONS.
+            '--setenv', 'NODE_OPTIONS', '--inspect-port=0.0.0.0:9229',
+          ]
+        : []
+
+      const proc = spawn(
+        'bwrap',
+        // prettier-ignore
+        [
+          ...BWRAP_ARGS,
+          '--ro-bind', getOpenVscodeServerDir(), '/workspace/.openvscode-server',
+          '--ro-bind', getElanDir(), '/workspace/.elan',
+          // VSCode workspace configuration. Ephemeral, so not need to store on host.
+          // The filename must be friendly: it shows up in VSC with (AFAICT) no way to override.
+          '--ro-bind-data', '3', '/workspace/Projects.code-workspace',
+          '--bind', vscServerDataDir, '/workspace/.vscode-remote',
+          // The filesystem gets a read-only view of the project.
+          // Writes are mediated through the collaboration server,
+          // which `WorkbenchFileSystemProvider` in our extension connects to.
+          '--ro-bind', this.projectDir, sandboxProjectDir,
+          '--bind', this.collabSocketDir, '/workspace/.collab-sockets',
+          ...overlayArgs,
+          '--setenv', 'HOME', '/workspace',
+          '--setenv', 'ELAN_HOME', '/workspace/.elan',
+          '--setenv', 'PATH', `/workspace/.elan/bin:/usr/local/bin:/usr/bin:/bin`,
+          // FIXME: Git's "dubious ownership" check (CVE-2022-24765) rejects repos
+          // owned by a different uid. The overlay mounts cause an ownership mismatch
+          // that triggers this; safe.directory=* *should* be ok here since the sandbox
+          // is already isolated, but this should be considered more carefully.
+          '--setenv', 'GIT_CONFIG_COUNT', '1',
+          '--setenv', 'GIT_CONFIG_KEY_0', 'safe.directory',
+          '--setenv', 'GIT_CONFIG_VALUE_0', '*',
+          ...devArgs,
+          '--',
+          '/workspace/.openvscode-server/bin/openvscode-server',
+          '--host', '127.0.0.1',
+          '--port', String(this.port),
+          '--without-connection-token',
+          `--server-base-path=${this.vscodeIframePath}`,
+          '--server-data-dir', '/workspace/.vscode-remote',
+          // TODO: make a per-project user-data-dir to support concurrent editing sessions.
+          '--default-workspace', '/workspace/Projects.code-workspace',
+        ],
+        // FIXME: pipe into a log file?
+        // stdin, stdout, stderr, ro-bind-data
+        { stdio: ['inherit', 'inherit', 'inherit', 'pipe'] },
+      )
+      proc.on('error', err => {
+        console.error(`error in ${this.description}: ${String(err)}`)
+      })
+      this.proc = proc
+
+      const workspaceConfigPipe = proc.stdio[3] as Stream.Writable
+
+      await Promise.race([
+        // Reject if errors occur before setup is finished.
+        new Promise<void>((_, reject) => {
+          proc.once('error', err => {
+            reject(err)
+          })
+          proc.once('close', () => {
+            this.proc = undefined
+            reject(new Error(`${this.description} exited before binding port`))
+          })
+          workspaceConfigPipe.once('error', err => {
+            reject(err)
+          })
+        }),
+        // Wait for the server to start listening and for Nginx to be ready.
+        (async () => {
+          workspaceConfigPipe.end(
+            JSON.stringify({
+              folders: [
+                {
+                  name: this.project.name,
+                  uri: 'wrkbnch:/',
+                },
+              ],
+            }),
+          )
+          await this.writeNginxUserRoute()
+          this.disposables.defer(async () => {
+            await fs.rm(this.nginxUserRoutePath, { force: true })
+            await reloadNginx()
+          })
+          await reloadNginx()
+          await waitForNginxRoute(this.vscodeIframePath)
+        })(),
+      ])
+
+      // Auto-enable debugging in dev mode
+      if (isDevMode()) {
+        await this.enableDebugger()
+      }
+    })()
+    await this.starting
+  }
+
+  /** Add a callback to the LIFO {@link AsyncDisposableStack} that runs on `dispose()`
+   * (after the process has exited). */
+  addDisposable(f: () => Promise<void>) {
+    this.disposables.defer(f)
+  }
+
+  /** Signal the server to shut down and clean up allocated resources.
+   * The returned promise resolves when these events have completed.
+   * Repeated calls produce the same promise.
+   * Must be invoked after a `start()` failure. */
+  async dispose() {
+    if (!this.starting) {
+      console.warn(`Tried to stop ${this.description} before starting it.`)
+      return
+    }
+    if (this.disposing) return this.disposing
+    this.disposing = (async () => {
+      await this.starting!.catch(() => {})
+      if (this.proc) {
+        await new Promise<void>(resolve => {
+          this.proc!.once('close', () => {
+            resolve()
+          })
+          this.proc!.kill()
+        })
+      }
+      await this.disposables.disposeAsync()
+    })()
+    await this.disposing
+  }
+
+  /** Start a debugger in the extension host of the VSCode server. */
+  async enableDebugger() {
+    if (!this.proc) return
+    // Send SIGUSR1 to the (assumed unique) extension host descendant of openvscode-server:
+    // https://nodejs.org/api/process.html#signal-events
+    const root = (await readProcesses()).get(this.proc.pid!)
+    // Give up if parent has exited while we read proc table
+    if (!this.proc) return
+    const stack = root ? [root] : []
+    while (stack.length > 0) {
+      const proc = stack.pop()!
+      if (proc.cmdline.includes('--type=extensionHost')) {
+        process.kill(proc.pid, 'SIGUSR1')
+        return
+      }
+      stack.push(...proc.children)
+    }
+    console.warn(`Extension host not found in ${this.description}`)
+  }
+}

@@ -59,7 +59,7 @@ export async function deleteUser(userId: string): Promise<ActionResponse> {
   const mgr = getEditorSessionManager()
   for (const s of await mgr.listSessions()) {
     if (s.viewerId === target.id) {
-      mgr.killSession(target.id, s.projectId)
+      mgr.killSession(s.projectId, s.sessionId)
     }
   }
 
@@ -115,25 +115,16 @@ export async function updateOAuthConfig(clientId: string, clientSecret: string |
 // --- Editor sessions ---
 
 const zEditorSession = z.object({
-  viewerId: z.string().min(1),
   projectId: z.string().min(1),
+  sessionId: z.string().min(1),
 })
 
-export async function killEditorSession(viewerId: string, projectId: string): Promise<ActionResponse> {
+export async function killEditorSession(projectId: string, sessionId: string): Promise<ActionResponse> {
   await requireAdmin()
-  const parsed = zEditorSession.safeParse({ viewerId, projectId })
+  const parsed = zEditorSession.safeParse({ projectId, sessionId })
   if (!parsed.success) return { error: parsed.error.issues[0].message }
   const mgr = getEditorSessionManager()
-  mgr.killSession(parsed.data.viewerId, parsed.data.projectId)
-  return { ok: undefined }
-}
-
-export async function debugEditorSession(viewerId: string, projectId: string): Promise<ActionResponse> {
-  await requireAdmin()
-  const parsed = zEditorSession.safeParse({ viewerId, projectId })
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
-  const mgr = getEditorSessionManager()
-  mgr.debugSession(parsed.data.viewerId, parsed.data.projectId)
+  mgr.killSession(parsed.data.projectId, parsed.data.sessionId)
   return { ok: undefined }
 }
 

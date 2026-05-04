@@ -1,4 +1,4 @@
-import fs from 'node:fs'
+import fs from 'node:fs/promises'
 import 'server-only'
 
 export interface ProcessInfo {
@@ -12,15 +12,15 @@ export interface ProcessInfo {
 /** Read the process table from `/proc`,
  * returning a map from PID to process info with children linked.
  * Linux-only. */
-export function readProcesses(): Map<number, ProcessInfo> {
+export async function readProcesses(): Promise<Map<number, ProcessInfo>> {
   const procs = new Map<number, ProcessInfo>()
-  for (const entry of fs.readdirSync('/proc')) {
+  for (const entry of await fs.readdir('/proc')) {
     const pid = Number(entry)
     if (!Number.isInteger(pid)) continue
     try {
-      const status = fs.readFileSync(`/proc/${pid}/status`, 'utf-8')
+      const status = await fs.readFile(`/proc/${pid}/status`, 'utf-8')
       const ppid = Number(status.match(/^PPid:\s*(\d+)/m)![1])
-      const cmdline = fs.readFileSync(`/proc/${pid}/cmdline`, 'utf-8').split('\0')
+      const cmdline = (await fs.readFile(`/proc/${pid}/cmdline`, 'utf-8')).split('\0')
       procs.set(pid, { pid, ppid, cmdline, children: [] })
     } catch {}
   }
@@ -29,3 +29,27 @@ export function readProcesses(): Map<number, ProcessInfo> {
   }
   return procs
 }
+
+/** Arguments that we pass to every bubblewrap sandbox. */
+export const BWRAP_ARGS =
+  /* prettier-ignore */ [
+    '--ro-bind', '/usr', '/usr',
+    '--ro-bind', '/lib', '/lib',
+    '--ro-bind-try', '/lib64', '/lib64',
+    '--ro-bind', '/bin', '/bin',
+    '--ro-bind', '/etc', '/etc',
+    '--proc', '/proc',
+    '--dev', '/dev',
+    '--tmpfs', '/tmp',
+    '--unshare-user',
+    '--uid', '1000',
+    '--gid', '1000',
+    '--unshare-pid',
+    '--unshare-uts',
+    '--unshare-cgroup',
+    // TODO(security): unshare-net but allow outgoing inet connections for VSC bwraps.
+    // https://github.com/containers/bubblewrap/issues/504
+    '--die-with-parent',
+    '--new-session',
+    '--clearenv',
+  ]
