@@ -244,7 +244,7 @@ export class VscodeServerHandle {
               folders: [
                 {
                   name: this.project.name,
-                  uri: 'wrkbnch:/',
+                  uri: 'wrkbnch:/', // TODO: use global const
                 },
               ],
             }),
@@ -261,7 +261,13 @@ export class VscodeServerHandle {
 
       // Auto-enable debugging in dev mode
       if (isDevMode()) {
-        await this.enableDebugger()
+        setTimeout(async () => {
+          try {
+            await this.enableDebugger()
+          } catch (err) {
+            console.log(err)
+          }
+        }, 5_000)
       }
     })()
     await this.starting

@@ -29,13 +29,13 @@ else
     # NOTE: also tried a full tmpfs overlay on ${SCRIPT_DIR};
     # but inotify events for HMR don't propagate in that case;
     # and per https://github.com/vercel/next.js/issues/80665, polling doesn't work.
-    mkdir -p /tmp/workbench.tmpfs
-    for f in node_modules .next package.json package-lock.json next-env.d.ts; do
+    for f in node_modules collab-server/node_modules vscode-workbench/node_modules .next package.json package-lock.json next-env.d.ts; do
+        mkdir -p $(dirname "/tmp/workbench.tmpfs/$f")
         cp -r "${SCRIPT_DIR}/$f" "/tmp/workbench.tmpfs/$f"
         mount --bind "/tmp/workbench.tmpfs/$f" "${SCRIPT_DIR}/$f"
     done
 
-    # Rebuild native SQLite bindings before starting
+    # Rebuild native SQLite bindings before starting in case Docker and host are different platforms
     cd "${SCRIPT_DIR}" && npm rebuild better-sqlite3 && npm run dev -- --port 3002 &
 fi
 APP_PID=$!

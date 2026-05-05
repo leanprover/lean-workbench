@@ -42,7 +42,7 @@ export function getOpenVscodeServerDir(): string {
 }
 
 export function getCollabServerDir(): string {
-  return '/app/collab-server'
+  return '/app/workbench/collab-server'
 }
 
 export function getNginxConfDir(): string {

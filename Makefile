@@ -12,7 +12,7 @@ clean:
 	@test "$(realpath $(WORKBENCH_ROOT) 2>/dev/null)" != "/" || { echo "ERROR: WORKBENCH_ROOT resolves to /"; exit 1; }
 	rm -rf $(WORKBENCH_ROOT)
 	
-vscode-workbench.vsix:
+vscode-workbench.vsix: $(shell find vscode-workbench/src -type f) vscode-workbench/.vscodeignore vscode-workbench/esbuild.mjs vscode-workbench/package.json vscode-workbench/tsconfig.json
 	cd vscode-workbench && npx vsce package --out ../vscode-workbench.vsix
 
 container: vscode-workbench.vsix
@@ -48,5 +48,4 @@ dev: container-dev
 			-p 127.0.0.1:9229:9229 \
 			-v $(CURDIR):/app/workbench:ro \
 			-v $(CURDIR)/vscode-workbench:/app/openvscode-server/extensions/leanprover.workbench-universal:ro \
-			-v $(CURDIR)/collab-server:/app/collab-server:ro \
 			$(IMAGE_NAME):$(IMAGE_DEV_TAG)'
