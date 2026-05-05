@@ -1,11 +1,24 @@
-.git
-.github
-.husky
-.next
-.vscode
-branch-*
-node_modules
-plans
-.env*
-.eslintcache
-vscode-workbench/
+# Ignore everything by default, then allow only what the Dockerfile build needs.
+*
+
+# Next.js server
+!public
+!src
+!next-env.d.ts
+!next.config.ts
+!package-lock.json
+!package.json
+!prisma.config.ts
+!tsconfig.json
+
+# Collaboration server
+!collab-server
+
+# Pre-built workbench extension
+!vscode-workbench.vsix
+
+# Scripts, data, etc.
+!scripts
+!templates
+!nginx.conf.template
+!start.sh
