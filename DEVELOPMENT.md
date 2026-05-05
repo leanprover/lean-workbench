@@ -10,6 +10,7 @@ It describes how to locally run and test the workbench software.
 ## Running the workbench server
 
 ```bash
+npm install # install dependencies and generate types
 make dev # build and run the container in development mode
 ```
 
@@ -36,6 +37,15 @@ Open `http://localhost:3000`. You'll see the setup page.
 
 The data volume is stored in `/tmp/lean-workbench/` on the host by default.
 Set the `WORKBENCH_ROOT` Makefile argument to customize this.
+
+## Debugging
+
+In dev mode (`make dev`),
+each editor session in the admin panel has an "Enable debugger" button.
+Clicking it causes the [extension host](https://code.visualstudio.com/api/advanced-topics/extension-host) of that VSCode server
+to start a debugger on port 9229.
+Use the "Attach to vscode-workbench" launch target configured in this workspace to attach.
+You can set breakpoints in the vscode-workbench/ extension.
 
 ## Resetting the data volume
 

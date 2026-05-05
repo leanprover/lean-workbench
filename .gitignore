@@ -44,3 +44,9 @@ next-env.d.ts
 
 # git
 branch-*
+
+# vscode extension
+dist/
+.vscode-test/
+out/
+*.vsix
