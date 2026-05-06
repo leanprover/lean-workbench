@@ -13,14 +13,15 @@ const socketPath = process.argv[2]
 const projectDir = process.argv[3]
 
 // -- YJS FILE MANAGEMENT --
+// TODO: import vscode-workbench/util
 const YTEXT_KEY = 'content'
 
 function toDiskPath(documentName: string): string {
-  const joined = path.join(projectDir, documentName)
-  if (!joined.startsWith(projectDir)) {
+  const file = path.normalize(documentName)
+  if (!file.startsWith(projectDir)) {
     throw new Error(`Path traversal in document name: ${documentName}`)
   }
-  return joined
+  return file
 }
 
 // -- HTTPS/WS SERVER --
