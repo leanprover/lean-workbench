@@ -52,6 +52,7 @@ the first VSCode server to start up will have its [extension host](https://code.
 start a debugger on port 9229.
 Use the "Attach to vscode-workbench" VSCode launch target to attach.
 You can set breakpoints in the `vscode-workbench/` extension.
+Note that `console.log` in the extension goes to the _renderer_, i.e., the web client.
 
 ## Resetting the data volume
 
