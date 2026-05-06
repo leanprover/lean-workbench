@@ -163,3 +163,9 @@ Each user session runs in a `bwrap` sandbox with:
 
 The Docker container runs with `--cap-add SYS_ADMIN` and relaxed seccomp/apparmor settings
 because bwrap needs these capabilities to create user namespaces and overlay mounts.
+
+## Releases
+Pushing a Git tag matching `v*` (e.g. `v0.1.0`) triggers the
+[release workflow](.github/workflows/release.yml), which runs the
+test suite and then builds and pushes a Docker image to
+`ghcr.io/leanprover/lean-workbench` with semver-derived tags.
