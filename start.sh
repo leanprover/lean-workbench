@@ -36,7 +36,7 @@ else
     done
 
     # Rebuild native SQLite bindings before starting in case Docker and host are different platforms
-    cd "${SCRIPT_DIR}" && npm rebuild better-sqlite3 && npm run dev -- --port 3002 &
+    cd "${SCRIPT_DIR}" && npm rebuild better-sqlite3 && node_modules/.bin/next dev --port 3002 &
 fi
 APP_PID=$!
 trap 'kill $APP_PID 2>/dev/null' EXIT

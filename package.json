@@ -9,11 +9,13 @@
   ],
   "scripts": {
     "prepare": "husky && next typegen && prisma generate",
-    "watch": "concurrently --names vscode-workbench,next 'npm run watch:vscode-workbench' 'npm run dev'",
+    "watch": "concurrently --names collab-server,vscode-workbench 'npm run watch:collab-server' 'npm run watch:vscode-workbench'",
+    "watch:collab-server": "npm --workspace collab-server run watch",
     "watch:vscode-workbench": "npm --workspace vscode-workbench run watch",
-    "dev": "next dev",
-    "build": "npm --workspace vscode-workbench run build && next build",
-    "start": "next start",
+    "tsc": "concurrently --names collab-server,vscode-workbench,workbench-app 'npm run tsc:collab-server' 'npm run tsc:vscode-workbench' 'npm run tsc:workbench-app'",
+    "tsc:collab-server": "npm --workspace collab-server run tsc",
+    "tsc:vscode-workbench": "npm --workspace vscode-workbench run tsc",
+    "tsc:workbench-app": "tsc",
     "lint": "prettier --check . && eslint"
   },
   "dependencies": {

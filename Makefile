@@ -42,8 +42,8 @@ dev: container-dev
 # Ports bound on localhost by the container:
 # 3000: Nginx
 # 9229: Node.js debugger
-	npx concurrently --names vscode-workbench,docker \
-		'npm run watch:vscode-workbench' \
+	npx concurrently --names host,docker \
+		'npm run watch' \
  		'$(DOCKER_RUN) -p 127.0.0.1:3000:3000 \
 			-p 127.0.0.1:9229:9229 \
 			-v $(CURDIR):/app/workbench:ro \

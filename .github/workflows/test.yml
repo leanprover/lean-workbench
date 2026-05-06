@@ -15,9 +15,15 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
-      - run: npm ci
+      - run: npm clean-install
+
+      - run: npm run tsc
 
       - run: npm run lint
+
+      - run: make container
+      
+      # TODO: tests
