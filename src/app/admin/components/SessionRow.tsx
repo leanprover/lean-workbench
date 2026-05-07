@@ -23,7 +23,7 @@ export function SessionRow({ info }: { info: EditorSessionInfo }) {
         <a href={`/${info.ownerUsername}/${info.projectName}`}>{info.projectName}</a>
       </div>
       <div className='actions'>
-        <span style={{ fontSize: '0.8rem', color: '#90a4ae' }}>port {info.port}</span>
+        <span style={{ fontSize: '0.8rem', color: '#90a4ae' }}>UUID {info.sessionId}</span>
         <button className='delete' disabled={killPending} onClick={() => startTransition(killAction)}>
           Kill
         </button>
