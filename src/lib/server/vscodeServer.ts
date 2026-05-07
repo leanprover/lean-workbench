@@ -190,7 +190,6 @@ export class VscodeServerHandle {
           // but users can still write files directly if needed.
           // Lake and other CLI tools do such writes.
           '--bind', this.projectDir, sandboxProjectDir,
-          '--ro-bind', this.projectDir, sandboxProjectDir,
           '--bind', this.collabSocketDir, '/workspace/.collab-sockets',
           ...overlayArgs,
           '--setenv', 'HOME', '/workspace',
