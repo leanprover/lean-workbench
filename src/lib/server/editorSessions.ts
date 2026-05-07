@@ -129,6 +129,15 @@ export class EditorSessionManager {
     void session.dispose()
   }
 
+  /** Returns true iff `userId` is the viewer of the session `sessionId`. */
+  isViewerOf(userId: string, sessionId: string): boolean {
+    for (const servers of this.vscServers.values()) {
+      const s = servers.find(s => s.uuid === sessionId)
+      if (s) return s.viewer.id === userId
+    }
+    return false
+  }
+
   async listSessions(): Promise<EditorSessionInfo[]> {
     const result: EditorSessionInfo[] = []
     for (const [projectId, servers] of this.vscServers) {
