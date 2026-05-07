@@ -49,6 +49,7 @@ export const BWRAP_ARGS =
     '--unshare-cgroup',
     // TODO(security): unshare-net but allow outgoing inet connections for VSC bwraps.
     // https://github.com/containers/bubblewrap/issues/504
+    // https://github.com/rootless-containers/slirp4netns
     '--die-with-parent',
     '--new-session',
     '--clearenv',
