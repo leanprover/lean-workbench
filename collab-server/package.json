@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "watch": "tsc --watch --preserveWatchOutput",
+    "tsc": "tsc"
+  },
   "dependencies": {
     "@hocuspocus/server": "^4.0.0"
   }
