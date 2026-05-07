@@ -185,9 +185,11 @@ export class VscodeServerHandle {
           // The filename must be friendly: it shows up in VSC with (AFAICT) no way to override.
           '--ro-bind-data', '3', '/workspace/Projects.code-workspace',
           '--bind', vscServerDataDir, '/workspace/.vscode-remote',
-          // The filesystem gets a read-only view of the project.
           // Writes are mediated through the collaboration server,
-          // which `WorkbenchFileSystemProvider` in our extension connects to.
+          // which `WorkbenchFileSystemProvider` in our extension connects to,
+          // but users can still write files directly if needed.
+          // Lake and other CLI tools do such writes.
+          '--bind', this.projectDir, sandboxProjectDir,
           '--ro-bind', this.projectDir, sandboxProjectDir,
           '--bind', this.collabSocketDir, '/workspace/.collab-sockets',
           ...overlayArgs,
@@ -244,7 +246,7 @@ export class VscodeServerHandle {
               folders: [
                 {
                   name: this.project.name,
-                  uri: 'wrkbnch:/', // TODO: use global const
+                  path: sandboxProjectDir,
                 },
               ],
             }),
