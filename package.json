@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "workspaces": [
+    "collab-server",
     "vscode-workbench"
   ],
   "scripts": {

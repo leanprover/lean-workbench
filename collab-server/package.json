@@ -1,0 +1,9 @@
+{
+  "name": "@leanprover/workbench-collab-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@hocuspocus/server": "^4.0.0"
+  }
+}

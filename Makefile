@@ -12,7 +12,7 @@ clean:
 	@test "$(realpath $(WORKBENCH_ROOT) 2>/dev/null)" != "/" || { echo "ERROR: WORKBENCH_ROOT resolves to /"; exit 1; }
 	rm -rf $(WORKBENCH_ROOT)
 	
-vscode-workbench.vsix:
+vscode-workbench.vsix: $(shell find vscode-workbench/src -type f) vscode-workbench/.vscodeignore vscode-workbench/esbuild.mjs vscode-workbench/package.json vscode-workbench/tsconfig.json
 	cd vscode-workbench && npx vsce package --out ../vscode-workbench.vsix
 
 container: vscode-workbench.vsix

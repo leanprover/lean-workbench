@@ -10,7 +10,7 @@ It describes how to locally run and test the workbench software.
 ## Running the workbench server
 
 ```bash
-npm install # install dependencies and generate types
+npm clean-install # install dependencies and generate types
 make dev # build and run the container in development mode
 ```
 
@@ -24,6 +24,13 @@ Open `http://localhost:3000`. You'll see the setup page.
 2. Click **Start Setup** to seed the data volume (downloads Mathlib,
    takes 5--30 min on first run).
 3. When seeding finishes, you're redirected to the landing page.
+
+## Updating NPM packages
+
+Make sure to pass `--install-strategy=nested` to `npm install`.
+This ensures that `package-lock.json` places `node_modules` in package folders
+as opposed to hoisting them out to the root directory;
+we rely on this in the dev container.
 
 ## Makefile targets
 
@@ -41,11 +48,10 @@ Set the `WORKBENCH_ROOT` Makefile argument to customize this.
 ## Debugging
 
 In dev mode (`make dev`),
-each editor session in the admin panel has an "Enable debugger" button.
-Clicking it causes the [extension host](https://code.visualstudio.com/api/advanced-topics/extension-host) of that VSCode server
-to start a debugger on port 9229.
-Use the "Attach to vscode-workbench" launch target configured in this workspace to attach.
-You can set breakpoints in the vscode-workbench/ extension.
+the first VSCode server to start up will have its [extension host](https://code.visualstudio.com/api/advanced-topics/extension-host)
+start a debugger on port 9229.
+Use the "Attach to vscode-workbench" VSCode launch target to attach.
+You can set breakpoints in the `vscode-workbench/` extension.
 
 ## Resetting the data volume
 
