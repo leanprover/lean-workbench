@@ -1,7 +1,8 @@
 # Lean Workbench
 
 ⚠️ Warning: in progress and experimental. There are not yet guarantees
-of stable interfaces.
+of stable interfaces. A more careful security audit is forthcoming.
+Running unsandboxed or with confidential data is at your own risk.
 
 This project aims to provide an online experience that facilitates
 familiar (i.e. vscode with the lean4 extension) and novel interfaces
