@@ -57,7 +57,9 @@ async function waitForNginxRoute(path: string, timeoutMs = 10_000): Promise<void
       req.on('error', () => resolve(null))
       req.end()
     })
-    if (status !== null && status === 200) return
+    // The route is gated by `auth_request`,
+    // so this unauthenticated probe should return 401 once the route is ready.
+    if (status !== null && status === 401) return
     await new Promise(r => setTimeout(r, 100))
   }
   throw new Error(`Timeout waiting for Nginx route ${path} (last HTTP status=${status})`)
@@ -102,14 +104,15 @@ export class VscodeServerHandle {
 
   private async writeNginxUserRoute() {
     const conf = `location ${this.vscodeIframePath} {
-    proxy_pass http://127.0.0.1:${this.port};
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection $connection_upgrade;
-    proxy_set_header Host $http_host;
-    proxy_buffering off;
-    proxy_read_timeout 86400;
-    proxy_hide_header X-Frame-Options;
+      auth_request /api/auth-vsc/${this.uuid};
+      proxy_pass http://127.0.0.1:${this.port};
+      proxy_http_version 1.1;
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection $connection_upgrade;
+      proxy_set_header Host $http_host;
+      proxy_buffering off;
+      proxy_read_timeout 86400;
+      proxy_hide_header X-Frame-Options;
   }
   `
     await fs.writeFile(this.nginxUserRoutePath, conf)
