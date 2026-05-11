@@ -2,6 +2,8 @@ worker_processes auto;
 daemon off;
 pid $NGINX_PID_PATH;
 error_log $NGINX_ERROR_LOG_PATH;
+# Run worker processes as root so that they can access root-owned Unix domain sockets.
+user root;
 
 events {
     worker_connections 1024;

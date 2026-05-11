@@ -65,6 +65,9 @@ async function waitForNginxRoute(path: string, timeoutMs = 10_000): Promise<void
   throw new Error(`Timeout waiting for Nginx route ${path} (last HTTP status=${status})`)
 }
 
+/** Name of the `openvscode-server` UDS file. */
+const VSCODE_SOCKET_FILENAME = 'client.sock'
+
 /** Manages an `openvscode-server` instance.
  * Non-reusable; construct a new handle to start a new server. */
 export class VscodeServerHandle {
@@ -72,6 +75,9 @@ export class VscodeServerHandle {
   readonly uuid = crypto.randomUUID()
   /** Route that Nginx exposes the VSCode server on. */
   readonly vscodeIframePath = `/_vs/${this.uuid}/`
+  /** Directory in which `openvscode-server` places its UDS file. */
+  readonly socketDir = `/tmp/vsc-${this.uuid}/`
+  private readonly socketPath = `${this.socketDir}/${VSCODE_SOCKET_FILENAME}`
 
   constructor(
     readonly viewer: User,
@@ -80,9 +86,6 @@ export class VscodeServerHandle {
     readonly projectDir: string,
     /** `collab-server` UDS directory. */
     readonly collabSocketDir: string,
-    /** Port on which `openvscode-server` listens. */
-    // TODO(security): use UDS via `--socket-path` instead.
-    readonly port: number,
   ) {}
 
   /** The `bwrap` process. Defined iff the process is running. */
@@ -105,7 +108,7 @@ export class VscodeServerHandle {
   private async writeNginxUserRoute() {
     const conf = `location ${this.vscodeIframePath} {
       auth_request /api/auth-vsc/${this.uuid};
-      proxy_pass http://127.0.0.1:${this.port};
+      proxy_pass http://unix:${this.socketPath};
       proxy_http_version 1.1;
       proxy_set_header Upgrade $http_upgrade;
       proxy_set_header Connection $connection_upgrade;
@@ -158,6 +161,11 @@ export class VscodeServerHandle {
         throw new Error(`Could not open project directory '${this.projectDir}': ${String(err)}`)
       }
 
+      await fs.mkdir(this.socketDir, { recursive: true })
+      this.disposables.defer(async () => {
+        await fs.rm(this.socketDir, { recursive: true, force: true })
+      })
+
       // Every user gets their own VSCode server configuration, and set of installed extensions.
       // Openvscode-server derives --user-data-dir and --extensions-dir from --server-data-dir:
       // https://github.com/gitpod-io/openvscode-server/blob/2bfb814c5215c51a10e80c2cb1b58ed91068ad8b/src/vs/server/node/server.main.ts
@@ -193,7 +201,8 @@ export class VscodeServerHandle {
           // but users can still write files directly if needed.
           // Lake and other CLI tools do such writes.
           '--bind', this.projectDir, sandboxProjectDir,
-          '--bind', this.collabSocketDir, '/workspace/.collab-sockets',
+          '--bind', this.collabSocketDir, '/workspace/.sockets/collab-server',
+          '--bind', this.socketDir, '/workspace/.sockets/openvscode-server',
           ...overlayArgs,
           '--setenv', 'HOME', '/workspace',
           '--setenv', 'ELAN_HOME', '/workspace/.elan',
@@ -208,8 +217,7 @@ export class VscodeServerHandle {
           ...devArgs,
           '--',
           '/workspace/.openvscode-server/bin/openvscode-server',
-          '--host', '127.0.0.1',
-          '--port', String(this.port),
+          '--socket-path', `/workspace/.sockets/openvscode-server/${VSCODE_SOCKET_FILENAME}`,
           '--without-connection-token',
           `--server-base-path=${this.vscodeIframePath}`,
           '--server-data-dir', '/workspace/.vscode-remote',

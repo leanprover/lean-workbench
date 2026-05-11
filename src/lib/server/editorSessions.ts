@@ -16,11 +16,7 @@ export interface EditorSessionInfo {
   ownerUsername: string
   projectId: string
   projectName: string
-  port: number
 }
-
-const BASE_PORT = 3010
-const MAX_PORT = 3999
 
 export class EditorSessionManager {
   /** projectId ↦ [servers for that project]
@@ -41,8 +37,6 @@ export class EditorSessionManager {
    *
    * Same invariant as in {@link vscServers}. */
   private collabServers = new Map<string, CollabServerHandle>()
-
-  private availablePorts = new Set<number>(Array.from({ length: MAX_PORT - BASE_PORT + 1 }, (_, i) => BASE_PORT + i))
 
   constructor() {
     this.vscServerEvents.addListener('close', s => {
@@ -81,20 +75,15 @@ export class EditorSessionManager {
     const projectSessions = this.vscServers.get(project.id) ?? []
     let session = projectSessions.find(s => s.viewer.id === viewer.id)
     if (!session) {
-      const port = this.availablePorts.values().next().value
-      if (port === undefined) throw new Error('no available ports')
-      this.availablePorts.delete(port)
-
       const projectDir = path.join(getWorkspacesDir(), owner.name, project.id)
       const collabServer = this.findCollabServer(project, projectDir)
-      session = new VscodeServerHandle(viewer, owner, project, projectDir, collabServer.socketDir, port)
+      session = new VscodeServerHandle(viewer, owner, project, projectDir, collabServer.socketDir)
       session.addDisposable(async () => {
         this.vscServers.set(
           project.id,
           (this.vscServers.get(project.id) ?? []).filter(s => s !== session),
         )
         this.vscServerEvents.emit('close', session!)
-        this.availablePorts.add(port)
       })
       // Insertion happens in same transaction as failed lookup (before any `await`)
       this.vscServers.set(project.id, [...(this.vscServers.get(project.id) ?? []), session])
@@ -154,7 +143,6 @@ export class EditorSessionManager {
           ownerUsername: project.user.name,
           projectId,
           projectName: project.name,
-          port: s.port,
         })
       }
     }

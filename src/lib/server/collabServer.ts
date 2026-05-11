@@ -54,13 +54,15 @@ export class CollabServerHandle {
         // prettier-ignore
         [
           ...BWRAP_ARGS,
+          // We don't need internet access.
+          '--unshare-net',
           '--ro-bind', getCollabServerDir(), '/workspace/.collab-server',
-          '--bind', this.socketDir, '/workspace/.collab-sockets',
+          '--bind', this.socketDir, '/workspace/.sockets/collab-server',
           // Mount project files as writable for the collaboration server.
           '--bind', this.projectDir, '/workspace/project',
           '/usr/bin/node',
           '/workspace/.collab-server/server.ts',
-          `/workspace/.collab-sockets/${COLLAB_SOCKET_FILENAME}`,
+          `/workspace/.sockets/collab-server/${COLLAB_SOCKET_FILENAME}`,
           '/workspace/project',
         ],
         { stdio: 'inherit' },
