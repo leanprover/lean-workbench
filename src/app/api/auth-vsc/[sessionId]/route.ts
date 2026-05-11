@@ -2,7 +2,9 @@ import { requireAuth } from '@/lib/server/actions'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
 import { forbidden } from 'next/navigation'
 
-/** Queried by Nginx to ensure the sending user can access the given editor session. */
+/** Queried by Nginx to ensure the sending user can access the given editor session.
+Any 2xx response counts for successful authentication,
+whereas other codes cause Nginx to reject the original request. */
 export async function GET(_req: Request, { params }: { params: Promise<{ sessionId: string }> }) {
   const { sessionId } = await params
   const userSession = await requireAuth()
