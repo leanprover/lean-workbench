@@ -238,15 +238,15 @@ export class VscodeServerHandle {
       await Promise.race([
         // Reject if errors occur before setup is finished.
         new Promise<void>((_, reject) => {
-          proc.once('error', err => {
-            reject(err)
-          })
           proc.once('close', () => {
             this.proc = undefined
             reject(new Error(`${this.description} exited before binding port`))
           })
+          proc.once('error', err => {
+            reject(new Error(`${this.description} failed to start: ${String(err)}`))
+          })
           workspaceConfigPipe.once('error', err => {
-            reject(err)
+            reject(new Error(`${this.description} failed to write workspace file: ${String(err)}`))
           })
         }),
         // Wait for the server to start listening and for Nginx to be ready.

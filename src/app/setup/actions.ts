@@ -3,7 +3,7 @@
 import { initAuth } from '@/lib/server/auth'
 import { getConfig, hasGithubAuth, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
 import { startSeed as doStartSeed, getSeedState } from '@/lib/server/seed'
-import { ActionResponse } from '@/lib/util'
+import type { ActionResponse } from '@/lib/util'
 import z from 'zod'
 
 const zSetupConfig = z.object({
@@ -33,8 +33,8 @@ export async function saveSetupConfig(formData: FormData): Promise<ActionRespons
   return { ok: true }
 }
 
-export async function startSeed(): Promise<ActionResponse<boolean>> {
-  return doStartSeed()
+export async function startSeed(leanVersion: string | undefined): Promise<ActionResponse<boolean>> {
+  return doStartSeed(leanVersion)
 }
 
 export async function fetchSetupStatus() {

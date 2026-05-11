@@ -138,6 +138,7 @@ function ensureConfigWatcher() {
     .on('change', () => {
       try {
         loadConfig()
+        console.log('Reloaded config')
       } catch (e: unknown) {
         console.error(`Failed to reload config: ${String(e)}`)
       }

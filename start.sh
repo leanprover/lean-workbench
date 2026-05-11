@@ -25,13 +25,20 @@ if [ "${NODE_ENV}" = "production" ]; then
     cd "${SCRIPT_DIR}" && node_modules/.bin/next start --port 3002 &
 else
     # Dev mode: ${SCRIPT_DIR} is mounted read-only by the host.
-    # Make build-time container writes succeed by putting them on tmpfs.
-    # NOTE: also tried a full tmpfs overlay on ${SCRIPT_DIR};
+    # Make build-time container writes succeed by directing them to a tmpfs.
+    # NOTE: also tried a tmpfs overlay on all of ${SCRIPT_DIR};
     # but inotify events for HMR don't propagate in that case;
     # and per https://github.com/vercel/next.js/issues/80665, polling doesn't work.
-    for f in node_modules collab-server/node_modules vscode-workbench/node_modules .next package.json package-lock.json next-env.d.ts; do
-        mkdir -p $(dirname "/tmp/workbench.tmpfs/$f")
-        cp -r "${SCRIPT_DIR}/$f" "/tmp/workbench.tmpfs/$f"
+    mkdir -p /tmp/workbench.tmpfs
+    mountpoint -q /tmp/workbench.tmpfs || mount -t tmpfs tmpfs /tmp/workbench.tmpfs
+    for d in node_modules collab-server/node_modules vscode-workbench/node_modules .next; do
+        mkdir -p "/tmp/workbench.tmpfs/$d.upper" "/tmp/workbench.tmpfs/$d.work"
+        mount -t overlay overlay \
+            -o "lowerdir=${SCRIPT_DIR}/$d,upperdir=/tmp/workbench.tmpfs/$d.upper,workdir=/tmp/workbench.tmpfs/$d.work" \
+            "${SCRIPT_DIR}/$d"
+    done
+    for f in package.json package-lock.json next-env.d.ts; do
+        cp "${SCRIPT_DIR}/$f" "/tmp/workbench.tmpfs/$f"
         mount --bind "/tmp/workbench.tmpfs/$f" "${SCRIPT_DIR}/$f"
     done
 
@@ -57,3 +64,6 @@ trap 'kill $APP_PID $NGINX_PID 2>/dev/null' EXIT
 echo "[start.sh] Nginx listening on http://localhost:3000"
 
 wait -n $APP_PID $NGINX_PID
+
+# Show oom-killer events from the last 10 seconds, in case that is what caused us to exit
+dmesg --ctime --since '10 sec ago' 2>/dev/null | grep --ignore-case 'killed process' | tail -5

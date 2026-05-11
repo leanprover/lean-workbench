@@ -1,13 +1,26 @@
 'use client'
 
+import { useServerAction } from '@/lib/client/util'
 import { ConfigCtx } from '@/lib/contexts'
-import { useServerAction } from '@/lib/util'
+import { LEAN_VERSION_RE } from '@/lib/util'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { useContext, useEffect, useRef, useState } from 'react'
+import useSWR from 'swr'
 import { fetchSetupStatus, saveSetupConfig, startSeed } from './actions'
 
 type Phase = 'config' | 'seeding' | 'done' | 'error'
+
+/** Fetch mathlib4 v4.* tags, newest-first, paginating until exhausted. */
+async function fetchLeanVersions(): Promise<string[]> {
+  const versions: string[] = []
+  // This relies on version tags being returned first.
+  const res: Response = await fetch('https://api.github.com/repos/leanprover-community/mathlib4/tags?per_page=100')
+  if (!res.ok) throw new Error(`GitHub API ${res.status}`)
+  const data = (await res.json()) as { name: string }[]
+  for (const item of data) if (LEAN_VERSION_RE.test(item.name)) versions.push(item.name)
+  return versions
+}
 
 export default function Setup() {
   const cfg = useContext(ConfigCtx)
@@ -20,6 +33,8 @@ export default function Setup() {
   const [seedError, setSeedError] = useState('')
   const [progress, setProgress] = useState({ pct: 0, label: '' })
   const [logs, setLogs] = useState<string[]>([])
+  const [leanVersion, setLeanVersion] = useState<string | undefined>()
+  const { data: leanVersions } = useSWR('leanVersions', fetchLeanVersions)
   const logRef = useRef<HTMLDivElement>(null)
 
   const [configError, saveConfigAction, savingConfig] = useServerAction(
@@ -90,7 +105,7 @@ export default function Setup() {
     setLogs([])
     setProgress({ pct: 0, label: 'Starting...' })
     setPhase('seeding')
-    const result = await startSeed()
+    const result = await startSeed(leanVersion)
     if ('error' in result) {
       setSeedError(result.error)
       setPhase('error')
@@ -168,9 +183,24 @@ export default function Setup() {
       ) : (
         <>
           {phase !== 'seeding' && (
-            <button className='primary' disabled={!configSaved} onClick={handleStartSeed}>
-              {phase === 'error' ? 'Retry Setup' : 'Start Setup'}
-            </button>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button className='primary' disabled={!configSaved} onClick={handleStartSeed}>
+                {phase === 'error' ? 'Retry Setup' : 'Start Setup'}
+              </button>
+              with Lean version:
+              <select
+                value={leanVersion ?? ''}
+                onChange={e => setLeanVersion(e.target.value || undefined)}
+                disabled={!leanVersions}
+              >
+                <option>{leanVersions ? 'Latest' : 'Loading…'}</option>
+                {leanVersions?.map(v => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
 
           {(phase === 'seeding' || phase === 'error') && progress.pct > 0 && (

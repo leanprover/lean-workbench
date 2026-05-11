@@ -1,6 +1,6 @@
 'use client'
 
-import { useServerAction } from '@/lib/util'
+import { useServerAction } from '@/lib/client/util'
 import { startTransition, useState } from 'react'
 import useSWR from 'swr'
 import { fetchDiskUsage, fetchHealth } from '../actions'

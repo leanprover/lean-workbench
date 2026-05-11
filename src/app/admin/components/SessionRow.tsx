@@ -1,7 +1,7 @@
 'use client'
 
+import { useServerAction } from '@/lib/client/util'
 import type { EditorSessionInfo } from '@/lib/server/editorSessions'
-import { useServerAction } from '@/lib/util'
 import { useRouter } from 'next/navigation'
 import { startTransition } from 'react'
 import { killEditorSession } from '../actions'

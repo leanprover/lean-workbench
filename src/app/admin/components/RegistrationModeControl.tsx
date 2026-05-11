@@ -1,7 +1,7 @@
 'use client'
 
+import { useServerAction } from '@/lib/client/util'
 import type { RegistrationMode } from '@/lib/server/config'
-import { useServerAction } from '@/lib/util'
 import { useRouter } from 'next/navigation'
 import { startTransition, useState } from 'react'
 import { setRegistrationMode } from '../actions'
