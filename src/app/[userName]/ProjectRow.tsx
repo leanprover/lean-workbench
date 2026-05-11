@@ -1,6 +1,6 @@
 'use client'
 
-import { useServerAction } from '@/lib/util'
+import { useServerAction } from '@/lib/client/util'
 import { Route } from 'next'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'

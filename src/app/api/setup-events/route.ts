@@ -3,11 +3,12 @@ import { getSeedState } from '@/lib/server/seed'
 export async function GET() {
   const encoder = new TextEncoder()
 
+  let interval: ReturnType<typeof setInterval> | undefined
   const stream = new ReadableStream({
     start(controller) {
       let cursor = 0
 
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         const st = getSeedState()
         while (cursor < st.events.length) {
           const event = st.events[cursor++]
@@ -23,6 +24,9 @@ export async function GET() {
           controller.close()
         }
       }, 500)
+    },
+    cancel() {
+      clearInterval(interval)
     },
   })
 

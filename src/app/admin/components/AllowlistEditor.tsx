@@ -1,6 +1,6 @@
 'use client'
 
-import { useServerAction } from '@/lib/util'
+import { useServerAction } from '@/lib/client/util'
 import { useRouter } from 'next/navigation'
 import { startTransition, useRef } from 'react'
 import { addAllowedUser, removeAllowedUser } from '../actions'

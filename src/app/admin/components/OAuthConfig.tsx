@@ -1,6 +1,6 @@
 'use client'
 
-import { useServerAction } from '@/lib/util'
+import { useServerAction } from '@/lib/client/util'
 import { useState } from 'react'
 import useSWR from 'swr'
 import { fetchOAuthConfig, updateOAuthConfig } from '../actions'

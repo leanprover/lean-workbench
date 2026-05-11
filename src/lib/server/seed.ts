@@ -1,4 +1,4 @@
-import { ActionResponse } from '@/lib/util'
+import { type ActionResponse, LEAN_VERSION_RE } from '@/lib/util'
 import { spawn } from 'node:child_process'
 import path from 'node:path'
 import 'server-only'
@@ -31,11 +31,12 @@ export function getSeedState(): Readonly<SeedState> {
   return seedState
 }
 
-export function startSeed(): ActionResponse<boolean> {
+export function startSeed(leanVersion: string | undefined): ActionResponse<boolean> {
   const cfg = getConfig()
   if (cfg.isSetupComplete) return { error: 'Already seeded' }
   if (!cfg.githubAuth) return { error: 'Configure GitHub authentication first' }
   if (seedState.inProgress) return { error: 'Seeding already in progress' }
+  if (leanVersion && !LEAN_VERSION_RE.test(leanVersion)) return { error: 'Invalid Lean version' }
 
   seedState.inProgress = true
   seedState.events.length = 0
@@ -43,7 +44,9 @@ export function startSeed(): ActionResponse<boolean> {
   // scripts/ is a sibling directory
   const scriptsDir = path.join(process.cwd(), 'scripts')
 
-  const child = spawn('bash', [path.join(scriptsDir, 'seed-volume.sh'), '--data-dir', getDataDir()], {
+  const args = [path.join(scriptsDir, 'seed-volume.sh'), '--data-dir', getDataDir()]
+  if (leanVersion) args.push('--lean-version', leanVersion)
+  const child = spawn('bash', args, {
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
