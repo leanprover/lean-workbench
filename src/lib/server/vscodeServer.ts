@@ -256,7 +256,7 @@ export class VscodeServerHandle {
               folders: [
                 {
                   name: this.project.name,
-                  path: sandboxProjectDir,
+                  uri: `wrkbnch:${sandboxProjectDir}`, // TODO: import vscode-workbench/util
                 },
               ],
             }),
