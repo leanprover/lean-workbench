@@ -25,6 +25,7 @@ const adapter = new PrismaBetterSqlite3({
   nativeBinding,
 })
 const db = new PrismaClient({ adapter })
+await db.$executeRawUnsafe('CREATE TABLE IF NOT EXISTS document (path TEXT PRIMARY KEY NOT NULL, data BLOB NOT NULL)')
 
 // -- YJS FILE MANAGEMENT --
 // TODO: import vscode-workbench/util
@@ -57,7 +58,12 @@ const server = new Server({
       async fetch({ documentName }) {
         const row = await db.document.findUnique({ where: { path: documentName } })
         if (row) return row.data
-        const content = await fs.readFile(checkedToDiskPath(documentName), 'utf-8')
+        let content: string
+        try {
+          content = await fs.readFile(checkedToDiskPath(documentName), 'utf-8')
+        } catch {
+          return null
+        }
         const doc = new Y.Doc()
         doc.getText(YTEXT_KEY).insert(0, content)
         return Y.encodeStateAsUpdate(doc)

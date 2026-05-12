@@ -8,7 +8,7 @@ export const WORKBENCH_URI_SCHEME = 'wrkbnch'
 export const BWRAP_WORKSPACE_FILE_PATH = '/workspace/Projects.code-workspace'
 
 /** Collab-server socket path in the VSCode and collab-server bwraps. */
-export const BWRAP_COLLAB_SOCK_PATH = '/workspace/.collab-sockets/collab.sock'
+export const BWRAP_COLLAB_SOCK_PATH = '/workspace/.collab-server/collab.sock'
 
 /** We keep a unique Y.Doc per file.
  * This is the Y.Doc key under which the text content lives. */

@@ -2,9 +2,10 @@ import { HocuspocusProviderWebsocket } from '@hocuspocus/provider'
 import fs from 'node:fs/promises'
 import vs from 'vscode'
 import WebSocket from 'ws'
-import { WorkbenchFileSystemProvider } from './fsProvider'
+import { WorkbenchFileSystemProvider } from './fileSystem'
+import { RemoteDocManager } from './remoteDoc'
+import { registerTextDocumentBindings } from './textBinding'
 import { BWRAP_COLLAB_SOCK_PATH, BWRAP_WORKSPACE_FILE_PATH, WORKBENCH_URI_SCHEME } from './util'
-import { registerYjsBindings } from './yTextBinding'
 
 /** Ensure we are in the expected Lean Workbench environment.
  * Return `false` if we are not,
@@ -102,11 +103,11 @@ export async function activate(ctx: vs.ExtensionContext) {
   const collabSock = await connectToCollabServer(ctx, log)
   if (!collabSock) return
 
-  const docs = registerYjsBindings(ctx, log, collabSock)
-
   const basePath = vs.workspace.workspaceFolders![0].uri.fsPath
+  const docs = new RemoteDocManager(collabSock, log)
+  registerTextDocumentBindings(ctx, docs, log)
   ctx.subscriptions.push(
-    vs.workspace.registerFileSystemProvider(WORKBENCH_URI_SCHEME, new WorkbenchFileSystemProvider(basePath)),
+    vs.workspace.registerFileSystemProvider(WORKBENCH_URI_SCHEME, new WorkbenchFileSystemProvider(basePath, docs, log)),
   )
   log.debug('Extension activated')
 }
