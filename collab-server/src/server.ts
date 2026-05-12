@@ -8,26 +8,23 @@ import * as Y from 'yjs'
 import { PrismaClient } from './prisma/generated/client'
 
 // -- CLI --
-if (process.argv.length !== 5) {
-  console.error('Usage: node server.js <socketPath> <projectDir> <betterSqlite3NodePath>')
+if (process.argv.length !== 4) {
+  console.error('Usage: node server.js <projectDir> <betterSqlite3NodePath>')
   process.exit(1)
 }
 
-const socketPath = process.argv[2]
-const projectDir = process.argv[3]
+const projectDir = process.argv[2]
 // Path to better_sqlite3.node, a native library needed by better-sqlite3.
-const nativeBinding = process.argv[4]
+const nativeBinding = process.argv[3]
+const socketPath = path.join(process.cwd(), 'collab.sock')
+const dbPath = path.join(process.cwd(), 'collab.db')
 
 // -- DB --
-// TODO: per-session storage.
-const dbDir = '/data/db'
-const dbUrl = `file:${path.join(dbDir, 'collab-server.db')}`
 const adapter = new PrismaBetterSqlite3({
-  url: dbUrl,
+  url: `file:${dbPath}`,
   nativeBinding,
 })
 const db = new PrismaClient({ adapter })
-console.log('opened DB connection')
 
 // -- YJS FILE MANAGEMENT --
 // TODO: import vscode-workbench/util

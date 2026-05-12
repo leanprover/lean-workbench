@@ -8,7 +8,7 @@ import {
   isDevMode,
 } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
-import { BWRAP_ARGS, readProcesses } from '@/lib/server/util'
+import { BWRAP_ARGS, bwrapProjectDir, readProcesses } from '@/lib/server/util'
 import { Project } from '@/prisma/generated/client'
 import { User } from 'better-auth'
 import { ChildProcess, exec, spawn } from 'node:child_process'
@@ -84,8 +84,8 @@ export class VscodeServerHandle {
     readonly owner: User,
     readonly project: Project,
     readonly projectDir: string,
-    /** `collab-server` UDS directory. */
-    readonly collabSocketDir: string,
+    /** `collab-server` working directory. */
+    readonly collabWorkDir: string,
   ) {}
 
   /** The `bwrap` process. Defined iff the process is running. */
@@ -173,7 +173,7 @@ export class VscodeServerHandle {
       await fs.mkdir(vscServerDataDir, { recursive: true })
       await ensureMachineSettings(vscServerDataDir)
 
-      const sandboxProjectDir = `/workspace/${this.project.name}/`
+      const sandboxProjectDir = bwrapProjectDir(this.project.name)
       const overlayArgs = await this.buildOverlayArgs(sandboxProjectDir)
 
       const devArgs = isDevMode()
@@ -190,8 +190,8 @@ export class VscodeServerHandle {
         // prettier-ignore
         [
           ...BWRAP_ARGS,
-          '--ro-bind', getOpenVscodeServerDir(), '/workspace/.openvscode-server',
-          '--ro-bind', getElanDir(), '/workspace/.elan',
+          '--ro-bind', getOpenVscodeServerDir(), getOpenVscodeServerDir(),
+          '--ro-bind', getElanDir(), getElanDir(),
           // VSCode workspace configuration. Ephemeral, so not need to store on host.
           // The filename must be friendly: it shows up in VSC with (AFAICT) no way to override.
           '--ro-bind-data', '3', '/workspace/Projects.code-workspace',
@@ -201,12 +201,12 @@ export class VscodeServerHandle {
           // but users can still write files directly if needed.
           // Lake and other CLI tools do such writes.
           '--bind', this.projectDir, sandboxProjectDir,
-          '--bind', this.collabSocketDir, '/workspace/.sockets/collab-server',
-          '--bind', this.socketDir, '/workspace/.sockets/openvscode-server',
+          '--bind', this.collabWorkDir, '/workspace/.collab-server',
+          '--bind', this.socketDir, '/workspace/.openvscode-server',
           ...overlayArgs,
           '--setenv', 'HOME', '/workspace',
-          '--setenv', 'ELAN_HOME', '/workspace/.elan',
-          '--setenv', 'PATH', `/workspace/.elan/bin:/usr/local/bin:/usr/bin:/bin`,
+          '--setenv', 'ELAN_HOME', getElanDir(),
+          '--setenv', 'PATH', `${getElanDir()}/bin:/usr/local/bin:/usr/bin:/bin`,
           // FIXME: Git's "dubious ownership" check (CVE-2022-24765) rejects repos
           // owned by a different uid. The overlay mounts cause an ownership mismatch
           // that triggers this; safe.directory=* *should* be ok here since the sandbox
@@ -216,8 +216,8 @@ export class VscodeServerHandle {
           '--setenv', 'GIT_CONFIG_VALUE_0', '*',
           ...devArgs,
           '--',
-          '/workspace/.openvscode-server/bin/openvscode-server',
-          '--socket-path', `/workspace/.sockets/openvscode-server/${VSCODE_SOCKET_FILENAME}`,
+          path.join(getOpenVscodeServerDir(), 'bin', 'openvscode-server'),
+          '--socket-path', `/workspace/.openvscode-server/${VSCODE_SOCKET_FILENAME}`,
           '--without-connection-token',
           `--server-base-path=${this.vscodeIframePath}`,
           '--server-data-dir', '/workspace/.vscode-remote',

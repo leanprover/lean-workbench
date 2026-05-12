@@ -54,3 +54,10 @@ export const BWRAP_ARGS =
     '--new-session',
     '--clearenv',
   ]
+
+/** Where bwrap mounts the given project directory.
+ * We identify project files by absolute path,
+ * so this has to match across openvscode-server and collab-server bwraps. */
+export function bwrapProjectDir(projectName: string) {
+  return `/workspace/${projectName}/`
+}

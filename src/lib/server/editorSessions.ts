@@ -77,7 +77,7 @@ export class EditorSessionManager {
     if (!session) {
       const projectDir = path.join(getWorkspacesDir(), owner.name, project.id)
       const collabServer = this.findCollabServer(project, projectDir)
-      session = new VscodeServerHandle(viewer, owner, project, projectDir, collabServer.socketDir)
+      session = new VscodeServerHandle(viewer, owner, project, projectDir, collabServer.workDir)
       session.addDisposable(async () => {
         this.vscServers.set(
           project.id,
