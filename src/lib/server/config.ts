@@ -41,8 +41,16 @@ export function getOpenVscodeServerDir(): string {
   return process.env.OPENVSCODE_SERVER_DIR ?? '/app/openvscode-server'
 }
 
+export function getWorkbenchDir(): string {
+  return '/app/workbench'
+}
+
 export function getCollabServerDir(): string {
-  return '/app/workbench/collab-server'
+  return path.join(getWorkbenchDir(), 'collab-server')
+}
+
+export function getBetterSqlite3NodePath(): string {
+  return path.join(getWorkbenchDir(), 'node_modules', 'better-sqlite3', 'build', 'Release', 'better_sqlite3.node')
 }
 
 export function getNginxConfDir(): string {

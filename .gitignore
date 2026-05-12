@@ -16,7 +16,7 @@ node_modules/
 /out/
 
 # prisma
-*/prisma/generated
+**/prisma/generated
 
 # production
 /build

@@ -1,4 +1,4 @@
-import { getCollabServerDir } from '@/lib/server/config'
+import { getBetterSqlite3NodePath, getCollabServerDir } from '@/lib/server/config'
 import { BWRAP_ARGS } from '@/lib/server/util'
 import { Project } from '@/prisma/generated/client'
 import { ChildProcess, spawn } from 'node:child_process'
@@ -49,6 +49,9 @@ export class CollabServerHandle {
         await fs.rm(this.socketDir, { recursive: true, force: true })
       })
 
+      // We identify project files by absolute path
+      // so this has to match the path used in the openvscode-server bwrap.
+      const sandboxProjectDir = `/workspace/${this.project.name}/`
       const proc = spawn(
         'bwrap',
         // prettier-ignore
@@ -57,13 +60,16 @@ export class CollabServerHandle {
           // We don't need internet access.
           '--unshare-net',
           '--ro-bind', getCollabServerDir(), '/workspace/.collab-server',
+          // `better-sqlite3` needs a native library from the top-level `node_modules`.
+          '--ro-bind', getBetterSqlite3NodePath(), '/workspace/.better_sqlite3.node',
           '--bind', this.socketDir, '/workspace/.sockets/collab-server',
           // Mount project files as writable for the collaboration server.
-          '--bind', this.projectDir, '/workspace/project',
+          '--bind', this.projectDir, sandboxProjectDir,
           '/usr/bin/node',
-          '/workspace/.collab-server/server.ts',
+          '/workspace/.collab-server/dist/server.js',
           `/workspace/.sockets/collab-server/${COLLAB_SOCKET_FILENAME}`,
-          '/workspace/project',
+          sandboxProjectDir,
+          '/workspace/.better_sqlite3.node'
         ],
         { stdio: 'inherit' },
       )

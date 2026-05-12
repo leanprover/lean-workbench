@@ -1,0 +1,15 @@
+generator client {
+  provider = "prisma-client"
+  output   = "./generated"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Document {
+  path String @id
+  data Bytes
+
+  @@map("document")
+}

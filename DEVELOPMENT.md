@@ -25,13 +25,6 @@ Open `http://localhost:3000`. You'll see the setup page.
    takes 5--30 min on first run).
 3. When seeding finishes, you're redirected to the landing page.
 
-## Updating NPM packages
-
-Make sure to pass `--install-strategy=nested` to `npm install`.
-This ensures that `package-lock.json` places `node_modules` in package folders
-as opposed to hoisting them out to the root directory;
-we rely on this in the dev container.
-
 ## Makefile targets
 
 | Target | What it does |
