@@ -14,6 +14,7 @@ node_modules/
 # next.js
 /.next/
 /out/
+.docker-cache
 
 # prisma
 **/prisma/generated

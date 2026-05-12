@@ -46,6 +46,7 @@ dev: container-dev
 		'npm run watch' \
  		'$(DOCKER_RUN) -p 127.0.0.1:3000:3000 \
 			-p 127.0.0.1:9229:9229 \
+			-v $(CURDIR)/.docker-cache:/root/.cache \
 			-v $(CURDIR):/app/workbench:ro \
 			-v $(CURDIR)/vscode-workbench:/app/openvscode-server/extensions/leanprover.workbench-universal:ro \
 			$(IMAGE_NAME):$(IMAGE_DEV_TAG)'
