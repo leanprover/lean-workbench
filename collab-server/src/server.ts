@@ -28,7 +28,7 @@ const db = new PrismaClient({ adapter })
 await db.$executeRawUnsafe('CREATE TABLE IF NOT EXISTS document (path TEXT PRIMARY KEY NOT NULL, data BLOB NOT NULL)')
 
 // -- YJS FILE MANAGEMENT --
-// TODO: import vscode-workbench/util
+// TODO: use const imported from single-source-of-truth module
 const YTEXT_KEY = 'content'
 
 function checkedToDiskPath(documentName: string): string {
