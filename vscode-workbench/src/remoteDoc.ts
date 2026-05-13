@@ -6,7 +6,7 @@ import * as Y from 'yjs'
  * We refer to collaborative text buffers as 'docs', matching Yjs's `Y.Doc`.
  * Docs are addressed by file paths but exist in `collab-server`'s memory.
  * Docs can be open despite not having an underlying file
- * (e.g. when one person removes a file that others have open).
+ * (e.g. when one person removes a file that others still have open).
  * They are only written to the filesystem when users save. */
 export class RemoteDocManager implements vs.Disposable {
   /** absolute path ↦ remote doc connection */

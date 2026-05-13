@@ -1,7 +1,7 @@
 import vs from 'vscode'
 import * as Y from 'yjs'
 import { RemoteDocManager } from './remoteDoc'
-import { WORKBENCH_URI_SCHEME, YTEXT_KEY } from './util'
+import { YTEXT_KEY } from './util'
 
 export function registerTextDocumentBindings(
   ctx: vs.ExtensionContext,
@@ -10,8 +10,8 @@ export function registerTextDocumentBindings(
 ) {
   const bindings = new Map<string, Promise<YTextBinding>>()
   const onDidOpenTextDocument = (doc: vs.TextDocument) => {
+    if (doc.uri.scheme !== 'file') return
     console.log(`did open ${JSON.stringify(doc.uri)}`)
-    if (doc.uri.scheme !== WORKBENCH_URI_SCHEME) return
     const filePath = doc.uri.fsPath
     // TODO: can one path have multiple `TextDocument`s?
     if (bindings.has(filePath)) return
@@ -22,7 +22,7 @@ export function registerTextDocumentBindings(
     )
   }
   const onDidCloseTextDocument = async (doc: vs.TextDocument) => {
-    if (doc.uri.scheme !== WORKBENCH_URI_SCHEME) return
+    if (doc.uri.scheme !== 'file') return
     const filePath = doc.uri.fsPath
     const entry = bindings.get(filePath)
     if (!entry) return
@@ -32,7 +32,7 @@ export function registerTextDocumentBindings(
     })
   }
   const onDidChangeTextDocument = (e: vs.TextDocumentChangeEvent) => {
-    if (e.document.uri.scheme !== WORKBENCH_URI_SCHEME) return
+    if (e.document.uri.scheme !== 'file') return
     const filePath = e.document.uri.fsPath
     const entry = bindings.get(filePath)
     if (!entry) {
@@ -76,12 +76,16 @@ export class YTextBinding implements vs.Disposable {
 
   private disposables: { dispose(): unknown }[] = []
 
+  /** May only be constructed with a `Y.Doc` whose provider has already `synced` at least once. */
   constructor(
     readonly doc: vs.TextDocument,
     readonly remoteDoc: Y.Doc,
     private readonly log: vs.LogOutputChannel,
   ) {
     this.ytext = remoteDoc.getText(YTEXT_KEY)
+
+    // Overwrite with remote contents on startup.
+    this.enqueue(() => this.replaceWithRemote())
 
     const observer = (event: Y.YTextEvent, transaction: Y.Transaction) => {
       // Prevent bounceback (https://beta.yjs.dev/docs/api/transactions/#the-origin-concept).
@@ -136,6 +140,23 @@ export class YTextBinding implements vs.Disposable {
         edit.insert(this.doc.uri, this.doc.positionAt(offset), op.insert)
       }
     }
+    this.applyingRemote = true
+    try {
+      await vs.workspace.applyEdit(edit)
+    } finally {
+      this.applyingRemote = false
+    }
+  }
+
+  /** Ensure that buffer contents match the Y.Doc text
+   * by replacing the entire buffer if necessary.
+   * Avoids making an edit when contents already match. */
+  async replaceWithRemote() {
+    const ytextStr = this.ytext.toString()
+    if (ytextStr === this.doc.getText()) return
+    const edit = new vs.WorkspaceEdit()
+    const fullRange = new vs.Range(new vs.Position(0, 0), this.doc.positionAt(this.doc.getText().length))
+    edit.replace(this.doc.uri, fullRange, ytextStr)
     this.applyingRemote = true
     try {
       await vs.workspace.applyEdit(edit)

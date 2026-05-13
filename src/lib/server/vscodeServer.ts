@@ -15,7 +15,6 @@ import { ChildProcess, exec, spawn } from 'node:child_process'
 import fs from 'node:fs/promises'
 import { request } from 'node:http'
 import path from 'node:path'
-import type Stream from 'node:stream'
 import { promisify } from 'node:util'
 
 /** Create a VSCode machine settings file if one doesn't exist. */
@@ -32,6 +31,19 @@ async function ensureMachineSettings(serverDataDir: string): Promise<void> {
         {
           // Start with a blank tab
           'workbench.startupEditor': 'none',
+          // Crucial for collaborative editing.
+          // All users share a writable mount of the project.
+          // When two users try to save to disk around the same time
+          // (manually, or because they have auto-save on), a race occurs.
+          // U0 saves and updates the on-disk mtime.
+          // U1 attempts to save, but VSCode detects that the mtime is after U1's last save,
+          // and produces an error message.
+          // This setting instructs VSCode to ignore the mtime and just write.
+          // There is an integrity issue:
+          // if U3 uses non-collaborative tooling (e.g. a CLI tool on the terminal) to change the file in the meantime,
+          // those edits will be lost.
+          // FIXME: inform users about this risk, and attempt detection in collab-server.
+          'files.saveConflictResolution': 'overwriteFileOnDisk',
         },
         null,
         2,
@@ -192,9 +204,6 @@ export class VscodeServerHandle {
           ...BWRAP_ARGS,
           '--ro-bind', getOpenVscodeServerDir(), getOpenVscodeServerDir(),
           '--ro-bind', getElanDir(), getElanDir(),
-          // VSCode workspace configuration. Ephemeral, so not need to store on host.
-          // The filename must be friendly: it shows up in VSC with (AFAICT) no way to override.
-          '--ro-bind-data', '3', '/workspace/Projects.code-workspace',
           '--bind', vscServerDataDir, '/workspace/.vscode-remote',
           // Writes are mediated through the collaboration server,
           // which `WorkbenchFileSystemProvider` in our extension connects to,
@@ -222,7 +231,7 @@ export class VscodeServerHandle {
           `--server-base-path=${this.vscodeIframePath}`,
           '--server-data-dir', '/workspace/.vscode-remote',
           // TODO: make a per-project user-data-dir to support concurrent editing sessions.
-          '--default-workspace', '/workspace/Projects.code-workspace',
+          '--default-folder', sandboxProjectDir,
         ],
         // FIXME: pipe into a log file?
         // stdin, stdout, stderr, ro-bind-data
@@ -232,8 +241,6 @@ export class VscodeServerHandle {
         console.error(`error in ${this.description}: ${String(err)}`)
       })
       this.proc = proc
-
-      const workspaceConfigPipe = proc.stdio[3] as Stream.Writable
 
       await Promise.race([
         // Reject if errors occur before setup is finished.
@@ -245,22 +252,9 @@ export class VscodeServerHandle {
           proc.once('error', err => {
             reject(new Error(`${this.description} failed to start: ${String(err)}`))
           })
-          workspaceConfigPipe.once('error', err => {
-            reject(new Error(`${this.description} failed to write workspace file: ${String(err)}`))
-          })
         }),
         // Wait for the server to start listening and for Nginx to be ready.
         (async () => {
-          workspaceConfigPipe.end(
-            JSON.stringify({
-              folders: [
-                {
-                  name: this.project.name,
-                  uri: `wrkbnch:${sandboxProjectDir}`, // TODO: import vscode-workbench/util
-                },
-              ],
-            }),
-          )
           await this.writeNginxUserRoute()
           this.disposables.defer(async () => {
             await fs.rm(this.nginxUserRoutePath, { force: true })

@@ -1,14 +1,10 @@
 // FIXME: use same consts in workbench-app/collab-server for single source of truth.
 
-/** URI scheme for Lean Workbench project file paths.
- * We use absolute paths. */
-export const WORKBENCH_URI_SCHEME = 'wrkbnch'
-
-/** VSCode workspace file path in the VSCode bwrap. */
-export const BWRAP_WORKSPACE_FILE_PATH = '/workspace/Projects.code-workspace'
+/** Working directory of collab-server in the VSCode and collab-server bwraps. */
+export const BWRAP_COLLAB_SERVER_DIR = '/workspace/.collab-server'
 
 /** Collab-server socket path in the VSCode and collab-server bwraps. */
-export const BWRAP_COLLAB_SOCK_PATH = '/workspace/.collab-server/collab.sock'
+export const BWRAP_COLLAB_SOCK_PATH = `${BWRAP_COLLAB_SERVER_DIR}/collab.sock`
 
 /** We keep a unique Y.Doc per file.
  * This is the Y.Doc key under which the text content lives. */

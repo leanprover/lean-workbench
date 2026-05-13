@@ -39,15 +39,6 @@ function checkedToDiskPath(documentName: string): string {
   return file
 }
 
-/** Stateless messages sent from clients. */
-type ClientMessage = { action: 'save' }
-
-function parseClientMessage(payload: string): ClientMessage {
-  const msg = JSON.parse(payload)
-  if (msg && typeof msg === 'object' && msg.action === 'save') return { action: 'save' }
-  throw new Error(`unexpected stateless payload: ${payload}`)
-}
-
 // -- HTTPS/WS SERVER --
 const server = new Server({
   extensions: [
@@ -78,14 +69,6 @@ const server = new Server({
       },
     }),
   ],
-  async onStateless({ documentName, document, payload }) {
-    const msg = parseClientMessage(payload)
-    if (msg.action === 'save') {
-      const file = checkedToDiskPath(documentName)
-      const ytext = document.getText(YTEXT_KEY)
-      await fs.writeFile(file, ytext.toString(), 'utf-8')
-    }
-  },
 })
 
 // `server.listen` exposes a port. We use a socket which needs direct `httpServer` access.
