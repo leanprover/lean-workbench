@@ -71,6 +71,11 @@ const server = new Server({
   ],
 })
 
+// TODO: listen for fs events to avoid lost writes.
+// VSCs could inform the server about which saves came from them,
+// as opposed to other processes (e.g. CLI tools).
+// Non-VSC edits could be applied to the Y.Doc as whole-file replacements.
+
 // `server.listen` exposes a port. We use a socket which needs direct `httpServer` access.
 server.httpServer.listen(socketPath, () => {
   // Cosmetic monkey-patches to display the correct start screen. Server works regardless of these.

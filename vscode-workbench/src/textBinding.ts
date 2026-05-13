@@ -1,70 +1,99 @@
+import path from 'node:path'
 import vs from 'vscode'
 import * as Y from 'yjs'
 import { RemoteDocManager } from './remoteDoc'
 import { YTEXT_KEY } from './util'
 
-export function registerTextDocumentBindings(
-  ctx: vs.ExtensionContext,
-  docs: RemoteDocManager,
-  log: vs.LogOutputChannel,
-) {
-  const bindings = new Map<string, Promise<YTextBinding>>()
-  const onDidOpenTextDocument = (doc: vs.TextDocument) => {
-    if (doc.uri.scheme !== 'file') return
-    console.log(`did open ${JSON.stringify(doc.uri)}`)
-    const filePath = doc.uri.fsPath
-    // TODO: can one path have multiple `TextDocument`s?
-    if (bindings.has(filePath)) return
-    const remoteDoc = docs.ensureDoc(filePath)
-    bindings.set(
-      filePath,
-      remoteDoc.then(rd => new YTextBinding(doc, rd, log)),
+/** Maintains a {@link YTextBinding} binding for every open {@link vs.TextDocument}
+ * whose path lies within one of the syncable directories. */
+export class YTextBindingManager implements vs.Disposable {
+  private bindings = new Map<string, Promise<YTextBinding | undefined>>()
+  private disposables: vs.Disposable[] = []
+
+  constructor(
+    private readonly docs: RemoteDocManager,
+    /** Directories to sync. Files not contained in any of these are not synced. */
+    private syncDirs: string[],
+    private readonly log: vs.LogOutputChannel,
+  ) {
+    this.disposables.push(
+      vs.workspace.onDidOpenTextDocument(doc => this.onDidOpenTextDocument(doc)),
+      vs.workspace.onDidCloseTextDocument(doc => this.onDidCloseTextDocument(doc)),
+      vs.workspace.onDidChangeTextDocument(e => this.onDidChangeTextDocument(e)),
     )
+    // Bind already-open buffers
+    for (const doc of vs.workspace.textDocuments) this.onDidOpenTextDocument(doc)
   }
-  const onDidCloseTextDocument = async (doc: vs.TextDocument) => {
-    if (doc.uri.scheme !== 'file') return
-    const filePath = doc.uri.fsPath
-    const entry = bindings.get(filePath)
-    if (!entry) return
-    bindings.delete(filePath)
-    void entry.then(hp => {
-      hp.dispose()
+
+  /** Replace the set of syncable directories. */
+  updateSyncableDirs(syncDirs: string[]) {
+    this.syncDirs = syncDirs
+    // Tear down bindings no longer in any syncable dir
+    for (const [filePath, entry] of this.bindings) {
+      if (this.shouldSyncPath(filePath)) continue
+      this.bindings.delete(filePath)
+      void entry.then(hp => hp?.dispose())
+    }
+    // Rebind already-open buffers in case they are now syncable
+    // (no-op if already bound)
+    for (const doc of vs.workspace.textDocuments) this.onDidOpenTextDocument(doc)
+  }
+
+  private shouldSyncPath(filePath: string): boolean {
+    return this.syncDirs.some(d => {
+      const rel = path.relative(d, filePath)
+      return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel))
     })
   }
-  const onDidChangeTextDocument = (e: vs.TextDocumentChangeEvent) => {
+
+  private onDidOpenTextDocument(doc: vs.TextDocument) {
+    if (doc.uri.scheme !== 'file') return
+    const filePath = doc.uri.fsPath
+    if (!this.shouldSyncPath(filePath)) return
+    // TODO: can one path have multiple `TextDocument`s?
+    if (this.bindings.has(filePath)) return
+    const remoteDoc = this.docs.ensureDoc(filePath)
+    const promise = remoteDoc
+      .then(rd => new YTextBinding(doc, rd, this.log))
+      .catch(err => {
+        this.log.error(`[onDidOpenTextDocument] failed to initialize Yjs binding for '${filePath}': ${String(err)}`)
+        if (this.bindings.get(filePath) === promise) this.bindings.delete(filePath)
+        return undefined
+      })
+    this.bindings.set(filePath, promise)
+  }
+
+  private onDidCloseTextDocument(doc: vs.TextDocument) {
+    if (doc.uri.scheme !== 'file') return
+    const filePath = doc.uri.fsPath
+    const entry = this.bindings.get(filePath)
+    if (!entry) return
+    this.bindings.delete(filePath)
+    void entry.then(hp => hp?.dispose())
+  }
+
+  private onDidChangeTextDocument(e: vs.TextDocumentChangeEvent) {
     if (e.document.uri.scheme !== 'file') return
     const filePath = e.document.uri.fsPath
-    const entry = bindings.get(filePath)
+    const entry = this.bindings.get(filePath)
     if (!entry) {
-      log.warn(`[onDidChangeTextDocument] Dropped edit on '${filePath}', missing YTextBinding`)
+      if (this.shouldSyncPath(filePath)) {
+        this.log.warn(`[onDidChangeTextDocument] dropped edit on '${filePath}', missing YTextBinding`)
+      }
       return
     }
-    entry.then(hp => {
-      hp.onLocalChange(e)
-    })
+    void entry.then(hp => hp?.onLocalChange(e))
   }
-  ctx.subscriptions.push(
-    vs.workspace.onDidOpenTextDocument(onDidOpenTextDocument),
-    vs.workspace.onDidCloseTextDocument(onDidCloseTextDocument),
-    vs.workspace.onDidChangeTextDocument(onDidChangeTextDocument),
-    {
-      dispose() {
-        for (const b of bindings.values()) {
-          b.then(hp => {
-            hp.dispose()
-          })
-        }
-        bindings.clear()
-      },
-    },
-  )
-  // Bind already-open buffers
-  for (const doc of vs.workspace.textDocuments) onDidOpenTextDocument(doc)
 
-  return docs
+  dispose() {
+    for (const d of this.disposables) d.dispose()
+    this.disposables = []
+    for (const b of this.bindings.values()) void b.then(hp => hp?.dispose())
+    this.bindings.clear()
+  }
 }
 
-/** Bidirectional binding between a `vs.TextDocument` and a `Y.Doc`. */
+/** Bidirectional binding between a {@link vs.TextDocument} and a {@link Y.Doc}. */
 export class YTextBinding implements vs.Disposable {
   private ytext: Y.Text
   /** Used to prevent `applyEdit` bounceback when applying remote changes;

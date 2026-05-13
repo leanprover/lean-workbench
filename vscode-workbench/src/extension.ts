@@ -3,7 +3,7 @@ import fs from 'node:fs/promises'
 import vs from 'vscode'
 import WebSocket from 'ws'
 import { RemoteDocManager } from './remoteDoc'
-import { registerTextDocumentBindings } from './textBinding'
+import { YTextBindingManager } from './textBinding'
 import { BWRAP_COLLAB_SERVER_DIR, BWRAP_COLLAB_SOCK_PATH } from './util'
 
 /** Ensure we are in the expected Lean Workbench environment.
@@ -73,6 +73,10 @@ async function connectToCollabServer(
   return undefined
 }
 
+function syncableDirs(): string[] {
+  return (vs.workspace.workspaceFolders ?? []).filter(f => f.uri.scheme === 'file').map(f => f.uri.fsPath)
+}
+
 export async function activate(ctx: vs.ExtensionContext) {
   const log = vs.window.createOutputChannel('Lean 4 - Workbench', { log: true })
 
@@ -82,6 +86,14 @@ export async function activate(ctx: vs.ExtensionContext) {
   if (!collabSock) return
 
   const docs = new RemoteDocManager(collabSock, log)
-  registerTextDocumentBindings(ctx, docs, log)
+
+  // We apply collaborative syncing to open folders (usually just the project folder) only.
+  // User-specific folders such as /workspace/.vscode-remote are not synced
+  // (though they would be if someone opens /workspace - TODO better UX).
+  const bindings = new YTextBindingManager(docs, syncableDirs(), log)
+  ctx.subscriptions.push(
+    bindings,
+    vs.workspace.onDidChangeWorkspaceFolders(() => bindings.updateSyncableDirs(syncableDirs())),
+  )
   log.debug('Extension activated')
 }
