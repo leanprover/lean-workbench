@@ -1,5 +1,7 @@
+import type { Project } from '@/prisma/generated/client'
 import fs from 'node:fs/promises'
 import 'server-only'
+import type { User } from './auth'
 
 export interface ProcessInfo {
   pid: number
@@ -60,4 +62,9 @@ export const BWRAP_ARGS =
  * so this has to match across openvscode-server and collab-server bwraps. */
 export function bwrapProjectDir(projectName: string) {
   return `/workspace/${projectName}/`
+}
+
+export function canAccessProject(user: User, project: Project) {
+  const isOwner = user.id === project.userId
+  return isOwner || project.isPublic
 }
