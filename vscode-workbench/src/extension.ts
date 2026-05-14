@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import vs from 'vscode'
 import { connectToCollabServer } from './collabServer'
+import { RemoteSelectionDecorator } from './remoteSelections'
 import { YTextBindingManager } from './textBinding'
 import { BWRAP_METADATA_PATH, WorkspaceMetadata, zWorkspaceMetadata } from './util'
 
@@ -45,6 +46,7 @@ export async function activate(ctx: vs.ExtensionContext) {
   ctx.subscriptions.push(
     bindings,
     vs.workspace.onDidChangeWorkspaceFolders(() => bindings.updateSyncableDirs(syncableDirs())),
+    new RemoteSelectionDecorator(collabServer.awareness),
   )
   log.debug('Extension activated')
 }

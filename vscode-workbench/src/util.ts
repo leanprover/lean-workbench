@@ -27,6 +27,32 @@ export const BWRAP_COLLAB_SOCK_PATH = `${BWRAP_COLLAB_SERVER_DIR}/collab.sock`
  * This is the Y.Doc key under which the text content lives. */
 export const YTEXT_KEY = 'content'
 
+export interface Position {
+  line: number
+  character: number
+}
+export interface Selection {
+  anchor: Position
+  active: Position
+}
+export interface User {
+  name: string
+  image?: string | null
+}
+
+export const AWARENESS_USER_KEY = 'user'
+export const AWARENESS_SELECTION_KEY = 'selection'
+
+export interface AwarenessSelection {
+  filePath: string
+  selections: Selection[]
+}
+
+export interface AwarenessState {
+  [AWARENESS_USER_KEY]?: User
+  [AWARENESS_SELECTION_KEY]?: AwarenessSelection
+}
+
 export async function waitForPath(p: string, timeoutMs: number): Promise<boolean> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {

@@ -3,7 +3,7 @@ import path from 'node:path'
 import vs from 'vscode'
 import * as Y from 'yjs'
 import { CollabServerConnection } from './collabServer'
-import { YTEXT_KEY } from './util'
+import { AWARENESS_SELECTION_KEY, AwarenessSelection, YTEXT_KEY } from './util'
 
 /** Maintains a {@link YTextBinding} binding for every open {@link vs.TextDocument}
  * whose path lies within one of the syncable directories. */
@@ -177,10 +177,14 @@ export class YTextBinding implements vs.Disposable {
 
   onDidChangeTextEditorSelection(e: vs.TextEditorSelectionChangeEvent) {
     if (e.textEditor.document !== this.doc) return
-    this.collabServer.awarenessProvider.setAwarenessField('selection', {
+    this.collabServer.awareness.setLocalStateField(AWARENESS_SELECTION_KEY, {
       filePath: this.doc.uri.fsPath,
-      selections: e.selections,
-    })
+      // FIXME: use LSP types
+      selections: e.selections.map(s => ({
+        anchor: { line: s.anchor.line, character: s.anchor.character },
+        active: { line: s.active.line, character: s.active.character },
+      })),
+    } satisfies AwarenessSelection)
   }
 
   /** Ensure that buffer contents match the {@link Y.Doc} text

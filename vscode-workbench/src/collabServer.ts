@@ -1,17 +1,22 @@
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider'
 import vs from 'vscode'
 import WebSocket from 'ws'
-import { BWRAP_COLLAB_SOCK_PATH, waitForPath, WorkspaceMetadata } from './util'
+import type { Awareness } from 'y-protocols/awareness'
+import { AWARENESS_USER_KEY, BWRAP_COLLAB_SOCK_PATH, User, waitForPath, WorkspaceMetadata } from './util'
 
 export class CollabServerConnection implements vs.Disposable {
   constructor(
     readonly collabSock: HocuspocusProviderWebsocket,
-    readonly awarenessProvider: HocuspocusProvider,
+    private readonly awarenessProvider: HocuspocusProvider,
   ) {}
 
   dispose() {
     this.awarenessProvider.destroy()
     this.collabSock.destroy()
+  }
+
+  get awareness(): Awareness {
+    return this.awarenessProvider.awareness!
   }
 }
 
@@ -31,10 +36,10 @@ export async function connectToCollabServer(
       name: '<awareness>',
     })
     awarenessProvider.attach()
-    awarenessProvider.setAwarenessField('user', {
+    awarenessProvider.setAwarenessField(AWARENESS_USER_KEY, {
       name: mdata.viewer.name,
       image: mdata.viewer.image,
-    })
+    } satisfies User)
     return new CollabServerConnection(collabSock, awarenessProvider)
   }
 
