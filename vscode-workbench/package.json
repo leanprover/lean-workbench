@@ -38,6 +38,7 @@
   },
   "dependencies": {
     "@hocuspocus/provider": "^4.0",
-    "ws": "^8.20.0"
+    "ws": "^8.20",
+    "zod": "^4.4"
   }
 }

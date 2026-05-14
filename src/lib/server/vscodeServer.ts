@@ -15,6 +15,7 @@ import { ChildProcess, exec, spawn } from 'node:child_process'
 import fs from 'node:fs/promises'
 import { request } from 'node:http'
 import path from 'node:path'
+import type Stream from 'node:stream'
 import { promisify } from 'node:util'
 
 /** Create a VSCode machine settings file if one doesn't exist. */
@@ -212,6 +213,7 @@ export class VscodeServerHandle {
           '--bind', this.projectDir, sandboxProjectDir,
           '--bind', this.collabWorkDir, '/workspace/.collab-server',
           '--bind', this.socketDir, '/workspace/.openvscode-server',
+          '--ro-bind-data', '3', '/workspace/.lean-workbench.json',
           ...overlayArgs,
           '--setenv', 'HOME', '/workspace',
           '--setenv', 'ELAN_HOME', getElanDir(),
@@ -242,6 +244,8 @@ export class VscodeServerHandle {
       })
       this.proc = proc
 
+      const workspaceMdataPipe = proc.stdio[3] as Stream.Writable
+
       await Promise.race([
         // Reject if errors occur before setup is finished.
         new Promise<void>((_, reject) => {
@@ -252,9 +256,20 @@ export class VscodeServerHandle {
           proc.once('error', err => {
             reject(new Error(`${this.description} failed to start: ${String(err)}`))
           })
+          workspaceMdataPipe.once('error', err => {
+            reject(new Error(`${this.description} failed to write workspace metadata: ${String(err)}`))
+          })
         }),
         // Wait for the server to start listening and for Nginx to be ready.
         (async () => {
+          workspaceMdataPipe.end(
+            JSON.stringify({
+              viewer: {
+                name: this.viewer.name,
+                image: this.viewer.image,
+              },
+            }),
+          )
           await this.writeNginxUserRoute()
           this.disposables.defer(async () => {
             await fs.rm(this.nginxUserRoutePath, { force: true })

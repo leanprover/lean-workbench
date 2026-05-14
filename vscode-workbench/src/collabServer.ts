@@ -1,7 +1,7 @@
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider'
 import vs from 'vscode'
 import WebSocket from 'ws'
-import { BWRAP_COLLAB_SOCK_PATH, waitForPath } from './util'
+import { BWRAP_COLLAB_SOCK_PATH, waitForPath, WorkspaceMetadata } from './util'
 
 export class CollabServerConnection implements vs.Disposable {
   constructor(
@@ -15,22 +15,26 @@ export class CollabServerConnection implements vs.Disposable {
   }
 }
 
-export async function connectToCollabServer(log: vs.LogOutputChannel): Promise<CollabServerConnection | undefined> {
+export async function connectToCollabServer(
+  log: vs.LogOutputChannel,
+  mdata: WorkspaceMetadata,
+): Promise<CollabServerConnection | undefined> {
   const mk = () => {
     const collabSock = new HocuspocusProviderWebsocket({
       url: `ws+unix:${BWRAP_COLLAB_SOCK_PATH}:/`,
       // Must use the `ws` package for https://github.com/websockets/ws/blob/master/doc/ws.md#ipc-connections.
       WebSocketPolyfill: WebSocket,
     })
+    log.debug('Opened collab-server socket')
     const awarenessProvider = new HocuspocusProvider({
       websocketProvider: collabSock,
       name: '<awareness>',
     })
     awarenessProvider.attach()
     awarenessProvider.setAwarenessField('user', {
-      name: 'TODO name',
+      name: mdata.viewer.name,
+      image: mdata.viewer.image,
     })
-    log.debug('Opened collab-server socket')
     return new CollabServerConnection(collabSock, awarenessProvider)
   }
 

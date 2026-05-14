@@ -1,6 +1,21 @@
 import fs from 'node:fs/promises'
+import { z } from 'zod'
 
 // FIXME: use same consts in workbench-app/collab-server for single source of truth.
+
+/** Path to workspace metadata file in VSCode bwraps. */
+export const BWRAP_METADATA_PATH = '/workspace/.lean-workbench.json'
+
+export const zWorkspaceMetadata = z.object({
+  /** Name of the user viewing/editing the project. */
+  viewer: z.object({
+    name: z.string(),
+    image: z.nullish(z.string()),
+  }),
+})
+
+/** Metadata of a Lean Workbench project workspace. */
+export type WorkspaceMetadata = z.infer<typeof zWorkspaceMetadata>
 
 /** Working directory of collab-server in the VSCode and collab-server bwraps. */
 export const BWRAP_COLLAB_SERVER_DIR = '/workspace/.collab-server'
