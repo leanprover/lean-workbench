@@ -67,6 +67,12 @@ export class EditorSessionManager {
     return server
   }
 
+  /** Return the `collab-server` handle for `projectId`, if one is registered.
+   * Note that the server may not be running yet. */
+  getCollabServer(projectId: string): CollabServerHandle | undefined {
+    return this.collabServers.get(projectId)
+  }
+
   /** Starts a session for `viewer` to read/edit `project` owned by `owner`,
    * reusing a current session if one already exists.
    * Assumes that `viewer` has permissions to view `project`.

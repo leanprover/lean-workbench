@@ -18,6 +18,8 @@ export class CollabServerHandle {
   readonly uuid = crypto.randomUUID()
   /** Directory in which `collab-server` places its files. */
   readonly workDir: string = `/tmp/collab-server-${this.uuid}/`
+  /** Path to the `collab-server` UDS file. */
+  readonly socketPath: string = path.join(this.workDir, COLLAB_SOCKET_FILENAME)
 
   constructor(
     /** Project that this server manages. */

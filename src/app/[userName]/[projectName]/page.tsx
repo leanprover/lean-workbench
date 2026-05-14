@@ -1,8 +1,10 @@
+import { SetNavbarExtra } from '@/app/NavbarExtra'
 import { requireAuth } from '@/lib/server/actions'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
 import { canAccessProject } from '@/lib/server/util'
 import z from 'zod'
+import CollabAwareness from './CollabAwareness'
 
 const zParams = z.object({
   userName: z.string().min(1),
@@ -62,5 +64,12 @@ export default async function EditorSession({ params: params_ }: { params: Promi
     return <Error msg={String(err)} />
   }
 
-  return <iframe id='editor-frame' src={iframeSrc} className='editor-session-iframe' />
+  return (
+    <>
+      <SetNavbarExtra>
+        <CollabAwareness viewerName={viewer.name} projectId={project.id} />
+      </SetNavbarExtra>
+      <iframe id='editor-frame' src={iframeSrc} className='editor-session-iframe' />
+    </>
+  )
 }
