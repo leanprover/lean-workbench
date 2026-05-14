@@ -162,7 +162,6 @@ export class YTextBinding implements vs.Disposable {
   }
 
   onLocalChange(e: vs.TextDocumentChangeEvent): void {
-    console.log('local change', JSON.stringify(e))
     if (this.applyingRemote || !this.initialSyncDone) return
     if (e.document !== this.doc) return
     if (e.contentChanges.length === 0) return
@@ -177,7 +176,11 @@ export class YTextBinding implements vs.Disposable {
   }
 
   onDidChangeTextEditorSelection(e: vs.TextEditorSelectionChangeEvent) {
-    console.log(JSON.stringify(e))
+    if (e.textEditor.document !== this.doc) return
+    this.collabServer.awarenessProvider.setAwarenessField('selection', {
+      filePath: this.doc.uri.fsPath,
+      selections: e.selections,
+    })
   }
 
   /** Ensure that buffer contents match the {@link Y.Doc} text
