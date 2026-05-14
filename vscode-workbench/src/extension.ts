@@ -1,10 +1,8 @@
-import { HocuspocusProviderWebsocket } from '@hocuspocus/provider'
 import fs from 'node:fs/promises'
 import vs from 'vscode'
-import WebSocket from 'ws'
-import { RemoteDocManager } from './remoteDoc'
+import { connectToCollabServer } from './collabServer'
 import { YTextBindingManager } from './textBinding'
-import { BWRAP_COLLAB_SERVER_DIR, BWRAP_COLLAB_SOCK_PATH } from './util'
+import { BWRAP_COLLAB_SERVER_DIR } from './util'
 
 /** Ensure we are in the expected Lean Workbench environment.
  * Return `false` if we are not,
@@ -24,55 +22,6 @@ async function ensureWorkbenchEnv(log: vs.LogOutputChannel): Promise<boolean> {
   return true
 }
 
-async function waitForPath(p: string, timeoutMs: number): Promise<boolean> {
-  const deadline = Date.now() + timeoutMs
-  while (Date.now() < deadline) {
-    try {
-      await fs.access(p)
-      return true
-    } catch {}
-    await new Promise(r => setTimeout(r, 200))
-  }
-  return false
-}
-
-async function connectToCollabServer(
-  ctx: vs.ExtensionContext,
-  log: vs.LogOutputChannel,
-): Promise<HocuspocusProviderWebsocket | undefined> {
-  const mk = () => {
-    const collabSock = new HocuspocusProviderWebsocket({
-      url: `ws+unix:${BWRAP_COLLAB_SOCK_PATH}:/`,
-      // Must use the `ws` package for https://github.com/websockets/ws/blob/master/doc/ws.md#ipc-connections.
-      WebSocketPolyfill: WebSocket,
-    })
-    ctx.subscriptions.push({
-      dispose() {
-        collabSock.destroy()
-      },
-    })
-    log.debug('Opened collab-server socket')
-    return collabSock
-  }
-
-  log.debug('Waiting for collab-server socket..')
-  if (await waitForPath(BWRAP_COLLAB_SOCK_PATH, 5_000)) return mk()
-  const action = 'Reload window'
-  void vs.window
-    .showErrorMessage(
-      'Collaboration server is not available - Lean Workbench will not function correctly.',
-      { modal: true },
-      action,
-    )
-    .then(async s => {
-      if (s === action) {
-        await vs.commands.executeCommand('workbench.action.reloadWindow')
-      }
-    })
-
-  return undefined
-}
-
 function syncableDirs(): string[] {
   return (vs.workspace.workspaceFolders ?? []).filter(f => f.uri.scheme === 'file').map(f => f.uri.fsPath)
 }
@@ -82,15 +31,14 @@ export async function activate(ctx: vs.ExtensionContext) {
 
   if (!(await ensureWorkbenchEnv(log))) return
 
-  const collabSock = await connectToCollabServer(ctx, log)
-  if (!collabSock) return
-
-  const docs = new RemoteDocManager(collabSock, log)
+  const collabServer = await connectToCollabServer(log)
+  if (!collabServer) return
+  ctx.subscriptions.push(collabServer)
 
   // We apply collaborative syncing to open folders (usually just the project folder) only.
   // User-specific folders such as /workspace/.vscode-remote are not synced
   // (though they would be if someone opens /workspace - TODO better UX).
-  const bindings = new YTextBindingManager(docs, syncableDirs(), log)
+  const bindings = new YTextBindingManager(collabServer, syncableDirs(), log)
   ctx.subscriptions.push(
     bindings,
     vs.workspace.onDidChangeWorkspaceFolders(() => bindings.updateSyncableDirs(syncableDirs())),

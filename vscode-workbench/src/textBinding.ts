@@ -1,17 +1,18 @@
+import { HocuspocusProvider } from '@hocuspocus/provider'
 import path from 'node:path'
 import vs from 'vscode'
 import * as Y from 'yjs'
-import { RemoteDocManager } from './remoteDoc'
+import { CollabServerConnection } from './collabServer'
 import { YTEXT_KEY } from './util'
 
 /** Maintains a {@link YTextBinding} binding for every open {@link vs.TextDocument}
  * whose path lies within one of the syncable directories. */
 export class YTextBindingManager implements vs.Disposable {
-  private bindings = new Map<string, Promise<YTextBinding | undefined>>()
+  private bindings = new Map<string, YTextBinding>()
   private disposables: vs.Disposable[] = []
 
   constructor(
-    private readonly docs: RemoteDocManager,
+    private readonly collabServer: CollabServerConnection,
     /** Directories to sync. Files not contained in any of these are not synced. */
     private syncDirs: string[],
     private readonly log: vs.LogOutputChannel,
@@ -20,6 +21,7 @@ export class YTextBindingManager implements vs.Disposable {
       vs.workspace.onDidOpenTextDocument(doc => this.onDidOpenTextDocument(doc)),
       vs.workspace.onDidCloseTextDocument(doc => this.onDidCloseTextDocument(doc)),
       vs.workspace.onDidChangeTextDocument(e => this.onDidChangeTextDocument(e)),
+      vs.window.onDidChangeTextEditorSelection(e => this.onDidChangeTextEditorSelection(e)),
     )
     // Bind already-open buffers
     for (const doc of vs.workspace.textDocuments) this.onDidOpenTextDocument(doc)
@@ -29,10 +31,10 @@ export class YTextBindingManager implements vs.Disposable {
   updateSyncableDirs(syncDirs: string[]) {
     this.syncDirs = syncDirs
     // Tear down bindings no longer in any syncable dir
-    for (const [filePath, entry] of this.bindings) {
+    for (const [filePath, binding] of this.bindings) {
       if (this.shouldSyncPath(filePath)) continue
       this.bindings.delete(filePath)
-      void entry.then(hp => hp?.dispose())
+      binding.dispose()
     }
     // Rebind already-open buffers in case they are now syncable
     // (no-op if already bound)
@@ -52,73 +54,83 @@ export class YTextBindingManager implements vs.Disposable {
     if (!this.shouldSyncPath(filePath)) return
     // TODO: can one path have multiple `TextDocument`s?
     if (this.bindings.has(filePath)) return
-    const remoteDoc = this.docs.ensureDoc(filePath)
-    const promise = remoteDoc
-      .then(rd => new YTextBinding(doc, rd, this.log))
-      .catch(err => {
-        this.log.error(`[onDidOpenTextDocument] failed to initialize Yjs binding for '${filePath}': ${String(err)}`)
-        if (this.bindings.get(filePath) === promise) this.bindings.delete(filePath)
-        return undefined
-      })
-    this.bindings.set(filePath, promise)
+    this.bindings.set(filePath, new YTextBinding(doc, this.collabServer, this.log))
   }
 
   private onDidCloseTextDocument(doc: vs.TextDocument) {
     if (doc.uri.scheme !== 'file') return
     const filePath = doc.uri.fsPath
-    const entry = this.bindings.get(filePath)
-    if (!entry) return
+    const binding = this.bindings.get(filePath)
+    if (!binding) return
     this.bindings.delete(filePath)
-    void entry.then(hp => hp?.dispose())
+    binding.dispose()
   }
 
   private onDidChangeTextDocument(e: vs.TextDocumentChangeEvent) {
     if (e.document.uri.scheme !== 'file') return
     const filePath = e.document.uri.fsPath
-    const entry = this.bindings.get(filePath)
-    if (!entry) {
+    const binding = this.bindings.get(filePath)
+    if (!binding) {
       if (this.shouldSyncPath(filePath)) {
         this.log.warn(`[onDidChangeTextDocument] dropped edit on '${filePath}', missing YTextBinding`)
       }
       return
     }
-    void entry.then(hp => hp?.onLocalChange(e))
+    binding.onLocalChange(e)
+  }
+
+  private onDidChangeTextEditorSelection(e: vs.TextEditorSelectionChangeEvent) {
+    if (e.textEditor.document.uri.scheme !== 'file') return
+    const filePath = e.textEditor.document.uri.fsPath
+    const binding = this.bindings.get(filePath)
+    if (!binding) return
+    binding.onDidChangeTextEditorSelection(e)
   }
 
   dispose() {
     for (const d of this.disposables) d.dispose()
     this.disposables = []
-    for (const b of this.bindings.values()) void b.then(hp => hp?.dispose())
+    for (const b of this.bindings.values()) b.dispose()
     this.bindings.clear()
   }
 }
 
-/** Bidirectional binding between a {@link vs.TextDocument} and a {@link Y.Doc}. */
+/** Bidirectional binding between a {@link vs.TextDocument}
+ * and the {@link Y.Text} of a Hocuspocus document. */
 export class YTextBinding implements vs.Disposable {
   private ytext: Y.Text
   /** Used to prevent `applyEdit` bounceback when applying remote changes;
    * when set, local `onDidChangeTextDocument` events are ignored. */
   // FIXME: try hard to hack through vscode and tag edit events. Would be much simpler.
   private applyingRemote = false
+  private initialSyncDone = false
   /** Used to linearize async operations that might otherwise interleave. */
   private pending: Promise<void> = Promise.resolve()
 
   private disposables: { dispose(): unknown }[] = []
 
-  /** May only be constructed with a `Y.Doc` whose provider has already `synced` at least once. */
+  private hs: HocuspocusProvider
+
   constructor(
-    readonly doc: vs.TextDocument,
-    readonly remoteDoc: Y.Doc,
+    private readonly doc: vs.TextDocument,
+    private readonly collabServer: CollabServerConnection,
     private readonly log: vs.LogOutputChannel,
   ) {
-    this.ytext = remoteDoc.getText(YTEXT_KEY)
+    // https://tiptap.dev/docs/hocuspocus/provider/examples#multiplexing
+    this.hs = new HocuspocusProvider({
+      websocketProvider: this.collabServer.collabSock,
+      name: doc.uri.fsPath,
+      // We use a single, global awareness CRDT rather than per-document CRDTs.
+      awareness: null,
+    })
+    this.hs.attach()
 
-    // Overwrite with remote contents on startup.
-    this.enqueue(() => this.replaceWithRemote())
+    this.ytext = this.hs.document.getText(YTEXT_KEY)
 
     const observer = (event: Y.YTextEvent, transaction: Y.Transaction) => {
-      // Prevent bounceback (https://beta.yjs.dev/docs/api/transactions/#the-origin-concept).
-      if (transaction.origin === this) return
+      // First check prevents bounceback (https://beta.yjs.dev/docs/api/transactions/#the-origin-concept).
+      // Second ignores remote deltas before initial sync of remote doc.
+      if (transaction.origin === this || !this.initialSyncDone) return
       const delta = event.delta
       this.enqueue(() => this.applyDelta(delta))
     }
@@ -128,6 +140,16 @@ export class YTextBinding implements vs.Disposable {
         this.ytext.unobserve(observer)
       },
     })
+
+    if (this.hs.synced) {
+      this.enqueue(() => this.initialSync())
+    } else {
+      const onSynced = () => {
+        this.hs.off('synced', onSynced)
+        this.enqueue(() => this.initialSync())
+      }
+      this.hs.on('synced', onSynced)
+    }
   }
 
   /** Place an operation on the work queue.
@@ -140,13 +162,11 @@ export class YTextBinding implements vs.Disposable {
   }
 
   onLocalChange(e: vs.TextDocumentChangeEvent): void {
-    // BUG 1: local edits that arrive while `applyingRemote` is set,
-    //        if that is possible, are lost.
-    //        would also linearizing `onLocalChange` help?
-    if (this.applyingRemote) return
+    console.log('local change', JSON.stringify(e))
+    if (this.applyingRemote || !this.initialSyncDone) return
     if (e.document !== this.doc) return
     if (e.contentChanges.length === 0) return
-    this.remoteDoc.transact(() => {
+    this.hs.document.transact(() => {
       // VSCode sorts `contentChanges` in reverse offset order
       // so they can be applied sequentially without offset adjustment.
       for (const ch of e.contentChanges) {
@@ -154,6 +174,31 @@ export class YTextBinding implements vs.Disposable {
         if (ch.text) this.ytext.insert(ch.rangeOffset, ch.text)
       }
     }, this)
+  }
+
+  onDidChangeTextEditorSelection(e: vs.TextEditorSelectionChangeEvent) {
+    console.log(JSON.stringify(e))
+  }
+
+  /** Ensure that buffer contents match the {@link Y.Doc} text
+   * by replacing the entire buffer if necessary.
+   * Avoids making an edit when contents already match. */
+  private async initialSync(): Promise<void> {
+    // Read `ytext` and set `initialSyncDone = true` synchronously
+    // so that any remote delta arriving during the subsequent `applyEdit` is queued (not dropped)
+    // and later applied on top of the new editor content.
+    const ytextStr = this.ytext.toString()
+    this.initialSyncDone = true
+    if (ytextStr === this.doc.getText()) return
+    const edit = new vs.WorkspaceEdit()
+    const fullRange = new vs.Range(new vs.Position(0, 0), this.doc.positionAt(this.doc.getText().length))
+    edit.replace(this.doc.uri, fullRange, ytextStr)
+    this.applyingRemote = true
+    try {
+      await vs.workspace.applyEdit(edit)
+    } finally {
+      this.applyingRemote = false
+    }
   }
 
   private async applyDelta(delta: Y.YTextEvent['delta']): Promise<void> {
@@ -177,24 +222,9 @@ export class YTextBinding implements vs.Disposable {
     }
   }
 
-  /** Ensure that buffer contents match the Y.Doc text
-   * by replacing the entire buffer if necessary.
-   * Avoids making an edit when contents already match. */
-  async replaceWithRemote() {
-    const ytextStr = this.ytext.toString()
-    if (ytextStr === this.doc.getText()) return
-    const edit = new vs.WorkspaceEdit()
-    const fullRange = new vs.Range(new vs.Position(0, 0), this.doc.positionAt(this.doc.getText().length))
-    edit.replace(this.doc.uri, fullRange, ytextStr)
-    this.applyingRemote = true
-    try {
-      await vs.workspace.applyEdit(edit)
-    } finally {
-      this.applyingRemote = false
-    }
-  }
-
   dispose() {
     for (const d of this.disposables) d.dispose()
+    this.disposables = []
+    this.hs.destroy()
   }
 }
