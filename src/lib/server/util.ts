@@ -68,3 +68,35 @@ export function canAccessProject(user: User, project: Project) {
   const isOwner = user.id === project.userId
   return isOwner || project.isPublic
 }
+
+/** Returns `[response, send, close]`.
+ * See https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events */
+export function sseStreamResponse(onCancel?: () => void): [Response, (msg: object) => void, () => void] {
+  let send: (msg: object) => void = () => {}
+  let close: () => void = () => {}
+  const encoder = new TextEncoder()
+  const stream = new ReadableStream({
+    start(controller) {
+      send = msg => {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(msg)}\n\n`))
+      }
+      close = () => {
+        controller.close()
+      }
+    },
+    cancel() {
+      if (onCancel) onCancel()
+    },
+  })
+
+  const response = new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    },
+  })
+
+  return [response, send, close]
+}
