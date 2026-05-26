@@ -108,22 +108,25 @@ function shouldBroadcastChange(e: vs.TextDocumentChangeEvent): boolean {
   if (e.detailedReason.source === 'suggest') return true
   // 'Format Document' command
   if (e.detailedReason.metadata.name === 'formatEditsCommand') return true
-
-  // Redundant with blanket `return false` but recorded for clarity
-  // File re-read from disk
-  if (e.detailedReason.source === 'reloadFromDisk') return false
   // Various causes, notably `vs.workspace.applyEdit`
-  if (e.detailedReason.source === 'unknown') return false
-  // TODO the `unknown` check is *incomplete*:
-  // we must not broadcast `applyEdit`s that apply remote changes
-  // (since that would cause an infinite broadcast loop),
-  // but we should broadcast other `applyEdit`s.
-  // However, there is no way in `applyEdit` to set the `detailedReason`,
-  // or any other field of the resulting `TextDocumentChangeEvent`,
-  // and checking document versions or edit content
-  // turned out prone to a number of race conditions.
-  // The only viable fix seems to be patching `openvscode-server`
-  // to support setting `detailedReason.source` in `applyEdit`.
+  if (e.detailedReason.source === 'unknown') {
+    // VSCodeVim
+    if (e.detailedReason.metadata.name === 'MainThreadTextEditor') return true
+    // TODO the `unknown` check is *incomplete*:
+    // we must not broadcast `applyEdit`s that apply remote changes
+    // (since that would cause an infinite broadcast loop),
+    // but we should broadcast other `applyEdit`s.
+    // However, there is no way in `applyEdit` to set the `detailedReason`,
+    // or any other field of the resulting `TextDocumentChangeEvent`,
+    // and checking document versions or edit content
+    // turned out prone to a number of race conditions.
+    // The only viable fix seems to be patching `openvscode-server`
+    // to support setting `detailedReason.source` in `applyEdit`.
+    return false
+  }
+  // File re-read from disk
+  // (Redundant with blanket `return false` but recorded for clarity)
+  if (e.detailedReason.source === 'reloadFromDisk') return false
 
   return false
 }
@@ -195,8 +198,9 @@ export class YTextBinding implements vs.Disposable {
   }
 
   onLocalChange(e: vs.TextDocumentChangeEvent): void {
+    if (e.document !== this.doc) throw new Error('internal error: YTextBinding received event for wrong document')
     if (!this.initialSyncDone) return
-    if (e.document !== this.doc) return
+    this.log.debug(`local change ${JSON.stringify(e)}`)
     if (!shouldBroadcastChange(e)) return
     // Broadcast the local change to other clients through collab-server.
     this.hs.document.transact(() => {
