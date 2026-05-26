@@ -3,7 +3,7 @@ import path from 'node:path'
 import vs from 'vscode'
 import * as Y from 'yjs'
 import { CollabServerConnection } from './collabServer'
-import { AWARENESS_SELECTION_KEY, AwarenessSelection, YTEXT_KEY } from './util'
+import { AWARENESS_SELECTION_KEY, AwarenessSelection, Logger, logWithPrefix, YTEXT_KEY } from './util'
 
 /** Maintains a {@link YTextBinding} binding for every open {@link vs.TextDocument}
  * whose path lies within one of the syncable directories. */
@@ -99,23 +99,23 @@ export class YTextBindingManager implements vs.Disposable {
  * and the {@link Y.Text} of a Hocuspocus document. */
 export class YTextBinding implements vs.Disposable {
   private ytext: Y.Text
-  /** Used to prevent `applyEdit` bounceback when applying remote changes;
-   * when set, local `onDidChangeTextDocument` events are ignored. */
-  // FIXME: try hard to hack through vscode and tag edit events. Would be much simpler.
-  private applyingRemote = false
+  private hs: HocuspocusProvider
+
   private initialSyncDone = false
-  /** Used to linearize async operations that might otherwise interleave. */
+  /** Used to linearize and order async operations that might otherwise interleave. */
   private pending: Promise<void> = Promise.resolve()
 
   private disposables: { dispose(): unknown }[] = []
 
-  private hs: HocuspocusProvider
+  private readonly log: Logger
 
   constructor(
     private readonly doc: vs.TextDocument,
     private readonly collabServer: CollabServerConnection,
-    private readonly log: vs.LogOutputChannel,
+    log_: vs.LogOutputChannel,
   ) {
+    this.log = logWithPrefix(log_, `[YTextBinding(${doc.uri.fsPath})]`)
+
     // https://tiptap.dev/docs/hocuspocus/provider/examples#multiplexing
     this.hs = new HocuspocusProvider({
       websocketProvider: this.collabServer.collabSock,
@@ -157,7 +157,7 @@ export class YTextBinding implements vs.Disposable {
    * (but not w.r.t. other `async` operations). */
   private enqueue(work: () => Promise<void>): void {
     this.pending = this.pending.then(work).catch(e => {
-      this.log.error(`[YTextBinding(${this.doc.uri.fsPath})] ${String(e)}`)
+      this.log.error(e)
     })
   }
 

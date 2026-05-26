@@ -1,5 +1,24 @@
 import fs from 'node:fs/promises'
+import vs from 'vscode'
 import { z } from 'zod'
+
+/** Subset of {@link vs.LogOutputChannel} used for our purposes. */
+export type Logger = Pick<vs.LogOutputChannel, 'trace' | 'debug' | 'info' | 'warn' | 'error'>
+
+/** Wrap `log` so that every message is prepended with `prefix`. */
+export function logWithPrefix(log: Logger, prefix: string): Logger {
+  const wrap =
+    (fn: (m: string, ...a: unknown[]) => void) =>
+    (msg: string, ...args: unknown[]) =>
+      fn(`${prefix} ${msg}`, ...args)
+  return {
+    trace: wrap(log.trace.bind(log)),
+    debug: wrap(log.debug.bind(log)),
+    info: wrap(log.info.bind(log)),
+    warn: wrap(log.warn.bind(log)),
+    error: (msg, ...args) => log.error(`${prefix} ${String(msg)}`, ...args),
+  }
+}
 
 // FIXME: use same consts in workbench-app/collab-server for single source of truth.
 
