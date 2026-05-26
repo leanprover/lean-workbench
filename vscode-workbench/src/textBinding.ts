@@ -95,6 +95,39 @@ export class YTextBindingManager implements vs.Disposable {
   }
 }
 
+/** Whether the given {@link vs.TextDocumentChangeEvent} should be broadcast to other clients. */
+function shouldBroadcastChange(e: vs.TextDocumentChangeEvent): boolean {
+  if (e.contentChanges.length === 0) return false
+  if (!e.detailedReason) return false
+
+  // Keyboard inputs
+  if (e.detailedReason.source === 'cursor') return true
+  // Undo, redo
+  if (e.detailedReason.source === 'applyEdits') return true
+  // Autocompletion
+  if (e.detailedReason.source === 'suggest') return true
+  // 'Format Document' command
+  if (e.detailedReason.metadata.name === 'formatEditsCommand') return true
+
+  // Redundant with blanket `return false` but recorded for clarity
+  // File re-read from disk
+  if (e.detailedReason.source === 'reloadFromDisk') return false
+  // Various causes, notably `vs.workspace.applyEdit`
+  if (e.detailedReason.source === 'unknown') return false
+  // TODO the `unknown` check is *incomplete*:
+  // we must not broadcast `applyEdit`s that apply remote changes
+  // (since that would cause an infinite broadcast loop),
+  // but we should broadcast other `applyEdit`s.
+  // However, there is no way in `applyEdit` to set the `detailedReason`,
+  // or any other field of the resulting `TextDocumentChangeEvent`,
+  // and checking document versions or edit content
+  // turned out prone to a number of race conditions.
+  // The only viable fix seems to be patching `openvscode-server`
+  // to support setting `detailedReason.source` in `applyEdit`.
+
+  return false
+}
+
 /** Bidirectional binding between a {@link vs.TextDocument}
  * and the {@link Y.Text} of a Hocuspocus document. */
 export class YTextBinding implements vs.Disposable {
@@ -162,9 +195,10 @@ export class YTextBinding implements vs.Disposable {
   }
 
   onLocalChange(e: vs.TextDocumentChangeEvent): void {
-    if (this.applyingRemote || !this.initialSyncDone) return
+    if (!this.initialSyncDone) return
     if (e.document !== this.doc) return
-    if (e.contentChanges.length === 0) return
+    if (!shouldBroadcastChange(e)) return
+    // Broadcast the local change to other clients through collab-server.
     this.hs.document.transact(() => {
       // VSCode sorts `contentChanges` in reverse offset order
       // so they can be applied sequentially without offset adjustment.
@@ -196,37 +230,29 @@ export class YTextBinding implements vs.Disposable {
     // and later applied on top of the new editor content.
     const ytextStr = this.ytext.toString()
     this.initialSyncDone = true
-    if (ytextStr === this.doc.getText()) return
+    const oldText = this.doc.getText()
+    if (ytextStr === oldText) return
     const edit = new vs.WorkspaceEdit()
-    const fullRange = new vs.Range(new vs.Position(0, 0), this.doc.positionAt(this.doc.getText().length))
+    const fullRange = new vs.Range(new vs.Position(0, 0), this.doc.positionAt(oldText.length))
     edit.replace(this.doc.uri, fullRange, ytextStr)
-    this.applyingRemote = true
-    try {
-      await vs.workspace.applyEdit(edit)
-    } finally {
-      this.applyingRemote = false
-    }
+    await vs.workspace.applyEdit(edit)
   }
 
   private async applyDelta(delta: Y.YTextEvent['delta']): Promise<void> {
     const edit = new vs.WorkspaceEdit()
     let offset = 0
     for (const op of delta) {
-      if (op.retain != null) {
+      if (typeof op.retain === 'number') {
         offset += op.retain
-      } else if (op.delete != null) {
+      } else if (typeof op.delete === 'number') {
         edit.delete(this.doc.uri, new vs.Range(this.doc.positionAt(offset), this.doc.positionAt(offset + op.delete)))
         offset += op.delete
       } else if (typeof op.insert === 'string') {
+        // Ignoring `op.insert : object | Y.AbstractType<any>`
         edit.insert(this.doc.uri, this.doc.positionAt(offset), op.insert)
       }
     }
-    this.applyingRemote = true
-    try {
-      await vs.workspace.applyEdit(edit)
-    } finally {
-      this.applyingRemote = false
-    }
+    await vs.workspace.applyEdit(edit)
   }
 
   dispose() {
