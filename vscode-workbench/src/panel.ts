@@ -32,6 +32,7 @@ async function revealEditorSelection(fsPath: string, selection?: vs.Selection) {
   }
 }
 
+// https://code.visualstudio.com/api/extension-guides/tree-view
 export class WorkbenchPanelProvider implements vs.TreeDataProvider<PanelItem>, vs.Disposable {
   /** client ID ↦ client data */
   private onlineUsers = new Map<number, AwarenessUser>()
