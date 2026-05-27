@@ -7,12 +7,43 @@ interface AwarenessState {
   [AWARENESS_SELECTION_KEY]: AwarenessSelection
 }
 
+class ClientDecorations implements vs.Disposable {
+  readonly cursorBefore: vs.TextEditorDecorationType
+  readonly cursorAfter: vs.TextEditorDecorationType
+
+  constructor(color: string) {
+    const selectionStyle = {
+      backgroundColor: `${color}40`,
+      overviewRulerColor: color,
+      overviewRulerLane: vs.OverviewRulerLane.Center,
+    }
+    const cursorStyle = {
+      contentText: '',
+      border: `1px solid ${color}`,
+      margin: '0px -1px',
+    }
+    this.cursorBefore = vs.window.createTextEditorDecorationType({
+      ...selectionStyle,
+      before: cursorStyle,
+    })
+    this.cursorAfter = vs.window.createTextEditorDecorationType({
+      ...selectionStyle,
+      after: cursorStyle,
+    })
+  }
+
+  dispose() {
+    this.cursorBefore.dispose()
+    this.cursorAfter.dispose()
+  }
+}
+
 /** Listens for awareness changes from other clients
  * (see `textBinding.ts` for the sending side)
  * and shows remote selections as decorations in the appropriate editor view. */
 export class RemoteSelectionDecorator implements vs.Disposable {
   private readonly localClientId: number
-  private readonly decorationTypes = new Map<number, vs.TextEditorDecorationType>()
+  private readonly decorationTypes = new Map<number, ClientDecorations>()
   private states = new Map<number, AwarenessState>()
   private readonly disposables: vs.Disposable[] = []
 
@@ -28,22 +59,13 @@ export class RemoteSelectionDecorator implements vs.Disposable {
     this.onAwarenessChange()
   }
 
-  private decorationType(clientId: number, color: string): vs.TextEditorDecorationType {
-    let deco = this.decorationTypes.get(clientId)
-    if (!deco) {
-      deco = vs.window.createTextEditorDecorationType({
-        backgroundColor: `${color}40`,
-        border: `1px solid ${color}`,
-        borderRadius: '2px',
-        overviewRulerColor: color,
-        overviewRulerLane: vs.OverviewRulerLane.Center,
-        // after: {
-        //   contentText: String(clientId)
-        // }
-      })
-      this.decorationTypes.set(clientId, deco)
+  private decorationsFor(clientId: number, color: string): ClientDecorations {
+    let decos = this.decorationTypes.get(clientId)
+    if (!decos) {
+      decos = new ClientDecorations(color)
+      this.decorationTypes.set(clientId, decos)
     }
-    return deco
+    return decos
   }
 
   private onAwarenessChange(): void {
@@ -57,9 +79,9 @@ export class RemoteSelectionDecorator implements vs.Disposable {
       next.set(clientId, { selection, user })
     }
     // Drop decoration types for clients that are gone.
-    for (const [clientId, deco] of this.decorationTypes) {
+    for (const [clientId, decos] of this.decorationTypes) {
       if (next.has(clientId)) continue
-      deco.dispose()
+      decos.dispose()
       this.decorationTypes.delete(clientId)
     }
     this.states = next
@@ -71,14 +93,26 @@ export class RemoteSelectionDecorator implements vs.Disposable {
       if (editor.document.uri.scheme !== 'file') continue
       const filePath = editor.document.uri.fsPath
       for (const [clientId, { selection, user }] of this.states) {
-        const ranges =
-          selection?.filePath === filePath
-            ? selection.selections.map(s => ({
-                range: new vs.Range(s.anchor.line, s.anchor.character, s.active.line, s.active.character),
-                hoverMessage: user?.name,
-              }))
-            : []
-        editor.setDecorations(this.decorationType(clientId, user.color), ranges)
+        const decos = this.decorationsFor(clientId, user.color)
+        const beforeRanges: vs.DecorationOptions[] = []
+        const afterRanges: vs.DecorationOptions[] = []
+        if (selection?.filePath === filePath) {
+          for (const s of selection.selections) {
+            const range = new vs.Range(s.anchor.line, s.anchor.character, s.active.line, s.active.character)
+            const opts = { range, hoverMessage: user?.name }
+            // Is `active` at the start or the end of the selection?
+            if (
+              s.active.line < s.anchor.line ||
+              (s.active.line === s.anchor.line && s.active.character < s.anchor.character)
+            ) {
+              beforeRanges.push(opts)
+            } else {
+              afterRanges.push(opts)
+            }
+          }
+        }
+        editor.setDecorations(decos.cursorBefore, beforeRanges)
+        editor.setDecorations(decos.cursorAfter, afterRanges)
       }
     }
   }
@@ -86,7 +120,9 @@ export class RemoteSelectionDecorator implements vs.Disposable {
   dispose(): void {
     for (const d of this.disposables) d.dispose()
     this.disposables.length = 0
-    for (const deco of this.decorationTypes.values()) deco.dispose()
+    for (const decos of this.decorationTypes.values()) {
+      decos.dispose()
+    }
     this.decorationTypes.clear()
     this.states.clear()
   }
