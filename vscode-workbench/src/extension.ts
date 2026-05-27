@@ -49,9 +49,11 @@ export async function activate(ctx: vs.ExtensionContext) {
     vs.workspace.onDidChangeWorkspaceFolders(() => bindings.updateSyncableDirs(syncableDirs())),
     // Remote presence indicators
     new RemoteSelectionDecorator(collabServer.awareness),
-    // Panel with workbench-specific information
-    vs.window.registerTreeDataProvider('leanprover-workbench-view', new WorkbenchPanelProvider()),
   )
+
+  // Panel with workbench-specific information
+  const panel = new WorkbenchPanelProvider(collabServer.awareness)
+  ctx.subscriptions.push(panel, vs.window.registerTreeDataProvider('leanprover-workbench-view', panel))
 
   log.debug('Extension activated')
 }

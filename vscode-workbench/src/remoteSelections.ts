@@ -12,12 +12,13 @@ class ClientDecorations implements vs.Disposable {
   readonly cursorAfter: vs.TextEditorDecorationType
 
   constructor(color: string) {
-    const selectionStyle = {
+    const selectionStyle: vs.DecorationRenderOptions = {
       backgroundColor: `${color}40`,
+      rangeBehavior: vs.DecorationRangeBehavior.ClosedClosed,
       overviewRulerColor: color,
       overviewRulerLane: vs.OverviewRulerLane.Center,
     }
-    const cursorStyle = {
+    const cursorStyle: vs.ThemableDecorationAttachmentRenderOptions = {
       contentText: '',
       border: `1px solid ${color}`,
       margin: '0px -1px',
