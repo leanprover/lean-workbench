@@ -21,6 +21,26 @@
   "enabledApiProposals": [
     "textDocumentChangeReason"
   ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "leanprover-workbench-view-container",
+          "title": "Lean Workbench",
+          "icon": "media/logo.svg"
+        }
+      ]
+    },
+    "views": {
+      "leanprover-workbench-view-container": [
+        {
+          "id": "leanprover-workbench-view",
+          "name": "",
+          "icon": ""
+        }
+      ]
+    }
+  },
   "main": "./dist/extension.js",
   "scripts": {
     "watch": "concurrently --names esbuild,tsc 'npm run watch:esbuild' 'npm run watch:tsc'",

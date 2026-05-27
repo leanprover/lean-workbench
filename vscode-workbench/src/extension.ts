@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import vs from 'vscode'
 import { connectToCollabServer } from './collabServer'
+import { WorkbenchPanelProvider } from './panel'
 import { RemoteSelectionDecorator } from './remoteSelections'
 import { YTextBindingManager } from './textBinding'
 import { BWRAP_METADATA_PATH, WorkspaceMetadata, zWorkspaceMetadata } from './util'
@@ -46,7 +47,11 @@ export async function activate(ctx: vs.ExtensionContext) {
   ctx.subscriptions.push(
     bindings,
     vs.workspace.onDidChangeWorkspaceFolders(() => bindings.updateSyncableDirs(syncableDirs())),
+    // Remote presence indicators
     new RemoteSelectionDecorator(collabServer.awareness),
+    // Panel with workbench-specific information
+    vs.window.registerTreeDataProvider('leanprover-workbench-view', new WorkbenchPanelProvider()),
   )
+
   log.debug('Extension activated')
 }
