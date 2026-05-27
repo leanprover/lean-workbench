@@ -200,7 +200,7 @@ export class YTextBinding implements vs.Disposable {
   onLocalChange(e: vs.TextDocumentChangeEvent): void {
     if (e.document !== this.doc) throw new Error('internal error: YTextBinding received event for wrong document')
     if (!this.initialSyncDone) return
-    this.log.debug(`local change ${JSON.stringify(e)}`)
+    this.log.trace(`[onLocalChange] ${JSON.stringify(e)}`)
     if (!shouldBroadcastChange(e)) return
     // Broadcast the local change to other clients through collab-server.
     this.hs.document.transact(() => {

@@ -50,26 +50,27 @@ export interface Position {
   line: number
   character: number
 }
+
 export interface Selection {
   anchor: Position
   active: Position
 }
-export interface User {
+
+export interface AwarenessUser {
   name: string
+  color: string
   image?: string | null
 }
 
+export const AWARENESS_DOC_NAME = '<awareness>'
 export const AWARENESS_USER_KEY = 'user'
 export const AWARENESS_SELECTION_KEY = 'selection'
+/** Colors for remote collaborator cursors. */
+export const AWARENESS_CURSOR_COLORS = ['#5790FC', '#F89C20', '#E42536', '#964A8B', '#9C9CA1', '#7A21DD']
 
 export interface AwarenessSelection {
   filePath: string
   selections: Selection[]
-}
-
-export interface AwarenessState {
-  [AWARENESS_USER_KEY]?: User
-  [AWARENESS_SELECTION_KEY]?: AwarenessSelection
 }
 
 export async function waitForPath(p: string, timeoutMs: number): Promise<boolean> {

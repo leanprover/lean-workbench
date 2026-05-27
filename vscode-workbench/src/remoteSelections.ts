@@ -1,9 +1,11 @@
 import vs from 'vscode'
 import { Awareness } from 'y-protocols/awareness'
-import { AWARENESS_SELECTION_KEY, AWARENESS_USER_KEY, AwarenessSelection, AwarenessState, User } from './util'
+import { AWARENESS_SELECTION_KEY, AWARENESS_USER_KEY, AwarenessSelection, AwarenessUser } from './util'
 
-/** Colors cycled through for remote collaborators, one per client. */
-const REMOTE_COLORS = ['#f78da7', '#7bdcb5', '#8ed1fc', '#fcb900', '#9900ef']
+interface AwarenessState {
+  [AWARENESS_USER_KEY]: AwarenessUser
+  [AWARENESS_SELECTION_KEY]: AwarenessSelection
+}
 
 /** Listens for awareness changes from other clients
  * (see `textBinding.ts` for the sending side)
@@ -26,10 +28,9 @@ export class RemoteSelectionDecorator implements vs.Disposable {
     this.onAwarenessChange()
   }
 
-  private decorationType(clientId: number): vs.TextEditorDecorationType {
+  private decorationType(clientId: number, color: string): vs.TextEditorDecorationType {
     let deco = this.decorationTypes.get(clientId)
     if (!deco) {
-      const color = REMOTE_COLORS[clientId % REMOTE_COLORS.length]
       deco = vs.window.createTextEditorDecorationType({
         backgroundColor: `${color}40`,
         border: `1px solid ${color}`,
@@ -51,8 +52,9 @@ export class RemoteSelectionDecorator implements vs.Disposable {
     for (const [clientId, state] of states.entries()) {
       if (clientId === this.localClientId) continue
       const selection = state[AWARENESS_SELECTION_KEY] as AwarenessSelection | undefined
-      if (!selection) continue
-      next.set(clientId, { selection, user: state[AWARENESS_USER_KEY] as User | undefined })
+      const user = state[AWARENESS_USER_KEY] as AwarenessUser | undefined
+      if (!selection || !user) continue
+      next.set(clientId, { selection, user })
     }
     // Drop decoration types for clients that are gone.
     for (const [clientId, deco] of this.decorationTypes) {
@@ -76,7 +78,7 @@ export class RemoteSelectionDecorator implements vs.Disposable {
                 hoverMessage: user?.name,
               }))
             : []
-        editor.setDecorations(this.decorationType(clientId), ranges)
+        editor.setDecorations(this.decorationType(clientId, user.color), ranges)
       }
     }
   }
