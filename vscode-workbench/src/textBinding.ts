@@ -260,6 +260,10 @@ export class YTextBinding implements vs.Disposable {
   }
 
   dispose() {
+    const sel = this.collabServer.awareness.getLocalState()?.[AWARENESS_SELECTION_KEY] as AwarenessSelection | undefined
+    if (sel?.filePath === this.doc.uri.fsPath) {
+      this.collabServer.awareness.setLocalStateField(AWARENESS_SELECTION_KEY, null)
+    }
     for (const d of this.disposables) d.dispose()
     this.disposables = []
     this.hs.destroy()
