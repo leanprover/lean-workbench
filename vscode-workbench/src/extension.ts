@@ -52,7 +52,7 @@ export async function activate(ctx: vs.ExtensionContext) {
   )
 
   // Panel with workbench-specific information
-  const panel = new WorkbenchPanelProvider(collabServer.awareness)
+  const panel = new WorkbenchPanelProvider(collabServer.awareness, log)
   ctx.subscriptions.push(panel, vs.window.registerTreeDataProvider('leanprover-workbench-view', panel))
 
   log.debug('Extension activated')

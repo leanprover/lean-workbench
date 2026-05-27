@@ -20,6 +20,16 @@ export function logWithPrefix(log: Logger, prefix: string): Logger {
   }
 }
 
+export function equalMaps<T, U>(a: Map<T, U>, b: Map<T, U>, eqU?: (a: U, b: U) => boolean): boolean {
+  if (a.size !== b.size) return false
+  for (const [id, u] of a) {
+    if (!b.has(id)) return false
+    const v = b.get(id) as U
+    if (eqU ? !eqU(v, u) : v !== u) return false
+  }
+  return true
+}
+
 // FIXME: use same consts in workbench-app/collab-server for single source of truth.
 
 /** Path to workspace metadata file in VSCode bwraps. */
@@ -60,6 +70,10 @@ export interface AwarenessUser {
   name: string
   color: string
   image?: string | null
+}
+
+export function equalAwarenessUsers(u: AwarenessUser, v: AwarenessUser): boolean {
+  return v.name === u.name && v.color === u.color && v.image === u.image
 }
 
 export const AWARENESS_DOC_NAME = '<awareness>'
