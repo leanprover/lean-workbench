@@ -9,9 +9,10 @@ import {
   equalMaps,
   Logger,
   logWithPrefix,
+  WorkspaceMetadata,
 } from './util'
 
-type PanelItem = { kind: 'onlineUsersRoot' } | { kind: 'onlineUser'; clientId: number; user: AwarenessUser }
+type PanelItem = { kind: 'onlineUsersRoot' } | { kind: 'onlineUser'; user: AwarenessUser }
 
 const COMMAND_GOTO_AWARENESS_USER = 'leanprover.workbench.internal.goToAwarenessUser'
 
@@ -34,8 +35,8 @@ async function revealEditorSelection(fsPath: string, selection?: vs.Selection) {
 
 // https://code.visualstudio.com/api/extension-guides/tree-view
 export class WorkbenchPanelProvider implements vs.TreeDataProvider<PanelItem>, vs.Disposable {
-  /** client ID ↦ client data */
-  private onlineUsers = new Map<number, AwarenessUser>()
+  /** username ↦ client data */
+  private onlineUsers = new Map<string, AwarenessUser>()
 
   private readonly onDidChangeTreeDataEmitter = new vs.EventEmitter<void>()
   readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event
@@ -46,7 +47,8 @@ export class WorkbenchPanelProvider implements vs.TreeDataProvider<PanelItem>, v
 
   constructor(
     private readonly awareness: Awareness,
-    private readonly log_: Logger,
+    private readonly mdata: WorkspaceMetadata,
+    log_: Logger,
   ) {
     this.log = logWithPrefix(log_, '[WorkbenchPanelProvider]')
 
@@ -54,27 +56,38 @@ export class WorkbenchPanelProvider implements vs.TreeDataProvider<PanelItem>, v
     awareness.on('change', onAwarenessChange)
     this.disposables.push(
       { dispose: () => awareness.off('change', onAwarenessChange) },
-      vs.commands.registerCommand(COMMAND_GOTO_AWARENESS_USER, async (clientId: number) => {
-        const state = awareness.getStates().get(clientId)
-        const sels = state?.[AWARENESS_SELECTION_KEY] as AwarenessSelection | undefined
-        if (!sels) return
+      vs.commands.registerCommand(COMMAND_GOTO_AWARENESS_USER, async (userName: string) => {
+        let filePath: string | undefined = undefined
         let sel: vs.Selection | undefined = undefined
-        if (0 < sels.selections.length) {
-          const active = sels.selections[0].active
-          const pos = new vs.Position(active.line, active.character)
-          sel = new vs.Selection(pos, pos)
+        // One user can have multiple active sessions.
+        // We arbitrarily choose the first remote session with a non-empty selection.
+        for (const [clientId, state] of awareness.getStates()) {
+          if (this.awareness.clientID === clientId) continue
+          const user = state[AWARENESS_USER_KEY] as AwarenessUser | undefined
+          if (!user || user.name !== userName) continue
+          const sels = state[AWARENESS_SELECTION_KEY] as AwarenessSelection | undefined
+          if (!sels) continue
+          filePath = sels.filePath
+          if (0 < sels.selections.length) {
+            const active = sels.selections[0].active
+            const pos = new vs.Position(active.line, active.character)
+            sel = new vs.Selection(pos, pos)
+            break
+          }
         }
-        await revealEditorSelection(sels.filePath, sel)
+        if (filePath) await revealEditorSelection(filePath, sel)
       }),
     )
     this.onAwarenessChange()
   }
 
   onAwarenessChange() {
-    const newUsers = new Map<number, AwarenessUser>()
-    for (const [clientId, state] of this.awareness.getStates()) {
+    const newUsers = new Map<string, AwarenessUser>()
+    for (const [, state] of this.awareness.getStates()) {
       const user = state[AWARENESS_USER_KEY] as AwarenessUser | undefined
-      if (user) newUsers.set(clientId, user)
+      // The same user can appear multiple times, e.g. when opening a project tab twice.
+      // FIXME: show with multiplicity?
+      if (user) newUsers.set(user.name, user)
     }
     if (equalMaps(this.onlineUsers, newUsers, equalAwarenessUsers)) return
     this.log.debug(`users changed: ${JSON.stringify([...newUsers])}`)
@@ -87,13 +100,15 @@ export class WorkbenchPanelProvider implements vs.TreeDataProvider<PanelItem>, v
       case 'onlineUsersRoot':
         return new vs.TreeItem('Online users', vs.TreeItemCollapsibleState.Expanded)
       case 'onlineUser': {
-        const ti = new vs.TreeItem(item.user.name, vs.TreeItemCollapsibleState.None)
+        let displayName = item.user.name
+        if (item.user.name === this.mdata.viewer.name) displayName += ' (You)'
+        const ti = new vs.TreeItem(displayName, vs.TreeItemCollapsibleState.None)
         let iconUri: vs.Uri | undefined = undefined
         try {
           if (item.user.image) iconUri = vs.Uri.parse(item.user.image, true)
         } catch {}
         ti.iconPath = iconUri ? iconUri : new vs.ThemeIcon('account')
-        ti.command = { command: COMMAND_GOTO_AWARENESS_USER, title: 'Jump to cursor', arguments: [item.clientId] }
+        ti.command = { command: COMMAND_GOTO_AWARENESS_USER, title: 'Jump to cursor', arguments: [item.user.name] }
         return ti
       }
     }
@@ -103,8 +118,8 @@ export class WorkbenchPanelProvider implements vs.TreeDataProvider<PanelItem>, v
     if (!item) return [{ kind: 'onlineUsersRoot' }]
     if (item.kind !== 'onlineUsersRoot') return []
     const items = this.onlineUsers
-      .entries()
-      .map(([clientId, user]) => ({ kind: 'onlineUser', clientId, user }) satisfies PanelItem)
+      .values()
+      .map(user => ({ kind: 'onlineUser', user }) satisfies PanelItem)
       .toArray()
     items.sort((a, b) => a.user.name.localeCompare(b.user.name))
     return items
