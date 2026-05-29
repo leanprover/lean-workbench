@@ -98,37 +98,45 @@ export class YTextBindingManager implements vs.Disposable {
 /** Whether the given {@link vs.TextDocumentChangeEvent} should be broadcast to other clients. */
 function shouldBroadcastChange(e: vs.TextDocumentChangeEvent): boolean {
   if (e.contentChanges.length === 0) return false
-  if (!e.detailedReason) return false
-
-  // Keyboard inputs
-  if (e.detailedReason.source === 'cursor') return true
-  // Undo, redo
-  if (e.detailedReason.source === 'applyEdits') return true
-  // Autocompletion
-  if (e.detailedReason.source === 'suggest') return true
-  // 'Format Document' command
-  if (e.detailedReason.metadata.name === 'formatEditsCommand') return true
-  // Various causes, notably `vs.workspace.applyEdit`
-  if (e.detailedReason.source === 'unknown') {
-    // VSCodeVim
-    if (e.detailedReason.metadata.name === 'MainThreadTextEditor') return true
-    // TODO the `unknown` check is *incomplete*:
-    // we must not broadcast `applyEdit`s that apply remote changes
-    // (since that would cause an infinite broadcast loop),
-    // but we should broadcast other `applyEdit`s.
-    // However, there is no way in `applyEdit` to set the `detailedReason`,
-    // or any other field of the resulting `TextDocumentChangeEvent`,
-    // and checking document versions or edit content
-    // turned out prone to a number of race conditions.
-    // The only viable fix seems to be patching `openvscode-server`
-    // to support setting `detailedReason.source` in `applyEdit`.
-    return false
-  }
+  if (!e.detailedReason) throw new Error('internal error: textDocumentChangeReason API proposal is disabled')
   // File re-read from disk
-  // (Redundant with blanket `return false` but recorded for clarity)
   if (e.detailedReason.source === 'reloadFromDisk') return false
+  if (e.detailedReason.source === 'unknown' && e.detailedReason.metadata.source === 'unknown') {
+    // `workspace.applyEdit`
+    if (!e.detailedReason.metadata.name) return false
+    // `TextEditor.edit`
+    if (e.detailedReason.metadata.name === 'MainThreadTextEditor') return false
+  }
+  // TODO the two checks above are *incomplete*:
+  // we must not broadcast `applyEdit`s that apply remote changes
+  // (since that would cause an infinite broadcast loop),
+  // but we should broadcast other `applyEdit`s.
+  // However, there is no way in `applyEdit` to set the `detailedReason`,
+  // or any other field of the resulting `TextDocumentChangeEvent`,
+  // and checking document versions or edit content
+  // turned out prone to a number of race conditions.
+  // The only viable fix seems to be patching `openvscode-server`
+  // to support setting `detailedReason.source` in `applyEdit`.
+  return true
 
-  return false
+  // Positive cases to use with a `return true` default, recorded for posterity
+  // // Keyboard inputs
+  // if (e.detailedReason.source === 'cursor') return true
+  // // Undo, redo
+  // if (e.detailedReason.source === 'applyEdits') return true
+  // // Autocompletion
+  // if (e.detailedReason.source === 'suggest') return true
+  // // 'Format Document' command
+  // if (e.detailedReason.metadata.name === 'formatEditsCommand') return true
+  // // Various causes, notably `vs.workspace.applyEdit`
+  // if (e.detailedReason.source === 'unknown') {
+  //   // VSCodeVim
+  //   if (e.detailedReason.metadata.name === 'MainThreadTextEditor') return true
+  //   // Newline normalization
+  //   if (e.detailedReason.metadata.name === 'insertFinalNewLine') return true
+  //   if (e.detailedReason.metadata.name === 'pushEditOperation') return true
+  //   return false
+  // }
 }
 
 /** Bidirectional binding between a {@link vs.TextDocument}
@@ -167,8 +175,9 @@ export class YTextBinding implements vs.Disposable {
       // First check prevents bounceback (https://beta.yjs.dev/docs/api/transactions/#the-origin-concept).
       // Second ignores remote deltas before initial sync of remote doc.
       if (transaction.origin === this || !this.initialSyncDone) return
+      // Important to capture this; `delta` can be different when the `enqueue`d closure runs.
       const delta = event.delta
-      this.enqueue(() => this.applyDelta(delta))
+      this.enqueue(() => this.applyRemoteDelta(delta))
     }
     this.ytext.observe(observer)
     this.disposables.push({
@@ -202,11 +211,12 @@ export class YTextBinding implements vs.Disposable {
     if (!this.initialSyncDone) return
     this.log.trace(`[onLocalChange] ${JSON.stringify(e)}`)
     if (!shouldBroadcastChange(e)) return
+    const changes = e.contentChanges
     // Broadcast the local change to other clients through collab-server.
     this.hs.document.transact(() => {
       // VSCode sorts `contentChanges` in reverse offset order
       // so they can be applied sequentially without offset adjustment.
-      for (const ch of e.contentChanges) {
+      for (const ch of changes) {
         if (ch.rangeLength) this.ytext.delete(ch.rangeOffset, ch.rangeLength)
         if (ch.text) this.ytext.insert(ch.rangeOffset, ch.text)
       }
@@ -239,24 +249,67 @@ export class YTextBinding implements vs.Disposable {
     const edit = new vs.WorkspaceEdit()
     const fullRange = new vs.Range(new vs.Position(0, 0), this.doc.positionAt(oldText.length))
     edit.replace(this.doc.uri, fullRange, ytextStr)
-    await vs.workspace.applyEdit(edit)
+    const success = await vs.workspace.applyEdit(edit)
+    if (!success) {
+      this.log.warn(`[initialSync] edit failed`)
+    }
   }
 
-  private async applyDelta(delta: Y.YTextEvent['delta']): Promise<void> {
-    const edit = new vs.WorkspaceEdit()
-    let offset = 0
-    for (const op of delta) {
-      if (typeof op.retain === 'number') {
-        offset += op.retain
-      } else if (typeof op.delete === 'number') {
-        edit.delete(this.doc.uri, new vs.Range(this.doc.positionAt(offset), this.doc.positionAt(offset + op.delete)))
-        offset += op.delete
-      } else if (typeof op.insert === 'string') {
-        // Ignoring `op.insert : object | Y.AbstractType<any>`
-        edit.insert(this.doc.uri, this.doc.positionAt(offset), op.insert)
+  private async applyRemoteDelta(delta: Y.YTextEvent['delta']): Promise<void> {
+    /** Common interface between {@link vs.TextEditorEdit} and {@link vs.WorkspaceEdit}. */
+    interface EditBuilder {
+      insert(location: vs.Position, value: string): void
+      delete(location: vs.Range): void
+    }
+
+    const mkEdits = (b: EditBuilder) => {
+      let offset = 0
+      for (const op of delta) {
+        if (typeof op.retain === 'number') {
+          offset += op.retain
+        } else if (typeof op.delete === 'number') {
+          b.delete(new vs.Range(this.doc.positionAt(offset), this.doc.positionAt(offset + op.delete)))
+          offset += op.delete
+        } else if (typeof op.insert === 'string') {
+          // Ignoring `op.insert : object | Y.AbstractType<any>`
+          b.insert(this.doc.positionAt(offset), op.insert)
+        }
       }
     }
-    await vs.workspace.applyEdit(edit)
+
+    for (const e of vs.window.visibleTextEditors) {
+      if (e.document === this.doc) {
+        this.log.debug('[applyRemoteDelta] using visible text editor')
+        // This has a version guard - mkEdit runs on doc version v0,
+        // and the doc must still be at v0 by the time the edit is applied;
+        // otherwise it is rejected.
+        const success = await e.edit(mkEdits)
+        if (!success) {
+          this.log.warn(`[applyRemoteDelta] edit failed: ${JSON.stringify(delta)}`)
+        } else {
+          return
+        }
+      }
+    }
+
+    this.log.debug('[applyRemoteDelta] using applyEdit')
+    const edit = new vs.WorkspaceEdit()
+    mkEdits({
+      insert: (l, v) => edit.insert(this.doc.uri, l, v),
+      delete: r => edit.delete(this.doc.uri, r),
+    })
+    const success = await vs.workspace.applyEdit(edit)
+    if (!success) {
+      this.log.error(`[applyRemoteDelta] edit failed: ${JSON.stringify(delta)}`)
+    }
+  }
+
+  checkSync() {
+    const ytextStr = this.ytext.toString()
+    const docStr = this.doc.getText()
+    if (ytextStr !== docStr) {
+      this.log.warn(`[DESYNC] YJS:\n${ytextStr}\nDOC:\n${docStr}`)
+    }
   }
 
   dispose() {
