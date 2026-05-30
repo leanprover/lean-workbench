@@ -56,6 +56,25 @@ export class RemoteSelectionDecorator implements vs.Disposable {
       { dispose: () => awareness.off('change', onAwarenessChange) },
       // Redraw indicators on editor visibility changes, too.
       vs.window.onDidChangeVisibleTextEditors(() => this.render()),
+      vs.window.onDidChangeTextEditorSelection(e => {
+        if (e.textEditor.document.uri.scheme !== 'file') return
+        this.awareness.setLocalStateField(AWARENESS_SELECTION_KEY, {
+          filePath: e.textEditor.document.uri.fsPath,
+          // FIXME: use LSP types
+          selections: e.selections.map(s => ({
+            anchor: { line: s.anchor.line, character: s.anchor.character },
+            active: { line: s.active.line, character: s.active.character },
+          })),
+        } satisfies AwarenessSelection)
+      }),
+      vs.workspace.onDidCloseTextDocument(doc => {
+        if (doc.uri.scheme !== 'file') return
+        // If cursor was in the now-closed doc, clear it.
+        const sel = this.awareness.getLocalState()?.[AWARENESS_SELECTION_KEY] as AwarenessSelection | undefined
+        if (sel?.filePath === doc.uri.fsPath) {
+          this.awareness.setLocalStateField(AWARENESS_SELECTION_KEY, null)
+        }
+      }),
     )
     this.onAwarenessChange()
   }

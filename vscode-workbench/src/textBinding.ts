@@ -3,7 +3,7 @@ import path from 'node:path'
 import vs from 'vscode'
 import * as Y from 'yjs'
 import { CollabServerConnection } from './collabServer'
-import { AWARENESS_SELECTION_KEY, AwarenessSelection, Logger, logWithPrefix, YTEXT_KEY } from './util'
+import { Logger, logWithPrefix, YTEXT_KEY } from './util'
 
 /** Maintains a {@link YTextBinding} binding for every open {@link vs.TextDocument}
  * whose path lies within one of the syncable directories. */
@@ -21,7 +21,6 @@ export class YTextBindingManager implements vs.Disposable {
       vs.workspace.onDidOpenTextDocument(doc => this.onDidOpenTextDocument(doc)),
       vs.workspace.onDidCloseTextDocument(doc => this.onDidCloseTextDocument(doc)),
       vs.workspace.onDidChangeTextDocument(e => this.onDidChangeTextDocument(e)),
-      vs.window.onDidChangeTextEditorSelection(e => this.onDidChangeTextEditorSelection(e)),
     )
     // Bind already-open buffers
     for (const doc of vs.workspace.textDocuments) this.onDidOpenTextDocument(doc)
@@ -77,14 +76,6 @@ export class YTextBindingManager implements vs.Disposable {
       return
     }
     binding.onLocalChange(e)
-  }
-
-  private onDidChangeTextEditorSelection(e: vs.TextEditorSelectionChangeEvent) {
-    if (e.textEditor.document.uri.scheme !== 'file') return
-    const filePath = e.textEditor.document.uri.fsPath
-    const binding = this.bindings.get(filePath)
-    if (!binding) return
-    binding.onDidChangeTextEditorSelection(e)
   }
 
   dispose() {
@@ -400,25 +391,7 @@ export class YTextBinding implements vs.Disposable {
     }, 3_000)
   }
 
-  // TODO: move this to remoteSelections.ts and just pass hocuspocus to the ctr again
-  onDidChangeTextEditorSelection(e: vs.TextEditorSelectionChangeEvent) {
-    if (e.textEditor.document !== this.doc) return
-    this.collabServer.awareness.setLocalStateField(AWARENESS_SELECTION_KEY, {
-      filePath: this.doc.uri.fsPath,
-      // FIXME: use LSP types
-      selections: e.selections.map(s => ({
-        anchor: { line: s.anchor.line, character: s.anchor.character },
-        active: { line: s.active.line, character: s.active.character },
-      })),
-    } satisfies AwarenessSelection)
-  }
-
   dispose() {
-    const sel = this.collabServer.awareness.getLocalState()?.[AWARENESS_SELECTION_KEY] as AwarenessSelection | undefined
-    if (sel?.filePath === this.doc.uri.fsPath) {
-      this.collabServer.awareness.setLocalStateField(AWARENESS_SELECTION_KEY, null)
-    }
-
     clearTimeout(this.ensureSyncTimeout)
 
     this.localYdoc?.off('update', this.onLocalUpdate)
