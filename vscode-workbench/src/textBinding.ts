@@ -1,8 +1,7 @@
-import { HocuspocusProvider } from '@hocuspocus/provider'
+import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider'
 import path from 'node:path'
 import vs from 'vscode'
 import * as Y from 'yjs'
-import { CollabServerConnection } from './collabServer'
 import { Logger, logWithPrefix, YTEXT_KEY } from './util'
 
 /** Maintains a {@link YTextBinding} binding for every open {@link vs.TextDocument}
@@ -12,7 +11,7 @@ export class YTextBindingManager implements vs.Disposable {
   private disposables: vs.Disposable[] = []
 
   constructor(
-    private readonly collabServer: CollabServerConnection,
+    private readonly collabSock: HocuspocusProviderWebsocket,
     /** Directories to sync. Files not contained in any of these are not synced. */
     private syncDirs: string[],
     private readonly log: vs.LogOutputChannel,
@@ -53,7 +52,7 @@ export class YTextBindingManager implements vs.Disposable {
     if (!this.shouldSyncPath(filePath)) return
     // TODO: can one path have multiple `TextDocument`s?
     if (this.bindings.has(filePath)) return
-    this.bindings.set(filePath, new YTextBinding(doc, this.collabServer, this.log))
+    this.bindings.set(filePath, new YTextBinding(doc, this.collabSock, this.log))
   }
 
   private onDidCloseTextDocument(doc: vs.TextDocument) {
@@ -136,15 +135,15 @@ export class YTextBinding implements vs.Disposable {
   private readonly log: Logger
 
   constructor(
-    private readonly doc: vs.TextDocument,
-    private readonly collabServer: CollabServerConnection,
+    readonly doc: vs.TextDocument,
+    collabSock: HocuspocusProviderWebsocket,
     log_: vs.LogOutputChannel,
   ) {
     this.log = logWithPrefix(log_, `[YTextBinding(${doc.uri.fsPath})]`)
 
     // https://tiptap.dev/docs/hocuspocus/provider/examples#multiplexing
     this.hs = new HocuspocusProvider({
-      websocketProvider: this.collabServer.collabSock,
+      websocketProvider: collabSock,
       name: doc.uri.fsPath,
       // We use a single, global awareness CRDT rather than per-document CRDTs.
       awareness: null,
