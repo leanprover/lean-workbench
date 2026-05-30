@@ -30,11 +30,27 @@ function syncableDirs(): string[] {
   return (vs.workspace.workspaceFolders ?? []).filter(f => f.uri.scheme === 'file').map(f => f.uri.fsPath)
 }
 
+/** Extensions that intercept text input and conflict with collaborative editing. */
+const CONFLICTING_EXTENSIONS = ['vscodevim.vim', 'asvetliakov.vscode-neovim']
+
+function checkInstalledExtensions(): void {
+  const conflicting = CONFLICTING_EXTENSIONS.filter(id =>
+    vs.extensions.getExtension(id, true /* include browser extensions */),
+  )
+  if (conflicting.length > 0)
+    void vs.window.showErrorMessage(
+      `The following extension(s) are not currently supported in the Lean Workbench - please disable them: ${conflicting.join(', ')}`,
+    )
+}
+
 export async function activate(ctx: vs.ExtensionContext) {
   const log = vs.window.createOutputChannel('Lean 4 - Workbench', { log: true })
 
   const mdata = await readWorkspaceMdata(log)
   if (!mdata) return
+
+  checkInstalledExtensions()
+  ctx.subscriptions.push(vs.extensions.onDidChange(checkInstalledExtensions))
 
   const collabServer = await connectToCollabServer(log, mdata)
   if (!collabServer) return
