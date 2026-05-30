@@ -232,6 +232,8 @@ export class VscodeServerHandle {
           path.join(getOpenVscodeServerDir(), 'bin', 'openvscode-server'),
           '--socket-path', `/workspace/.openvscode-server/${VSCODE_SOCKET_FILENAME}`,
           '--without-connection-token',
+          // Reduce how long the extension host process waits for a web client to reconnect (default 3h).
+          '--reconnection-grace-time', '60',
           `--server-base-path=${this.vscodeIframePath}`,
           '--server-data-dir', '/workspace/.vscode-remote',
           // TODO: make a per-project user-data-dir to support concurrent editing sessions.
