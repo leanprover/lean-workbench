@@ -45,6 +45,8 @@ async function ensureMachineSettings(serverDataDir: string): Promise<void> {
           // those edits will be lost.
           // FIXME: inform users about this risk, and attempt detection in collab-server.
           'files.saveConflictResolution': 'overwriteFileOnDisk',
+          // Auto-save on every keystroke interferes with collaborative editing state.
+          'files.autoSave': 'off',
         },
         null,
         2,

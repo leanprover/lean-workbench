@@ -19,7 +19,8 @@
     "onStartupFinished"
   ],
   "enabledApiProposals": [
-    "textDocumentChangeReason"
+    "textDocumentChangeReason",
+    "extensionsAny"
   ],
   "contributes": {
     "viewsContainers": {

@@ -3,21 +3,31 @@ import vs from 'vscode'
 import { z } from 'zod'
 
 /** Subset of {@link vs.LogOutputChannel} used for our purposes. */
-export type Logger = Pick<vs.LogOutputChannel, 'trace' | 'debug' | 'info' | 'warn' | 'error'>
+export type Logger = Pick<vs.LogOutputChannel, 'logLevel' | 'trace' | 'debug' | 'info' | 'warn' | 'error'>
 
 /** Wrap `log` so that every message is prepended with `prefix`. */
 export function logWithPrefix(log: Logger, prefix: string): Logger {
-  const wrap =
-    (fn: (m: string, ...a: unknown[]) => void) =>
-    (msg: string, ...args: unknown[]) =>
-      fn(`${prefix} ${msg}`, ...args)
-  return {
-    trace: wrap(log.trace.bind(log)),
-    debug: wrap(log.debug.bind(log)),
-    info: wrap(log.info.bind(log)),
-    warn: wrap(log.warn.bind(log)),
-    error: (msg, ...args) => log.error(`${prefix} ${String(msg)}`, ...args),
+  class PrefixedLogger {
+    get logLevel() {
+      return log.logLevel
+    }
+    trace(msg: string, ...args: unknown[]) {
+      log.trace(`${prefix} ${msg}`, ...args)
+    }
+    debug(msg: string, ...args: unknown[]) {
+      log.debug(`${prefix} ${msg}`, ...args)
+    }
+    info(msg: string, ...args: unknown[]) {
+      log.info(`${prefix} ${msg}`, ...args)
+    }
+    warn(msg: string, ...args: unknown[]) {
+      log.warn(`${prefix} ${msg}`, ...args)
+    }
+    error(msg: string | Error, ...args: unknown[]) {
+      log.error(`${prefix} ${String(msg)}`, ...args)
+    }
   }
+  return new PrefixedLogger()
 }
 
 export function equalMaps<T, U>(a: Map<T, U>, b: Map<T, U>, eqU?: (a: U, b: U) => boolean): boolean {
@@ -52,7 +62,7 @@ export const BWRAP_COLLAB_SERVER_DIR = '/workspace/.collab-server'
 /** Collab-server socket path in the VSCode and collab-server bwraps. */
 export const BWRAP_COLLAB_SOCK_PATH = `${BWRAP_COLLAB_SERVER_DIR}/collab.sock`
 
-/** We keep a unique Y.Doc per file.
+/** We keep a Y.Doc per collaboratively-editable file.
  * This is the Y.Doc key under which the text content lives. */
 export const YTEXT_KEY = 'content'
 

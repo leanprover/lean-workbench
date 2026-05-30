@@ -95,61 +95,52 @@ export class YTextBindingManager implements vs.Disposable {
   }
 }
 
-/** Whether the given {@link vs.TextDocumentChangeEvent} should be broadcast to other clients. */
-function shouldBroadcastChange(e: vs.TextDocumentChangeEvent): boolean {
-  if (e.contentChanges.length === 0) return false
-  if (!e.detailedReason) throw new Error('internal error: textDocumentChangeReason API proposal is disabled')
-  // File re-read from disk
-  if (e.detailedReason.source === 'reloadFromDisk') return false
-  if (e.detailedReason.source === 'unknown' && e.detailedReason.metadata.source === 'unknown') {
-    // `workspace.applyEdit`
-    if (!e.detailedReason.metadata.name) return false
-    // `TextEditor.edit`
-    if (e.detailedReason.metadata.name === 'MainThreadTextEditor') return false
-  }
-  // TODO the two checks above are *incomplete*:
-  // we must not broadcast `applyEdit`s that apply remote changes
-  // (since that would cause an infinite broadcast loop),
-  // but we should broadcast other `applyEdit`s.
-  // However, there is no way in `applyEdit` to set the `detailedReason`,
-  // or any other field of the resulting `TextDocumentChangeEvent`,
-  // and checking document versions or edit content
-  // turned out prone to a number of race conditions.
-  // The only viable fix seems to be patching `openvscode-server`
-  // to support setting `detailedReason.source` in `applyEdit`.
-  return true
-
-  // Positive cases to use with a `return true` default, recorded for posterity
-  // // Keyboard inputs
-  // if (e.detailedReason.source === 'cursor') return true
-  // // Undo, redo
-  // if (e.detailedReason.source === 'applyEdits') return true
-  // // Autocompletion
-  // if (e.detailedReason.source === 'suggest') return true
-  // // 'Format Document' command
-  // if (e.detailedReason.metadata.name === 'formatEditsCommand') return true
-  // // Various causes, notably `vs.workspace.applyEdit`
-  // if (e.detailedReason.source === 'unknown') {
-  //   // VSCodeVim
-  //   if (e.detailedReason.metadata.name === 'MainThreadTextEditor') return true
-  //   // Newline normalization
-  //   if (e.detailedReason.metadata.name === 'insertFinalNewLine') return true
-  //   if (e.detailedReason.metadata.name === 'pushEditOperation') return true
-  //   return false
-  // }
+/** Common interface between {@link vs.TextEditorEdit} and {@link vs.WorkspaceEdit}. */
+interface EditBuilder {
+  insert(location: vs.Position, newText: string): void
+  delete(location: vs.Range): void
+  replace(range: vs.Range, newText: string): void
 }
 
 /** Bidirectional binding between a {@link vs.TextDocument}
- * and the {@link Y.Text} of a Hocuspocus document. */
+ * and the {@link Y.Text} of a {@link HocuspocusProvider}.
+ *
+ * WARNING: Unlike Monaco, VSCode has no API for synchronous edits.
+ * This binding is correspondingly much more subtle than Y-Monaco.
+ * When a remote change comes in,
+ * we repeatedly attempt to apply it as an asynchronous edit;
+ * an attempt may fail if a local change is made in the meantime.
+ * To compute the correct edit w.r.t. the current document contents,
+ * we diff the `remoteYtext` that contains remote changes
+ * against our `localYtext` that matches the VSCode-managed `doc`. */
 export class YTextBinding implements vs.Disposable {
-  private ytext: Y.Text
-  private hs: HocuspocusProvider
+  private readonly hs: HocuspocusProvider
 
-  private initialSyncDone = false
-  /** Used to linearize and order async operations that might otherwise interleave. */
-  private pending: Promise<void> = Promise.resolve()
+  private get remoteYtext(): Y.Text {
+    return this.hs.document.getText(YTEXT_KEY)
+  }
 
-  private disposables: { dispose(): unknown }[] = []
+  /** The CRDT that we base remote diffs on (see comment above).
+   * - Defined from initial sync onwards.
+   * - Inbetween {@link mutex}-guarded transactions,
+   *   its contents must match those of {@link doc}.
+   * - Includes a subset of the updates seen by {@link hs}. */
+  private localYdoc: Y.Doc | undefined
+
+  /** True once we have received an initial remote doc from the collab-server. */
+  private get initialSyncDone(): boolean {
+    return !!this.localYdoc
+  }
+
+  private get localYtext(): Y.Text {
+    return this.localYdoc!.getText(YTEXT_KEY)
+  }
+
+  private ensureSyncTimeout: NodeJS.Timeout | undefined
+
+  /** Used to linearize and order async operations
+   * that temporarily create inconsistent states while suspended. */
+  private mutex: Promise<void> = Promise.resolve()
 
   private readonly log: Logger
 
@@ -169,100 +160,195 @@ export class YTextBinding implements vs.Disposable {
     })
     this.hs.attach()
 
-    this.ytext = this.hs.document.getText(YTEXT_KEY)
+    this.remoteYtext.observe(this.onRemoteUpdate)
 
-    const observer = (event: Y.YTextEvent, transaction: Y.Transaction) => {
-      // First check prevents bounceback (https://beta.yjs.dev/docs/api/transactions/#the-origin-concept).
-      // Second ignores remote deltas before initial sync of remote doc.
-      if (transaction.origin === this || !this.initialSyncDone) return
-      // Important to capture this; `delta` can be different when the `enqueue`d closure runs.
-      const delta = event.delta
-      this.enqueue(() => this.applyRemoteDelta(delta))
+    const onLaterSync = () => {
+      this.log.warn(`unexpected reconnection from collab-server`)
     }
-    this.ytext.observe(observer)
-    this.disposables.push({
-      dispose: () => {
-        this.ytext.unobserve(observer)
-      },
-    })
-
     if (this.hs.synced) {
-      this.enqueue(() => this.initialSync())
+      this.enqueueTransaction(() => this.initFromRemote())
+      this.hs.on('synced', onLaterSync)
     } else {
-      const onSynced = () => {
-        this.hs.off('synced', onSynced)
-        this.enqueue(() => this.initialSync())
+      const onInitialSync = () => {
+        this.hs.off('synced', onInitialSync)
+        this.enqueueTransaction(() => this.initFromRemote())
+        this.hs.on('synced', onLaterSync)
       }
-      this.hs.on('synced', onSynced)
+      this.hs.on('synced', onInitialSync)
     }
   }
 
   /** Place an operation on the work queue.
    * Work items are atomic w.r.t. all other work items
    * (but not w.r.t. other `async` operations). */
-  private enqueue(work: () => Promise<void>): void {
-    this.pending = this.pending.then(work).catch(e => {
+  private enqueueTransaction(work: () => Promise<void>): void {
+    this.mutex = this.mutex.then(work).catch(e => {
       this.log.error(e)
     })
   }
 
+  /** Attempt to make a local edit. Return `true` iff successful. */
+  private async makeLocalEdit(fn: (_: EditBuilder) => void): Promise<boolean> {
+    const MAX_EDITOR_RETRIES = 10
+    const MAX_WORKSPACE_RETRIES = 10
+
+    /** First try {@link vs.TextEditor.edit}.
+     * Preferrable because it has a version guard:
+     * `fn` runs with a given {@link vs.TextDocument.version}
+     * and the resulting edit is rejected if the doc moves in the meantime,
+     * guaranteeing correct offsets.
+     * Needs the document to be open in a visible editor. */
+    for (let i = 0; i < MAX_EDITOR_RETRIES; i++) {
+      let hasEditor = false
+      for (const e of vs.window.visibleTextEditors) {
+        if (e.document === this.doc) {
+          hasEditor = true
+          const success = await e.edit(fn)
+          if (success) return true
+        }
+      }
+      if (!hasEditor) break
+    }
+
+    /** Then try {@link vs.WorkspaceEdit}.
+     * No version guard so can't handle concurrent local edits,
+     * but generally only runs if the document is not being actively edited
+     * (except for very rare races with programmatic edits). */
+    for (let i = 0; i < MAX_WORKSPACE_RETRIES; i++) {
+      const edit = new vs.WorkspaceEdit()
+      fn({
+        insert: (l, t) => edit.insert(this.doc.uri, l, t),
+        delete: r => edit.delete(this.doc.uri, r),
+        replace: (r, t) => edit.replace(this.doc.uri, r, t),
+      })
+      const success = await vs.workspace.applyEdit(edit)
+      if (success) return true
+    }
+    return false
+  }
+
+  /** (Re)initialize {@link localYdoc} and {@link doc} with the remote text,
+   * replacing the entire {@link doc} buffer if necessary.
+   * Avoids making an edit when contents already match. */
+  private async initFromRemote(): Promise<void> {
+    if (this.localYdoc) {
+      this.localYdoc.off('update', this.onLocalUpdate)
+      this.localYdoc.destroy()
+    }
+    this.localYdoc = new Y.Doc()
+    Y.applyUpdate(this.localYdoc, Y.encodeStateAsUpdate(this.hs.document))
+    this.localYdoc.on('update', this.onLocalUpdate)
+
+    const remoteStr = this.remoteYtext.toString()
+    const localStr = this.doc.getText()
+    if (remoteStr === localStr) return
+
+    const success = await this.makeLocalEdit(b => {
+      const fullRange = new vs.Range(new vs.Position(0, 0), this.doc.positionAt(this.doc.getText().length))
+      b.replace(fullRange, remoteStr)
+    })
+    if (!success) {
+      this.log.error(`[initFromRemote] failed to overwrite document`)
+    }
+  }
+
+  private onRemoteUpdate = (_: Y.YTextEvent, transaction: Y.Transaction) => {
+    // First check prevents bounceback (https://beta.yjs.dev/docs/api/transactions/#the-origin-concept).
+    // Second ignores remote deltas before remote doc has been received.
+    if (transaction.origin === this || !this.initialSyncDone) return
+    this.scheduleMergeRemoteDiff()
+  }
+
+  /** Event handler for `this.localYDoc.on('update')`. */
+  private onLocalUpdate = (update: Uint8Array, origin: unknown) => {
+    // On the local doc, `origin === this` means *do broadcast*.
+    if (origin !== this || !this.initialSyncDone) return
+
+    /** Apply this broadcastable local change to the remote doc.
+     * Crucial to make edits on local Y.doc in {@link onLocalChange} and propagate the update to remote
+     * rather than the other way around:
+     * in general, remote has seen more updates than local,
+     * so an update generated on the remote CRDT may have overly recent clocks,
+     * thus being stashed in the local doc's `pendingStructs`
+     * rather than being immediately applied.
+     * This would lead it to produce deltas duplicating local changes in {@link mergeRemoteDiff}. */
+    Y.applyUpdate(this.hs.document, update, this)
+  }
+
   onLocalChange(e: vs.TextDocumentChangeEvent): void {
-    if (e.document !== this.doc) throw new Error('internal error: YTextBinding received event for wrong document')
-    if (!this.initialSyncDone) return
-    this.log.trace(`[onLocalChange] ${JSON.stringify(e)}`)
-    if (!shouldBroadcastChange(e)) return
-    const changes = e.contentChanges
-    // Broadcast the local change to other clients through collab-server.
-    this.hs.document.transact(() => {
+    if (e.document !== this.doc) throw new Error('internal error: received event for wrong document')
+    if (!this.initialSyncDone || e.contentChanges.length === 0) return
+    if (!e.detailedReason) throw new Error('internal error: textDocumentChangeReason API proposal is disabled')
+    // File re-read from disk
+    if (e.detailedReason.source === 'reloadFromDisk') {
+      // Prefer CRDT state to on-disk contents
+      this.scheduleEnsureSync()
+      return
+    }
+    /** Prevent loopback by checking for the two methods of editing used in {@link makeLocalEdit}. */
+    if (
+      e.detailedReason.source === 'unknown' &&
+      e.detailedReason.metadata.source === 'unknown' &&
+      (!e.detailedReason.metadata.name /* workspace.applyEdit */ ||
+        e.detailedReason.metadata.name === 'MainThreadTextEditor') /* TextEditor.edit */
+    ) {
+      // TODO these checks are *incomplete*:
+      // we must not broadcast our applications of remote changes
+      // (since that would cause an infinite broadcast loop),
+      // but we should broadcast programmatic edits from other extensions
+      // (notably Vim and VSCode Neovim).
+      // However, there is no VSCode API to set the `detailedReason`,
+      // or any other field of the resulting `TextDocumentChangeEvent`,
+      // and checking document versions or edit content
+      // turned out prone to a number of race conditions.
+      // The only viable fix seems to be patching `openvscode-server`
+      // to support setting `detailedReason.source` on our own edits.
+      // For now, we schedule a job to revert unbroadcasted local changes.
+      this.scheduleEnsureSync()
+      return
+    }
+
+    /** Apply the broadcastable local change to {@link localYdoc} with `this` origin.
+     * (Remote changes are applied to {@link localYdoc} in {@link mergeRemoteDiff}.) */
+    this.localYdoc!.transact(() => {
       // VSCode sorts `contentChanges` in reverse offset order
       // so they can be applied sequentially without offset adjustment.
-      for (const ch of changes) {
-        if (ch.rangeLength) this.ytext.delete(ch.rangeOffset, ch.rangeLength)
-        if (ch.text) this.ytext.insert(ch.rangeOffset, ch.text)
+      for (const ch of e.contentChanges) {
+        if (ch.rangeLength) this.localYtext.delete(ch.rangeOffset, ch.rangeLength)
+        if (ch.text) this.localYtext.insert(ch.rangeOffset, ch.text)
       }
     }, this)
+    this.scheduleEnsureSync()
   }
 
-  onDidChangeTextEditorSelection(e: vs.TextEditorSelectionChangeEvent) {
-    if (e.textEditor.document !== this.doc) return
-    this.collabServer.awareness.setLocalStateField(AWARENESS_SELECTION_KEY, {
-      filePath: this.doc.uri.fsPath,
-      // FIXME: use LSP types
-      selections: e.selections.map(s => ({
-        anchor: { line: s.anchor.line, character: s.anchor.character },
-        active: { line: s.active.line, character: s.active.character },
-      })),
-    } satisfies AwarenessSelection)
+  /** Whether a run of {@link mergeRemoteDiff} is already scheduled.
+   * Used to avoid running many redundant merges with empty deltas. */
+  private mergeRemoteDiffScheduled: boolean = false
+
+  private scheduleMergeRemoteDiff(): void {
+    if (this.mergeRemoteDiffScheduled) return
+    this.enqueueTransaction(() => this.mergeRemoteDiff())
+    this.mergeRemoteDiffScheduled = true
   }
 
-  /** Ensure that buffer contents match the {@link Y.Doc} text
-   * by replacing the entire buffer if necessary.
-   * Avoids making an edit when contents already match. */
-  private async initialSync(): Promise<void> {
-    // Read `ytext` and set `initialSyncDone = true` synchronously
-    // so that any remote delta arriving during the subsequent `applyEdit` is queued (not dropped)
-    // and later applied on top of the new editor content.
-    const ytextStr = this.ytext.toString()
-    this.initialSyncDone = true
-    const oldText = this.doc.getText()
-    if (ytextStr === oldText) return
-    const edit = new vs.WorkspaceEdit()
-    const fullRange = new vs.Range(new vs.Position(0, 0), this.doc.positionAt(oldText.length))
-    edit.replace(this.doc.uri, fullRange, ytextStr)
-    const success = await vs.workspace.applyEdit(edit)
-    if (!success) {
-      this.log.warn(`[initialSync] edit failed`)
-    }
-  }
-
-  private async applyRemoteDelta(delta: Y.YTextEvent['delta']): Promise<void> {
-    /** Common interface between {@link vs.TextEditorEdit} and {@link vs.WorkspaceEdit}. */
-    interface EditBuilder {
-      insert(location: vs.Position, value: string): void
-      delete(location: vs.Range): void
-    }
-
+  private async mergeRemoteDiff(): Promise<void> {
+    this.mergeRemoteDiffScheduled = false
+    let update: Uint8Array | undefined
     const mkEdits = (b: EditBuilder) => {
+      // Observe the delta by updating a fresh Y.Doc
+      // (there is no way to compute a delta from an update directly).
+      const fork = new Y.Doc()
+      Y.applyUpdate(fork, Y.encodeStateAsUpdate(this.localYdoc!))
+      // Yjs fires observers synchronously, thus populating `delta`, during `applyUpdate`.
+      let delta: Y.YTextEvent['delta'] = []
+      fork.getText(YTEXT_KEY).observe(e => {
+        delta = e.delta
+      })
+      update = Y.encodeStateAsUpdate(this.hs.document)
+      Y.applyUpdate(fork, update)
+      fork.destroy()
+      if (delta.length === 0) return
+
       let offset = 0
       for (const op of delta) {
         if (typeof op.retain === 'number') {
@@ -277,39 +363,54 @@ export class YTextBinding implements vs.Disposable {
       }
     }
 
-    for (const e of vs.window.visibleTextEditors) {
-      if (e.document === this.doc) {
-        this.log.debug('[applyRemoteDelta] using visible text editor')
-        // This has a version guard - mkEdit runs on doc version v0,
-        // and the doc must still be at v0 by the time the edit is applied;
-        // otherwise it is rejected.
-        const success = await e.edit(mkEdits)
-        if (!success) {
-          this.log.warn(`[applyRemoteDelta] edit failed: ${JSON.stringify(delta)}`)
-        } else {
-          return
-        }
-      }
+    const success = await this.makeLocalEdit(mkEdits)
+    if (success) {
+      if (!update) throw new Error('[mergeRemoteDiff] internal error: edit succeeded but update missing')
+      // Edit is now included in `doc`, update `localYdoc` to match.
+      Y.applyUpdate(this.localYdoc!, update)
+    } else {
+      this.log.warn(`[mergeRemoteDiff] edit failed, dropping update`)
     }
-
-    this.log.debug('[applyRemoteDelta] using applyEdit')
-    const edit = new vs.WorkspaceEdit()
-    mkEdits({
-      insert: (l, v) => edit.insert(this.doc.uri, l, v),
-      delete: r => edit.delete(this.doc.uri, r),
-    })
-    const success = await vs.workspace.applyEdit(edit)
-    if (!success) {
-      this.log.error(`[applyRemoteDelta] edit failed: ${JSON.stringify(delta)}`)
-    }
+    this.scheduleEnsureSync()
   }
 
-  checkSync() {
-    const ytextStr = this.ytext.toString()
-    const docStr = this.doc.getText()
-    if (ytextStr !== docStr) {
-      this.log.warn(`[DESYNC] YJS:\n${ytextStr}\nDOC:\n${docStr}`)
-    }
+  /** Ensure that {@link localYdoc} has the same contents as {@link doc},
+   * and that {@link localYdoc} and {@link hs} have the same CRDT state.
+   * Overwrite {@link localYdoc} and {@link doc} if this is not the case.
+   * Debounced - runs 3s after the most recent invocation. */
+  private scheduleEnsureSync() {
+    if (!this.initialSyncDone) return
+    if (this.ensureSyncTimeout) clearTimeout(this.ensureSyncTimeout)
+    this.ensureSyncTimeout = setTimeout(() => {
+      this.enqueueTransaction(async () => {
+        const localYtextStr = this.localYtext.toString()
+        const docStr = this.doc.getText()
+        if (docStr !== localYtextStr) {
+          this.log.debug('[ensureSync] doc<->localYdoc desync, overwriting')
+          await this.initFromRemote()
+          return
+        }
+        const sl = Y.encodeStateVector(this.localYdoc!)
+        const sr = Y.encodeStateVector(this.hs.document)
+        if (sl.length !== sr.length || !sl.every((b, i) => b === sr[i])) {
+          this.log.debug('[ensureSync] remoteYdoc<->localYdoc desync, overwriting')
+          await this.initFromRemote()
+        }
+      })
+    }, 3_000)
+  }
+
+  // TODO: move this to remoteSelections.ts and just pass hocuspocus to the ctr again
+  onDidChangeTextEditorSelection(e: vs.TextEditorSelectionChangeEvent) {
+    if (e.textEditor.document !== this.doc) return
+    this.collabServer.awareness.setLocalStateField(AWARENESS_SELECTION_KEY, {
+      filePath: this.doc.uri.fsPath,
+      // FIXME: use LSP types
+      selections: e.selections.map(s => ({
+        anchor: { line: s.anchor.line, character: s.anchor.character },
+        active: { line: s.active.line, character: s.active.character },
+      })),
+    } satisfies AwarenessSelection)
   }
 
   dispose() {
@@ -317,8 +418,13 @@ export class YTextBinding implements vs.Disposable {
     if (sel?.filePath === this.doc.uri.fsPath) {
       this.collabServer.awareness.setLocalStateField(AWARENESS_SELECTION_KEY, null)
     }
-    for (const d of this.disposables) d.dispose()
-    this.disposables = []
+
+    clearTimeout(this.ensureSyncTimeout)
+
+    this.localYdoc?.off('update', this.onLocalUpdate)
+    this.localYdoc?.destroy()
+
+    this.remoteYtext.unobserve(this.onRemoteUpdate)
     this.hs.destroy()
   }
 }
