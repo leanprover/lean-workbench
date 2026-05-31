@@ -116,7 +116,7 @@ suite('Collaborative editing', () => {
   const mkHandles = async (enableEnsureSync: boolean = true): Promise<TestHandles> => {
     // In-memory Hocuspocus server on an ephemeral port; no persistence, no signal handlers.
     const server = new Server({ stopOnSignals: false, quiet: true })
-    await server.listen(0)
+    await new Promise<void>(resolve => server.httpServer.listen(0, '127.0.0.1', resolve))
     const url = `ws://127.0.0.1:${server.address.port}`
 
     const mkClient = () => new HocuspocusProviderWebsocket({ url })
