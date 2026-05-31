@@ -26,4 +26,7 @@ jobs:
 
       - run: make container
 
-      # TODO: tests
+      # Virtual display for VS Code tests
+      - run: sudo apt-get update && sudo apt-get install --yes xvfb
+
+      - run: xvfb-run --auto-servernum npm --workspace vscode-workbench run test
