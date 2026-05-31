@@ -106,7 +106,8 @@ interface EditBuilder {
 export class YTextBinding implements vs.Disposable {
   private readonly hs: HocuspocusProvider
 
-  private get remoteYtext(): Y.Text {
+  /** Public for tests only. */
+  get remoteYtext(): Y.Text {
     return this.hs.document.getText(YTEXT_KEY)
   }
 
@@ -117,8 +118,9 @@ export class YTextBinding implements vs.Disposable {
    * - Includes a subset of the updates seen by {@link hs}. */
   private localYdoc: Y.Doc | undefined
 
-  /** True once we have received an initial remote doc from the collab-server. */
-  private get initialSyncDone(): boolean {
+  /** True once we have received an initial remote doc from the collab-server.
+   * Public for tests only. */
+  get initialSyncDone(): boolean {
     return !!this.localYdoc
   }
 
@@ -137,18 +139,24 @@ export class YTextBinding implements vs.Disposable {
   constructor(
     readonly doc: vs.TextDocument,
     collabSock: HocuspocusProviderWebsocket,
-    log_: vs.LogOutputChannel,
+    log_: Logger,
+    /** Name of this document in {@link collabSock}.
+     * Expected to be the file path except in tests. */
+    docName: string = doc.uri.fsPath,
+    /** Whether to enable the {@link scheduleEnsureSync} fallback.
+     * Expected to be `true` except in tests. */
+    readonly enableEnsureSync: boolean = true,
   ) {
-    this.log = logWithPrefix(log_, `[YTextBinding(${doc.uri.fsPath})]`)
-
     // https://tiptap.dev/docs/hocuspocus/provider/examples#multiplexing
     this.hs = new HocuspocusProvider({
       websocketProvider: collabSock,
-      name: doc.uri.fsPath,
+      name: docName,
       // We use a single, global awareness CRDT rather than per-document CRDTs.
       awareness: null,
     })
     this.hs.attach()
+
+    this.log = logWithPrefix(log_, `[YTextBinding(${docName}|${this.hs.document.clientID.toString(16)})]`)
 
     this.remoteYtext.observe(this.onRemoteUpdate)
 
@@ -194,7 +202,10 @@ export class YTextBinding implements vs.Disposable {
         if (e.document === this.doc) {
           hasEditor = true
           const success = await e.edit(fn)
-          if (success) return true
+          if (success) {
+            this.log.trace('[makeLocalEdit] used TextEditor.edit')
+            return true
+          }
         }
       }
       if (!hasEditor) break
@@ -212,7 +223,10 @@ export class YTextBinding implements vs.Disposable {
         replace: (r, t) => edit.replace(this.doc.uri, r, t),
       })
       const success = await vs.workspace.applyEdit(edit)
-      if (success) return true
+      if (success) {
+        this.log.trace('[makeLocalEdit] used workspace.applyEdit')
+        return true
+      }
     }
     return false
   }
@@ -231,13 +245,18 @@ export class YTextBinding implements vs.Disposable {
 
     const remoteStr = this.remoteYtext.toString()
     const localStr = this.doc.getText()
-    if (remoteStr === localStr) return
-
-    const success = await this.makeLocalEdit(b => {
-      const fullRange = new vs.Range(new vs.Position(0, 0), this.doc.positionAt(this.doc.getText().length))
-      b.replace(fullRange, remoteStr)
-    })
-    if (!success) {
+    let success = false
+    if (remoteStr === localStr) {
+      success = true
+    } else {
+      success = await this.makeLocalEdit(b => {
+        const fullRange = new vs.Range(new vs.Position(0, 0), this.doc.positionAt(this.doc.getText().length))
+        b.replace(fullRange, remoteStr)
+      })
+    }
+    if (success) {
+      this.log.trace('[initFromRemote] synced')
+    } else {
       this.log.error(`[initFromRemote] failed to overwrite document`)
     }
   }
@@ -280,6 +299,7 @@ export class YTextBinding implements vs.Disposable {
       e.detailedReason.source === 'unknown' &&
       e.detailedReason.metadata.source === 'unknown' &&
       (!e.detailedReason.metadata.name /* workspace.applyEdit */ ||
+        e.detailedReason.metadata.name === 'pushEditOperation' /* workspace.applyEdit */ ||
         e.detailedReason.metadata.name === 'MainThreadTextEditor') /* TextEditor.edit */
     ) {
       // TODO these checks are *incomplete*:
@@ -293,10 +313,14 @@ export class YTextBinding implements vs.Disposable {
       // turned out prone to a number of race conditions.
       // The only viable fix seems to be patching `openvscode-server`
       // to support setting `detailedReason.source` on our own edits.
-      // For now, we schedule a job to revert unbroadcasted local changes.
+      // For now, {@link scheduleEnsureSync} reverts unbroadcasted local changes.
       this.scheduleEnsureSync()
       return
     }
+
+    this.log.trace(
+      `[onLocalChange] broadcasting ${JSON.stringify(e.contentChanges.map(c => [c.rangeOffset, c.rangeLength, c.text]))} (detailed reason ${JSON.stringify(e.detailedReason)})`,
+    )
 
     /** Apply the broadcastable local change to {@link localYdoc} with `this` origin.
      * (Remote changes are applied to {@link localYdoc} in {@link mergeRemoteDiff}.) */
@@ -339,6 +363,7 @@ export class YTextBinding implements vs.Disposable {
       fork.destroy()
       if (delta.length === 0) return
 
+      this.log.trace(`[mergeRemoteDiff] applying delta ${JSON.stringify(delta)}`)
       let offset = 0
       for (const op of delta) {
         if (typeof op.retain === 'number') {
@@ -369,7 +394,7 @@ export class YTextBinding implements vs.Disposable {
    * Overwrite {@link localYdoc} and {@link doc} if this is not the case.
    * Debounced - runs 3s after the most recent invocation. */
   private scheduleEnsureSync() {
-    if (!this.initialSyncDone) return
+    if (!this.initialSyncDone || !this.enableEnsureSync) return
     if (this.ensureSyncTimeout) clearTimeout(this.ensureSyncTimeout)
     this.ensureSyncTimeout = setTimeout(() => {
       this.enqueueTransaction(async () => {
