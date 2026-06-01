@@ -102,7 +102,34 @@ interface EditBuilder {
  * an attempt may fail if a local change is made in the meantime.
  * To compute the correct edit w.r.t. the current document contents,
  * we diff the `remoteYtext` that contains remote changes
- * against our `localYtext` that matches the VSCode-managed `doc`. */
+ * against our `localYtext` that matches the VSCode-managed `doc`.
+ * 
+ * The synchronization flow of a single change is:
+ * ```mermaid
+ * flowchart TB
+ *   subgraph Alice["Alice's extensionHost"]
+ *     ADoc["vscode.TextDocument"]
+ *     AYjsL["local Y.Doc"]
+ *     AYjsR["remote Y.Doc"]
+ *     ADoc -->|"YTextBinding.onLocalChange"| AYjsL
+ *     AYjsL -->|"YTextBinding.onLocalUpdate"| AYjsR
+ *   end
+
+ *   subgraph Bob["Bob's extensionHost"]
+ *     BDoc["vscode.TextDocument"]
+ *     BYjsL["local Y.Doc"]
+ *     BYjsR["remote Y.Doc"]
+ *     BYjsR -->|"YTextBinding.mergeRemoteDiff"| BDoc & BYjsL
+ *   end
+
+ *   subgraph Server["collab-server"]
+ *     CYjs["collab Y.Doc"]
+ *   end
+
+ *   AYjsR -->|"sync"| CYjs
+ *   CYjs -->|"sync"| BYjsR
+ * ```
+ */
 export class YTextBinding implements vs.Disposable {
   private readonly hs: HocuspocusProvider
 
