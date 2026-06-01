@@ -17,6 +17,9 @@
 # Pre-built workbench extension
 !vscode-workbench.vsix
 
+# Patches for VS Code
+!code-server-patches
+
 # Scripts, data, etc.
 !scripts
 !templates

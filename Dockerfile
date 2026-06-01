@@ -1,5 +1,43 @@
 # syntax=docker/dockerfile:1
 
+# --- code-server builder: clone and build code-server from source ---
+FROM buildpack-deps:24.04-curl AS builder-code-server
+
+# Node 22 (required by code-server/.node-version)
+RUN curl -sSfL https://deb.nodesource.com/setup_22.x | bash -
+
+# Build prerequisites (see code-server docs/CONTRIBUTING.md "Requirements")
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential g++ make pkg-config python-is-python3 \
+        libx11-dev libxkbfile-dev libsecret-1-dev libkrb5-dev \
+        git git-lfs jq quilt rsync unzip nodejs \
+    && rm -rf /var/lib/apt/lists/* \
+    && git lfs install
+
+# Shallow-clone code-server at the release tag and fetch its VS Code submodule.
+ARG CODE_SERVER_VERSION="4.122.0"
+RUN git clone --branch "v${CODE_SERVER_VERSION}" --depth 1 \
+        https://github.com/coder/code-server /src \
+    && git -C /src submodule update --init --depth 1
+WORKDIR /src
+
+# Apply code-server's patches, then our own on top.
+# Each code-server-patches/*.diff is `git diff` output
+# generated inside lib/vscode (paths such as a/src/vs/...).
+COPY code-server-patches/ /code-server-patches/
+RUN quilt push -a \
+    && for p in /code-server-patches/*.diff; do \
+         [ -e "$p" ] || continue; echo "Applying $p"; patch -p1 -d lib/vscode < "$p"; \
+       done
+
+# Build (see code-server/docs/CONTRIBUTING.md)
+RUN npm install
+RUN npm run build
+RUN VERSION="${CODE_SERVER_VERSION}" npm run build:vscode
+# Lands in /src/release
+RUN KEEP_MODULES=1 npm run release
+
 # --- base image: Node.js installation shared between builders and runners ---
 FROM buildpack-deps:24.04-curl AS base
 RUN curl -sSfL https://deb.nodesource.com/setup_24.x | bash - \
@@ -27,18 +65,7 @@ RUN curl -sSfL https://github.com/containers/bubblewrap/releases/download/v${BUB
     && ninja -C _build install \
     && cd / && rm -rf /bubblewrap-${BUBBLEWRAP_VERSION}
 
-# Install code-server
-ARG CODE_SERVER_VERSION="4.122.0"
-RUN arch=$(uname -m) && \
-    if [ "${arch}" = "x86_64" ]; then arch="amd64"; \
-    elif [ "${arch}" = "aarch64" ]; then arch="arm64"; \
-    else echo "unsupported architecture: ${arch}" >&2; exit 1; \
-    fi && \
-    vsc_tag="code-server-${CODE_SERVER_VERSION}-linux-${arch}" && \
-    wget -q https://github.com/coder/code-server/releases/download/v${CODE_SERVER_VERSION}/${vsc_tag}.tar.gz && \
-    tar -xzf ${vsc_tag}.tar.gz && \
-    mv -f ${vsc_tag} /app/vscode-server && \
-    rm -f ${vsc_tag}.tar.gz
+COPY --from=builder-code-server /src/release /app/vscode-server
 
 # Install builtin VS Code extensions. Workbench users get a read-only view of these.
 # Cannot use `--install-builtin-extension` as it does not store in the builtin directory
@@ -54,7 +81,6 @@ RUN install_vsix_as_builtin() { \
     } \
     && install_vsix_as_builtin "leanprover" "lean4" "0.0.237" \
     && install_vsix_as_builtin "tamasfe" "even-better-toml" "0.19.1"
-
 
 # --- base runner image: minimal runtime, no build tools ---
 FROM base AS runner-base
