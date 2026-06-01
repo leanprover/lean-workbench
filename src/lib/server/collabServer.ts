@@ -1,4 +1,4 @@
-import { getBetterSqlite3NodePath, getCollabServerDir } from '@/lib/server/config'
+import { getCollabServerDir } from '@/lib/server/config'
 import { BWRAP_ARGS, bwrapProjectDir } from '@/lib/server/util'
 import { Project } from '@/prisma/generated/client'
 import { ChildProcess, spawn } from 'node:child_process'
@@ -61,15 +61,12 @@ export class CollabServerHandle {
           // We don't need internet access.
           '--unshare-net',
           '--ro-bind', getCollabServerDir(), getCollabServerDir(),
-          // `better-sqlite3` needs a native library from the top-level `node_modules`.
-          '--ro-bind', getBetterSqlite3NodePath(), getBetterSqlite3NodePath(),
           '--bind', this.projectDir, sandboxProjectDir,
           '--bind', this.workDir, '/workspace/.collab-server',
           '--chdir', '/workspace/.collab-server',
           '/usr/bin/node',
           path.join(getCollabServerDir(), 'dist', 'server.js'),
           sandboxProjectDir,
-          getBetterSqlite3NodePath()
         ],
         { stdio: 'inherit' },
       )

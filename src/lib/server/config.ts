@@ -49,10 +49,6 @@ export function getCollabServerDir(): string {
   return path.join(getWorkbenchDir(), 'collab-server')
 }
 
-export function getBetterSqlite3NodePath(): string {
-  return path.join(getWorkbenchDir(), 'node_modules', 'better-sqlite3', 'build', 'Release', 'better_sqlite3.node')
-}
-
 export function getNginxConfDir(): string {
   return process.env.NGINX_CONF_DIR ?? '/etc/nginx'
 }

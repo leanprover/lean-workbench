@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prepare": "prisma generate",
     "watch": "concurrently --names esbuild,tsc 'npm run watch:esbuild' 'npm run watch:tsc'",
     "watch:esbuild": "node esbuild.mjs --watch",
     "watch:tsc": "tsc --watch --preserveWatchOutput",
@@ -14,11 +13,6 @@
   "dependencies": {
     "@hocuspocus/extension-database": "^4.0.0",
     "@hocuspocus/server": "^4.0.0",
-    "@prisma/adapter-better-sqlite3": "^7.7.0",
-    "@prisma/client": "^7.7.0",
     "esbuild": "^0.28"
-  },
-  "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13"
   }
 }
