@@ -9,10 +9,9 @@ familiar (i.e. vscode with the lean4 extension) and novel interfaces
 to the Lean proof assistant.
 
 A core part of the system is a multi-user sandboxed VS Code server.
-Each user gets an isolated [OpenVSCode
-Server](https://github.com/gitpod-io/openvscode-server) instance
-inside a [bubblewrap](https://github.com/containers/bubblewrap)
-sandbox, reverse-proxied through nginx.
+Each user gets an isolated [Code Server](https://github.com/coder/code-server) instance
+inside a [bubblewrap](https://github.com/containers/bubblewrap) sandbox,
+reverse-proxied through nginx.
 
 ## Production setup
 

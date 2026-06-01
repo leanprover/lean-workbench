@@ -27,18 +27,18 @@ RUN curl -sSfL https://github.com/containers/bubblewrap/releases/download/v${BUB
     && ninja -C _build install \
     && cd / && rm -rf /bubblewrap-${BUBBLEWRAP_VERSION}
 
-# Install openvscode-server
-ARG OPENVSCODE_SERVER_VERSION="1.109.5"
+# Install code-server
+ARG CODE_SERVER_VERSION="4.122.0"
 RUN arch=$(uname -m) && \
-    if [ "${arch}" = "x86_64" ]; then arch="x64"; \
+    if [ "${arch}" = "x86_64" ]; then arch="amd64"; \
     elif [ "${arch}" = "aarch64" ]; then arch="arm64"; \
     else echo "unsupported architecture: ${arch}" >&2; exit 1; \
     fi && \
-    ovsc_tag="openvscode-server-v${OPENVSCODE_SERVER_VERSION}" && \
-    wget -q https://github.com/gitpod-io/openvscode-server/releases/download/${ovsc_tag}/${ovsc_tag}-linux-${arch}.tar.gz && \
-    tar -xzf ${ovsc_tag}-linux-${arch}.tar.gz && \
-    mv -f ${ovsc_tag}-linux-${arch} /app/openvscode-server && \
-    rm -f ${ovsc_tag}-linux-${arch}.tar.gz
+    vsc_tag="code-server-${CODE_SERVER_VERSION}-linux-${arch}" && \
+    wget -q https://github.com/coder/code-server/releases/download/v${CODE_SERVER_VERSION}/${vsc_tag}.tar.gz && \
+    tar -xzf ${vsc_tag}.tar.gz && \
+    mv -f ${vsc_tag} /app/vscode-server && \
+    rm -f ${vsc_tag}.tar.gz
 
 # Install builtin VS Code extensions. Workbench users get a read-only view of these.
 # Cannot use `--install-builtin-extension` as it does not store in the builtin directory
@@ -49,7 +49,7 @@ RUN arch=$(uname -m) && \
 RUN install_vsix_as_builtin() { \
         wget -q -O /tmp/ext.vsix "https://open-vsx.org/api/$1/$2/$3/file/$1.$2-$3.vsix" \
         && unzip -q /tmp/ext.vsix "extension/*" -d /tmp \
-        && mv /tmp/extension "/app/openvscode-server/extensions/$1.$2-universal" \
+        && mv /tmp/extension "/app/vscode-server/lib/vscode/extensions/$1.$2-universal" \
         && rm -rf /tmp/ext.vsix; \
     } \
     && install_vsix_as_builtin "leanprover" "lean4" "0.0.237" \
@@ -86,7 +86,7 @@ FROM builder-base AS builder-prod
 # Install production build of workbench extension
 COPY ./vscode-workbench.vsix /tmp/ext.vsix
 RUN unzip -q /tmp/ext.vsix "extension/*" -d /tmp \
-    && mv /tmp/extension /app/openvscode-server/extensions/leanprover.workbench-universal \
+    && mv /tmp/extension /app/vscode-server/lib/vscode/extensions/leanprover.workbench-universal \
     && rm -rf /tmp/ext.vsix
 
 COPY . /app/workbench

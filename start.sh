@@ -7,7 +7,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 LEAN_WORKBENCH_DATA_DIR="${LEAN_WORKBENCH_DATA_DIR:-/data}"
-OPENVSCODE_SERVER_DIR="${OPENVSCODE_SERVER_DIR:-/app/openvscode-server}"
+VSCODE_SERVER_DIR="${VSCODE_SERVER_DIR:-/app/vscode-server}"
 NGINX_CONF_DIR="${NGINX_CONF_DIR:-/etc/nginx}"
 NGINX_LOG_DIR="${NGINX_LOG_DIR:-/var/log/nginx}"
 
@@ -20,7 +20,7 @@ NGINX_ACCESS_LOG_PATH="${NGINX_LOG_DIR}/access.log"
 mkdir -p "${LEAN_WORKBENCH_DATA_DIR}/workspaces" "${LEAN_WORKBENCH_DATA_DIR}/db" "${LEAN_WORKBENCH_DATA_DIR}/package-sets" "${LEAN_WORKBENCH_DATA_DIR}/templates"
 
 # Start the Next.js app in the background
-export LEAN_WORKBENCH_DATA_DIR OPENVSCODE_SERVER_DIR NGINX_CONF_DIR NGINX_LOG_DIR
+export LEAN_WORKBENCH_DATA_DIR VSCODE_SERVER_DIR NGINX_CONF_DIR NGINX_LOG_DIR
 if [ "${NODE_ENV}" = "production" ]; then
     cd "${SCRIPT_DIR}" && node_modules/.bin/next start --port 3002 &
 else

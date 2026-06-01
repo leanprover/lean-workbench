@@ -20,7 +20,7 @@ import { promisify } from 'node:util'
 
 /** Create a VSCode machine settings file if one doesn't exist. */
 async function ensureMachineSettings(serverDataDir: string): Promise<void> {
-  const machineSettingsDir = path.join(serverDataDir, 'data', 'Machine')
+  const machineSettingsDir = path.join(serverDataDir, 'Machine')
   const machineSettingsFile = path.join(machineSettingsDir, 'settings.json')
   try {
     await fs.access(machineSettingsFile)
@@ -80,17 +80,17 @@ async function waitForNginxRoute(path: string, timeoutMs = 10_000): Promise<void
   throw new Error(`Timeout waiting for Nginx route ${path} (last HTTP status=${status})`)
 }
 
-/** Name of the `openvscode-server` UDS file. */
+/** Name of the VS Code server UDS file. */
 const VSCODE_SOCKET_FILENAME = 'client.sock'
 
-/** Manages an `openvscode-server` instance.
+/** Manages a VS Code server instance.
  * Non-reusable; construct a new handle to start a new server. */
 export class VscodeServerHandle {
   /** Unique ID of this VSCode server instance. */
   readonly uuid = crypto.randomUUID()
   /** Route that Nginx exposes the VSCode server on. */
   readonly vscodeIframePath = `/_vs/${this.uuid}/`
-  /** Directory in which `openvscode-server` places its UDS file. */
+  /** Directory in which the server places its UDS file. */
   readonly socketDir = `/tmp/vsc-${this.uuid}/`
   private readonly socketPath = `${this.socketDir}/${VSCODE_SOCKET_FILENAME}`
 
@@ -113,17 +113,17 @@ export class VscodeServerHandle {
   private disposables = new AsyncDisposableStack()
 
   private get nginxUserRoutePath(): string {
-    return `${getNginxConfDir()}/user-routes/openvscode-server-${this.uuid}.conf`
+    return `${getNginxConfDir()}/user-routes/vscode-server-${this.uuid}.conf`
   }
 
   private get description(): string {
-    return `openvscode-server ${this.uuid} (project ${this.project.id}, viewer ${this.viewer.id})`
+    return `vscode-server ${this.uuid} (project ${this.project.id}, viewer ${this.viewer.id})`
   }
 
   private async writeNginxUserRoute() {
     const conf = `location ${this.vscodeIframePath} {
       auth_request /api/auth-vsc/${this.uuid};
-      proxy_pass http://unix:${this.socketPath};
+      proxy_pass http://unix:${this.socketPath}:/;
       proxy_http_version 1.1;
       proxy_set_header Upgrade $http_upgrade;
       proxy_set_header Connection $connection_upgrade;
@@ -182,8 +182,6 @@ export class VscodeServerHandle {
       })
 
       // Every user gets their own VSCode server configuration, and set of installed extensions.
-      // Openvscode-server derives --user-data-dir and --extensions-dir from --server-data-dir:
-      // https://github.com/gitpod-io/openvscode-server/blob/2bfb814c5215c51a10e80c2cb1b58ed91068ad8b/src/vs/server/node/server.main.ts
       const vscServerDataDir = path.join(getWorkspacesDir(), this.viewer.name, 'vscode-remote')
       await fs.mkdir(vscServerDataDir, { recursive: true })
       await ensureMachineSettings(vscServerDataDir)
@@ -214,7 +212,7 @@ export class VscodeServerHandle {
           // Lake and other CLI tools do such writes.
           '--bind', this.projectDir, sandboxProjectDir,
           '--bind', this.collabWorkDir, '/workspace/.collab-server',
-          '--bind', this.socketDir, '/workspace/.openvscode-server',
+          '--bind', this.socketDir, '/workspace/.vscode-server',
           '--ro-bind-data', '3', '/workspace/.lean-workbench.json',
           ...overlayArgs,
           '--setenv', 'HOME', '/workspace',
@@ -229,15 +227,16 @@ export class VscodeServerHandle {
           '--setenv', 'GIT_CONFIG_VALUE_0', '*',
           ...devArgs,
           '--',
-          path.join(getOpenVscodeServerDir(), 'bin', 'openvscode-server'),
-          '--socket-path', `/workspace/.openvscode-server/${VSCODE_SOCKET_FILENAME}`,
-          '--without-connection-token',
+          path.join(getOpenVscodeServerDir(), 'bin', 'code-server'),
+          '--socket', `/workspace/.vscode-server/${VSCODE_SOCKET_FILENAME}`,
+          '--auth', 'none',
+          // Disable 'Do you trust this workspace?' modals.
+          '--disable-workspace-trust',
           // Reduce how long the extension host process waits for a web client to reconnect (default 3h).
           '--reconnection-grace-time', '60',
-          `--server-base-path=${this.vscodeIframePath}`,
-          '--server-data-dir', '/workspace/.vscode-remote',
-          // TODO: make a per-project user-data-dir to support concurrent editing sessions.
-          '--default-folder', sandboxProjectDir,
+          '--user-data-dir', '/workspace/.vscode-remote',
+          '--extensions-dir', '/workspace/.vscode-remote/extensions',
+          sandboxProjectDir,
         ],
         // FIXME: pipe into a log file?
         // stdin, stdout, stderr, ro-bind-data
@@ -332,7 +331,7 @@ export class VscodeServerHandle {
   /** Start a debugger in the extension host of the VSCode server. */
   async enableDebugger() {
     if (!this.proc) return
-    // Send SIGUSR1 to the (assumed unique) extension host descendant of openvscode-server:
+    // Send SIGUSR1 to the (assumed unique) extension host descendant of code-server:
     // https://nodejs.org/api/process.html#signal-events
     const root = (await readProcesses()).get(this.proc.pid!)
     // Give up if parent has exited while we read proc table

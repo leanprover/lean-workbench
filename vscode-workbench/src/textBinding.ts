@@ -339,7 +339,7 @@ export class YTextBinding implements vs.Disposable {
       // or any other field of the resulting `TextDocumentChangeEvent`,
       // and checking document versions or edit content
       // turned out prone to a number of race conditions.
-      // The only viable fix seems to be patching `openvscode-server`
+      // The only viable fix seems to be patching `code-server`
       // to support setting `detailedReason.source` on our own edits.
       // For now, {@link scheduleEnsureSync} reverts unbroadcasted local changes.
       this.scheduleEnsureSync()

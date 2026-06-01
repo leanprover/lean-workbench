@@ -38,7 +38,7 @@ export function getElanDir(): string {
 }
 
 export function getOpenVscodeServerDir(): string {
-  return process.env.OPENVSCODE_SERVER_DIR ?? '/app/openvscode-server'
+  return process.env.VSCODE_SERVER_DIR ?? '/app/vscode-server'
 }
 
 export function getWorkbenchDir(): string {

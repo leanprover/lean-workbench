@@ -9,7 +9,7 @@
       "port": 9229,
       "localRoot": "${workspaceFolder}/vscode-workbench/",
       // The extension dir as seen by bubblewrap
-      "remoteRoot": "/workspace/.openvscode-server/extensions/leanprover.workbench-universal/",
+      "remoteRoot": "/app/vscode-server/lib/vscode/extensions/leanprover.workbench-universal/",
       "sourceMaps": true,
       "outFiles": ["${workspaceFolder}/vscode-workbench/dist/**/*.js"]
     }

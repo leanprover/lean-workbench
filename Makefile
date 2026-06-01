@@ -48,5 +48,5 @@ dev: container-dev
 			-p 127.0.0.1:9229:9229 \
 			-v $(CURDIR)/.docker-cache:/root/.cache \
 			-v $(CURDIR):/app/workbench:ro \
-			-v $(CURDIR)/vscode-workbench:/app/openvscode-server/extensions/leanprover.workbench-universal:ro \
+			-v $(CURDIR)/vscode-workbench:/app/vscode-server/lib/vscode/extensions/leanprover.workbench-universal:ro \
 			$(IMAGE_NAME):$(IMAGE_DEV_TAG)'
