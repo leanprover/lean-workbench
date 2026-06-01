@@ -9,6 +9,7 @@ import { connection } from 'next/server'
 import { Suspense, type ReactNode } from 'react'
 import AvatarMenu from './AvatarMenu'
 import Breadcrumbs from './Breadcrumbs'
+import { NavbarExtra, NavbarExtraProvider } from './NavbarExtra'
 
 const openSans = Open_Sans({
   subsets: ['latin'],
@@ -56,18 +57,21 @@ async function RootLayoutBody({
     <html lang='en' className={openSans.className}>
       {/* https://nextjs.org/docs/app/getting-started/server-and-client-components#interleaving-server-and-client-components */}
       <ConfigCtx value={clientCfg}>
-        <body>
-          <nav>
-            <Link className='logo' href='/'>
-              <Image src='/static/lean-logo.svg' alt='Lean logo' width={70} height={16} loading='eager' />
-              <span className='logo-text'>Lean Workbench</span>
-            </Link>
-            <Breadcrumbs />
-            <span className='spacer'></span>
-            {serverCfg.isSetupComplete && <AvatarMenu />}
-          </nav>
-          <main style={{ maxWidth: '600px' }}>{children}</main>
-        </body>
+        <NavbarExtraProvider>
+          <body>
+            <nav>
+              <Link className='logo' href='/'>
+                <Image src='/static/lean-logo.svg' alt='Lean logo' width={70} height={16} loading='eager' />
+                <span className='logo-text'>Lean Workbench</span>
+              </Link>
+              <Breadcrumbs />
+              <span className='spacer'></span>
+              <NavbarExtra />
+              {serverCfg.isSetupComplete && <AvatarMenu />}
+            </nav>
+            <main style={{ maxWidth: '600px' }}>{children}</main>
+          </body>
+        </NavbarExtraProvider>
       </ConfigCtx>
     </html>
   )

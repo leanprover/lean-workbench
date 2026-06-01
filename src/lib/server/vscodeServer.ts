@@ -15,6 +15,7 @@ import { ChildProcess, exec, spawn } from 'node:child_process'
 import fs from 'node:fs/promises'
 import { request } from 'node:http'
 import path from 'node:path'
+import type Stream from 'node:stream'
 import { promisify } from 'node:util'
 
 /** Create a VSCode machine settings file if one doesn't exist. */
@@ -44,6 +45,8 @@ async function ensureMachineSettings(serverDataDir: string): Promise<void> {
           // those edits will be lost.
           // FIXME: inform users about this risk, and attempt detection in collab-server.
           'files.saveConflictResolution': 'overwriteFileOnDisk',
+          // Auto-save on every keystroke interferes with collaborative editing state.
+          'files.autoSave': 'off',
         },
         null,
         2,
@@ -212,6 +215,7 @@ export class VscodeServerHandle {
           '--bind', this.projectDir, sandboxProjectDir,
           '--bind', this.collabWorkDir, '/workspace/.collab-server',
           '--bind', this.socketDir, '/workspace/.openvscode-server',
+          '--ro-bind-data', '3', '/workspace/.lean-workbench.json',
           ...overlayArgs,
           '--setenv', 'HOME', '/workspace',
           '--setenv', 'ELAN_HOME', getElanDir(),
@@ -228,6 +232,8 @@ export class VscodeServerHandle {
           path.join(getOpenVscodeServerDir(), 'bin', 'openvscode-server'),
           '--socket-path', `/workspace/.openvscode-server/${VSCODE_SOCKET_FILENAME}`,
           '--without-connection-token',
+          // Reduce how long the extension host process waits for a web client to reconnect (default 3h).
+          '--reconnection-grace-time', '60',
           `--server-base-path=${this.vscodeIframePath}`,
           '--server-data-dir', '/workspace/.vscode-remote',
           // TODO: make a per-project user-data-dir to support concurrent editing sessions.
@@ -242,6 +248,8 @@ export class VscodeServerHandle {
       })
       this.proc = proc
 
+      const workspaceMdataPipe = proc.stdio[3] as Stream.Writable
+
       await Promise.race([
         // Reject if errors occur before setup is finished.
         new Promise<void>((_, reject) => {
@@ -252,9 +260,20 @@ export class VscodeServerHandle {
           proc.once('error', err => {
             reject(new Error(`${this.description} failed to start: ${String(err)}`))
           })
+          workspaceMdataPipe.once('error', err => {
+            reject(new Error(`${this.description} failed to write workspace metadata: ${String(err)}`))
+          })
         }),
         // Wait for the server to start listening and for Nginx to be ready.
         (async () => {
+          workspaceMdataPipe.end(
+            JSON.stringify({
+              viewer: {
+                name: this.viewer.name,
+                image: this.viewer.image,
+              },
+            }),
+          )
           await this.writeNginxUserRoute()
           this.disposables.defer(async () => {
             await fs.rm(this.nginxUserRoutePath, { force: true })

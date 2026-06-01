@@ -1,6 +1,7 @@
 import { requireAuth } from '@/lib/server/actions'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
+import { canAccessProject } from '@/lib/server/util'
 import z from 'zod'
 
 const zParams = z.object({
@@ -48,8 +49,7 @@ export default async function EditorSession({ params: params_ }: { params: Promi
   const project = await db.project.findUnique({
     where: { userId_name: { userId: owner.id, name: params.projectName } },
   })
-  const isOwner = viewer.name === params.userName
-  if (!project || (!isOwner && !project.isPublic)) {
+  if (!project || !canAccessProject(viewer, project)) {
     return <Error msg='Project not found' />
   }
 

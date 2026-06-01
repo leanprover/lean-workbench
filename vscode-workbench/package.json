@@ -6,7 +6,7 @@
   "private": true,
   "publisher": "leanprover",
   "engines": {
-    "vscode": "^1.109.0"
+    "vscode": "1.109.5"
   },
   "categories": [
     "Other"
@@ -18,19 +18,43 @@
   "activationEvents": [
     "onStartupFinished"
   ],
+  "enabledApiProposals": [
+    "textDocumentChangeReason",
+    "extensionsAny"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "leanprover-workbench-view-container",
+          "title": "Lean Workbench",
+          "icon": "media/logo.svg"
+        }
+      ]
+    },
+    "views": {
+      "leanprover-workbench-view-container": [
+        {
+          "id": "leanprover-workbench-view",
+          "name": "",
+          "icon": ""
+        }
+      ]
+    }
+  },
   "main": "./dist/extension.js",
   "scripts": {
     "watch": "concurrently --names esbuild,tsc 'npm run watch:esbuild' 'npm run watch:tsc'",
     "watch:esbuild": "node esbuild.mjs --watch",
-    "watch:tsc": "tsc --noEmit --watch --preserveWatchOutput",
-    "tsc": "tsc --noEmit",
-    "build": "tsc --noEmit && node esbuild.mjs --production",
+    "watch:tsc": "tsc --watch --preserveWatchOutput",
+    "tsc": "tsc",
+    "build": "tsc && node esbuild.mjs --production",
     "vscode:prepublish": "npm run build",
-    "test": "tsc && vscode-test"
+    "test": "tsc && node esbuild.mjs --tests && vscode-test"
   },
   "devDependencies": {
     "@types/mocha": "^10.0",
-    "@types/vscode": "^1.109",
+    "@types/vscode": "~1.109",
     "@types/ws": "^8.18.1",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5",
@@ -38,6 +62,7 @@
   },
   "dependencies": {
     "@hocuspocus/provider": "^4.0",
-    "ws": "^8.20.0"
+    "ws": "^8.20",
+    "zod": "^4.4"
   }
 }

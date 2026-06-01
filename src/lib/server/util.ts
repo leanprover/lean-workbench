@@ -1,5 +1,7 @@
+import type { Project } from '@/prisma/generated/client'
 import fs from 'node:fs/promises'
 import 'server-only'
+import type { User } from './auth'
 
 export interface ProcessInfo {
   pid: number
@@ -60,4 +62,46 @@ export const BWRAP_ARGS =
  * so this has to match across openvscode-server and collab-server bwraps. */
 export function bwrapProjectDir(projectName: string) {
   return `/workspace/${projectName}/`
+}
+
+export function canAccessProject(user: User, project: Project) {
+  const isOwner = user.id === project.userId
+  return isOwner || project.isPublic
+}
+
+/** Returns `[response, send, close]`.
+ * See https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events */
+export function sseStreamResponse(onCancel?: () => void): [Response, (msg: object) => void, () => void] {
+  let send: (msg: object) => void = () => {}
+  let close: () => void = () => {}
+  let closed = false
+  const encoder = new TextEncoder()
+  const stream = new ReadableStream({
+    start(controller) {
+      send = msg => {
+        if (closed) return
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(msg)}\n\n`))
+      }
+      close = () => {
+        if (closed) return
+        closed = true
+        controller.close()
+      }
+    },
+    cancel() {
+      closed = true
+      if (onCancel) onCancel()
+    },
+  })
+
+  const response = new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    },
+  })
+
+  return [response, send, close]
 }

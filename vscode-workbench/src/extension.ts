@@ -1,99 +1,75 @@
-import { HocuspocusProviderWebsocket } from '@hocuspocus/provider'
 import fs from 'node:fs/promises'
 import vs from 'vscode'
-import WebSocket from 'ws'
-import { RemoteDocManager } from './remoteDoc'
+import { connectToCollabServer } from './collabServer'
+import { WorkbenchPanelProvider } from './panel'
+import { RemoteSelectionDecorator } from './remoteSelections'
 import { YTextBindingManager } from './textBinding'
-import { BWRAP_COLLAB_SERVER_DIR, BWRAP_COLLAB_SOCK_PATH } from './util'
+import { BWRAP_METADATA_PATH, WorkspaceMetadata, zWorkspaceMetadata } from './util'
 
-/** Ensure we are in the expected Lean Workbench environment.
- * Return `false` if we are not,
- * prompting the user to fix this whenever possible. */
-async function ensureWorkbenchEnv(log: vs.LogOutputChannel): Promise<boolean> {
+/** Ensure we are in the expected Lean Workbench environment
+ * and return the current workspace configuration.
+ * Otherwise display an error and return `undefined`. */
+async function readWorkspaceMdata(log: vs.LogOutputChannel): Promise<WorkspaceMetadata | undefined> {
   log.debug(`Workspace file: ${JSON.stringify(vs.workspace.workspaceFile)}`)
   log.debug(`Workspace folders: ${JSON.stringify(vs.workspace.workspaceFolders)}`)
 
+  let mdata: WorkspaceMetadata
   try {
-    await fs.access(BWRAP_COLLAB_SERVER_DIR)
+    const raw = await fs.readFile(BWRAP_METADATA_PATH, 'utf8')
+    mdata = zWorkspaceMetadata.parse(JSON.parse(raw))
   } catch (err) {
     log.error(String(err))
     void vs.window.showErrorMessage('Could not detect the Lean Workbench - shutting down.')
-    return false
+    return undefined
   }
 
-  return true
-}
-
-async function waitForPath(p: string, timeoutMs: number): Promise<boolean> {
-  const deadline = Date.now() + timeoutMs
-  while (Date.now() < deadline) {
-    try {
-      await fs.access(p)
-      return true
-    } catch {}
-    await new Promise(r => setTimeout(r, 200))
-  }
-  return false
-}
-
-async function connectToCollabServer(
-  ctx: vs.ExtensionContext,
-  log: vs.LogOutputChannel,
-): Promise<HocuspocusProviderWebsocket | undefined> {
-  const mk = () => {
-    const collabSock = new HocuspocusProviderWebsocket({
-      url: `ws+unix:${BWRAP_COLLAB_SOCK_PATH}:/`,
-      // Must use the `ws` package for https://github.com/websockets/ws/blob/master/doc/ws.md#ipc-connections.
-      WebSocketPolyfill: WebSocket,
-    })
-    ctx.subscriptions.push({
-      dispose() {
-        collabSock.destroy()
-      },
-    })
-    log.debug('Opened collab-server socket')
-    return collabSock
-  }
-
-  log.debug('Waiting for collab-server socket..')
-  if (await waitForPath(BWRAP_COLLAB_SOCK_PATH, 5_000)) return mk()
-  const action = 'Reload window'
-  void vs.window
-    .showErrorMessage(
-      'Collaboration server is not available - Lean Workbench will not function correctly.',
-      { modal: true },
-      action,
-    )
-    .then(async s => {
-      if (s === action) {
-        await vs.commands.executeCommand('workbench.action.reloadWindow')
-      }
-    })
-
-  return undefined
+  return mdata
 }
 
 function syncableDirs(): string[] {
   return (vs.workspace.workspaceFolders ?? []).filter(f => f.uri.scheme === 'file').map(f => f.uri.fsPath)
 }
 
+/** Extensions that intercept text input and conflict with collaborative editing. */
+const CONFLICTING_EXTENSIONS = ['vscodevim.vim', 'asvetliakov.vscode-neovim']
+
+function checkInstalledExtensions(): void {
+  const conflicting = CONFLICTING_EXTENSIONS.filter(id =>
+    vs.extensions.getExtension(id, true /* include browser extensions */),
+  )
+  if (conflicting.length > 0)
+    void vs.window.showErrorMessage(
+      `The following extension(s) are not currently supported in the Lean Workbench - please disable them: ${conflicting.join(', ')}`,
+    )
+}
+
 export async function activate(ctx: vs.ExtensionContext) {
   const log = vs.window.createOutputChannel('Lean 4 - Workbench', { log: true })
 
-  if (!(await ensureWorkbenchEnv(log))) return
+  const mdata = await readWorkspaceMdata(log)
+  if (!mdata) return
 
-  const collabSock = await connectToCollabServer(ctx, log)
-  if (!collabSock) return
+  checkInstalledExtensions()
+  ctx.subscriptions.push(vs.extensions.onDidChange(checkInstalledExtensions))
 
-  const docs = new RemoteDocManager(collabSock, log)
+  const collabServer = await connectToCollabServer(log, mdata)
+  if (!collabServer) return
+  ctx.subscriptions.push(collabServer)
 
   // We apply collaborative syncing to open folders (usually just the project folder) only.
   // User-specific folders such as /workspace/.vscode-remote are not synced
   // (though they would be if someone opens /workspace - TODO better UX).
-  const bindings = new YTextBindingManager(docs, syncableDirs(), log)
+  const bindings = new YTextBindingManager(collabServer.collabSock, syncableDirs(), log)
   ctx.subscriptions.push(
     bindings,
     vs.workspace.onDidChangeWorkspaceFolders(() => bindings.updateSyncableDirs(syncableDirs())),
+    // Remote presence indicators
+    new RemoteSelectionDecorator(collabServer.awareness),
   )
+
+  // Panel with workbench-specific information
+  const panel = new WorkbenchPanelProvider(collabServer.awareness, mdata, log)
+  ctx.subscriptions.push(panel, vs.window.registerTreeDataProvider('leanprover-workbench-view', panel))
+
   log.debug('Extension activated')
 }

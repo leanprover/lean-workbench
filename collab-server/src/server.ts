@@ -90,7 +90,18 @@ server.httpServer.listen(socketPath, () => {
 
 await Promise.race([once(process, 'SIGINT'), once(process, 'SIGQUIT'), once(process, 'SIGTERM')])
 console.log('Hocuspocus shutting down..')
+
+// Persist open documents to disk.
+await Promise.all(
+  [...server.hocuspocus.documents.values()].map(async doc => {
+    try {
+      await fs.writeFile(checkedToDiskPath(doc.name), doc.getText(YTEXT_KEY).toString())
+      console.log(`Saved '${doc.name}' to disk`)
+    } catch (e) {
+      console.error(`Failed to save '${doc.name}' to disk:`, e)
+    }
+  }),
+)
+
 await server.destroy()
 db.close()
-
-// TODO: ensure writes are flushed to disk.
