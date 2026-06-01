@@ -43,14 +43,18 @@ RUN arch=$(uname -m) && \
 # Install builtin VS Code extensions. Workbench users get a read-only view of these.
 # Cannot use `--install-builtin-extension` as it does not store in the builtin directory
 # (behaves identically to `--install-extension`).
+# FIXME: we install older even-better-toml at 0.19.1 since newer versions leak memory
+# (https://github.com/tamasfe/taplo/issues/768#issuecomment-3431613488).
+# Should be removed once leanprover.lean4 moves to using tombi-toml instead.
 RUN install_vsix_as_builtin() { \
         wget -q -O /tmp/ext.vsix "https://open-vsx.org/api/$1/$2/$3/file/$1.$2-$3.vsix" \
         && unzip -q /tmp/ext.vsix "extension/*" -d /tmp \
         && mv /tmp/extension "/app/openvscode-server/extensions/$1.$2-universal" \
         && rm -rf /tmp/ext.vsix; \
     } \
-    && install_vsix_as_builtin "leanprover" "lean4" "0.0.234" \
-    && install_vsix_as_builtin "tamasfe" "even-better-toml" "0.21.2"
+    && install_vsix_as_builtin "leanprover" "lean4" "0.0.237" \
+    && install_vsix_as_builtin "tamasfe" "even-better-toml" "0.19.1"
+
 
 # --- base runner image: minimal runtime, no build tools ---
 FROM base AS runner-base
