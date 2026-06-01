@@ -87,11 +87,16 @@ async function waitForInitialSync(bindings: YTextBinding[], timeoutMs: number): 
 async function waitForQuiescence(bindings: YTextBinding[], timeoutMs: number): Promise<void> {
   const deadline = performance.now() + timeoutMs
   let prev = ''
+  let stableIters = 0
   while (performance.now() < deadline) {
     const snap = bindings.map(b => b.remoteYtext.toString() + '|' + b.doc.getText()).join('|')
-    if (snap === prev) return
-    else prev = snap
-    await delay(1000)
+    if (snap === prev) {
+      if (stableIters++ >= 5) return
+    } else {
+      prev = snap
+      stableIters = 0
+    }
+    await delay(100)
   }
   assert.fail('timed out waiting for quiescent state')
 }
@@ -113,7 +118,7 @@ suite('Collaborative editing', () => {
     dispose: () => Promise<void>
   }
 
-  const mkHandles = async (enableEnsureSync: boolean = true): Promise<TestHandles> => {
+  const mkHandles = async (ensureSyncTimeoutMs: number = 0): Promise<TestHandles> => {
     // In-memory Hocuspocus server on an ephemeral port; no persistence, no signal handlers.
     const server = new Server({ stopOnSignals: false, quiet: true })
     await new Promise<void>(resolve => server.httpServer.listen(0, '127.0.0.1', resolve))
@@ -125,7 +130,7 @@ suite('Collaborative editing', () => {
       vs.workspace.openTextDocument({ content: '', language: 'plaintext' }),
       vs.workspace.openTextDocument({ content: '', language: 'plaintext' }),
     ])
-    const bindings = docs.map((doc, i) => new YTextBinding(doc, clients[i], consoleLog, DOC_NAME, enableEnsureSync))
+    const bindings = docs.map((doc, i) => new YTextBinding(doc, clients[i], consoleLog, ensureSyncTimeoutMs, DOC_NAME))
 
     // Route document changes to the matching binding
     // (`YTextBindingManager.onDidChangeTextDocument` does this in production).
@@ -162,34 +167,22 @@ suite('Collaborative editing', () => {
     ed0.selection = new vs.Selection(0, 0, 0, 0)
     const text = 'PROBE\n'
     await vs.commands.executeCommand('default:type', { text })
-    const deadline = performance.now() + 1_000
-    while (handles.docs[1].getText() !== text) {
-      if (performance.now() >= deadline) {
-        assert.strictEqual(handles.docs[1].getText(), text)
-      }
-      await delay(50)
-    }
-
+    await waitForQuiescence(handles.bindings, 1_000)
+    assert.strictEqual(handles.docs[1].getText(), text)
     await handles.dispose()
   })
 
-  const testConcurrentEdits = async (handles: TestHandles) => {
-    await waitForInitialSync(handles.bindings, 1_000)
-
-    // Ensure text editors are visible for both
-    await vs.window.showTextDocument(handles.docs[0], { viewColumn: COLUMNS[0], preview: false })
-    await vs.window.showTextDocument(handles.docs[1], { viewColumn: COLUMNS[1], preview: false })
-
-    // Drive a batch of edits, alternating between the two documents.
-    // Not waiting between edits opens a local-vs-remote change race window.
+  /** Drive a batch of edits, alternating between the two documents.
+   * Not waiting between edits opens a local-vs-remote change race window. */
+  const makeConcurrentEdits = async (handles: TestHandles) => {
     const rng = mulberry32(0xc0ffee)
     const NUM_EDITS = 100
     for (let i = 0; i < NUM_EDITS; i++) {
       await randomEditOn(handles.docs[i % 2], COLUMNS[i % 2], rng)
     }
+  }
 
-    await waitForQuiescence(handles.bindings, 3_000)
-
+  const assertEqualStates = (handles: TestHandles) => {
     const [d0, d1] = handles.docs.map(d => d.getText())
     const [y0, y1] = handles.bindings.map(b => b.remoteYtext.toString())
 
@@ -200,17 +193,29 @@ suite('Collaborative editing', () => {
     assert.strictEqual(d1, y1, diffMessage('doc1 vs its Y.Text', d1, y1))
   }
 
-  test('Concurrent edits settle on the equal states', async function () {
+  test('Concurrent edits settle on equal states', async function () {
     this.timeout(20_000)
-    const handles = await mkHandles()
-    await testConcurrentEdits(handles)
+    const ensureSyncTimeoutMs = 1_000
+    const handles = await mkHandles(ensureSyncTimeoutMs)
+    await waitForInitialSync(handles.bindings, 1_000)
+    await makeConcurrentEdits(handles)
+    // Wait for ensureSync
+    await delay(ensureSyncTimeoutMs + 1_000)
+    assertEqualStates(handles)
     await handles.dispose()
   })
 
-  test('Concurrent edits settle on the equal states (no resync)', async function () {
+  test('Concurrent edits settle on equal states (no ensureSync)', async function () {
     this.timeout(20_000)
-    const handles = await mkHandles(false)
-    await testConcurrentEdits(handles)
+    const handles = await mkHandles(0)
+    await waitForInitialSync(handles.bindings, 1_000)
+    // Ensure both documents are visible:
+    // only `TextEditor.edit`s are expected to converge without ensureSync.
+    await vs.window.showTextDocument(handles.docs[0], { viewColumn: COLUMNS[0], preview: false })
+    await vs.window.showTextDocument(handles.docs[1], { viewColumn: COLUMNS[1], preview: false })
+    await makeConcurrentEdits(handles)
+    await waitForQuiescence(handles.bindings, 3_000)
+    await assertEqualStates(handles)
     await handles.dispose()
   })
 })

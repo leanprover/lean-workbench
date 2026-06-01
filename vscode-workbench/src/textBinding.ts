@@ -140,12 +140,13 @@ export class YTextBinding implements vs.Disposable {
     readonly doc: vs.TextDocument,
     collabSock: HocuspocusProviderWebsocket,
     log_: Logger,
+    /** The timeout period for {@link scheduleEnsureSync} in milliseconds,
+     * disabling {@link scheduleEnsureSync} if zero.
+     * Expected to be non-zero except in tests. */
+    private readonly ensureSyncTimeoutMs: number = 3_000,
     /** Name of this document in {@link collabSock}.
      * Expected to be the file path except in tests. */
     docName: string = doc.uri.fsPath,
-    /** Whether to enable the {@link scheduleEnsureSync} fallback.
-     * Expected to be `true` except in tests. */
-    readonly enableEnsureSync: boolean = true,
   ) {
     // https://tiptap.dev/docs/hocuspocus/provider/examples#multiplexing
     this.hs = new HocuspocusProvider({
@@ -392,9 +393,9 @@ export class YTextBinding implements vs.Disposable {
   /** Ensure that {@link localYdoc} has the same contents as {@link doc},
    * and that {@link localYdoc} and {@link hs} have the same CRDT state.
    * Overwrite {@link localYdoc} and {@link doc} if this is not the case.
-   * Debounced - runs 3s after the most recent invocation. */
+   * Debounced - runs {@link ensureSyncTimeoutMs} after the most recent invocation. */
   private scheduleEnsureSync() {
-    if (!this.initialSyncDone || !this.enableEnsureSync) return
+    if (!this.initialSyncDone || this.ensureSyncTimeoutMs === 0) return
     if (this.ensureSyncTimeout) clearTimeout(this.ensureSyncTimeout)
     this.ensureSyncTimeout = setTimeout(() => {
       this.enqueueTransaction(async () => {
@@ -412,7 +413,7 @@ export class YTextBinding implements vs.Disposable {
           await this.initFromRemote()
         }
       })
-    }, 3_000)
+    }, this.ensureSyncTimeoutMs)
   }
 
   dispose() {
