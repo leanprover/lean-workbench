@@ -31,7 +31,7 @@ else
     # and per https://github.com/vercel/next.js/issues/80665, polling doesn't work.
     mkdir -p /tmp/workbench.tmpfs
     mountpoint -q /tmp/workbench.tmpfs || mount -t tmpfs tmpfs /tmp/workbench.tmpfs
-    for d in node_modules collab-server/node_modules vscode-workbench/node_modules .next; do
+    for d in node_modules .next; do
         mkdir -p "/tmp/workbench.tmpfs/$d.upper" "/tmp/workbench.tmpfs/$d.work"
         mount -t overlay overlay \
             -o "lowerdir=${SCRIPT_DIR}/$d,upperdir=/tmp/workbench.tmpfs/$d.upper,workdir=/tmp/workbench.tmpfs/$d.work" \

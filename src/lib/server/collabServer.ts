@@ -1,5 +1,5 @@
 import { getCollabServerDir } from '@/lib/server/config'
-import { BWRAP_ARGS } from '@/lib/server/util'
+import { BWRAP_ARGS, bwrapProjectDir } from '@/lib/server/util'
 import { Project } from '@/prisma/generated/client'
 import { ChildProcess, spawn } from 'node:child_process'
 import fs from 'node:fs/promises'
@@ -8,13 +8,16 @@ import path from 'node:path'
 /** Name of the `collab-server` UDS file. */
 export const COLLAB_SOCKET_FILENAME = 'collab.sock'
 
+/** Name of the `collab-server` database file. */
+export const COLLAB_DB_FILENAME = 'collab.db'
+
 /** Manages a collaboration server instance.
  * Non-reusable; construct a new handle to start a new server. */
 export class CollabServerHandle {
   /** Unique ID of this `collab-server` instance. */
   readonly uuid = crypto.randomUUID()
-  /** Directory in which `collab-server` places its UDS file. */
-  readonly socketDir: string = `/tmp/collab-server-${this.uuid}/`
+  /** Directory in which `collab-server` places its files. */
+  readonly workDir: string = `/tmp/collab-server-${this.uuid}/`
 
   constructor(
     /** Project that this server manages. */
@@ -44,11 +47,12 @@ export class CollabServerHandle {
   async start() {
     if (this.starting) return this.starting
     this.starting = (async () => {
-      await fs.mkdir(this.socketDir, { recursive: true })
+      await fs.mkdir(this.workDir, { recursive: true })
       this.disposables.defer(async () => {
-        await fs.rm(this.socketDir, { recursive: true, force: true })
+        await fs.rm(this.workDir, { recursive: true, force: true })
       })
 
+      const sandboxProjectDir = bwrapProjectDir(this.project.name)
       const proc = spawn(
         'bwrap',
         // prettier-ignore
@@ -56,14 +60,13 @@ export class CollabServerHandle {
           ...BWRAP_ARGS,
           // We don't need internet access.
           '--unshare-net',
-          '--ro-bind', getCollabServerDir(), '/workspace/.collab-server',
-          '--bind', this.socketDir, '/workspace/.sockets/collab-server',
-          // Mount project files as writable for the collaboration server.
-          '--bind', this.projectDir, '/workspace/project',
+          '--ro-bind', getCollabServerDir(), getCollabServerDir(),
+          '--bind', this.projectDir, sandboxProjectDir,
+          '--bind', this.workDir, '/workspace/.collab-server',
+          '--chdir', '/workspace/.collab-server',
           '/usr/bin/node',
-          '/workspace/.collab-server/server.ts',
-          `/workspace/.sockets/collab-server/${COLLAB_SOCKET_FILENAME}`,
-          '/workspace/project',
+          path.join(getCollabServerDir(), 'dist', 'server.js'),
+          sandboxProjectDir,
         ],
         { stdio: 'inherit' },
       )
@@ -85,7 +88,7 @@ export class CollabServerHandle {
         }),
         // Wait for the server to bind the UDS.
         (async () => {
-          const socketPath = path.join(this.socketDir, COLLAB_SOCKET_FILENAME)
+          const socketPath = path.join(this.workDir, COLLAB_SOCKET_FILENAME)
           const deadline = Date.now() + 10_000
           while (true) {
             try {

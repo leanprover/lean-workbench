@@ -25,13 +25,6 @@ Open `http://localhost:3000`. You'll see the setup page.
    takes 5--30 min on first run).
 3. When seeding finishes, you're redirected to the landing page.
 
-## Updating NPM packages
-
-Make sure to pass `--install-strategy=nested` to `npm install`.
-This ensures that `package-lock.json` places `node_modules` in package folders
-as opposed to hoisting them out to the root directory;
-we rely on this in the dev container.
-
 ## Makefile targets
 
 | Target | What it does |
@@ -52,6 +45,7 @@ the first VSCode server to start up will have its [extension host](https://code.
 start a debugger on port 9229.
 Use the "Attach to vscode-workbench" VSCode launch target to attach.
 You can set breakpoints in the `vscode-workbench/` extension.
+Note that `console.log` in the extension goes to the _renderer_, i.e., the web client.
 
 ## Resetting the data volume
 

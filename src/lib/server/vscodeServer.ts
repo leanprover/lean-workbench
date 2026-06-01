@@ -8,14 +8,13 @@ import {
   isDevMode,
 } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
-import { BWRAP_ARGS, readProcesses } from '@/lib/server/util'
+import { BWRAP_ARGS, bwrapProjectDir, readProcesses } from '@/lib/server/util'
 import { Project } from '@/prisma/generated/client'
 import { User } from 'better-auth'
 import { ChildProcess, exec, spawn } from 'node:child_process'
 import fs from 'node:fs/promises'
 import { request } from 'node:http'
 import path from 'node:path'
-import type Stream from 'node:stream'
 import { promisify } from 'node:util'
 
 /** Create a VSCode machine settings file if one doesn't exist. */
@@ -32,6 +31,19 @@ async function ensureMachineSettings(serverDataDir: string): Promise<void> {
         {
           // Start with a blank tab
           'workbench.startupEditor': 'none',
+          // Crucial for collaborative editing.
+          // All users share a writable mount of the project.
+          // When two users try to save to disk around the same time
+          // (manually, or because they have auto-save on), a race occurs.
+          // U0 saves and updates the on-disk mtime.
+          // U1 attempts to save, but VSCode detects that the mtime is after U1's last save,
+          // and produces an error message.
+          // This setting instructs VSCode to ignore the mtime and just write.
+          // There is an integrity issue:
+          // if U3 uses non-collaborative tooling (e.g. a CLI tool on the terminal) to change the file in the meantime,
+          // those edits will be lost.
+          // FIXME: inform users about this risk, and attempt detection in collab-server.
+          'files.saveConflictResolution': 'overwriteFileOnDisk',
         },
         null,
         2,
@@ -84,8 +96,8 @@ export class VscodeServerHandle {
     readonly owner: User,
     readonly project: Project,
     readonly projectDir: string,
-    /** `collab-server` UDS directory. */
-    readonly collabSocketDir: string,
+    /** `collab-server` working directory. */
+    readonly collabWorkDir: string,
   ) {}
 
   /** The `bwrap` process. Defined iff the process is running. */
@@ -173,7 +185,7 @@ export class VscodeServerHandle {
       await fs.mkdir(vscServerDataDir, { recursive: true })
       await ensureMachineSettings(vscServerDataDir)
 
-      const sandboxProjectDir = `/workspace/${this.project.name}/`
+      const sandboxProjectDir = bwrapProjectDir(this.project.name)
       const overlayArgs = await this.buildOverlayArgs(sandboxProjectDir)
 
       const devArgs = isDevMode()
@@ -190,23 +202,20 @@ export class VscodeServerHandle {
         // prettier-ignore
         [
           ...BWRAP_ARGS,
-          '--ro-bind', getOpenVscodeServerDir(), '/workspace/.openvscode-server',
-          '--ro-bind', getElanDir(), '/workspace/.elan',
-          // VSCode workspace configuration. Ephemeral, so not need to store on host.
-          // The filename must be friendly: it shows up in VSC with (AFAICT) no way to override.
-          '--ro-bind-data', '3', '/workspace/Projects.code-workspace',
+          '--ro-bind', getOpenVscodeServerDir(), getOpenVscodeServerDir(),
+          '--ro-bind', getElanDir(), getElanDir(),
           '--bind', vscServerDataDir, '/workspace/.vscode-remote',
           // Writes are mediated through the collaboration server,
           // which `WorkbenchFileSystemProvider` in our extension connects to,
           // but users can still write files directly if needed.
           // Lake and other CLI tools do such writes.
           '--bind', this.projectDir, sandboxProjectDir,
-          '--bind', this.collabSocketDir, '/workspace/.sockets/collab-server',
-          '--bind', this.socketDir, '/workspace/.sockets/openvscode-server',
+          '--bind', this.collabWorkDir, '/workspace/.collab-server',
+          '--bind', this.socketDir, '/workspace/.openvscode-server',
           ...overlayArgs,
           '--setenv', 'HOME', '/workspace',
-          '--setenv', 'ELAN_HOME', '/workspace/.elan',
-          '--setenv', 'PATH', `/workspace/.elan/bin:/usr/local/bin:/usr/bin:/bin`,
+          '--setenv', 'ELAN_HOME', getElanDir(),
+          '--setenv', 'PATH', `${getElanDir()}/bin:/usr/local/bin:/usr/bin:/bin`,
           // FIXME: Git's "dubious ownership" check (CVE-2022-24765) rejects repos
           // owned by a different uid. The overlay mounts cause an ownership mismatch
           // that triggers this; safe.directory=* *should* be ok here since the sandbox
@@ -216,13 +225,13 @@ export class VscodeServerHandle {
           '--setenv', 'GIT_CONFIG_VALUE_0', '*',
           ...devArgs,
           '--',
-          '/workspace/.openvscode-server/bin/openvscode-server',
-          '--socket-path', `/workspace/.sockets/openvscode-server/${VSCODE_SOCKET_FILENAME}`,
+          path.join(getOpenVscodeServerDir(), 'bin', 'openvscode-server'),
+          '--socket-path', `/workspace/.openvscode-server/${VSCODE_SOCKET_FILENAME}`,
           '--without-connection-token',
           `--server-base-path=${this.vscodeIframePath}`,
           '--server-data-dir', '/workspace/.vscode-remote',
           // TODO: make a per-project user-data-dir to support concurrent editing sessions.
-          '--default-workspace', '/workspace/Projects.code-workspace',
+          '--default-folder', sandboxProjectDir,
         ],
         // FIXME: pipe into a log file?
         // stdin, stdout, stderr, ro-bind-data
@@ -232,8 +241,6 @@ export class VscodeServerHandle {
         console.error(`error in ${this.description}: ${String(err)}`)
       })
       this.proc = proc
-
-      const workspaceConfigPipe = proc.stdio[3] as Stream.Writable
 
       await Promise.race([
         // Reject if errors occur before setup is finished.
@@ -245,22 +252,9 @@ export class VscodeServerHandle {
           proc.once('error', err => {
             reject(new Error(`${this.description} failed to start: ${String(err)}`))
           })
-          workspaceConfigPipe.once('error', err => {
-            reject(new Error(`${this.description} failed to write workspace file: ${String(err)}`))
-          })
         }),
         // Wait for the server to start listening and for Nginx to be ready.
         (async () => {
-          workspaceConfigPipe.end(
-            JSON.stringify({
-              folders: [
-                {
-                  name: this.project.name,
-                  path: sandboxProjectDir,
-                },
-              ],
-            }),
-          )
           await this.writeNginxUserRoute()
           this.disposables.defer(async () => {
             await fs.rm(this.nginxUserRoutePath, { force: true })

@@ -12,8 +12,7 @@
 !tsconfig.json
 
 # Collaboration server
-!collab-server/package.json
-!collab-server/server.ts
+!collab-server/dist
 
 # Pre-built workbench extension
 !vscode-workbench.vsix
