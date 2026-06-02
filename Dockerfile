@@ -16,7 +16,7 @@ RUN apt-get update \
     && git lfs install
 
 # Shallow-clone code-server at the release tag and fetch its VS Code submodule.
-ARG CODE_SERVER_VERSION="4.122.0"
+ARG CODE_SERVER_VERSION="4.122.1"
 RUN git clone --branch "v${CODE_SERVER_VERSION}" --depth 1 \
         https://github.com/coder/code-server /code-server \
     && git -C /code-server submodule update --init --depth 1
