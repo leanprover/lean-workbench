@@ -18,9 +18,9 @@ RUN apt-get update \
 # Shallow-clone code-server at the release tag and fetch its VS Code submodule.
 ARG CODE_SERVER_VERSION="4.122.0"
 RUN git clone --branch "v${CODE_SERVER_VERSION}" --depth 1 \
-        https://github.com/coder/code-server /src \
-    && git -C /src submodule update --init --depth 1
-WORKDIR /src
+        https://github.com/coder/code-server /code-server \
+    && git -C /code-server submodule update --init --depth 1
+WORKDIR /code-server
 
 # Build (see code-server/docs/CONTRIBUTING.md)
 RUN quilt push -a
@@ -28,15 +28,48 @@ RUN npm install
 
 # Apply our patches on top of code-server's.
 # We assume that these don't modify `package.json`, so `npm install` can be cached.
-COPY code-server-patches/ /code-server-patches/
+COPY code-server-patches/ /code-server-patches
 RUN for p in /code-server-patches/*.diff; do \
       [ -e "$p" ] || continue; echo "Applying $p"; patch -p1 -d lib/vscode < "$p"; \
     done
 
 RUN npm run build
 RUN VERSION="${CODE_SERVER_VERSION}" npm run build:vscode
-# Lands in /src/release
+# Lands in /code-server/release
 RUN KEEP_MODULES=1 npm run release
+
+# --- tester-vscode-workbench: build patched VS Code desktop and test our extension ---
+FROM builder-code-server AS tester-vscode-workbench
+
+# Determine the system's architecture.
+RUN arch=$(uname -m) && \
+    if [ "${arch}" = "x86_64" ]; then echo "x64" > /sys_arch; \
+    elif [ "${arch}" = "aarch64" ]; then echo "arm64" > /sys_arch; \
+    else echo "unsupported architecture: ${arch}" >&2; exit 1; fi 
+
+# The @vscode/test-electron package requires VS Code Desktop;
+# build it in addition to the remote extension host (REH) build above.
+# FIXME: can we avoid building twice?
+RUN cd /code-server/lib/vscode && npm run gulp -- vscode-linux-$(cat /sys_arch)-min
+
+# Dependencies for headless Electron and xvfb.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        xvfb \
+        libgtk-3-0t64 libgbm1 libnss3 libnspr4 libasound2t64 \
+        libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 libdrm2 \
+        libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libxkbcommon0 \
+        libxshmfence1 libpango-1.0-0 libcairo2 libdbus-1-3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Minimal set of files needed to build vscode-workbench.
+COPY --parents vscode-workbench/ package.json package-lock.json tsconfig.json /workbench/
+
+RUN cd /workbench && npm clean-install --ignore-scripts
+RUN cd /workbench/vscode-workbench \
+    && APP_NAME="$(node -p "require('/code-server/lib/VSCode-linux-$(cat /sys_arch)/resources/app/product.json').applicationName")" \
+    && VSCODE_EXECUTABLE_PATH="/code-server/lib/VSCode-linux-$(cat /sys_arch)/${APP_NAME}" \
+       xvfb-run --auto-servernum npm run test
 
 # --- base image: Node.js installation shared between builders and runners ---
 FROM buildpack-deps:24.04-curl AS base
@@ -65,7 +98,7 @@ RUN curl -sSfL https://github.com/containers/bubblewrap/releases/download/v${BUB
     && ninja -C _build install \
     && cd / && rm -rf /bubblewrap-${BUBBLEWRAP_VERSION}
 
-COPY --from=builder-code-server /src/release /app/vscode-server
+COPY --from=builder-code-server /code-server/release /app/vscode-server
 
 # Install builtin VS Code extensions. Workbench users get a read-only view of these.
 # Cannot use `--install-builtin-extension` as it does not store in the builtin directory

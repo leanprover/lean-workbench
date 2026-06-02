@@ -34,6 +34,7 @@ Open `http://localhost:3000`. You'll see the setup page.
 | `make enter` | Shell into a fresh production-mode container (for debugging) |
 | `make container-dev` | Build the development-mode Docker image |
 | `make dev` | Start a development-mode container with the host source code mounted for HMR |
+| `make test` | Run tests |
 
 The data volume is stored in `/tmp/lean-workbench/` on the host by default.
 Set the `WORKBENCH_ROOT` Makefile argument to customize this.

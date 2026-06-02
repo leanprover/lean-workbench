@@ -130,7 +130,9 @@ suite('Collaborative editing', () => {
       vs.workspace.openTextDocument({ content: '', language: 'plaintext' }),
       vs.workspace.openTextDocument({ content: '', language: 'plaintext' }),
     ])
-    const bindings = docs.map((doc, i) => new YTextBinding(doc, clients[i], consoleLog, ensureSyncTimeoutMs, DOC_NAME))
+    const bindings = docs.map(
+      (doc, i) => new YTextBinding(doc, clients[i], consoleLog, true, ensureSyncTimeoutMs, DOC_NAME),
+    )
 
     // Route document changes to the matching binding
     // (`YTextBindingManager.onDidChangeTextDocument` does this in production).

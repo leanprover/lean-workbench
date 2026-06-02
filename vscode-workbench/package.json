@@ -53,9 +53,10 @@
     "test": "tsc && node esbuild.mjs --tests && vscode-test"
   },
   "devDependencies": {
+    "@hocuspocus/server": "^4.1",
     "@types/mocha": "^10.0",
-    "@types/vscode": "~1.109",
-    "@types/ws": "^8.18.1",
+    "@types/vscode": "~1.120",
+    "@types/ws": "^8.18",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5",
     "esbuild": "^0.28"
