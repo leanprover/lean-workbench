@@ -92,6 +92,8 @@ interface EditBuilder {
   replace(range: vs.Range, newText: string): void
 }
 
+const EDIT_TAG = 'vscode-workbench'
+
 /** Bidirectional binding between a {@link vs.TextDocument}
  * and the {@link Y.Text} of a {@link HocuspocusProvider}.
  *
@@ -167,6 +169,8 @@ export class YTextBinding implements vs.Disposable {
     readonly doc: vs.TextDocument,
     collabSock: HocuspocusProviderWebsocket,
     log_: Logger,
+    /** Whether `code-server-patches/001-tagTextDocumentChange.diff` has been applied. */
+    private readonly hasTagTextDocumentChangePatch: boolean = true,
     /** The timeout period for {@link scheduleEnsureSync} in milliseconds,
      * disabling {@link scheduleEnsureSync} if zero.
      * Expected to be non-zero except in tests. */
@@ -229,7 +233,7 @@ export class YTextBinding implements vs.Disposable {
       for (const e of vs.window.visibleTextEditors) {
         if (e.document === this.doc) {
           hasEditor = true
-          const success = await e.edit(fn)
+          const success = await (this.hasTagTextDocumentChangePatch ? e.edit(fn, undefined, EDIT_TAG) : e.edit(fn))
           if (success) {
             this.log.trace('[makeLocalEdit] used TextEditor.edit')
             return true
@@ -250,7 +254,9 @@ export class YTextBinding implements vs.Disposable {
         delete: r => edit.delete(this.doc.uri, r),
         replace: (r, t) => edit.replace(this.doc.uri, r, t),
       })
-      const success = await vs.workspace.applyEdit(edit)
+      const success = await (this.hasTagTextDocumentChangePatch
+        ? vs.workspace.applyEdit(edit, { tag: EDIT_TAG })
+        : vs.workspace.applyEdit(edit))
       if (success) {
         this.log.trace('[makeLocalEdit] used workspace.applyEdit')
         return true
@@ -322,28 +328,31 @@ export class YTextBinding implements vs.Disposable {
       this.scheduleEnsureSync()
       return
     }
-    /** Prevent loopback by checking for the two methods of editing used in {@link makeLocalEdit}. */
-    if (
-      e.detailedReason.source === 'unknown' &&
-      e.detailedReason.metadata.source === 'unknown' &&
-      (!e.detailedReason.metadata.name /* workspace.applyEdit */ ||
-        e.detailedReason.metadata.name === 'pushEditOperation' /* workspace.applyEdit */ ||
-        e.detailedReason.metadata.name === 'MainThreadTextEditor') /* TextEditor.edit */
-    ) {
-      // TODO these checks are *incomplete*:
-      // we must not broadcast our applications of remote changes
-      // (since that would cause an infinite broadcast loop),
-      // but we should broadcast programmatic edits from other extensions
-      // (notably Vim and VSCode Neovim).
-      // However, there is no VSCode API to set the `detailedReason`,
-      // or any other field of the resulting `TextDocumentChangeEvent`,
-      // and checking document versions or edit content
-      // turned out prone to a number of race conditions.
-      // The only viable fix seems to be patching `code-server`
-      // to support setting `detailedReason.source` on our own edits.
-      // For now, {@link scheduleEnsureSync} reverts unbroadcasted local changes.
-      this.scheduleEnsureSync()
-      return
+    /** Prevent loopback by checking for our tag if possible,
+     * otherwise checking for the two methods of editing used in {@link makeLocalEdit}. */
+    if (this.hasTagTextDocumentChangePatch) {
+      if (e.detailedReason.source === 'extension' && e.detailedReason.metadata.tag === EDIT_TAG) return
+    } else {
+      if (
+        e.detailedReason.source === 'unknown' &&
+        e.detailedReason.metadata.source === 'unknown' &&
+        (!e.detailedReason.metadata.name /* workspace.applyEdit */ ||
+          e.detailedReason.metadata.name === 'pushEditOperation' /* workspace.applyEdit */ ||
+          e.detailedReason.metadata.name === 'MainThreadTextEditor') /* TextEditor.edit */
+      ) {
+        // Note that without the patch, our checks are *incomplete*:
+        // we must not broadcast our applications of remote changes
+        // (since that would cause an infinite broadcast loop),
+        // but we should broadcast other programmatic edits
+        // (code actions, VSCodeVim/VSCode Neovim edits).
+        // Without the patch, there is no VSCode API to set the `detailedReason`,
+        // or any other field of the resulting `TextDocumentChangeEvent`,
+        // and checking document versions or edit content
+        // turned out prone to a number of race conditions.
+        // {@link scheduleEnsureSync} reverts unbroadcasted local changes.
+        this.scheduleEnsureSync()
+        return
+      }
     }
 
     this.log.trace(

@@ -22,17 +22,17 @@ RUN git clone --branch "v${CODE_SERVER_VERSION}" --depth 1 \
     && git -C /src submodule update --init --depth 1
 WORKDIR /src
 
-# Apply code-server's patches, then our own on top.
-# Each code-server-patches/*.diff is `git diff` output
-# generated inside lib/vscode (paths such as a/src/vs/...).
-COPY code-server-patches/ /code-server-patches/
-RUN quilt push -a \
-    && for p in /code-server-patches/*.diff; do \
-         [ -e "$p" ] || continue; echo "Applying $p"; patch -p1 -d lib/vscode < "$p"; \
-       done
-
 # Build (see code-server/docs/CONTRIBUTING.md)
+RUN quilt push -a
 RUN npm install
+
+# Apply our patches on top of code-server's.
+# We assume that these don't modify `package.json`, so `npm install` can be cached.
+COPY code-server-patches/ /code-server-patches/
+RUN for p in /code-server-patches/*.diff; do \
+      [ -e "$p" ] || continue; echo "Applying $p"; patch -p1 -d lib/vscode < "$p"; \
+    done
+
 RUN npm run build
 RUN VERSION="${CODE_SERVER_VERSION}" npm run build:vscode
 # Lands in /src/release
