@@ -1,11 +1,85 @@
 # syntax=docker/dockerfile:1
 
-# --- base image: Node.js installation shared between builders and runners ---
+# --- code-server builder: build code-server with our patches ---
+FROM buildpack-deps:24.04-curl AS builder-code-server
+
+# Node 22 (required by code-server/.node-version)
+RUN curl -sSfL https://deb.nodesource.com/setup_22.x | bash -
+
+# Build prerequisites (see code-server/docs/CONTRIBUTING.md "Requirements")
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential g++ make pkg-config python-is-python3 \
+        libx11-dev libxkbfile-dev libsecret-1-dev libkrb5-dev \
+        git git-lfs jq quilt rsync unzip nodejs \
+    && rm -rf /var/lib/apt/lists/* \
+    && git lfs install
+
+# Shallow-clone code-server at the release tag and fetch its VS Code submodule.
+ARG CODE_SERVER_VERSION="4.122.1"
+RUN git clone --branch "v${CODE_SERVER_VERSION}" --depth 1 \
+        https://github.com/coder/code-server /code-server \
+    && git -C /code-server submodule update --init --depth 1
+WORKDIR /code-server
+
+# Build (see code-server/docs/CONTRIBUTING.md)
+RUN quilt push -a
+RUN npm install
+
+# Apply our patches on top of code-server's.
+# We assume that these don't modify `package.json`, so `npm install` can be cached.
+COPY code-server-patches/ /code-server-patches
+RUN for p in /code-server-patches/*.diff; do \
+      [ -e "$p" ] || continue; echo "Applying $p"; patch -p1 -d lib/vscode < "$p"; \
+    done
+
+# Build code-server with a remote extension host (REH).
+RUN npm run build
+RUN VERSION="${CODE_SERVER_VERSION}" npm run build:vscode
+# Lands in /code-server/release
+RUN KEEP_MODULES=1 npm run release
+
+# Build again, this time the upstream VS Code Desktop target.
+# This is needed by @vscode/test-electron which we use to test vscode-workbench.
+# FIXME: can we avoid building twice?
+RUN arch=$(uname -m) \
+    && if [ "${arch}" = "x86_64" ]; then arch="x64"; \
+       elif [ "${arch}" = "aarch64" ]; then arch="arm64"; \
+       else echo "unsupported architecture: ${arch}" >&2; exit 1; fi \
+    && cd /code-server/lib/vscode \
+    && npm run gulp -- vscode-linux-${arch}-min \
+    && mv /code-server/lib/VSCode-linux-${arch} /vscode-desktop
+
+# --- base image: Node.js installation shared between builders and runners --
+#     (except builder-code-server which needs Node.js 22)
 FROM buildpack-deps:24.04-curl AS base
 RUN curl -sSfL https://deb.nodesource.com/setup_24.x | bash - \
     && apt-get update \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
+
+# --- vscode-workbench tester: test our extension with patched VS Code ---
+FROM base AS tester-vscode-workbench
+
+# Dependencies for headless Electron and headless X server.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        xvfb \
+        libgtk-3-0t64 libgbm1 libnss3 libnspr4 libasound2t64 \
+        libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 libdrm2 \
+        libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libxkbcommon0 \
+        libxshmfence1 libpango-1.0-0 libcairo2 libdbus-1-3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Minimal set of files needed to build vscode-workbench.
+COPY --parents vscode-workbench/ package.json package-lock.json tsconfig.json /workbench/
+RUN cd /workbench && npm clean-install --ignore-scripts
+
+COPY --from=builder-code-server /vscode-desktop /vscode-desktop
+RUN cd /workbench/vscode-workbench \
+    && APP_NAME="$(node -p "require('/vscode-desktop/resources/app/product.json').applicationName")" \
+    && VSCODE_EXECUTABLE_PATH="/vscode-desktop/${APP_NAME}" \
+       xvfb-run --auto-servernum npm run test
 
 # --- base builder image: build and download prerequisites ---
 FROM base AS builder-base
@@ -13,7 +87,7 @@ FROM base AS builder-base
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         meson ninja-build pkg-config libcap-dev xz-utils gcc g++ libc6-dev make unzip
-        
+
 # Will be copied to runner images
 RUN mkdir /app
 
@@ -27,18 +101,7 @@ RUN curl -sSfL https://github.com/containers/bubblewrap/releases/download/v${BUB
     && ninja -C _build install \
     && cd / && rm -rf /bubblewrap-${BUBBLEWRAP_VERSION}
 
-# Install openvscode-server
-ARG OPENVSCODE_SERVER_VERSION="1.109.5"
-RUN arch=$(uname -m) && \
-    if [ "${arch}" = "x86_64" ]; then arch="x64"; \
-    elif [ "${arch}" = "aarch64" ]; then arch="arm64"; \
-    else echo "unsupported architecture: ${arch}" >&2; exit 1; \
-    fi && \
-    ovsc_tag="openvscode-server-v${OPENVSCODE_SERVER_VERSION}" && \
-    wget -q https://github.com/gitpod-io/openvscode-server/releases/download/${ovsc_tag}/${ovsc_tag}-linux-${arch}.tar.gz && \
-    tar -xzf ${ovsc_tag}-linux-${arch}.tar.gz && \
-    mv -f ${ovsc_tag}-linux-${arch} /app/openvscode-server && \
-    rm -f ${ovsc_tag}-linux-${arch}.tar.gz
+COPY --from=builder-code-server /code-server/release /app/vscode-server
 
 # Install builtin VS Code extensions. Workbench users get a read-only view of these.
 # Cannot use `--install-builtin-extension` as it does not store in the builtin directory
@@ -49,12 +112,11 @@ RUN arch=$(uname -m) && \
 RUN install_vsix_as_builtin() { \
         wget -q -O /tmp/ext.vsix "https://open-vsx.org/api/$1/$2/$3/file/$1.$2-$3.vsix" \
         && unzip -q /tmp/ext.vsix "extension/*" -d /tmp \
-        && mv /tmp/extension "/app/openvscode-server/extensions/$1.$2-universal" \
+        && mv /tmp/extension "/app/vscode-server/lib/vscode/extensions/$1.$2-universal" \
         && rm -rf /tmp/ext.vsix; \
     } \
     && install_vsix_as_builtin "leanprover" "lean4" "0.0.237" \
     && install_vsix_as_builtin "tamasfe" "even-better-toml" "0.19.1"
-
 
 # --- base runner image: minimal runtime, no build tools ---
 FROM base AS runner-base
@@ -86,7 +148,7 @@ FROM builder-base AS builder-prod
 # Install production build of workbench extension
 COPY ./vscode-workbench.vsix /tmp/ext.vsix
 RUN unzip -q /tmp/ext.vsix "extension/*" -d /tmp \
-    && mv /tmp/extension /app/openvscode-server/extensions/leanprover.workbench-universal \
+    && mv /tmp/extension /app/vscode-server/lib/vscode/extensions/leanprover.workbench-universal \
     && rm -rf /tmp/ext.vsix
 
 COPY . /app/workbench

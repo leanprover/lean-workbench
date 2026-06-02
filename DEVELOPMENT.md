@@ -34,6 +34,7 @@ Open `http://localhost:3000`. You'll see the setup page.
 | `make enter` | Shell into a fresh production-mode container (for debugging) |
 | `make container-dev` | Build the development-mode Docker image |
 | `make dev` | Start a development-mode container with the host source code mounted for HMR |
+| `make test` | Run tests |
 
 The data volume is stored in `/tmp/lean-workbench/` on the host by default.
 Set the `WORKBENCH_ROOT` Makefile argument to customize this.
@@ -66,21 +67,21 @@ Browser
     v
 nginx (reverse proxy, port 3000)
     |
-    |-- /_vs/{viewer}/{owner}/{project}/* --> openvscode-server (port 3010+N, in bwrap)
+    |-- /_vs/{viewer}/{owner}/{project}/* --> code-server (port 3010+N, in bwrap)
     |-- everything else                   --> Next.js server (port 3002)
 ```
 
 Three processes run inside the Docker container:
 
 1. **nginx** (background) — reverse proxy on port 3000.
-   Routes VS Code WebSocket/HTTP traffic to per-session openvscode-server instances.
+   Routes VS Code WebSocket/HTTP traffic to per-session code-server instances.
    Everything else goes to the Next.js server.
 
 2. **Next.js server** (background) — Next.js app on port 3002.
    Handles authentication, project CRUD API, the setup UI,
-   and spawning openvscode-server processes inside bwrap sandboxes.
+   and spawning code-server processes inside bwrap sandboxes.
 
-3. **openvscode-server** (one per active editing session) — spawned on demand by Next.js when a user opens a project.
+3. **code-server** (one per active editing session) — spawned on demand by Next.js when a user opens a project.
    Each runs inside its own bwrap sandbox on a dynamically allocated port (3010, 3011, ...).
 
 ### Key paths
@@ -159,7 +160,7 @@ Each user session runs in a `bwrap` sandbox with:
   host for overlayfs copy-up to work correctly inside the user
   namespace.
 - **Writable workspace** for the user's project files.
-- Network is **not** currently isolated (`openvscode-server` needs a TCP port visible to nginx).
+- Network is **not** currently isolated (`code-server` needs internet access)
 
 The Docker container runs with `--cap-add SYS_ADMIN` and relaxed seccomp/apparmor settings
 because bwrap needs these capabilities to create user namespaces and overlay mounts.

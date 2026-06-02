@@ -17,6 +17,18 @@
 # Pre-built workbench extension
 !vscode-workbench.vsix
 
+# Workbench extension source for the `tester-vscode-workbench` stage
+!vscode-workbench/media
+!vscode-workbench/src
+!vscode-workbench/test
+!vscode-workbench/.vscode-test.mjs
+!vscode-workbench/esbuild.mjs
+!vscode-workbench/package.json
+!vscode-workbench/tsconfig.json
+
+# Patches for VS Code
+!code-server-patches
+
 # Scripts, data, etc.
 !scripts
 !templates

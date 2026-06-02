@@ -16,6 +16,8 @@ function errorParamToMsg(e: ErrorParam, cfg: Config): string {
       msg += ' Ask your administrator to allow you to register.'
     }
     return msg
+  } else if (e === 'invalid_code') {
+    return 'Invalid GitHub OAuth configuration. Ask your administrator to fix it.'
   } else {
     return e
   }

@@ -4,7 +4,7 @@ IMAGE_TAG = latest
 IMAGE_DEV_TAG = latest-dev
 
 .DEFAULT_GOAL := container
-.PHONY: clean container container-dev clean-install serve dev enter
+.PHONY: clean container container-dev test clean-install serve dev enter
 
 clean:
 	rm -rf node_modules/ .next/ next-env.d.ts src/prisma/generated
@@ -20,6 +20,12 @@ container: vscode-workbench.vsix
 
 container-dev:
 	docker build --tag $(IMAGE_NAME):$(IMAGE_DEV_TAG) --target runner-dev .
+
+test:
+# Test vscode-workbench using VS Code with our patches applied.
+# `--output type=cacheonly` skips the expensive image export at the end.
+# `--progress=plain` displays RUN step output (notably the testing step).
+	docker build --target tester-vscode-workbench --output type=cacheonly --progress=plain .
 
 DOCKER_RUN = docker run --rm --init --tty \
 	--cap-add SYS_ADMIN \
@@ -48,5 +54,5 @@ dev: container-dev
 			-p 127.0.0.1:9229:9229 \
 			-v $(CURDIR)/.docker-cache:/root/.cache \
 			-v $(CURDIR):/app/workbench:ro \
-			-v $(CURDIR)/vscode-workbench:/app/openvscode-server/extensions/leanprover.workbench-universal:ro \
+			-v $(CURDIR)/vscode-workbench:/app/vscode-server/lib/vscode/extensions/leanprover.workbench-universal:ro \
 			$(IMAGE_NAME):$(IMAGE_DEV_TAG)'

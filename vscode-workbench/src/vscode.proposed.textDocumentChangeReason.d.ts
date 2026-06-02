@@ -26,4 +26,43 @@ declare module 'vscode' {
      */
     readonly detailedReason: TextDocumentDetailedChangeReason | undefined
   }
+
+  export interface WorkspaceEditMetadata {
+    /**
+     * Caller-supplied tag for this edit.
+     * Surfaces as the `tag` property in {@link TextDocumentDetailedChangeReason.metadata}
+     * on each resulting {@link TextDocumentChangeEvent}. */
+    tag?: string
+  }
+
+  export interface TextEditor {
+    /**
+     * Perform an edit on the document associated with this text editor.
+     *
+     * The given callback-function is invoked with an {@link TextEditorEdit edit-builder} which must
+     * be used to make edits. Note that the edit-builder is only valid while the
+     * callback executes.
+     *
+     * @param callback A function which can create edits using an {@link TextEditorEdit edit-builder}.
+     * @param options The undo/redo behavior around this edit. By default, undo stops will be created before and after this edit.
+     * @param tag? Caller-supplied tag for this edit.
+     *             Surfaces as the `tag` property in {@link TextDocumentDetailedChangeReason.metadata}
+     *             on each resulting {@link TextDocumentChangeEvent}.
+     * @returns A promise that resolves with a value indicating if the edits could be applied.
+     */
+    edit(
+      callback: (editBuilder: TextEditorEdit) => void,
+      options?: {
+        /**
+         * Add undo stop before making the edits.
+         */
+        readonly undoStopBefore: boolean
+        /**
+         * Add undo stop after making the edits.
+         */
+        readonly undoStopAfter: boolean
+      },
+      tag?: string,
+    ): Thenable<boolean>
+  }
 }
