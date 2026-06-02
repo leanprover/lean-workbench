@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1
 
-# --- code-server builder: clone and build code-server from source ---
+# --- code-server builder: build code-server with our patches ---
 FROM buildpack-deps:24.04-curl AS builder-code-server
 
 # Node 22 (required by code-server/.node-version)
 RUN curl -sSfL https://deb.nodesource.com/setup_22.x | bash -
 
-# Build prerequisites (see code-server docs/CONTRIBUTING.md "Requirements")
+# Build prerequisites (see code-server/docs/CONTRIBUTING.md "Requirements")
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential g++ make pkg-config python-is-python3 \
@@ -33,26 +33,35 @@ RUN for p in /code-server-patches/*.diff; do \
       [ -e "$p" ] || continue; echo "Applying $p"; patch -p1 -d lib/vscode < "$p"; \
     done
 
+# Build code-server with a remote extension host (REH).
 RUN npm run build
 RUN VERSION="${CODE_SERVER_VERSION}" npm run build:vscode
 # Lands in /code-server/release
 RUN KEEP_MODULES=1 npm run release
 
-# --- tester-vscode-workbench: build patched VS Code desktop and test our extension ---
-FROM builder-code-server AS tester-vscode-workbench
-
-# Determine the system's architecture.
-RUN arch=$(uname -m) && \
-    if [ "${arch}" = "x86_64" ]; then echo "x64" > /sys_arch; \
-    elif [ "${arch}" = "aarch64" ]; then echo "arm64" > /sys_arch; \
-    else echo "unsupported architecture: ${arch}" >&2; exit 1; fi 
-
-# The @vscode/test-electron package requires VS Code Desktop;
-# build it in addition to the remote extension host (REH) build above.
+# Build again, this time the upstream VS Code Desktop target.
+# This is needed by @vscode/test-electron which we use to test vscode-workbench.
 # FIXME: can we avoid building twice?
-RUN cd /code-server/lib/vscode && npm run gulp -- vscode-linux-$(cat /sys_arch)-min
+RUN arch=$(uname -m) \
+    && if [ "${arch}" = "x86_64" ]; then arch="x64"; \
+       elif [ "${arch}" = "aarch64" ]; then arch="arm64"; \
+       else echo "unsupported architecture: ${arch}" >&2; exit 1; fi \
+    && cd /code-server/lib/vscode \
+    && npm run gulp -- vscode-linux-${arch}-min \
+    && mv /code-server/lib/VSCode-linux-${arch} /vscode-desktop
 
-# Dependencies for headless Electron and xvfb.
+# --- base image: Node.js installation shared between builders and runners --
+#     (except builder-code-server which needs Node.js 22)
+FROM buildpack-deps:24.04-curl AS base
+RUN curl -sSfL https://deb.nodesource.com/setup_24.x | bash - \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# --- vscode-workbench tester: test our extension with patched VS Code ---
+FROM base AS tester-vscode-workbench
+
+# Dependencies for headless Electron and headless X server.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         xvfb \
@@ -64,19 +73,13 @@ RUN apt-get update \
 
 # Minimal set of files needed to build vscode-workbench.
 COPY --parents vscode-workbench/ package.json package-lock.json tsconfig.json /workbench/
-
 RUN cd /workbench && npm clean-install --ignore-scripts
-RUN cd /workbench/vscode-workbench \
-    && APP_NAME="$(node -p "require('/code-server/lib/VSCode-linux-$(cat /sys_arch)/resources/app/product.json').applicationName")" \
-    && VSCODE_EXECUTABLE_PATH="/code-server/lib/VSCode-linux-$(cat /sys_arch)/${APP_NAME}" \
-       xvfb-run --auto-servernum npm run test
 
-# --- base image: Node.js installation shared between builders and runners ---
-FROM buildpack-deps:24.04-curl AS base
-RUN curl -sSfL https://deb.nodesource.com/setup_24.x | bash - \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends nodejs \
-    && rm -rf /var/lib/apt/lists/*
+COPY --from=builder-code-server /vscode-desktop /vscode-desktop
+RUN cd /workbench/vscode-workbench \
+    && APP_NAME="$(node -p "require('/vscode-desktop/resources/app/product.json').applicationName")" \
+    && VSCODE_EXECUTABLE_PATH="/vscode-desktop/${APP_NAME}" \
+       xvfb-run --auto-servernum npm run test
 
 # --- base builder image: build and download prerequisites ---
 FROM base AS builder-base
@@ -84,7 +87,7 @@ FROM base AS builder-base
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         meson ninja-build pkg-config libcap-dev xz-utils gcc g++ libc6-dev make unzip
-        
+
 # Will be copied to runner images
 RUN mkdir /app
 
