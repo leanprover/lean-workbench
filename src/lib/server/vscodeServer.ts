@@ -3,11 +3,9 @@ import {
   getNginxConfDir,
   getNginxLogDir,
   getOpenVscodeServerDir,
-  getPackageSetsDir,
   getWorkspacesDir,
   isDevMode,
 } from '@/lib/server/config'
-import { getDb } from '@/lib/server/db'
 import { BWRAP_ARGS, bwrapProjectDir, readProcesses } from '@/lib/server/util'
 import { Project } from '@/prisma/generated/client'
 import { User } from 'better-auth'
@@ -136,46 +134,16 @@ export class VscodeServerHandle {
     await fs.writeFile(this.nginxUserRoutePath, conf)
   }
 
-  /** Build `--overlay-src/--tmp-overlay` args for the associated project's package sets.
-   * These mount each package in the package set in the `bubblewrap` sandbox.
-   * Writes go to a tmpfs and are discarded when the container exits. */
-  private async buildOverlayArgs(sandboxProjectDir: string): Promise<string[]> {
-    const packageSets = await getDb().projectPackageSet.findMany({ where: { projectId: this.project.id } })
-    const args: string[] = []
-    for (const { packageSet } of packageSets) {
-      const setDir = path.join(getPackageSetsDir(), packageSet)
-      const packagesFile = path.join(setDir, 'packages.txt')
-      try {
-        await fs.access(packagesFile)
-      } catch {
-        continue
-      }
-      const packages = (await fs.readFile(packagesFile, 'utf-8')).split('\n').filter(Boolean)
-      for (const pkg of packages) {
-        await fs.mkdir(path.join(this.projectDir, '.lake', 'packages', pkg), { recursive: true })
-        // prettier-ignore
-        args.push(
-          '--overlay-src', path.join(setDir, pkg),
-          '--tmp-overlay', path.join(sandboxProjectDir, '.lake', 'packages', pkg),
-        )
-      }
-    }
-    return args
-  }
-
   /** Signal the server to start.
    * The returned promise resolves after the server has started listening on its port,
    * and the Nginx route for {@link vscodeIframePath} has been set up.
-   * Repeated calls produce the same promise. */
-  async start() {
+   * Repeated calls (with any arguments) produce the same promise. */
+  async start(
+    /** Additional arguments to `bwrap` placed at the end. */
+    bwrapArgs: string[],
+  ) {
     if (this.starting) return this.starting
     this.starting = (async () => {
-      try {
-        await fs.access(this.projectDir)
-      } catch (err) {
-        throw new Error(`Could not open project directory '${this.projectDir}': ${String(err)}`)
-      }
-
       await fs.mkdir(this.socketDir, { recursive: true })
       this.disposables.defer(async () => {
         await fs.rm(this.socketDir, { recursive: true, force: true })
@@ -187,7 +155,6 @@ export class VscodeServerHandle {
       await ensureMachineSettings(vscServerDataDir)
 
       const sandboxProjectDir = bwrapProjectDir(this.project.name)
-      const overlayArgs = await this.buildOverlayArgs(sandboxProjectDir)
 
       const devArgs = isDevMode()
         ? /* prettier-ignore */ [
@@ -214,7 +181,6 @@ export class VscodeServerHandle {
           '--bind', this.collabWorkDir, '/workspace/.collab-server',
           '--bind', this.socketDir, '/workspace/.vscode-server',
           '--ro-bind-data', '3', '/workspace/.lean-workbench.json',
-          ...overlayArgs,
           '--setenv', 'HOME', '/workspace',
           '--setenv', 'ELAN_HOME', getElanDir(),
           '--setenv', 'PATH', `${getElanDir()}/bin:/usr/local/bin:/usr/bin:/bin`,
@@ -226,6 +192,7 @@ export class VscodeServerHandle {
           '--setenv', 'GIT_CONFIG_KEY_0', 'safe.directory',
           '--setenv', 'GIT_CONFIG_VALUE_0', '*',
           ...devArgs,
+          ...bwrapArgs,
           '--',
           path.join(getOpenVscodeServerDir(), 'bin', 'code-server'),
           '--socket', `/workspace/.vscode-server/${VSCODE_SOCKET_FILENAME}`,
@@ -271,6 +238,7 @@ export class VscodeServerHandle {
                 name: this.viewer.name,
                 image: this.viewer.image,
               },
+              syncPatterns: [path.join(sandboxProjectDir, '**', '*')],
             }),
           )
           await this.writeNginxUserRoute()

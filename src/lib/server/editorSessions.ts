@@ -4,9 +4,11 @@ import { getWorkspacesDir } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { VscodeServerHandle } from '@/lib/server/vscodeServer'
 import type { Project } from '@/prisma/generated/client'
+import fs from 'node:fs/promises'
 import path from 'node:path'
 import { EventEmitter } from 'node:stream'
 import 'server-only'
+import { buildPackageOverlays } from './util'
 
 /** Admin-visible information about a running editor session. */
 export interface EditorSessionInfo {
@@ -52,7 +54,7 @@ export class EditorSessionManager {
   }
 
   /** Find a running `collab-server` for the given project,
-   * or create one and store it if none are running.
+   * or create one and store it in {@link collabServers} if none are running.
    * Does not start the server. */
   private findCollabServer(project: Project, projectDir: string): CollabServerHandle {
     let server = this.collabServers.get(project.id)
@@ -73,35 +75,46 @@ export class EditorSessionManager {
    * Returns the path to the corresponding VSCode `iframe`. */
   async ensureSession(viewer: User, owner: User, project: Project): Promise<string> {
     const projectSessions = this.vscServers.get(project.id) ?? []
-    let session = projectSessions.find(s => s.viewer.id === viewer.id)
-    if (!session) {
+    let vscServer = projectSessions.find(s => s.viewer.id === viewer.id)
+    if (!vscServer) {
       const projectDir = path.join(getWorkspacesDir(), owner.name, project.id)
+      try {
+        await fs.access(projectDir)
+      } catch (err) {
+        throw new Error(`Could not open project directory '${projectDir}': ${String(err)}`)
+      }
+      const overlayWorkDir = path.join(getWorkspacesDir(), owner.name, 'overlay-work', project.id)
+      const overlayArgs = await buildPackageOverlays(project.id, project.name, projectDir, overlayWorkDir)
       const collabServer = this.findCollabServer(project, projectDir)
-      session = new VscodeServerHandle(viewer, owner, project, projectDir, collabServer.workDir)
-      session.addDisposable(async () => {
+      collabServer.addDisposable(async () => {
+        // collab-server is the last process to exit - remove the overlayfs workdir when it does.
+        await fs.rm(overlayWorkDir, { recursive: true, force: true })
+      })
+      vscServer = new VscodeServerHandle(viewer, owner, project, projectDir, collabServer.workDir)
+      vscServer.addDisposable(async () => {
         this.vscServers.set(
           project.id,
-          (this.vscServers.get(project.id) ?? []).filter(s => s !== session),
+          (this.vscServers.get(project.id) ?? []).filter(s => s !== vscServer),
         )
-        this.vscServerEvents.emit('close', session!)
+        this.vscServerEvents.emit('close', vscServer!)
       })
       // Insertion happens in same transaction as failed lookup (before any `await`)
-      this.vscServers.set(project.id, [...(this.vscServers.get(project.id) ?? []), session])
+      this.vscServers.set(project.id, [...(this.vscServers.get(project.id) ?? []), vscServer])
 
       await Promise.all([
-        collabServer.start().catch(async e => {
+        collabServer.start(overlayArgs).catch(async e => {
           await collabServer.dispose()
           throw e
         }),
-        session.start().catch(async e => {
-          await session!.dispose()
+        vscServer.start(overlayArgs).catch(async e => {
+          await vscServer!.dispose()
           throw e
         }),
       ])
     }
 
-    await session.start()
-    return session.vscodeIframePath
+    await vscServer.start([])
+    return vscServer.vscodeIframePath
   }
 
   killSession(projectId: string, sessionId: string): void {
