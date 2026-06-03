@@ -26,28 +26,12 @@ async function readWorkspaceMdata(log: vs.LogOutputChannel): Promise<WorkspaceMe
   return mdata
 }
 
-/** Extensions that intercept text input and conflict with collaborative editing. */
-const CONFLICTING_EXTENSIONS = ['vscodevim.vim', 'asvetliakov.vscode-neovim']
-
-function checkInstalledExtensions(): void {
-  const conflicting = CONFLICTING_EXTENSIONS.filter(id =>
-    vs.extensions.getExtension(id, true /* include browser extensions */),
-  )
-  if (conflicting.length > 0)
-    void vs.window.showErrorMessage(
-      `The following extension(s) are not currently supported in the Lean Workbench - please disable them: ${conflicting.join(', ')}`,
-    )
-}
-
 export async function activate(ctx: vs.ExtensionContext) {
   const log = vs.window.createOutputChannel('Lean 4 - Workbench', { log: true })
 
   const mdata = await readWorkspaceMdata(log)
   if (!mdata) return
   log.trace(`workspace metadata: ${JSON.stringify(mdata)}`)
-
-  checkInstalledExtensions()
-  ctx.subscriptions.push(vs.extensions.onDidChange(checkInstalledExtensions))
 
   const collabServer = await connectToCollabServer(log, mdata)
   if (!collabServer) return
