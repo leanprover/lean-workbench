@@ -16,7 +16,7 @@ export const COLLAB_DB_FILENAME = 'collab.db'
 export class CollabServerHandle {
   /** Unique ID of this `collab-server` instance. */
   readonly uuid = crypto.randomUUID()
-  /** Directory in which `collab-server` places its files. */
+  /** Directory in which `collab-server` places its ephemeral files. */
   readonly workDir: string = `/tmp/collab-server-${this.uuid}/`
   /** Path to the `collab-server` UDS file. */
   readonly socketPath: string = path.join(this.workDir, COLLAB_SOCKET_FILENAME)
@@ -45,8 +45,11 @@ export class CollabServerHandle {
    * The returned promise resolves when the server is ready
    * and has created its UDS file.
    * Throws if the server fails to start or set up.
-   * Repeated calls produce the same promise. */
-  async start() {
+   * Repeated calls (with any arguments) produce the same promise. */
+  async start(
+    /** Additional arguments to `bwrap` placed at the end. */
+    bwrapArgs: string[],
+  ) {
     if (this.starting) return this.starting
     this.starting = (async () => {
       await fs.mkdir(this.workDir, { recursive: true })
@@ -66,6 +69,8 @@ export class CollabServerHandle {
           '--bind', this.projectDir, sandboxProjectDir,
           '--bind', this.workDir, '/workspace/.collab-server',
           '--chdir', '/workspace/.collab-server',
+          ...bwrapArgs,
+          '--',
           '/usr/bin/node',
           path.join(getCollabServerDir(), 'dist', 'server.js'),
           sandboxProjectDir,
