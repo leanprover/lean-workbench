@@ -63,6 +63,7 @@
   },
   "dependencies": {
     "@hocuspocus/provider": "^4.0",
+    "minimatch": "^10.2",
     "ws": "^8.20",
     "zod": "^4.4"
   }

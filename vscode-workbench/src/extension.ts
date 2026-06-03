@@ -18,16 +18,12 @@ async function readWorkspaceMdata(log: vs.LogOutputChannel): Promise<WorkspaceMe
     const raw = await fs.readFile(BWRAP_METADATA_PATH, 'utf8')
     mdata = zWorkspaceMetadata.parse(JSON.parse(raw))
   } catch (err) {
-    log.error(String(err))
+    log.error(`failed to parse workspace metadata: ${String(err)}`)
     void vs.window.showErrorMessage('Could not detect the Lean Workbench - shutting down.')
     return undefined
   }
 
   return mdata
-}
-
-function syncableDirs(): string[] {
-  return (vs.workspace.workspaceFolders ?? []).filter(f => f.uri.scheme === 'file').map(f => f.uri.fsPath)
 }
 
 /** Extensions that intercept text input and conflict with collaborative editing. */
@@ -48,6 +44,7 @@ export async function activate(ctx: vs.ExtensionContext) {
 
   const mdata = await readWorkspaceMdata(log)
   if (!mdata) return
+  log.trace(`workspace metadata: ${JSON.stringify(mdata)}`)
 
   checkInstalledExtensions()
   ctx.subscriptions.push(vs.extensions.onDidChange(checkInstalledExtensions))
@@ -59,10 +56,9 @@ export async function activate(ctx: vs.ExtensionContext) {
   // We apply collaborative syncing to open folders (usually just the project folder) only.
   // User-specific folders such as /workspace/.vscode-remote are not synced
   // (though they would be if someone opens /workspace - TODO better UX).
-  const bindings = new YTextBindingManager(collabServer.collabSock, syncableDirs(), log)
+  const bindings = new YTextBindingManager(collabServer.collabSock, mdata, log)
   ctx.subscriptions.push(
     bindings,
-    vs.workspace.onDidChangeWorkspaceFolders(() => bindings.updateSyncableDirs(syncableDirs())),
     // Remote presence indicators
     new RemoteSelectionDecorator(collabServer.awareness),
   )

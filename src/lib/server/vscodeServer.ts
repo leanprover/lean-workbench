@@ -138,10 +138,12 @@ export class VscodeServerHandle {
 
   /** Build `--overlay-src/--tmp-overlay` args for the associated project's package sets.
    * These mount each package in the package set in the `bubblewrap` sandbox.
-   * Writes go to a tmpfs and are discarded when the container exits. */
-  private async buildOverlayArgs(sandboxProjectDir: string): Promise<string[]> {
+   * Writes go to a tmpfs and are discarded when the container exits.
+   * Returns `[overlayArgs, sandboxOverlayDirs]`. */
+  private async buildPackageOverlays(sandboxProjectDir: string): Promise<[string[], string[]]> {
     const packageSets = await getDb().projectPackageSet.findMany({ where: { projectId: this.project.id } })
     const args: string[] = []
+    const dirs: string[] = []
     for (const { packageSet } of packageSets) {
       const setDir = path.join(getPackageSetsDir(), packageSet)
       const packagesFile = path.join(setDir, 'packages.txt')
@@ -153,14 +155,16 @@ export class VscodeServerHandle {
       const packages = (await fs.readFile(packagesFile, 'utf-8')).split('\n').filter(Boolean)
       for (const pkg of packages) {
         await fs.mkdir(path.join(this.projectDir, '.lake', 'packages', pkg), { recursive: true })
+        const sandboxDir = path.join(sandboxProjectDir, '.lake', 'packages', pkg)
         // prettier-ignore
         args.push(
           '--overlay-src', path.join(setDir, pkg),
-          '--tmp-overlay', path.join(sandboxProjectDir, '.lake', 'packages', pkg),
+          '--tmp-overlay', sandboxDir,
         )
+        dirs.push(sandboxDir)
       }
     }
-    return args
+    return [args, dirs]
   }
 
   /** Signal the server to start.
@@ -187,7 +191,7 @@ export class VscodeServerHandle {
       await ensureMachineSettings(vscServerDataDir)
 
       const sandboxProjectDir = bwrapProjectDir(this.project.name)
-      const overlayArgs = await this.buildOverlayArgs(sandboxProjectDir)
+      const [overlayArgs, sandboxOverlayDirs] = await this.buildPackageOverlays(sandboxProjectDir)
 
       const devArgs = isDevMode()
         ? /* prettier-ignore */ [
@@ -271,6 +275,8 @@ export class VscodeServerHandle {
                 name: this.viewer.name,
                 image: this.viewer.image,
               },
+              syncPatterns: [path.join(sandboxProjectDir, '**', '*')],
+              excludeSyncPatterns: sandboxOverlayDirs.map(d => path.join(d, '**', '*')),
             }),
           )
           await this.writeNginxUserRoute()

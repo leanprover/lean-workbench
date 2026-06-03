@@ -1,3 +1,4 @@
+import { minimatch } from 'minimatch'
 import fs from 'node:fs/promises'
 import vs from 'vscode'
 import { z } from 'zod'
@@ -51,10 +52,24 @@ export const zWorkspaceMetadata = z.object({
     name: z.string(),
     image: z.nullish(z.string()),
   }),
+  /** Files that should be synced collaboratively across viewers.
+   * Patterns are matched with minimatch. */
+  syncPatterns: z.array(z.string()),
+  /** Files that should be excluded from collaborative sync.
+   * Patterns are matched with minimatch. */
+  excludeSyncPatterns: z.array(z.string()).optional(),
 })
 
 /** Metadata of a Lean Workbench project workspace. */
 export type WorkspaceMetadata = z.infer<typeof zWorkspaceMetadata>
+
+/** Whether `filePath` should be collaboratively synced,
+ * i.e. it matches some {@link WorkspaceMetadata.syncPatterns} entry
+ * and no {@link WorkspaceMetadata.excludeSyncPatterns} entry. */
+export function shouldSyncPath(mdata: WorkspaceMetadata, filePath: string): boolean {
+  const matches = (pattern: string) => minimatch(filePath, pattern, { dot: true })
+  return mdata.syncPatterns.some(matches) && !(mdata.excludeSyncPatterns ?? []).some(matches)
+}
 
 /** Working directory of collab-server in the VSCode and collab-server bwraps. */
 export const BWRAP_COLLAB_SERVER_DIR = '/workspace/.collab-server'

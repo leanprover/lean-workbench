@@ -1,8 +1,7 @@
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider'
-import path from 'node:path'
 import vs from 'vscode'
 import * as Y from 'yjs'
-import { Logger, logWithPrefix, YTEXT_KEY } from './util'
+import { Logger, logWithPrefix, shouldSyncPath, WorkspaceMetadata, YTEXT_KEY } from './util'
 
 /** Maintains a {@link YTextBinding} binding for every open {@link vs.TextDocument}
  * whose path lies within one of the syncable directories. */
@@ -12,8 +11,7 @@ export class YTextBindingManager implements vs.Disposable {
 
   constructor(
     private readonly collabSock: HocuspocusProviderWebsocket,
-    /** Directories to sync. Files not contained in any of these are not synced. */
-    private syncDirs: string[],
+    private readonly mdata: WorkspaceMetadata,
     private readonly log: vs.LogOutputChannel,
   ) {
     this.disposables.push(
@@ -25,31 +23,12 @@ export class YTextBindingManager implements vs.Disposable {
     for (const doc of vs.workspace.textDocuments) this.onDidOpenTextDocument(doc)
   }
 
-  /** Replace the set of syncable directories. */
-  updateSyncableDirs(syncDirs: string[]) {
-    this.syncDirs = syncDirs
-    // Tear down bindings no longer in any syncable dir
-    for (const [filePath, binding] of this.bindings) {
-      if (this.shouldSyncPath(filePath)) continue
-      this.bindings.delete(filePath)
-      binding.dispose()
-    }
-    // Rebind already-open buffers in case they are now syncable
-    // (no-op if already bound)
-    for (const doc of vs.workspace.textDocuments) this.onDidOpenTextDocument(doc)
-  }
-
-  private shouldSyncPath(filePath: string): boolean {
-    return this.syncDirs.some(d => {
-      const rel = path.relative(d, filePath)
-      return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel))
-    })
-  }
-
   private onDidOpenTextDocument(doc: vs.TextDocument) {
     if (doc.uri.scheme !== 'file') return
     const filePath = doc.uri.fsPath
-    if (!this.shouldSyncPath(filePath)) return
+    const shouldSync = shouldSyncPath(this.mdata, filePath)
+    this.log.trace(`[YTextBindingManager] opened ${filePath}, shouldSync=${shouldSync}`)
+    if (!shouldSync) return
     // TODO: can one path have multiple `TextDocument`s?
     if (this.bindings.has(filePath)) return
     this.bindings.set(filePath, new YTextBinding(doc, this.collabSock, this.log))
@@ -69,7 +48,7 @@ export class YTextBindingManager implements vs.Disposable {
     const filePath = e.document.uri.fsPath
     const binding = this.bindings.get(filePath)
     if (!binding) {
-      if (this.shouldSyncPath(filePath)) {
+      if (shouldSyncPath(this.mdata, filePath)) {
         this.log.warn(`[onDidChangeTextDocument] dropped edit on '${filePath}', missing YTextBinding`)
       }
       return
@@ -279,19 +258,18 @@ export class YTextBinding implements vs.Disposable {
 
     const remoteStr = this.remoteYtext.toString()
     const localStr = this.doc.getText()
-    let success = false
     if (remoteStr === localStr) {
-      success = true
-    } else {
-      success = await this.makeLocalEdit(b => {
-        const fullRange = new vs.Range(new vs.Position(0, 0), this.doc.positionAt(this.doc.getText().length))
-        b.replace(fullRange, remoteStr)
-      })
+      this.log.trace('[initFromRemote] synced without edit')
+      return
     }
+    const success = await this.makeLocalEdit(b => {
+      const fullRange = new vs.Range(new vs.Position(0, 0), this.doc.positionAt(this.doc.getText().length))
+      b.replace(fullRange, remoteStr)
+    })
     if (success) {
-      this.log.trace('[initFromRemote] synced')
+      this.log.trace('[initFromRemote] synced with edit')
     } else {
-      this.log.error(`[initFromRemote] failed to overwrite document`)
+      this.log.error('[initFromRemote] failed to edit document')
     }
   }
 
