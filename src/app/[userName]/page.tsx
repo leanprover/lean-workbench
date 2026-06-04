@@ -1,19 +1,27 @@
 import { requireAuth } from '@/lib/server/actions'
 import { getDb } from '@/lib/server/db'
+import { zUserName } from '@/lib/util'
 import { Route } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import z from 'zod'
 import { NewProjectForm } from './NewProjectForm'
 import { ProjectRow } from './ProjectRow'
 
-interface Params {
-  userName: string
-}
+const zParams = z.object({
+  userName: zUserName,
+})
 
-export default async function ProfileBody({ params }: { params: Promise<Params> }) {
+type Params = z.infer<typeof zParams>
+
+export default async function ProfileBody({ params: params_ }: { params: Promise<Params> }) {
+  const parsed = zParams.safeParse(await params_)
+  // 400 would be better, but RSCs can't return a Response and there is no 400 helper in Next.js.
+  if (!parsed.success) notFound()
+  const { userName } = parsed.data
+
   const viewerSession = await requireAuth()
 
-  const { userName } = await params
   const db = getDb()
   const user = await db.user.findUnique({ where: { name: userName } })
   if (!user) notFound()

@@ -3,19 +3,13 @@
 import { requireAuth } from '@/lib/server/actions'
 import { getPackageSetsDir, getTemplatesDir, getWorkspacesDir } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
-import { type ActionResponse } from '@/lib/util'
+import { zProjectId, zProjectName, zTemplateId, type ActionResponse } from '@/lib/util'
 import { Project } from '@/prisma/generated/client'
 import { forbidden } from 'next/navigation'
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import z from 'zod'
-
-const PROJECT_NAME_RE = /^[\p{L}\p{N}][\p{L}\p{N}_-]{0,99}$/u
-const TEMPLATE_ID_RE = /^[\.a-zA-Z0-9_-]+$/
-
-const zProjectName = z.string().regex(PROJECT_NAME_RE, 'Invalid project name')
-const zTemplateId = z.string().regex(TEMPLATE_ID_RE, 'Invalid template ID')
 
 const zTemplateMetadata = z.object({
   name: z.string(),
@@ -32,6 +26,7 @@ function readTemplateMetadata(templateDir: string): TemplateMetadata | null {
   return zTemplateMetadata.parse(raw)
 }
 
+/** Which files to copy from a template into a new project. */
 const TEMPLATE_FILES = ['lean-toolchain', 'lakefile.toml', 'Main.lean', 'lake-manifest.json']
 
 export interface ProjectInfo {
@@ -156,7 +151,7 @@ async function requireProjectOwner(projectId: string): Promise<ActionResponse<Pr
 }
 
 const zUpdateProject = z.object({
-  projectId: z.string().min(1),
+  projectId: zProjectId,
   name: zProjectName,
 })
 
@@ -188,7 +183,7 @@ export async function renameProject(projectId: string, name: string): Promise<Ac
 }
 
 const zDeleteProject = z.object({
-  projectId: z.string().min(1),
+  projectId: zProjectId,
 })
 
 export async function deleteProject(projectId: string): Promise<ActionResponse> {
@@ -205,7 +200,7 @@ export async function deleteProject(projectId: string): Promise<ActionResponse> 
 }
 
 const zToggleVisibility = z.object({
-  projectId: z.string().min(1),
+  projectId: zProjectId,
   isPublic: z.boolean(),
 })
 

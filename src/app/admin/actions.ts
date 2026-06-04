@@ -5,7 +5,7 @@ import { initAuth } from '@/lib/server/auth'
 import { getConfig, getDataDir, getWorkspacesDir, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
-import { type ActionResponse } from '@/lib/util'
+import { zProjectId, zUserId, zUserName, type ActionResponse } from '@/lib/util'
 import { forbidden } from 'next/navigation'
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
@@ -21,7 +21,7 @@ export async function requireAdmin() {
 // --- User management ---
 
 const zToggleAdmin = z.object({
-  userId: z.string(),
+  userId: zUserId,
   isAdmin: z.boolean(),
 })
 
@@ -41,7 +41,7 @@ export async function toggleAdmin(userId: string, isAdmin: boolean): Promise<Act
 }
 
 const zDeleteUser = z.object({
-  userId: z.string(),
+  userId: zUserId,
 })
 
 export async function deleteUser(userId: string): Promise<ActionResponse> {
@@ -115,7 +115,7 @@ export async function updateOAuthConfig(clientId: string, clientSecret: string |
 // --- Editor sessions ---
 
 const zEditorSession = z.object({
-  projectId: z.string().min(1),
+  projectId: zProjectId,
   sessionId: z.string().min(1),
 })
 
@@ -221,10 +221,7 @@ export async function setRegistrationMode(mode: string): Promise<ActionResponse>
 // --- Allowed users ---
 
 const zAddAllowedUser = z.object({
-  username: z
-    .string()
-    .transform(s => s.trim().toLowerCase())
-    .pipe(z.string().min(1, 'Username is required')),
+  userName: zUserName,
 })
 
 export async function addAllowedUser(username: string): Promise<ActionResponse> {
@@ -232,15 +229,15 @@ export async function addAllowedUser(username: string): Promise<ActionResponse> 
   const parsed = zAddAllowedUser.safeParse({ username })
   if (!parsed.success) return { error: parsed.error.issues[0].message }
   await getDb().allowedGithubUser.upsert({
-    where: { githubUsername: parsed.data.username },
-    create: { githubUsername: parsed.data.username },
+    where: { githubUsername: parsed.data.userName },
+    create: { githubUsername: parsed.data.userName },
     update: {},
   })
   return { ok: undefined }
 }
 
 const zRemoveAllowedUser = z.object({
-  username: z.string().min(1),
+  userName: zUserName,
 })
 
 export async function removeAllowedUser(username: string): Promise<ActionResponse> {
@@ -248,7 +245,7 @@ export async function removeAllowedUser(username: string): Promise<ActionRespons
   const parsed = zRemoveAllowedUser.safeParse({ username })
   if (!parsed.success) return { error: parsed.error.issues[0].message }
   await getDb().allowedGithubUser.delete({
-    where: { githubUsername: parsed.data.username },
+    where: { githubUsername: parsed.data.userName },
   })
   return { ok: undefined }
 }

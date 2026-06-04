@@ -2,12 +2,16 @@ import { requireAuth } from '@/lib/server/actions'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
 import { canAccessProject } from '@/lib/server/util'
+import { zProjectName, zUserName } from '@/lib/util'
+import { notFound } from 'next/navigation'
 import z from 'zod'
 
 const zParams = z.object({
-  userName: z.string().min(1),
-  projectName: z.string().min(1),
+  userName: zUserName,
+  projectName: zProjectName,
 })
+
+type Params = z.infer<typeof zParams>
 
 function Error({ msg }: { msg: string }) {
   return (
@@ -25,14 +29,10 @@ function Error({ msg }: { msg: string }) {
   )
 }
 
-interface Params {
-  userName: string
-  projectName: string
-}
-
 export default async function EditorSession({ params: params_ }: { params: Promise<Params> }) {
   const parsed = zParams.safeParse(await params_)
-  if (!parsed.success) return <Error msg={parsed.error.issues[0].message} />
+  // 400 would be better, but RSCs can't return a Response and there is no 400 helper in Next.js.
+  if (!parsed.success) notFound()
   const params = parsed.data
 
   const session = await requireAuth()
@@ -42,16 +42,12 @@ export default async function EditorSession({ params: params_ }: { params: Promi
   const owner = await db.user.findUnique({
     where: { name: params.userName },
   })
-  if (!owner) {
-    return <Error msg='User not found' />
-  }
+  if (!owner) notFound()
 
   const project = await db.project.findUnique({
     where: { userId_name: { userId: owner.id, name: params.projectName } },
   })
-  if (!project || !canAccessProject(viewer, project)) {
-    return <Error msg='Project not found' />
-  }
+  if (!project || !canAccessProject(viewer, project)) notFound()
 
   const manager = getEditorSessionManager()
   let iframeSrc = null
