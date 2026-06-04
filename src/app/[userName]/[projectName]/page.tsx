@@ -1,3 +1,4 @@
+import Error from '@/app/components/Error'
 import { requireAuth } from '@/lib/server/actions'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
@@ -12,22 +13,6 @@ const zParams = z.object({
 })
 
 type Params = z.infer<typeof zParams>
-
-function Error({ msg }: { msg: string }) {
-  return (
-    <div
-      style={{
-        background: '#fee',
-        border: '1px solid #c00',
-        color: '#900',
-        padding: '0.75em 1em',
-        borderRadius: '4px',
-      }}
-    >
-      Failed to start editor session: {msg}
-    </div>
-  )
-}
 
 export default async function EditorSession({ params: params_ }: { params: Promise<Params> }) {
   const parsed = zParams.safeParse(await params_)
@@ -55,7 +40,7 @@ export default async function EditorSession({ params: params_ }: { params: Promi
     iframeSrc = await manager.ensureSession(viewer, owner, project)
   } catch (err) {
     console.error('Failed to start editor session:', (err as Error).message)
-    return <Error msg={String(err)} />
+    return <Error>Failed to start editor session: {String(err)}</Error>
   }
 
   return <iframe id='editor-frame' src={iframeSrc} className='editor-session-iframe' />

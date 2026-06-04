@@ -6,6 +6,7 @@ import { Route } from 'next'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useContext } from 'react'
+import Error from './components/Error'
 
 type ErrorParam = 'unable_to_create_user' | string
 
@@ -30,20 +31,7 @@ export default function Root() {
 
   return (
     <>
-      {error && (
-        <div
-          style={{
-            background: '#fee',
-            border: '1px solid #c00',
-            color: '#900',
-            padding: '0.75em 1em',
-            borderRadius: '4px',
-            marginBottom: '1em',
-          }}
-        >
-          Error: {errorParamToMsg(error, cfg)}
-        </div>
-      )}
+      {error && <Error>Error: {errorParamToMsg(error, cfg)}</Error>}
       <h1>Lean Workbench</h1>
       <p>Multi-user sandboxed VS Code server.</p>
       {session.data && (
