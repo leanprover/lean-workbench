@@ -1,7 +1,7 @@
 'use client'
 
 import AvatarIcon from '@/app/components/AvatarIcon'
-import authClient from '@/lib/auth-client'
+import authClient from '@/lib/client/auth'
 import { ConfigCtx } from '@/lib/contexts'
 import { setIsAdmin } from '@/lib/server/actions'
 import Link from 'next/link'

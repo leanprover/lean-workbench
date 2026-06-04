@@ -1,6 +1,6 @@
 'use client'
 
-import authClient from '@/lib/auth-client'
+import authClient from '@/lib/client/auth'
 import { type Config, ConfigCtx } from '@/lib/contexts'
 import { Route } from 'next'
 import Link from 'next/link'
