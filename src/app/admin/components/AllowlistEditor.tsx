@@ -10,7 +10,7 @@ export function AllowlistEditor({ users }: { users: string[] }) {
   const inputRef = useRef<HTMLInputElement>(null)
 
   const [addError, addAction, addPending] = useServerAction(
-    (formData: FormData) => addAllowedUser(String(formData.get('username') ?? '')),
+    (formData: FormData) => addAllowedUser({ userName: String(formData.get('username') ?? '') }),
     () => {
       if (inputRef.current) inputRef.current.value = ''
       inputRef.current?.focus()
@@ -19,7 +19,7 @@ export function AllowlistEditor({ users }: { users: string[] }) {
   )
 
   const [removeError, removeAction, removePending] = useServerAction(
-    (username: string) => removeAllowedUser(username),
+    (userName: string) => removeAllowedUser({ userName }),
     () => router.refresh(),
   )
 

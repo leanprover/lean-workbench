@@ -13,7 +13,15 @@ model User {
   id            String    @id
   /// Better-auth does not require uniqueness but we do:
   /// we use the username as a namespace for projects.
+  /// Names must match `ALPHANUM_NAME_RE`.
+  ///
+  /// This column is `COLLATE NOCASE` in migration.sql
+  /// (Prisma cannot express SQLite collation settings),
+  /// so uniqueness and lookups are case-insensitive
+  /// while original casing is preserved for display.
+  /// Ensure that this remains the case if changing migration.sql.
   name          String    @unique
+  /// `COLLATE NOCASE` in migration.sql; see `User.name`.
   email         String    @unique
   emailVerified Boolean   @default(false)
   image         String?
@@ -85,6 +93,7 @@ model Project {
   /// Project's owner.
   user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      String
+  /// `COLLATE NOCASE` in migration.sql; see `User.name`.
   name        String
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @default(now()) @updatedAt
@@ -109,6 +118,7 @@ model ProjectPackageSet {
 
 /// GitHub accounts allowed to register in `restricted` registration mode.
 model AllowedGithubUser {
+  /// `COLLATE NOCASE` in migration.sql; see `User.name`.
   githubUsername String @id
 
   @@map("allowed_github_user")

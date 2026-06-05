@@ -25,7 +25,7 @@ export function NewProjectForm() {
     async (formData: FormData) => {
       const name = String(formData.get('name') ?? '').trim()
       if (!name) return { error: 'Name is required' }
-      return createProject(name, chosenTemplate)
+      return createProject({ name, template: chosenTemplate })
     },
     () => {
       setOpen(false)

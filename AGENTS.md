@@ -1,9 +1,3 @@
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
-
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
-
 # Server best practices
 
 - For server endpoints invoked by UI components,
@@ -36,6 +30,8 @@ over manually storing response/error state with `useState`.
 
 - Less code is better. After writing any new piece of code,
   review it to determine whether it could have been simpler and shorter.
+- Omit implementation details that callers/users don't need to know from docstrings;
+  leave them in comments inside the function/class/whatever body.
 - Factor out string or path literal constructions that appear more than once into functions.
 - Never remove comments that link to documentation,
   except when removing *all* of the associated code.
@@ -43,6 +39,7 @@ over manually storing response/error state with `useState`.
 - Don't set `NODE_ENV` to anything besides `production`
   (https://nodejs.org/learn/getting-started/nodejs-the-difference-between-development-and-production).
 - Prefer full CLI flag and command names in scripts. More self-documenting.
+- Use semantic line breaks in docstrings (https://sembr.org/).
   
 ## Refactoring
 

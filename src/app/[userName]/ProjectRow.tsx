@@ -15,7 +15,7 @@ export function ProjectRow({ project, username }: { project: ProjectInfo; userna
     async (formData: FormData) => {
       const name = String(formData.get('name') ?? '').trim()
       if (!name) return { error: 'Name is required' }
-      return renameProject(project.id, name)
+      return renameProject({ projectId: project.id, name })
     },
     () => {
       setRenaming(false)
@@ -24,12 +24,12 @@ export function ProjectRow({ project, username }: { project: ProjectInfo; userna
   )
 
   const [deleteError, deleteAction, deletePending] = useServerAction(
-    () => deleteProject(project.id),
+    () => deleteProject({ projectId: project.id }),
     () => router.refresh(),
   )
 
   const [visibilityError, visibilityAction, visibilityPending] = useServerAction(
-    () => toggleVisibility(project.id, !project.isPublic),
+    () => toggleVisibility({ projectId: project.id, isPublic: !project.isPublic }),
     () => router.refresh(),
   )
 

@@ -9,7 +9,7 @@ import { killEditorSession } from '../actions'
 export function SessionRow({ info }: { info: EditorSessionInfo }) {
   const router = useRouter()
   const [killError, killAction, killPending] = useServerAction(
-    () => killEditorSession(info.projectId, info.sessionId),
+    () => killEditorSession({ projectId: info.projectId, sessionId: info.sessionId }),
     () => router.refresh(),
   )
 

@@ -1,9 +1,12 @@
 import { getConfig, hasGithubAuth, isDevMode, saveConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
+import { zUserName } from '@/lib/util'
 import { betterAuth, type SocialProviders } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { nextCookies } from 'better-auth/next-js'
 import crypto from 'crypto'
+import { headers } from 'next/headers'
+import { unauthorized } from 'next/navigation'
 import 'server-only'
 
 async function createAuth() {
@@ -16,7 +19,8 @@ async function createAuth() {
       clientSecret: config.githubAuth.clientSecret,
       mapProfileToUser: profile => {
         return {
-          // `better-auth` stores the display name (`profile.name`) in `name` by default.
+          // `better-auth` stores the display name (`profile.name`) in `name` by default;
+          // we store the username instead.
           name: profile.login,
           displayName: profile.name,
         }
@@ -37,15 +41,16 @@ async function createAuth() {
       user: {
         create: {
           before: async user => {
-            if (getConfig().registrationMode === 'restricted') {
-              if (isDevMode() && user.name === 'dev') return
+            const parsed = zUserName.safeParse(user.name)
+            if (!parsed.success) return false
+            const name = parsed.data
+            if (getConfig().registrationMode === 'restricted' && !(isDevMode() && name === 'dev')) {
               const allowed = await getDb().allowedGithubUser.findUnique({
-                where: { githubUsername: user.name },
+                where: { githubUsername: name },
               })
-              if (!allowed) {
-                return false
-              }
+              if (!allowed) return false
             }
+            return { data: { ...user, name } }
           },
         },
       },
@@ -105,4 +110,12 @@ export async function initAuth(): Promise<void> {
 export async function getAuth(): Promise<AuthInstance> {
   if (!g.__auth) await initAuth()
   return g.__auth!
+}
+
+/** Require an authenticated user. Throws `unauthorized()` if not logged in. */
+export async function requireAuth(): Promise<SessionAndUser> {
+  const auth = await getAuth()
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session) unauthorized()
+  return session
 }

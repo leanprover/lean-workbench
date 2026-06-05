@@ -12,11 +12,11 @@ export function UserRow({ user, isSelf }: { user: User; isSelf: boolean }) {
   const [expanded, setExpanded] = useState(false)
 
   const [toggleError, toggleAction, togglePending] = useServerAction(
-    () => toggleAdmin(user.id, !user.isAdmin),
+    () => toggleAdmin({ userId: user.id, isAdmin: !user.isAdmin }),
     () => router.refresh(),
   )
   const [deleteError, deleteAction, deletePending] = useServerAction(
-    () => deleteUser(user.id),
+    () => deleteUser({ userId: user.id }),
     () => router.refresh(),
   )
 

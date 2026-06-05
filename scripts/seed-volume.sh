@@ -123,7 +123,8 @@ lake exe cache get
 # --- Step 6: Install package set ---
 echo "[progress 6/$TOTAL Installing package set]"
 PACKAGE_SET_DIR="$ROOT/package-sets/mathlib-$LEAN_VERSION"
-TEMPLATE_DIR="$ROOT/templates/mathlib-$LEAN_VERSION"
+# The dir basename is also the template ID, so must satisfy TEMPLATE_ID_RE (no dots).
+TEMPLATE_DIR="$ROOT/templates/mathlib-${LEAN_VERSION//./-}"
 
 rm -rf "$PACKAGE_SET_DIR"
 mkdir -p "$PACKAGE_SET_DIR"
