@@ -11,10 +11,10 @@ export function OAuthConfig() {
 
   const [error, action, pending] = useServerAction(
     (formData: FormData) =>
-      updateOAuthConfig(
-        String(formData.get('clientId') ?? ''),
-        String(formData.get('clientSecret') ?? '') || undefined,
-      ),
+      updateOAuthConfig({
+        clientId: String(formData.get('clientId') ?? ''),
+        clientSecret: String(formData.get('clientSecret') ?? '') || undefined,
+      }),
     () => {
       setEditing(false)
       void mutate()

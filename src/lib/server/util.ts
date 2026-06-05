@@ -1,10 +1,26 @@
 import { getPackageSetsDir } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
+import type { ActionResponse } from '@/lib/util'
 import type { Project } from '@/prisma/generated/client'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import 'server-only'
+import z from 'zod'
 import type { User } from './auth'
+
+/** Wrap a server action so that its handler receives only schema-validated input.
+ * The raw argument is parsed by {@link schema};
+ * on failure the first parser error is returned. */
+export function serverAction<S extends z.ZodType, T = void>(
+  schema: S,
+  handler: (input: z.infer<S>) => Promise<ActionResponse<T>>,
+): (raw: z.input<S>) => Promise<ActionResponse<T>> {
+  return async raw => {
+    const parsed = schema.safeParse(raw)
+    if (!parsed.success) return { error: parsed.error.issues[0].message }
+    return handler(parsed.data)
+  }
+}
 
 export async function existsAsync(p: string): Promise<boolean> {
   try {

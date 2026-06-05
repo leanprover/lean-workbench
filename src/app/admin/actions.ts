@@ -4,6 +4,7 @@ import { initAuth, requireAuth } from '@/lib/server/auth'
 import { getConfig, getDataDir, getWorkspacesDir, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
+import { serverAction } from '@/lib/server/util'
 import { zProjectId, zUserId, zUserName, type ActionResponse } from '@/lib/util'
 import { forbidden } from 'next/navigation'
 import { execFileSync } from 'node:child_process'
@@ -24,34 +25,30 @@ const zToggleAdmin = z.object({
   isAdmin: z.boolean(),
 })
 
-export async function toggleAdmin(userId: string, isAdmin: boolean): Promise<ActionResponse> {
+export const toggleAdmin = serverAction(zToggleAdmin, async ({ userId, isAdmin }) => {
   const session = await requireAdmin()
-  const parsed = zToggleAdmin.safeParse({ userId, isAdmin })
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
-  if (parsed.data.userId === session.user.id) {
+  if (userId === session.user.id) {
     return { error: 'Cannot change your own admin status' }
   }
   const db = getDb()
   await db.user.update({
-    where: { id: parsed.data.userId },
-    data: { isAdmin: parsed.data.isAdmin },
+    where: { id: userId },
+    data: { isAdmin },
   })
   return { ok: undefined }
-}
+})
 
 const zDeleteUser = z.object({
   userId: zUserId,
 })
 
-export async function deleteUser(userId: string): Promise<ActionResponse> {
+export const deleteUser = serverAction(zDeleteUser, async ({ userId }) => {
   const session = await requireAdmin()
-  const parsed = zDeleteUser.safeParse({ userId })
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
-  if (parsed.data.userId === session.user.id) {
+  if (userId === session.user.id) {
     return { error: 'Cannot delete yourself' }
   }
   const db = getDb()
-  const target = await db.user.findUnique({ where: { id: parsed.data.userId } })
+  const target = await db.user.findUnique({ where: { id: userId } })
   if (!target) return { error: 'User not found' }
 
   // Kill active editor sessions for this user
@@ -67,9 +64,9 @@ export async function deleteUser(userId: string): Promise<ActionResponse> {
   fs.rmSync(userWorkspaceDir, { recursive: true, force: true })
 
   // Delete from database (cascades to projects via schema)
-  await db.user.delete({ where: { id: parsed.data.userId } })
+  await db.user.delete({ where: { id: userId } })
   return { ok: undefined }
-}
+})
 
 // --- OAuth configuration ---
 
@@ -87,14 +84,12 @@ const zUpdateOAuth = z.object({
 })
 
 // FIXME: dedup with saveSetupConfig action somehow?
-export async function updateOAuthConfig(clientId: string, clientSecret: string | undefined): Promise<ActionResponse> {
+export const updateOAuthConfig = serverAction(zUpdateOAuth, async ({ clientId, clientSecret }) => {
   await requireAdmin()
-  const parsed = zUpdateOAuth.safeParse({ clientId, clientSecret })
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
   const config = getConfig()
 
   // Preserve existing secret if not provided
-  let resolvedSecret = parsed.data.clientSecret
+  let resolvedSecret = clientSecret
   if (!resolvedSecret) {
     resolvedSecret = config.githubAuth?.clientSecret
     if (!resolvedSecret) {
@@ -103,13 +98,13 @@ export async function updateOAuthConfig(clientId: string, clientSecret: string |
   }
 
   config.githubAuth = {
-    clientId: parsed.data.clientId,
+    clientId,
     clientSecret: resolvedSecret,
   }
   await saveConfig()
   await initAuth()
   return { ok: undefined }
-}
+})
 
 // --- Editor sessions ---
 
@@ -118,14 +113,12 @@ const zEditorSession = z.object({
   sessionId: z.string().min(1),
 })
 
-export async function killEditorSession(projectId: string, sessionId: string): Promise<ActionResponse> {
+export const killEditorSession = serverAction(zEditorSession, async ({ projectId, sessionId }) => {
   await requireAdmin()
-  const parsed = zEditorSession.safeParse({ projectId, sessionId })
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
   const mgr = getEditorSessionManager()
-  mgr.killSession(parsed.data.projectId, parsed.data.sessionId)
+  mgr.killSession(projectId, sessionId)
   return { ok: undefined }
-}
+})
 
 // --- System health ---
 
@@ -206,16 +199,14 @@ export async function fetchDiskUsage(): Promise<ActionResponse<{ workspaces: str
 
 const zRegistrationMode = z.enum(['open', 'restricted'])
 
-export async function setRegistrationMode(mode: string): Promise<ActionResponse> {
+export const setRegistrationMode = serverAction(zRegistrationMode, async mode => {
   await requireAdmin()
-  const parsed = zRegistrationMode.safeParse(mode)
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
   const config = getConfig()
-  config.registrationMode = parsed.data
+  config.registrationMode = mode
   await saveConfig()
   await initAuth()
   return { ok: undefined }
-}
+})
 
 // --- Allowed users ---
 
@@ -223,28 +214,24 @@ const zAddAllowedUser = z.object({
   userName: zUserName,
 })
 
-export async function addAllowedUser(username: string): Promise<ActionResponse> {
+export const addAllowedUser = serverAction(zAddAllowedUser, async ({ userName }) => {
   await requireAdmin()
-  const parsed = zAddAllowedUser.safeParse({ username })
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
   await getDb().allowedGithubUser.upsert({
-    where: { githubUsername: parsed.data.userName },
-    create: { githubUsername: parsed.data.userName },
+    where: { githubUsername: userName },
+    create: { githubUsername: userName },
     update: {},
   })
   return { ok: undefined }
-}
+})
 
 const zRemoveAllowedUser = z.object({
   userName: zUserName,
 })
 
-export async function removeAllowedUser(username: string): Promise<ActionResponse> {
+export const removeAllowedUser = serverAction(zRemoveAllowedUser, async ({ userName }) => {
   await requireAdmin()
-  const parsed = zRemoveAllowedUser.safeParse({ username })
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
   await getDb().allowedGithubUser.delete({
-    where: { githubUsername: parsed.data.userName },
+    where: { githubUsername: userName },
   })
   return { ok: undefined }
-}
+})

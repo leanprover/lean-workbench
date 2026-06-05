@@ -1,4 +1,8 @@
-/** @module https://react.dev/reference/rsc/server-functions */
+/**
+ * This @module contains various server functions
+ * (https://react.dev/reference/rsc/server-functions).
+ * *Utilities* for server functions that aren't themselves client-callable
+ * should go into other modules. */
 
 'use server'
 
