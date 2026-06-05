@@ -6,6 +6,15 @@ import path from 'node:path'
 import 'server-only'
 import type { User } from './auth'
 
+export async function existsAsync(p: string): Promise<boolean> {
+  try {
+    fs.access(p)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export interface ProcessInfo {
   pid: number
   /** Parent PID. */
