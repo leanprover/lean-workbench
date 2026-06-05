@@ -8,7 +8,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { EventEmitter } from 'node:stream'
 import 'server-only'
-import { buildPackageOverlays } from './util'
+import { buildProjectMount } from './util'
 
 /** Admin-visible information about a running editor session. */
 export interface EditorSessionInfo {
@@ -56,10 +56,10 @@ export class EditorSessionManager {
   /** Find a running `collab-server` for the given project,
    * or create one and store it in {@link collabServers} if none are running.
    * Does not start the server. */
-  private findCollabServer(project: Project, projectDir: string): CollabServerHandle {
+  private findCollabServer(project: Project): CollabServerHandle {
     let server = this.collabServers.get(project.id)
     if (!server) {
-      server = new CollabServerHandle(project, projectDir)
+      server = new CollabServerHandle(project)
       server.addDisposable(async () => {
         const s = this.collabServers.get(project.id)
         if (s === server) this.collabServers.delete(project.id)
@@ -84,13 +84,13 @@ export class EditorSessionManager {
         throw new Error(`Could not open project directory '${projectDir}': ${String(err)}`)
       }
       const overlayWorkDir = path.join(getWorkspacesDir(), owner.name, 'overlay-work', project.id)
-      const overlayArgs = await buildPackageOverlays(project.id, project.name, projectDir, overlayWorkDir)
-      const collabServer = this.findCollabServer(project, projectDir)
+      const projectMountArgs = await buildProjectMount(project.id, project.name, projectDir, overlayWorkDir)
+      const collabServer = this.findCollabServer(project)
       collabServer.addDisposable(async () => {
         // collab-server is the last process to exit - remove the overlayfs workdir when it does.
         await fs.rm(overlayWorkDir, { recursive: true, force: true })
       })
-      vscServer = new VscodeServerHandle(viewer, owner, project, projectDir, collabServer.workDir)
+      vscServer = new VscodeServerHandle(viewer, owner, project, collabServer.workDir)
       vscServer.addDisposable(async () => {
         this.vscServers.set(
           project.id,
@@ -102,11 +102,11 @@ export class EditorSessionManager {
       this.vscServers.set(project.id, [...(this.vscServers.get(project.id) ?? []), vscServer])
 
       await Promise.all([
-        collabServer.start(overlayArgs).catch(async e => {
+        collabServer.start(projectMountArgs).catch(async e => {
           await collabServer.dispose()
           throw e
         }),
-        vscServer.start(overlayArgs).catch(async e => {
+        vscServer.start(projectMountArgs).catch(async e => {
           await vscServer!.dispose()
           throw e
         }),

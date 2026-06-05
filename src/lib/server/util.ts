@@ -92,49 +92,51 @@ export function bwrapProjectDir(projectName: string) {
   return `/workspace/${projectName}/`
 }
 
-/** Build `bwrap` arguments that mount a project's package sets inside the sandbox,
- * while creating the necessary directories on the host.
+/** Build `bwrap` arguments that mount the project and its package sets inside the sandbox.
  *
- * Packages are mounted as writable overlays,
- * with `<projectDir>/.lake/packages/<pkg>` (i.e., the usual directory) as the upper layer
- * and `<getPackageSetsDir()>/<packageSet>/<pkg>` as the lower (read-only) layer.
- * Overlayfs work directories are created as subdirectories of {@link overlayWorkDir},
+ * With no package sets, this is a writable bind of {@link projectDir}.
+ *
+ * Otherwise the project root is an overlayfs mount,
+ * with {@link projectDir} as the writable upper layer
+ * and each package overlaid as a read-only lower layer.
+ * Package contents are expected to live on the host
+ * at `<packageSetDir>/<pkg>/.lake/packages/<pkg>`,
+ * so that mounting `<packageSetDir>/<pkg>` at the project root
+ * merges into the correct location in the sandbox.
+ *
+ * Mount points cannot be removed from within the sandbox;
+ * we prefer only mounting the project root directory
+ * so that users can remove other directories freely.
+ *
+ * {@link overlayWorkDir} is the overlayfs work directory,
  * which per overlayfs requirements must be on the same filesystem as {@link projectDir}.
- * {@link overlayWorkDir} should also not be a subdirectory of {@link projectDir},
- * to prevent access from within the sandbox. */
-export async function buildPackageOverlays(
+ * It should not be a subdirectory of {@link projectDir} to prevent access from the sandbox. */
+export async function buildProjectMount(
   projectId: string,
   projectName: string,
   projectDir: string,
   overlayWorkDir: string,
 ): Promise<string[]> {
+  const dest = bwrapProjectDir(projectName)
   const packageSets = await getDb().projectPackageSet.findMany({ where: { projectId } })
-  const sandboxProjectDir = bwrapProjectDir(projectName)
-  const args: string[] = []
+  const lowerLayers: string[] = []
   for (const { packageSet } of packageSets) {
     const pkgSetDir = path.join(getPackageSetsDir(), packageSet)
     const packagesFile = path.join(pkgSetDir, 'packages.txt')
+    let packages: string[]
     try {
-      await fs.access(packagesFile)
+      packages = (await fs.readFile(packagesFile, 'utf-8')).split('\n').filter(Boolean)
     } catch {
-      console.warn(`[buildPackageOverlays] failed to access ${packagesFile}`)
+      console.error(`[buildProjectMount] failed to read ${packagesFile}`)
       continue
     }
-    const packages = (await fs.readFile(packagesFile, 'utf-8')).split('\n').filter(Boolean)
     for (const pkg of packages) {
-      const lakePkgDir = path.join('.lake', 'packages', pkg)
-      const upperDir = path.join(projectDir, lakePkgDir)
-      const pkgWorkDir = path.join(overlayWorkDir, pkg)
-      await Promise.all([fs.mkdir(upperDir, { recursive: true }), fs.mkdir(pkgWorkDir, { recursive: true })])
-      const sandboxPkgDir = path.join(sandboxProjectDir, lakePkgDir)
-      // prettier-ignore
-      args.push(
-        '--overlay-src', path.join(pkgSetDir, pkg),
-        '--overlay', upperDir, pkgWorkDir, sandboxPkgDir,
-      )
+      lowerLayers.push('--overlay-src', path.join(pkgSetDir, pkg))
     }
   }
-  return args
+  if (lowerLayers.length === 0) return ['--bind', projectDir, dest]
+  await fs.mkdir(overlayWorkDir, { recursive: true })
+  return [...lowerLayers, '--overlay', projectDir, overlayWorkDir, dest]
 }
 
 export function canAccessProject(user: User, project: Project) {

@@ -96,7 +96,6 @@ export class VscodeServerHandle {
     readonly viewer: User,
     readonly owner: User,
     readonly project: Project,
-    readonly projectDir: string,
     /** `collab-server` working directory. */
     readonly collabWorkDir: string,
   ) {}
@@ -139,8 +138,9 @@ export class VscodeServerHandle {
    * and the Nginx route for {@link vscodeIframePath} has been set up.
    * Repeated calls (with any arguments) produce the same promise. */
   async start(
-    /** Additional arguments to `bwrap` placed at the end. */
-    bwrapArgs: string[],
+    /** Arguments to `bwrap` that mount the project.
+     * Placed at the end. */
+    projectMountArgs: string[],
   ) {
     if (this.starting) return this.starting
     this.starting = (async () => {
@@ -173,11 +173,6 @@ export class VscodeServerHandle {
           '--ro-bind', getOpenVscodeServerDir(), getOpenVscodeServerDir(),
           '--ro-bind', getElanDir(), getElanDir(),
           '--bind', vscServerDataDir, '/workspace/.vscode-remote',
-          // Writes are mediated through the collaboration server,
-          // which `WorkbenchFileSystemProvider` in our extension connects to,
-          // but users can still write files directly if needed.
-          // Lake and other CLI tools do such writes.
-          '--bind', this.projectDir, sandboxProjectDir,
           '--bind', this.collabWorkDir, '/workspace/.collab-server',
           '--bind', this.socketDir, '/workspace/.vscode-server',
           '--ro-bind-data', '3', '/workspace/.lean-workbench.json',
@@ -192,7 +187,7 @@ export class VscodeServerHandle {
           '--setenv', 'GIT_CONFIG_KEY_0', 'safe.directory',
           '--setenv', 'GIT_CONFIG_VALUE_0', '*',
           ...devArgs,
-          ...bwrapArgs,
+          ...projectMountArgs,
           '--',
           path.join(getOpenVscodeServerDir(), 'bin', 'code-server'),
           '--socket', `/workspace/.vscode-server/${VSCODE_SOCKET_FILENAME}`,

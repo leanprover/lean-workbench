@@ -24,8 +24,6 @@ export class CollabServerHandle {
   constructor(
     /** Project that this server manages. */
     readonly project: Project,
-    /** Directory in which project files are stored. */
-    readonly projectDir: string,
   ) {}
 
   /** The `bwrap` process. Defined iff the process is running. */
@@ -47,8 +45,9 @@ export class CollabServerHandle {
    * Throws if the server fails to start or set up.
    * Repeated calls (with any arguments) produce the same promise. */
   async start(
-    /** Additional arguments to `bwrap` placed at the end. */
-    bwrapArgs: string[],
+    /** Arguments to `bwrap` that mount the project.
+     * Placed at the end. */
+    projectMountArgs: string[],
   ) {
     if (this.starting) return this.starting
     this.starting = (async () => {
@@ -66,10 +65,9 @@ export class CollabServerHandle {
           // We don't need internet access.
           '--unshare-net',
           '--ro-bind', getCollabServerDir(), getCollabServerDir(),
-          '--bind', this.projectDir, sandboxProjectDir,
           '--bind', this.workDir, '/workspace/.collab-server',
           '--chdir', '/workspace/.collab-server',
-          ...bwrapArgs,
+          ...projectMountArgs,
           '--',
           '/usr/bin/node',
           path.join(getCollabServerDir(), 'dist', 'server.js'),
