@@ -1,5 +1,5 @@
 import Error from '@/app/components/Error'
-import { requireAuth } from '@/lib/server/actions'
+import { requireAuth } from '@/lib/server/auth'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
 import { canAccessProject } from '@/lib/server/util'

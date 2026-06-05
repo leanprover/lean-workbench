@@ -1,4 +1,4 @@
-import { requireAuth } from '@/lib/server/actions'
+import { requireAuth } from '@/lib/server/auth'
 import { getDb } from '@/lib/server/db'
 import { zUserName } from '@/lib/util'
 import { Route } from 'next'

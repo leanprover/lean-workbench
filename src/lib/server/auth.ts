@@ -4,6 +4,8 @@ import { betterAuth, type SocialProviders } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { nextCookies } from 'better-auth/next-js'
 import crypto from 'crypto'
+import { headers } from 'next/headers'
+import { unauthorized } from 'next/navigation'
 import 'server-only'
 
 async function createAuth() {
@@ -105,4 +107,12 @@ export async function initAuth(): Promise<void> {
 export async function getAuth(): Promise<AuthInstance> {
   if (!g.__auth) await initAuth()
   return g.__auth!
+}
+
+/** Require an authenticated user. Throws `unauthorized()` if not logged in. */
+export async function requireAuth(): Promise<SessionAndUser> {
+  const auth = await getAuth()
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session) unauthorized()
+  return session
 }

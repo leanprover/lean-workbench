@@ -1,7 +1,6 @@
 'use server'
 
-import { requireAuth } from '@/lib/server/actions'
-import { initAuth } from '@/lib/server/auth'
+import { initAuth, requireAuth } from '@/lib/server/auth'
 import { getConfig, getDataDir, getWorkspacesDir, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'

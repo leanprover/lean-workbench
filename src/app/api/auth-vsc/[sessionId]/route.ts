@@ -1,4 +1,4 @@
-import { requireAuth } from '@/lib/server/actions'
+import { requireAuth } from '@/lib/server/auth'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
 import { forbidden } from 'next/navigation'
 

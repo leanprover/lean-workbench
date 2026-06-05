@@ -1,6 +1,6 @@
 'use server'
 
-import { requireAuth } from '@/lib/server/actions'
+import { requireAuth } from '@/lib/server/auth'
 import { getPackageSetsDir, getTemplatesDir, getWorkspacesDir } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { zProjectId, zProjectName, zTemplateId, type ActionResponse } from '@/lib/util'
