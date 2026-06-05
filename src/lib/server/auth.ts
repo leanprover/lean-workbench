@@ -1,6 +1,6 @@
 import { getConfig, hasGithubAuth, isDevMode, saveConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
-import { normalizeName } from '@/lib/util'
+import { zUserName } from '@/lib/util'
 import { betterAuth, type SocialProviders } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { nextCookies } from 'better-auth/next-js'
@@ -20,8 +20,8 @@ async function createAuth() {
       mapProfileToUser: profile => {
         return {
           // `better-auth` stores the display name (`profile.name`) in `name` by default;
-          // we store the username instead, normalized as needed.
-          name: normalizeName(profile.login),
+          // we store the username instead.
+          name: profile.login,
           displayName: profile.name,
         }
       },
@@ -41,15 +41,16 @@ async function createAuth() {
       user: {
         create: {
           before: async user => {
-            if (getConfig().registrationMode === 'restricted') {
-              if (isDevMode() && user.name === 'dev') return
+            const parsed = zUserName.safeParse(user.name)
+            if (!parsed.success) return false
+            const name = parsed.data
+            if (getConfig().registrationMode === 'restricted' && !(isDevMode() && name === 'dev')) {
               const allowed = await getDb().allowedGithubUser.findUnique({
-                where: { githubUsername: user.name },
+                where: { githubUsername: name },
               })
-              if (!allowed) {
-                return false
-              }
+              if (!allowed) return false
             }
+            return { data: { ...user, name } }
           },
         },
       },
