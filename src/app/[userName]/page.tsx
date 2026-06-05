@@ -26,7 +26,7 @@ export default async function ProfileBody({ params: params_ }: { params: Promise
   const user = await db.user.findUnique({ where: { name: userName } })
   if (!user) notFound()
 
-  const isOwner = viewerSession.user.name === userName
+  const isOwner = viewerSession.user.id === user.id
   const projects = await db.project.findMany({
     where: { userId: user.id, ...(isOwner ? {} : { isPublic: true }) },
     select: { id: true, name: true, isPublic: true },
