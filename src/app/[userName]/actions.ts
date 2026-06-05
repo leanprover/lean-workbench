@@ -97,7 +97,7 @@ export const createProject = serverAction(
     const existing = await db.project.findUnique({
       where: { userId_name: { userId: user.id, name } },
     })
-    if (existing) return { error: 'Project already exists' }
+    if (existing) return { error: 'A project with that name already exists' }
 
     // Create workspace directory and seed template files
     const projectId = crypto.randomUUID()
@@ -163,7 +163,7 @@ export const renameProject = serverAction(zUpdateProject, async ({ projectId, na
   const existing = await db.project.findUnique({
     where: { userId_name: { userId: project.userId, name } },
   })
-  if (existing) return { error: 'A project with that name already exists' }
+  if (existing && existing.id !== project.id) return { error: 'A project with that name already exists' }
 
   // Update the DB (no need to rename on-disk directory: we use the UUID there)
   await db.project.update({
