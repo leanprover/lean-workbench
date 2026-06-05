@@ -1,6 +1,6 @@
 import type { User } from '@/lib/server/auth'
 import { CollabServerHandle } from '@/lib/server/collabServer'
-import { getWorkspacesDir } from '@/lib/server/config'
+import { getPackageSetsDir, getWorkspacesDir } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { VscodeServerHandle } from '@/lib/server/vscodeServer'
 import type { Project } from '@/prisma/generated/client'
@@ -8,7 +8,54 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { EventEmitter } from 'node:stream'
 import 'server-only'
-import { buildProjectMount } from './util'
+import { bwrapProjectDir } from './util'
+
+/** Build `bwrap` arguments that mount the project and its package sets inside the sandbox.
+ *
+ * With no package sets, this is a writable bind of {@link projectDir}.
+ *
+ * Otherwise the project root is an overlayfs mount,
+ * with {@link projectDir} as the writable upper layer
+ * and each package overlaid as a read-only lower layer.
+ * Package contents are expected to live on the host
+ * at `<packageSetDir>/<pkg>/.lake/packages/<pkg>`,
+ * so that mounting `<packageSetDir>/<pkg>` at the project root
+ * merges into the correct location in the sandbox.
+ *
+ * Mount points cannot be removed from within the sandbox;
+ * we prefer only mounting the project root directory
+ * so that users can remove other directories freely.
+ *
+ * {@link overlayWorkDir} is the overlayfs work directory,
+ * which per overlayfs requirements must be on the same filesystem as {@link projectDir}.
+ * It should not be a subdirectory of {@link projectDir} to prevent access from the sandbox. */
+async function buildProjectMount(
+  projectId: string,
+  projectName: string,
+  projectDir: string,
+  overlayWorkDir: string,
+): Promise<string[]> {
+  const dest = bwrapProjectDir(projectName)
+  const packageSets = await getDb().projectPackageSet.findMany({ where: { projectId } })
+  const lowerLayers: string[] = []
+  for (const { packageSet } of packageSets) {
+    const pkgSetDir = path.join(getPackageSetsDir(), packageSet)
+    const packagesFile = path.join(pkgSetDir, 'packages.txt')
+    let packages: string[]
+    try {
+      packages = (await fs.readFile(packagesFile, 'utf-8')).split('\n').filter(Boolean)
+    } catch {
+      console.error(`[buildProjectMount] failed to read ${packagesFile}`)
+      continue
+    }
+    for (const pkg of packages) {
+      lowerLayers.push('--overlay-src', path.join(pkgSetDir, pkg))
+    }
+  }
+  if (lowerLayers.length === 0) return ['--bind', projectDir, dest]
+  await fs.mkdir(overlayWorkDir, { recursive: true })
+  return [...lowerLayers, '--overlay', projectDir, overlayWorkDir, dest]
+}
 
 /** Admin-visible information about a running editor session. */
 export interface EditorSessionInfo {
