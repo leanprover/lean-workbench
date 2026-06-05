@@ -35,7 +35,7 @@ export default async function ProfileBody({ params: params_ }: { params: Promise
 
   return (
     <>
-      <h1>{userName}&apos;s projects</h1>
+      <h1>{user.name}&apos;s projects</h1>
       {projects.length === 0 ? (
         <p className='empty'>{isOwner ? 'No projects yet. Create one below.' : 'No public projects.'}</p>
       ) : (
@@ -43,10 +43,10 @@ export default async function ProfileBody({ params: params_ }: { params: Promise
           {projects.map(p => (
             <li key={p.id}>
               {isOwner ? (
-                <ProjectRow project={p} username={userName} />
+                <ProjectRow project={p} username={user.name} />
               ) : (
                 <div className='info'>
-                  <Link href={`/${userName}/${encodeURIComponent(p.name)}/` as Route}>{p.name}</Link>
+                  <Link href={`/${user.name}/${encodeURIComponent(p.name)}/` as Route}>{p.name}</Link>
                 </div>
               )}
             </li>

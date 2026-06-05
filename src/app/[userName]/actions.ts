@@ -157,15 +157,15 @@ export const renameProject = serverAction(zUpdateProject, async ({ projectId, na
 
   const db = getDb()
 
-  // Check for name collision (comparing normalized names; renaming up to normalization is a no-op)
-  if (name !== project.name) {
-    const existing = await db.project.findUnique({
-      where: { userId_name: { userId: project.userId, name } },
-    })
-    if (existing) return { error: 'A project with that name already exists' }
-  }
+  if (name === project.name) return { ok: undefined }
 
-  // No need to rename on-disk directory: we use the UUID there
+  // Check for name collision
+  const existing = await db.project.findUnique({
+    where: { userId_name: { userId: project.userId, name } },
+  })
+  if (existing) return { error: 'A project with that name already exists' }
+
+  // Update the DB (no need to rename on-disk directory: we use the UUID there)
   await db.project.update({
     where: { id: project.id },
     data: { name },

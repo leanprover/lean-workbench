@@ -1,8 +1,8 @@
 -- CreateTable
 CREATE TABLE "user" (
     "id" TEXT NOT NULL PRIMARY KEY,
-    "name" TEXT NOT NULL,
-    "email" TEXT NOT NULL,
+    "name" TEXT NOT NULL COLLATE NOCASE,
+    "email" TEXT NOT NULL COLLATE NOCASE,
     "emailVerified" BOOLEAN NOT NULL DEFAULT false,
     "image" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -56,7 +56,7 @@ CREATE TABLE "verification" (
 CREATE TABLE "project" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "userId" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
+    "name" TEXT NOT NULL COLLATE NOCASE,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "template" TEXT NOT NULL DEFAULT 'blank',
@@ -75,7 +75,7 @@ CREATE TABLE "project_package_set" (
 
 -- CreateTable
 CREATE TABLE "allowed_github_user" (
-    "githubUsername" TEXT NOT NULL PRIMARY KEY
+    "githubUsername" TEXT NOT NULL COLLATE NOCASE PRIMARY KEY
 );
 
 -- CreateIndex

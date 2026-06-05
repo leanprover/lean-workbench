@@ -39,6 +39,7 @@ over manually storing response/error state with `useState`.
 - Don't set `NODE_ENV` to anything besides `production`
   (https://nodejs.org/learn/getting-started/nodejs-the-difference-between-development-and-production).
 - Prefer full CLI flag and command names in scripts. More self-documenting.
+- Use semantic line breaks in docstrings (https://sembr.org/).
   
 ## Refactoring
 
