@@ -30,6 +30,8 @@ over manually storing response/error state with `useState`.
 
 - Less code is better. After writing any new piece of code,
   review it to determine whether it could have been simpler and shorter.
+- Omit implementation details that callers/users don't need to know from docstrings;
+  leave them in comments inside the function/class/whatever body.
 - Factor out string or path literal constructions that appear more than once into functions.
 - Never remove comments that link to documentation,
   except when removing *all* of the associated code.

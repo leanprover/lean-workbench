@@ -1,5 +1,6 @@
 import { getConfig, hasGithubAuth, isDevMode, saveConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
+import { normalizeName } from '@/lib/util'
 import { betterAuth, type SocialProviders } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { nextCookies } from 'better-auth/next-js'
@@ -18,8 +19,9 @@ async function createAuth() {
       clientSecret: config.githubAuth.clientSecret,
       mapProfileToUser: profile => {
         return {
-          // `better-auth` stores the display name (`profile.name`) in `name` by default.
-          name: profile.login,
+          // `better-auth` stores the display name (`profile.name`) in `name` by default;
+          // we store the username instead, normalized as needed.
+          name: normalizeName(profile.login),
           displayName: profile.name,
         }
       },
