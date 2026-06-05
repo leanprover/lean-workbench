@@ -13,8 +13,7 @@ model User {
   id            String    @id
   /// Better-auth does not require uniqueness but we do:
   /// we use the username as a namespace for projects.
-  /// Names must be normalized to lowercase ASCII
-  /// (matching `/^[a-z0-9][a-z0-9]{0,99}$/`).
+  /// Names must be normalized to match `ALPHANUM_NAME_RE`.
   name          String    @unique
   email         String    @unique
   emailVerified Boolean   @default(false)
