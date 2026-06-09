@@ -38,7 +38,7 @@ export class RcMap<K, V extends AsyncDisposable> implements AsyncDisposable {
 
   /** Apply `fn` to every resource,
    * awaiting resources that are still being created
-   * and skipping any that throw. */
+   * but skipping any whose creation function throws. */
   async forEach(fn: (value: V, key: K, map: this) => void): Promise<void> {
     await Promise.all(
       [...this.entries].map(([key, e]) =>

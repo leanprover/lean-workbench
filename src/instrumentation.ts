@@ -12,5 +12,5 @@ export async function register() {
   initConfig()
   initDb()
   await initAuth()
-  initEditorSessions()
+  await initEditorSessions()
 }
