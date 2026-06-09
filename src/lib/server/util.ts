@@ -74,6 +74,7 @@ export const BWRAP_ARGS =
     '--unshare-pid',
     '--unshare-uts',
     '--unshare-cgroup',
+    '--unshare-ipc',
     // TODO(security): unshare-net but allow outgoing inet connections for VSC bwraps.
     // https://github.com/containers/bubblewrap/issues/504
     // https://github.com/rootless-containers/slirp4netns
