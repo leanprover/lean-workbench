@@ -65,6 +65,8 @@ export const BWRAP_ARGS =
     '--ro-bind-try', '/lib64', '/lib64',
     '--ro-bind', '/bin', '/bin',
     '--ro-bind', '/etc', '/etc',
+    // TeX format files
+    '--ro-bind', '/var/lib/texmf', '/var/lib/texmf',
     '--proc', '/proc',
     '--dev', '/dev',
     '--tmpfs', '/tmp',
@@ -81,6 +83,8 @@ export const BWRAP_ARGS =
     '--die-with-parent',
     '--new-session',
     '--clearenv',
+    // Override the locale with one that is always present
+    '--setenv', 'LC_ALL', 'C.UTF-8',
   ]
 
 /** Where bwrap mounts the given project directory.

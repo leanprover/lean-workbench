@@ -127,7 +127,8 @@ RUN apt-get update \
         build-essential \
         texlive-latex-base texlive-latex-recommended texlive-latex-extra \
         texlive-pictures texlive-fonts-recommended texlive-fonts-extra \
-        texlive-xetex ghostscript inkscape \
+        texlive-luatex texlive-xetex texlive-plain-generic \
+        ghostscript inkscape \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app/
