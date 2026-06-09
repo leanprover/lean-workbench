@@ -26,7 +26,7 @@ Seed the lean-workbench data volume with elan, mathlib packages, and templates.
 
 Options:
   --data-dir DIR      Data directory for lean-workbench state
-                      (default: /tmp/lean-workbench/data)
+                      (default: /data)
   --lean-version REV  Lean version to preinstall (must have a corresponding mathlib tag)
                       (default: latest v4.* tag on mathlib4)
   --help              Show this help message
@@ -34,7 +34,7 @@ EOF
   exit 0
 }
 
-ROOT="/tmp/lean-workbench/data"
+ROOT="/data"
 LEAN_VERSION=""
 
 while [[ $# -gt 0 ]]; do

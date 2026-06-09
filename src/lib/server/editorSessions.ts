@@ -73,7 +73,7 @@ async function buildProjectMount(owner: User, project: Project): Promise<Project
     try {
       packages = (await fs.readFile(packagesFile, 'utf-8')).split('\n').filter(Boolean)
     } catch {
-      console.error(`[buildProjectMount] failed to read ${packagesFile}`)
+      console.error(`[buildProjectMount] Failed to read ${packagesFile}`)
       continue
     }
     for (const pkg of packages) lowerDirs.push(path.join(pkgSetDir, pkg))
@@ -91,7 +91,16 @@ async function buildProjectMount(owner: User, project: Project): Promise<Project
   await Promise.all([fs.mkdir(mergedDir, { recursive: true }), fs.mkdir(workDir, { recursive: true })])
   const options = `lowerdir=${lowerDirs.join(':')},upperdir=${projectDir},workdir=${workDir}`
   await execFileAsync('mount', ['--types', 'overlay', 'overlay', '--options', options, mergedDir])
-  return new ProjectMountHandle(['--bind', mergedDir, sandboxProjectDir], { mergedDir, workDir })
+  const handle = new ProjectMountHandle(['--bind', mergedDir, sandboxProjectDir], { mergedDir, workDir })
+  // overlayfs silently falls back to a read-only mount if it can't set up its work directory
+  // (e.g. when `workDir`'s filesystem doesn't support being an overlayfs upper layer).
+  try {
+    await fs.access(mergedDir, fs.constants.W_OK)
+  } catch (err) {
+    await handle[Symbol.asyncDispose]()
+    throw new Error(`Overlayfs at '${mergedDir}' is not writable. Inspect the Linux kernel log.\n${String(err)}`)
+  }
+  return handle
 }
 
 /** Admin-visible information about a running editor session. */

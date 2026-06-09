@@ -1,4 +1,4 @@
-WORKBENCH_ROOT ?= /tmp/lean-workbench
+WORKBENCH_ROOT ?= lean-workbench-data
 IMAGE_NAME = ghcr.io/leanprover/lean-workbench
 IMAGE_TAG = latest
 IMAGE_DEV_TAG = latest-dev
