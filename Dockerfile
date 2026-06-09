@@ -118,12 +118,16 @@ RUN install_vsix_as_builtin() { \
     && install_vsix_as_builtin "leanprover" "lean4" "0.0.237" \
     && install_vsix_as_builtin "tamasfe" "even-better-toml" "0.19.1"
 
-# --- base runner image: minimal runtime, no build tools ---
+# --- base runner image: runtime plus common tools ---
 FROM base AS runner-base
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         nginx strace git libcap2 gettext-base \
+        build-essential \
+        texlive-latex-base texlive-latex-recommended texlive-latex-extra \
+        texlive-pictures texlive-fonts-recommended texlive-fonts-extra \
+        texlive-xetex ghostscript inkscape \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app/
@@ -139,6 +143,11 @@ ENTRYPOINT ["/app/workbench/start.sh"]
 
 # --- dev runner image: /app/workbench and vscode-workbench are empty, expect host mounts ---
 FROM runner-base AS runner-dev
+
+# Tools for interactive development
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends htop \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder-base /app /app
 
