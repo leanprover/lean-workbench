@@ -83,7 +83,7 @@ const VSCODE_SOCKET_FILENAME = 'client.sock'
 
 /** Manages a VS Code server instance.
  * Non-reusable; construct a new handle to start a new server. */
-export class VscodeServerHandle {
+export class VscodeServerHandle implements AsyncDisposable {
   /** Unique ID of this VSCode server instance. */
   readonly uuid = crypto.randomUUID()
   /** Route that Nginx exposes the VSCode server on. */
@@ -96,16 +96,27 @@ export class VscodeServerHandle {
     readonly viewer: User,
     readonly owner: User,
     readonly project: Project,
-    readonly projectDir: string,
-    /** `collab-server` working directory. */
-    readonly collabWorkDir: string,
-  ) {}
+  ) {
+    const { promise, resolve, reject } = Promise.withResolvers<void>()
+    this.started = promise
+    this.resolveStarted = resolve
+    this.rejectStarted = reject
+  }
+
+  /** Whether {@link start} has been called. */
+  private startCalled = false
+  /** Resolves once startup has completed successfully,
+   * i.e., the server has started listening on its port,
+   * and the Nginx route for {@link vscodeIframePath} has been set up.
+   * Rejects if startup throws. */
+  readonly started: Promise<void>
+  private readonly resolveStarted: () => void
+  private readonly rejectStarted: (err: unknown) => void
 
   /** The `bwrap` process. Defined iff the process is running. */
   private proc: ChildProcess | undefined
-  /** Defined after {@link start} has been called. */
-  private starting: Promise<void> | undefined
-  /** Defined after {@link dispose} has been called. */
+
+  /** Defined after {@link Symbol.asyncDispose} has been called. */
   private disposing: Promise<void> | undefined
   /** Resources allocated for the server. */
   private disposables = new AsyncDisposableStack()
@@ -135,15 +146,22 @@ export class VscodeServerHandle {
   }
 
   /** Signal the server to start.
-   * The returned promise resolves after the server has started listening on its port,
-   * and the Nginx route for {@link vscodeIframePath} has been set up.
-   * Repeated calls (with any arguments) produce the same promise. */
-  async start(
-    /** Additional arguments to `bwrap` placed at the end. */
-    bwrapArgs: string[],
-  ) {
-    if (this.starting) return this.starting
-    this.starting = (async () => {
+   * May only be called once.
+   * Use {@link started} to wait until startup completes. */
+  start(
+    /** Arguments to `bwrap` that bind the project directory. Placed at the end. */
+    projectBindArgs: string[],
+    /** `collab-server` working directory. */
+    collabWorkDir: string,
+  ): void {
+    if (this.startCalled) {
+      throw new Error(`Tried to start ${this.description} more than once.`)
+    }
+    if (this.disposing) {
+      throw new Error(`${this.description} was disposed before start.`)
+    }
+    this.startCalled = true
+    ;(async () => {
       await fs.mkdir(this.socketDir, { recursive: true })
       this.disposables.defer(async () => {
         await fs.rm(this.socketDir, { recursive: true, force: true })
@@ -173,12 +191,7 @@ export class VscodeServerHandle {
           '--ro-bind', getOpenVscodeServerDir(), getOpenVscodeServerDir(),
           '--ro-bind', getElanDir(), getElanDir(),
           '--bind', vscServerDataDir, '/workspace/.vscode-remote',
-          // Writes are mediated through the collaboration server,
-          // which `WorkbenchFileSystemProvider` in our extension connects to,
-          // but users can still write files directly if needed.
-          // Lake and other CLI tools do such writes.
-          '--bind', this.projectDir, sandboxProjectDir,
-          '--bind', this.collabWorkDir, '/workspace/.collab-server',
+          '--bind', collabWorkDir, '/workspace/.collab-server',
           '--bind', this.socketDir, '/workspace/.vscode-server',
           '--ro-bind-data', '3', '/workspace/.lean-workbench.json',
           '--setenv', 'HOME', '/workspace',
@@ -192,7 +205,7 @@ export class VscodeServerHandle {
           '--setenv', 'GIT_CONFIG_KEY_0', 'safe.directory',
           '--setenv', 'GIT_CONFIG_VALUE_0', '*',
           ...devArgs,
-          ...bwrapArgs,
+          ...projectBindArgs,
           '--',
           path.join(getOpenVscodeServerDir(), 'bin', 'code-server'),
           '--socket', `/workspace/.vscode-server/${VSCODE_SOCKET_FILENAME}`,
@@ -261,8 +274,7 @@ export class VscodeServerHandle {
           }
         }, 5_000)
       }
-    })()
-    await this.starting
+    })().then(this.resolveStarted, this.rejectStarted)
   }
 
   /** Add a callback to the LIFO {@link AsyncDisposableStack} that runs on `dispose()`
@@ -275,21 +287,21 @@ export class VscodeServerHandle {
    * The returned promise resolves when these events have completed.
    * Repeated calls produce the same promise.
    * Must be invoked after a `start()` failure. */
-  async dispose() {
-    if (!this.starting) {
-      console.warn(`Tried to stop ${this.description} before starting it.`)
-      return
-    }
+  async [Symbol.asyncDispose]() {
     if (this.disposing) return this.disposing
     this.disposing = (async () => {
-      await this.starting!.catch(() => {})
-      if (this.proc) {
-        await new Promise<void>(resolve => {
-          this.proc!.once('close', () => {
-            resolve()
+      if (this.startCalled) {
+        await this.started.catch(() => {})
+        if (this.proc) {
+          await new Promise<void>(resolve => {
+            this.proc!.once('close', () => {
+              resolve()
+            })
+            this.proc!.kill()
           })
-          this.proc!.kill()
-        })
+        }
+      } else {
+        this.rejectStarted(new Error(`${this.description} was disposed before start.`))
       }
       await this.disposables.disposeAsync()
     })()

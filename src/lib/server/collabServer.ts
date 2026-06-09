@@ -13,7 +13,7 @@ export const COLLAB_DB_FILENAME = 'collab.db'
 
 /** Manages a collaboration server instance.
  * Non-reusable; construct a new handle to start a new server. */
-export class CollabServerHandle {
+export class CollabServerHandle implements AsyncDisposable {
   /** Unique ID of this `collab-server` instance. */
   readonly uuid = crypto.randomUUID()
   /** Directory in which `collab-server` places its ephemeral files. */
@@ -23,16 +23,16 @@ export class CollabServerHandle {
 
   constructor(
     /** Project that this server manages. */
-    readonly project: Project,
-    /** Directory in which project files are stored. */
-    readonly projectDir: string,
+    private readonly project: Project,
+    /** Arguments to `bwrap` that bind the project directory. Placed at the end. */
+    private readonly projectBindArgs: string[],
   ) {}
 
   /** The `bwrap` process. Defined iff the process is running. */
   private proc: ChildProcess | undefined
   /** Defined after {@link start} has been called. */
   private starting: Promise<void> | undefined
-  /** Defined after {@link dispose} has been called. */
+  /** Defined after {@link Symbol.asyncDispose} has been called. */
   private disposing: Promise<void> | undefined
   /** Resources allocated for the server. */
   private disposables = new AsyncDisposableStack()
@@ -46,11 +46,11 @@ export class CollabServerHandle {
    * and has created its UDS file.
    * Throws if the server fails to start or set up.
    * Repeated calls (with any arguments) produce the same promise. */
-  async start(
-    /** Additional arguments to `bwrap` placed at the end. */
-    bwrapArgs: string[],
-  ) {
+  async start() {
     if (this.starting) return this.starting
+    if (this.disposing) {
+      throw new Error(`Tried to start ${this.description} after dispose.`)
+    }
     this.starting = (async () => {
       await fs.mkdir(this.workDir, { recursive: true })
       this.disposables.defer(async () => {
@@ -66,10 +66,9 @@ export class CollabServerHandle {
           // We don't need internet access.
           '--unshare-net',
           '--ro-bind', getCollabServerDir(), getCollabServerDir(),
-          '--bind', this.projectDir, sandboxProjectDir,
           '--bind', this.workDir, '/workspace/.collab-server',
           '--chdir', '/workspace/.collab-server',
-          ...bwrapArgs,
+          ...this.projectBindArgs,
           '--',
           '/usr/bin/node',
           path.join(getCollabServerDir(), 'dist', 'server.js'),
@@ -121,21 +120,19 @@ export class CollabServerHandle {
    * The returned promise resolves when cleanup has completed.
    * Repeated calls produce the same promise.
    * Must be invoked after a `start()` failure. */
-  async dispose() {
-    if (!this.starting) {
-      console.warn(`Tried to stop ${this.description} before starting it.`)
-      return
-    }
+  async [Symbol.asyncDispose]() {
     if (this.disposing) return this.disposing
     this.disposing = (async () => {
-      await this.starting!.catch(() => {})
-      if (this.proc) {
-        await new Promise<void>(resolve => {
-          this.proc!.once('close', () => {
-            resolve()
+      if (this.starting) {
+        await this.starting!.catch(() => {})
+        if (this.proc) {
+          await new Promise<void>(resolve => {
+            this.proc!.once('close', () => {
+              resolve()
+            })
+            this.proc!.kill()
           })
-          this.proc!.kill()
-        })
+        }
       }
       await this.disposables.disposeAsync()
     })()

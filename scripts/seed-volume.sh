@@ -26,7 +26,7 @@ Seed the lean-workbench data volume with elan, mathlib packages, and templates.
 
 Options:
   --data-dir DIR      Data directory for lean-workbench state
-                      (default: /tmp/lean-workbench/data)
+                      (default: /data)
   --lean-version REV  Lean version to preinstall (must have a corresponding mathlib tag)
                       (default: latest v4.* tag on mathlib4)
   --help              Show this help message
@@ -34,7 +34,7 @@ EOF
   exit 0
 }
 
-ROOT="/tmp/lean-workbench/data"
+ROOT="/data"
 LEAN_VERSION=""
 
 while [[ $# -gt 0 ]]; do
@@ -132,7 +132,11 @@ mkdir -p "$PACKAGE_SET_DIR"
 for pkg_dir in "$WORK_DIR/.lake/packages"/*/; do
   pkg_name=$(basename "$pkg_dir")
   echo "[seed-volume]   copying package: $pkg_name"
-  cp -a "$pkg_dir" "$PACKAGE_SET_DIR/$pkg_name"
+  # Store each package at the .lake/packages/<pkg> path it occupies in a project;
+  # see buildProjectMount.
+  pkg_dest="$PACKAGE_SET_DIR/$pkg_name/.lake/packages/$pkg_name"
+  mkdir -p "$(dirname "$pkg_dest")"
+  cp -a "$pkg_dir" "$pkg_dest"
 done
 
 ls -d "$PACKAGE_SET_DIR"/*/ | xargs -n1 basename > "$PACKAGE_SET_DIR/packages.txt"

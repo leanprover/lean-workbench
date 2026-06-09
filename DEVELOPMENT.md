@@ -36,8 +36,14 @@ Open `http://localhost:3000`. You'll see the setup page.
 | `make dev` | Start a development-mode container with the host source code mounted for HMR |
 | `make test` | Run tests |
 
-The data volume is stored in `/tmp/lean-workbench/` on the host by default.
+During development,
+workbench data is stored in the named Docker volume `lean-workbench-data` by default.
 Set the `WORKBENCH_ROOT` Makefile argument to customize this.
+When developing on MacOS or Windows,
+it is recommended to use a named Docker volume instead of mounting a host directory.
+This is because containers run in Linux VMs,
+where virtual filesystems such as virtiofs cause degraded disk IO performance
+and might not support overlayfs.
 
 ## Debugging
 
@@ -97,9 +103,9 @@ Three processes run inside the Docker container:
 
 ## Data volume layout
 
-All persistent state lives under a single host directory (mounted as `/data` inside the container).
-Default: `/tmp/lean-workbench` for `make dev`/`make serve`,
-and `~/.lean-workbench/data/` for `install.sh` deployments.
+All persistent state lives under the `/data` directory inside the container.
+Default: `lean-workbench-data` (named Docker volume) for `make dev`/`make serve`,
+and `~/.lean-workbench/data/` (directory on host system) for `install.sh` deployments.
 
 ```
 /data/
