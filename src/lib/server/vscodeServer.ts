@@ -3,10 +3,10 @@ import {
   getNginxConfDir,
   getNginxLogDir,
   getOpenVscodeServerDir,
-  getWorkspacesDir,
+  getUserHomeDir,
   isDevMode,
 } from '@/lib/server/config'
-import { BWRAP_ARGS, bwrapProjectDir, readProcesses } from '@/lib/server/util'
+import { BWRAP_ARGS, bwrapHomeDir, bwrapProjectDir, readProcesses } from '@/lib/server/util'
 import { Project } from '@/prisma/generated/client'
 import { User } from 'better-auth'
 import { ChildProcess, exec, spawn } from 'node:child_process'
@@ -167,11 +167,13 @@ export class VscodeServerHandle implements AsyncDisposable {
         await fs.rm(this.socketDir, { recursive: true, force: true })
       })
 
-      // Every user gets their own VSCode server configuration, and set of installed extensions.
-      const vscServerDataDir = path.join(getWorkspacesDir(), this.viewer.name, 'vscode-remote')
-      await fs.mkdir(vscServerDataDir, { recursive: true })
-      await ensureMachineSettings(vscServerDataDir)
+      // The viewer's home directory persists their VS Code configuration and extensions:
+      // `code-server` defaults `--user-data-dir` to `$HOME/.local/share/code-server`.
+      const homeDir = getUserHomeDir(this.viewer.name)
+      const vscUserDataDir = path.join(homeDir, '.local', 'share', 'code-server')
+      await ensureMachineSettings(vscUserDataDir)
 
+      const sandboxHomeDir = bwrapHomeDir(this.viewer.name)
       const sandboxProjectDir = bwrapProjectDir(this.project.name)
 
       const devArgs = isDevMode()
@@ -190,11 +192,11 @@ export class VscodeServerHandle implements AsyncDisposable {
           ...BWRAP_ARGS,
           '--ro-bind', getOpenVscodeServerDir(), getOpenVscodeServerDir(),
           '--ro-bind', getElanDir(), getElanDir(),
-          '--bind', vscServerDataDir, '/workspace/.vscode-remote',
+          '--bind', homeDir, sandboxHomeDir,
           '--bind', collabWorkDir, '/workspace/.collab-server',
           '--bind', this.socketDir, '/workspace/.vscode-server',
           '--ro-bind-data', '3', '/workspace/.lean-workbench.json',
-          '--setenv', 'HOME', '/workspace',
+          '--setenv', 'HOME', sandboxHomeDir,
           '--setenv', 'ELAN_HOME', getElanDir(),
           '--setenv', 'PATH', `${getElanDir()}/bin:/usr/local/bin:/usr/bin:/bin`,
           // FIXME: Git's "dubious ownership" check (CVE-2022-24765) rejects repos
@@ -214,8 +216,6 @@ export class VscodeServerHandle implements AsyncDisposable {
           '--disable-workspace-trust',
           // Reduce how long the extension host process waits for a web client to reconnect (default 3h).
           '--reconnection-grace-time', '60',
-          '--user-data-dir', '/workspace/.vscode-remote',
-          '--extensions-dir', '/workspace/.vscode-remote/extensions',
           sandboxProjectDir,
         ],
         // FIXME: pipe into a log file?

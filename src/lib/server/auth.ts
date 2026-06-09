@@ -1,5 +1,6 @@
 import { getConfig, hasGithubAuth, isDevMode, saveConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
+import { provisionUserHome } from '@/lib/server/user'
 import { zUserName } from '@/lib/util'
 import { betterAuth, type SocialProviders } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
@@ -51,6 +52,13 @@ async function createAuth() {
               if (!allowed) return false
             }
             return { data: { ...user, name } }
+          },
+          after: async user => {
+            try {
+              await provisionUserHome(user as User)
+            } catch (err) {
+              console.error(`Failed to provision home directory for user '${user.name}': ${String(err)}`)
+            }
           },
         },
       },

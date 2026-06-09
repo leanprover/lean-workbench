@@ -89,6 +89,11 @@ export function bwrapProjectDir(projectName: string) {
   return `/workspace/${projectName}/`
 }
 
+/** Where bwrap mounts the given user's home directory. */
+export function bwrapHomeDir(userName: string) {
+  return `/home/${userName}/`
+}
+
 export function canAccessProject(user: User, project: Project) {
   const isOwner = user.id === project.userId
   return isOwner || project.isPublic

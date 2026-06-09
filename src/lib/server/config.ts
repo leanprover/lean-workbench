@@ -21,6 +21,11 @@ export function getWorkspacesDir(): string {
   return path.join(getDataDir(), 'workspaces')
 }
 
+/** The given user's persistent home directory, used as `$HOME` in their editor sandboxes. */
+export function getUserHomeDir(userName: string): string {
+  return path.join(getWorkspacesDir(), userName, 'home')
+}
+
 export function getTemplatesDir(): string {
   return path.join(getDataDir(), 'templates')
 }
