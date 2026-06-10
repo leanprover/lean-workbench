@@ -50,5 +50,7 @@ jobs:
             --cache-from type=registry,ref=ghcr.io/leanprover/lean-workbench/buildcache:latest
             ${{ github.event_name == 'push' && '--cache-to type=registry,ref=ghcr.io/leanprover/lean-workbench/buildcache:latest,mode=max' || '' }}
 
-      # No Docker cache flags here: reuse what `make container` has stored locally.
       - run: make test
+        env:                                                                                                                                                                                                                                  
+          DOCKER_BUILD_FLAGS: >-                                                                                                                                                                                                              
+            --cache-from type=registry,ref=ghcr.io/leanprover/lean-workbench/buildcache:latest   
