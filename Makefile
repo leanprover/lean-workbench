@@ -2,6 +2,8 @@ WORKBENCH_ROOT ?= lean-workbench-data
 IMAGE_NAME = ghcr.io/leanprover/lean-workbench
 IMAGE_TAG = latest
 IMAGE_DEV_TAG = latest-dev
+# Extra flags for `docker build`, e.g. --cache-from/--cache-to in CI.
+DOCKER_BUILD_FLAGS ?=
 
 .DEFAULT_GOAL := container
 .PHONY: clean container container-dev test clean-install serve dev enter
@@ -16,16 +18,16 @@ vscode-workbench.vsix: $(shell find vscode-workbench/src -type f) vscode-workben
 	cd vscode-workbench && npx vsce package --out ../vscode-workbench.vsix
 
 container: vscode-workbench.vsix
-	docker build --tag $(IMAGE_NAME):$(IMAGE_TAG) --target runner-prod .
+	docker build $(DOCKER_BUILD_FLAGS) --tag $(IMAGE_NAME):$(IMAGE_TAG) --target runner-prod .
 
 container-dev:
-	docker build --tag $(IMAGE_NAME):$(IMAGE_DEV_TAG) --target runner-dev .
+	docker build $(DOCKER_BUILD_FLAGS) --tag $(IMAGE_NAME):$(IMAGE_DEV_TAG) --target runner-dev .
 
 test:
 # Test vscode-workbench using VS Code with our patches applied.
 # `--output type=cacheonly` skips the expensive image export at the end.
 # `--progress=plain` displays RUN step output (notably the testing step).
-	docker build --target tester-vscode-workbench --output type=cacheonly --progress=plain .
+	docker build $(DOCKER_BUILD_FLAGS) --target tester-vscode-workbench --output type=cacheonly --progress=plain .
 
 DOCKER_RUN = docker run --rm --init --tty \
 	--cap-add SYS_ADMIN \
