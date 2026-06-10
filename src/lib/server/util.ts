@@ -21,7 +21,7 @@ export function serverAction<S extends z.ZodType, T = void>(
 
 export async function existsAsync(p: string): Promise<boolean> {
   try {
-    fs.access(p)
+    await fs.access(p)
     return true
   } catch {
     return false
