@@ -10,6 +10,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
 
@@ -24,6 +27,28 @@ jobs:
 
       - run: npm run lint
 
-      - run: make container
+      # Registry cache import/export requires the docker-container driver.
+      - uses: docker/setup-buildx-action@v3
+        with:
+          # Make `docker build` an alias of `docker buildx build`.
+          install: true
 
+      - uses: docker/login-action@v3
+        # Only trusted builds (pushes to main and tags) write the cache.
+        if: github.event_name == 'push'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: make container
+        env:
+          # mode=max also caches the layers of intermediate stages
+          # (notably the expensive builder-code-server),
+          # not just the final image layers.
+          DOCKER_BUILD_FLAGS: >-
+            --cache-from type=registry,ref=ghcr.io/leanprover/lean-workbench/buildcache:latest
+            ${{ github.event_name == 'push' && '--cache-to type=registry,ref=ghcr.io/leanprover/lean-workbench/buildcache:latest,mode=max' || '' }}
+
+      # No Docker cache flags here: reuse what `make container` has stored locally.
       - run: make test
