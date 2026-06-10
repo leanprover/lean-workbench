@@ -51,6 +51,6 @@ jobs:
             ${{ github.event_name == 'push' && '--cache-to type=registry,ref=ghcr.io/leanprover/lean-workbench/buildcache:latest,mode=max' || '' }}
 
       - run: make test
-        env:                                                                                                                                                                                                                                  
-          DOCKER_BUILD_FLAGS: >-                                                                                                                                                                                                              
-            --cache-from type=registry,ref=ghcr.io/leanprover/lean-workbench/buildcache:latest   
+        env:
+          DOCKER_BUILD_FLAGS: >-
+            --cache-from type=registry,ref=ghcr.io/leanprover/lean-workbench/buildcache:latest
