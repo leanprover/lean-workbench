@@ -37,9 +37,6 @@ export async function activate(ctx: vs.ExtensionContext) {
   if (!collabServer) return
   ctx.subscriptions.push(collabServer)
 
-  // We apply collaborative syncing to open folders (usually just the project folder) only.
-  // User-specific folders such as /workspace/.vscode-remote are not synced
-  // (though they would be if someone opens /workspace - TODO better UX).
   const bindings = new YTextBindingManager(collabServer.collabSock, mdata, log)
   ctx.subscriptions.push(
     bindings,
