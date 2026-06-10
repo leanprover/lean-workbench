@@ -1,0 +1,36 @@
+diff --git a/src/vs/workbench/contrib/webview/browser/pre/index.html b/src/vs/workbench/contrib/webview/browser/pre/index.html
+index e2cd6d7..bd82864 100644
+--- a/src/vs/workbench/contrib/webview/browser/pre/index.html
++++ b/src/vs/workbench/contrib/webview/browser/pre/index.html
+@@ -5,7 +5,7 @@
+ 	<meta charset="UTF-8">
+ 
+ 	<meta http-equiv="Content-Security-Policy"
+-		content="default-src 'none'; script-src 'sha256-m1DlJtsIJd46QuWYNcsaYIG1xI+9FyjKQu+cfp+zq5Q=' 'self'; frame-src 'self'; style-src 'unsafe-inline';">
++		content="default-src 'none'; script-src 'sha256-JS9F75ATWGDngBhkfQzQ8JJpe6GYTxjAP72GNV51mYg=' 'self'; frame-src 'self'; style-src 'unsafe-inline';">
+ 
+ 	<!-- Disable pinch zooming -->
+ 	<meta name="viewport"
+@@ -858,6 +858,22 @@
+ 				}
+ 			});
+ 
++			// Firefox 149-151 service workers do not intercept cross-origin no-cors
++			// stylesheet requests (https://bugzilla.mozilla.org/show_bug.cgi?id=1201160),
++			// so plain stylesheet `<link>`s to the resource authority fail there.
++			// CORS requests are still intercepted, and the service worker responds
++			// with `Access-Control-Allow-Origin: *`, so load stylesheets with CORS.
++			const resourceBaseAuthority = searchParams.get('vscode-resource-base-authority');
++			newDocument.querySelectorAll('link[rel~="stylesheet" i]').forEach(link => {
++				try {
++					if (new URL(link.href).hostname.endsWith('.' + resourceBaseAuthority)) {
++						link.setAttribute('crossorigin', 'anonymous');
++					}
++				} catch (e) {
++					// `link.href` is not a valid URL; leave the element alone
++				}
++			});
++
+ 			// Set default aria role
+ 			if (!newDocument.body.hasAttribute('role')) {
+ 				newDocument.body.setAttribute('role', 'document');

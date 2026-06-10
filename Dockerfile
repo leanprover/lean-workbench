@@ -116,7 +116,8 @@ RUN install_vsix_as_builtin() { \
         && rm -rf /tmp/ext.vsix; \
     } \
     && install_vsix_as_builtin "leanprover" "lean4" "0.0.237" \
-    && install_vsix_as_builtin "tamasfe" "even-better-toml" "0.19.1"
+    && install_vsix_as_builtin "tamasfe" "even-better-toml" "0.19.1" \
+    && install_vsix_as_builtin "mathematic" "vscode-pdf" "0.1.11"
 
 # --- base runner image: runtime plus common tools ---
 FROM base AS runner-base
