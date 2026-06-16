@@ -1,17 +1,21 @@
 # syntax=docker/dockerfile:1
 
-# --- code-server builder: build code-server with our patches ---
-FROM buildpack-deps:24.04-curl AS builder-code-server
+# --- base image: Node.js installation shared between builders and runners --
+FROM buildpack-deps:24.04-curl AS base
+RUN curl -sSfL https://deb.nodesource.com/setup_24.x | bash - \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
 
-# Node 22 (required by code-server/.node-version)
-RUN curl -sSfL https://deb.nodesource.com/setup_22.x | bash -
+# --- code-server builder: build code-server with our patches ---
+FROM base AS builder-code-server
 
 # Build prerequisites (see code-server/docs/CONTRIBUTING.md "Requirements")
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential g++ make pkg-config python-is-python3 \
         libx11-dev libxkbfile-dev libsecret-1-dev libkrb5-dev \
-        git git-lfs jq quilt rsync unzip nodejs \
+        git git-lfs jq quilt rsync unzip \
     && rm -rf /var/lib/apt/lists/* \
     && git lfs install
 
@@ -49,14 +53,6 @@ RUN arch=$(uname -m) \
     && cd /code-server/lib/vscode \
     && npm run gulp -- vscode-linux-${arch}-min \
     && mv /code-server/lib/VSCode-linux-${arch} /vscode-desktop
-
-# --- base image: Node.js installation shared between builders and runners --
-#     (except builder-code-server which needs Node.js 22)
-FROM buildpack-deps:24.04-curl AS base
-RUN curl -sSfL https://deb.nodesource.com/setup_24.x | bash - \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends nodejs \
-    && rm -rf /var/lib/apt/lists/*
 
 # --- vscode-workbench tester: test our extension with patched VS Code ---
 FROM base AS tester-vscode-workbench
