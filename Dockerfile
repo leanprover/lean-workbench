@@ -9,7 +9,7 @@ FROM buildpack-deps:24.04-curl AS base
 ARG NODE_VERSION="24.15.0"
 RUN curl -sSfL https://deb.nodesource.com/setup_24.x | bash - \
     && apt-get update \
-    && apt-get install -y --no-install-recommends "nodejs_${NODE_VERSION}-1nodesource1" \
+    && apt-get install -y --no-install-recommends "nodejs=${NODE_VERSION}-1nodesource1" \
     && rm -rf /var/lib/apt/lists/*
 
 # --- code-server builder: build code-server with our patches ---
