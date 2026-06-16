@@ -1,22 +1,31 @@
 # syntax=docker/dockerfile:1
 
-# --- code-server builder: build code-server with our patches ---
-FROM buildpack-deps:24.04-curl AS builder-code-server
+# --- base image: Node.js installation shared between builders and runners --
+FROM buildpack-deps:24.04-curl AS base
+# Should match code-server/.node-version, checked out at CODE_SERVER_VERSION.
+# Code-server 4.124.2 specifically hangs in CI on Node.js 24.16 due to
+# https://github.com/microsoft/playwright/issues/40998
+# and https://github.com/nodejs/node/issues/63487.
+ARG NODE_VERSION="24.15.0"
+RUN curl -sSfL https://deb.nodesource.com/setup_24.x | bash - \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends "nodejs=${NODE_VERSION}-1nodesource1" \
+    && rm -rf /var/lib/apt/lists/*
 
-# Node 22 (required by code-server/.node-version)
-RUN curl -sSfL https://deb.nodesource.com/setup_22.x | bash -
+# --- code-server builder: build code-server with our patches ---
+FROM base AS builder-code-server
 
 # Build prerequisites (see code-server/docs/CONTRIBUTING.md "Requirements")
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential g++ make pkg-config python-is-python3 \
         libx11-dev libxkbfile-dev libsecret-1-dev libkrb5-dev \
-        git git-lfs jq quilt rsync unzip nodejs \
+        git git-lfs jq quilt rsync unzip \
     && rm -rf /var/lib/apt/lists/* \
     && git lfs install
 
 # Shallow-clone code-server at the release tag and fetch its VS Code submodule.
-ARG CODE_SERVER_VERSION="4.122.1"
+ARG CODE_SERVER_VERSION="4.124.2"
 RUN git clone --branch "v${CODE_SERVER_VERSION}" --depth 1 \
         https://github.com/coder/code-server /code-server \
     && git -C /code-server submodule update --init --depth 1
@@ -24,7 +33,10 @@ WORKDIR /code-server
 
 # Build (see code-server/docs/CONTRIBUTING.md)
 RUN quilt push -a
-RUN npm install
+# `--foreground-scripts` streams node-gyp's native-build output, hidden by default.
+# However, it also serializes the execution of `prepare` scripts across different packages.
+# To recover some parallelism, `JOBS=max` parallelizes each package's native build.
+RUN JOBS=max npm_config_foreground_scripts=true npm install
 
 # Apply our patches on top of code-server's.
 # We assume that these don't modify `package.json`, so `npm install` can be cached.
@@ -49,14 +61,6 @@ RUN arch=$(uname -m) \
     && cd /code-server/lib/vscode \
     && npm run gulp -- vscode-linux-${arch}-min \
     && mv /code-server/lib/VSCode-linux-${arch} /vscode-desktop
-
-# --- base image: Node.js installation shared between builders and runners --
-#     (except builder-code-server which needs Node.js 22)
-FROM buildpack-deps:24.04-curl AS base
-RUN curl -sSfL https://deb.nodesource.com/setup_24.x | bash - \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends nodejs \
-    && rm -rf /var/lib/apt/lists/*
 
 # --- vscode-workbench tester: test our extension with patched VS Code ---
 FROM base AS tester-vscode-workbench
