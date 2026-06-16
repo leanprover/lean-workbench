@@ -2,9 +2,14 @@
 
 # --- base image: Node.js installation shared between builders and runners --
 FROM buildpack-deps:24.04-curl AS base
+# Should match code-server/.node-version, checked out at CODE_SERVER_VERSION.
+# Code-server 4.124.2 specifically hangs in CI on Node.js 24.16 due to
+# https://github.com/microsoft/playwright/issues/40998
+# and https://github.com/nodejs/node/issues/63487.
+ARG NODE_VERSION="24.15.0"
 RUN curl -sSfL https://deb.nodesource.com/setup_24.x | bash - \
     && apt-get update \
-    && apt-get install -y --no-install-recommends nodejs \
+    && apt-get install -y --no-install-recommends "nodejs_${NODE_VERSION}-1nodesource1" \
     && rm -rf /var/lib/apt/lists/*
 
 # --- code-server builder: build code-server with our patches ---
