@@ -28,7 +28,10 @@ WORKDIR /code-server
 
 # Build (see code-server/docs/CONTRIBUTING.md)
 RUN quilt push -a
-RUN npm install
+# `--foreground-scripts` streams node-gyp's native-build output, hidden by default.
+# However, it also serializes the execution of `prepare` scripts across different packages.
+# To recover some parallelism, `JOBS=max` parallelizes each package's native build.
+RUN JOBS=max npm_config_foreground_scripts=true npm install
 
 # Apply our patches on top of code-server's.
 # We assume that these don't modify `package.json`, so `npm install` can be cached.
