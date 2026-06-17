@@ -130,7 +130,7 @@ export class VscodeServerHandle implements AsyncDisposable {
   }
 
   private async writeNginxUserRoute() {
-    const conf = `location ${this.vscodeIframePath} {
+    const conf = `location ^~ ${this.vscodeIframePath} {
       auth_request /api/auth-vsc/${this.uuid};
       proxy_pass http://unix:${this.socketPath}:/;
       proxy_http_version 1.1;
