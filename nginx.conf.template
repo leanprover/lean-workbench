@@ -11,6 +11,8 @@ events {
 
 http {
     access_log $NGINX_ACCESS_LOG_PATH;
+    # Serve static assets with correct MIME type based on file extension.
+    include /etc/nginx/mime.types;
     default_type application/octet-stream;
 
     sendfile on;
@@ -25,20 +27,20 @@ http {
         listen 3000;
         server_name localhost;
 
-        # Dynamic per-user routes (written by main server)
+        # Dynamic per-user routes (written by vscodeServer.ts)
         include $NGINX_CONF_DIR/user-routes/*.conf;
 
         # Block unmatched /_vs/* — only allow user routes installed above
-        location /_vs/ {
+        location ^~ /_vs/ {
             return 404;
         }
 
         # Target of `auth_request` in VSCode user routes.
         # See https://docs.nginx.com/nginx/admin-guide/security-controls/configuring-subrequest-authentication/.
-        # Mostly identical to the blanket forwarding route below,
+        # Mostly identical to the blanket Next.js forwarding route,
         # but importantly skips Upgrade/Connection headers:
         # WebSocket connections to VSCode are broken if we forward these.
-        location /api/auth-vsc/ {
+        location ^~ /api/auth-vsc {
             # Can only be reached by internal requests 
             internal;
             proxy_pass http://127.0.0.1:3002;
@@ -48,7 +50,57 @@ http {
             proxy_set_header Content-Length "";
         }
 
-        # Everything else -> main server
+        # /_file/<token>/<relPath> serves the static asset at <rootDir>/<relPath>
+        # where <rootDir> is <token>'s root directory, as long as <token> is valid.
+        # See `lib/server/dirToken.ts`.
+        location ~ ^/_file/[^/]+/.+$ {
+            # Serve index.html on directory requests.
+            # `last` starts a search for a location matching the changed URI after rewriting.
+            rewrite ^(.+)/$ $1/index.html last;
+            # Capture the current URI for the auth subrequest.
+            # ($request_uri doesn't work since it's the original URI, pre-rewrite,
+            # whereas $uri evaluates to /api/auth-file in the /api/auth-file block.)
+            set $auth_uri $uri;
+            # `auth_request` does not expand variables, so the URI is fixed;
+            # our handler reads <token> and <relPath> from X-File-URI.
+            auth_request /api/auth-file;
+            # After auth succeeds, alias to the path that has been approved.
+            auth_request_set $validated_path $upstream_http_x_validated_file_path;
+            alias $validated_path;
+            # Static assets (e.g. HTML) can be user-authored so must be served opaque-origin.
+            # Browsers will not send SameSite cookies in requests originating from these assets.
+            add_header Content-Security-Policy "sandbox allow-scripts" always;
+            # Code running in arbitrary origins can read the response.
+            # Notably, other static assets can programmatically fetch() this asset.
+            add_header Access-Control-Allow-Origin "*" always;
+            # Set `Referer` to the origin (and only via HTTPS) on subresource requests.
+            # Using the full path would leak the token.
+            add_header Referrer-Policy "strict-origin" always;
+            # Auth-file ensures that $validated_path lives under <rootDir>,
+            # but the underlying file could be replaced by a symlink right after auth responds.
+            # We block the TOCTOU attack by preventing any symlinks here.
+            disable_symlinks on;
+        }
+
+        # Block unmatched /_file/*
+        location /_file/ {
+            return 404;
+        }
+
+        # Target of `auth_request` in /_file/* requests.
+        location ^~ /api/auth-file {
+            # Can only be reached by internal requests
+            internal;
+            proxy_pass http://127.0.0.1:3002;
+            proxy_http_version 1.1;
+            proxy_set_header Host $http_host;
+            proxy_pass_request_body off;
+            proxy_set_header Content-Length "";
+            # Send the URI to be authenticated (percent-decoded) as a header.
+            proxy_set_header X-File-URI $auth_uri;
+        }
+
+        # All other requests are forwarded to Next.js server.
         location / {
             proxy_pass http://127.0.0.1:3002;
             proxy_http_version 1.1;

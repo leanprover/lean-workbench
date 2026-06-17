@@ -83,6 +83,7 @@ const zServerConfig = z.object({
   registrationMode: zRegistrationMode,
   isSetupComplete: z.boolean(),
   githubAuth: zGithubAuthConfig.optional(),
+  /** 256 random bits, hex-encoded as a 512-bit string. */
   authSessionSecret: z.string().optional(),
   /** The scheme, hostname, and port through which the browser will access our server.
    * Requests made through other URLs may misbehave,

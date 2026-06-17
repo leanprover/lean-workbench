@@ -1,5 +1,6 @@
 'use client'
 
+import ProjectLink from '@/app/components/ProjectLink'
 import { useServerAction } from '@/lib/client/util'
 import type { EditorSessionInfo } from '@/lib/server/editorSessions'
 import { useRouter } from 'next/navigation'
@@ -18,9 +19,7 @@ export function SessionRow({ info }: { info: EditorSessionInfo }) {
       <div className='info'>
         <a href={`/${info.viewerUsername}`}>{info.viewerUsername}</a>
         <span style={{ color: '#90a4ae', margin: '0 0.25rem' }}>editing</span>
-        <a href={`/${info.ownerUsername}`}>{info.ownerUsername}</a>
-        <span style={{ color: '#90a4ae', margin: '0 0.25rem' }}>/</span>
-        <a href={`/${info.ownerUsername}/${info.projectName}`}>{info.projectName}</a>
+        <ProjectLink ownerUsername={info.ownerUsername} projectName={info.projectName} />
       </div>
       <div className='actions'>
         <span style={{ fontSize: '0.8rem', color: '#90a4ae' }}>UUID {info.sessionId}</span>
