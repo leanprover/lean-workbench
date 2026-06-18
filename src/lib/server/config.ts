@@ -26,6 +26,11 @@ export function getUserHomeDir(userName: string): string {
   return path.join(getWorkspacesDir(), userName, 'home')
 }
 
+/** The given project's data directory.*/
+export function getProjectDir(userName: string, projectId: string): string {
+  return path.join(getWorkspacesDir(), userName, projectId)
+}
+
 export function getTemplatesDir(): string {
   return path.join(getDataDir(), 'templates')
 }

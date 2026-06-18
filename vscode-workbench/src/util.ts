@@ -47,6 +47,8 @@ export function equalMaps<T, U>(a: Map<T, U>, b: Map<T, U>, eqU?: (a: U, b: U) =
 export const BWRAP_METADATA_PATH = '/workspace/.lean-workbench.json'
 
 export const zWorkspaceMetadata = z.object({
+  /** Scheme, host, and port through which the browser reaches the workbench. */
+  baseUrl: z.url(),
   /** User viewing/editing the current project. */
   viewer: z.object({
     name: z.string(),

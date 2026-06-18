@@ -1,4 +1,4 @@
-import { getElanDir, getOpenVscodeServerDir, getUserHomeDir, isDevMode } from '@/lib/server/config'
+import { getConfig, getElanDir, getOpenVscodeServerDir, getUserHomeDir, isDevMode } from '@/lib/server/config'
 import { BWRAP_ARGS, bwrapHomeDir, bwrapProjectDir, readProcesses } from '@/lib/server/util'
 import { Project } from '@/prisma/generated/client'
 import { User } from 'better-auth'
@@ -213,6 +213,7 @@ export class VscodeServerHandle implements AsyncDisposable {
         (async () => {
           workspaceMdataPipe.end(
             JSON.stringify({
+              baseUrl: getConfig().baseUrl,
               viewer: {
                 name: this.viewer.name,
                 image: this.viewer.image,

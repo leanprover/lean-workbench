@@ -1,7 +1,7 @@
 import { RcMap } from '@/lib/rcMap'
 import type { User } from '@/lib/server/auth'
 import { CollabServerHandle } from '@/lib/server/collabServer'
-import { getPackageSetsDir, getWorkspacesDir } from '@/lib/server/config'
+import { getPackageSetsDir, getProjectDir, getWorkspacesDir } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { bwrapProjectDir } from '@/lib/server/util'
 import { VscodeServerHandle } from '@/lib/server/vscodeServer'
@@ -57,7 +57,7 @@ class ProjectMountHandle implements AsyncDisposable {
  * so that users can remove other directories (e.g. packages) freely. */
 async function buildProjectMount(owner: User, project: Project): Promise<ProjectMountHandle> {
   const userDir = path.join(getWorkspacesDir(), owner.name)
-  const projectDir = path.join(userDir, project.id)
+  const projectDir = getProjectDir(owner.name, project.id)
   try {
     await fs.access(projectDir)
   } catch (err) {

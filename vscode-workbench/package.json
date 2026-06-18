@@ -23,6 +23,22 @@
     "extensionsAny"
   ],
   "contributes": {
+    "commands": [
+      {
+        "command": "leanprover-workbench.previewFile",
+        "title": "Preview File",
+        "category": "Lean Workbench"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "leanprover-workbench.previewFile",
+          "when": "resourceExtname == .html",
+          "group": "1_leanprover_workbench"
+        }
+      ]
+    },
     "viewsContainers": {
       "activitybar": [
         {
