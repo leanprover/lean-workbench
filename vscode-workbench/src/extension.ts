@@ -19,7 +19,7 @@ async function readWorkspaceMdata(log: vs.LogOutputChannel): Promise<WorkspaceMe
     mdata = zWorkspaceMetadata.parse(JSON.parse(raw))
   } catch (err) {
     log.error(`failed to parse workspace metadata: ${String(err)}`)
-    void vs.window.showErrorMessage('Could not detect the Lean Workbench - shutting down.')
+    void vs.window.showErrorMessage('Could not parse Lean Workbench metadata - shutting down.')
     return undefined
   }
 

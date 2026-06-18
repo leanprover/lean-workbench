@@ -217,6 +217,12 @@ export class VscodeServerHandle implements AsyncDisposable {
                 name: this.viewer.name,
                 image: this.viewer.image,
               },
+              project: {
+                name: this.project.name,
+                owner: {
+                  name: this.owner.name,
+                },
+              },
               syncPatterns: [path.join(sandboxProjectDir, '**', '*')],
             }),
           )

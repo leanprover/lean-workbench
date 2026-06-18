@@ -47,10 +47,17 @@ export function equalMaps<T, U>(a: Map<T, U>, b: Map<T, U>, eqU?: (a: U, b: U) =
 export const BWRAP_METADATA_PATH = '/workspace/.lean-workbench.json'
 
 export const zWorkspaceMetadata = z.object({
-  /** Name of the user viewing/editing the project. */
+  /** User viewing/editing the current project. */
   viewer: z.object({
     name: z.string(),
     image: z.nullish(z.string()),
+  }),
+  /** Metadata about the current project. */
+  project: z.object({
+    name: z.string(),
+    owner: z.object({
+      name: z.string(),
+    }),
   }),
   /** Files that should be synced collaboratively across viewers.
    * Patterns are matched with minimatch. */
