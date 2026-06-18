@@ -43,6 +43,10 @@ export function equalMaps<T, U>(a: Map<T, U>, b: Map<T, U>, eqU?: (a: U, b: U) =
 
 // FIXME: use same consts in workbench-app/collab-server for single source of truth.
 
+export function bwrapProjectDir(projectName: string) {
+  return `/workspace/${projectName}/`
+}
+
 /** Path to workspace metadata file in VSCode bwraps. */
 export const BWRAP_METADATA_PATH = '/workspace/.lean-workbench.json'
 
