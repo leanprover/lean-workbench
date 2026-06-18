@@ -1,20 +1,12 @@
-import {
-  getElanDir,
-  getNginxConfDir,
-  getNginxLogDir,
-  getOpenVscodeServerDir,
-  getUserHomeDir,
-  isDevMode,
-} from '@/lib/server/config'
+import { getElanDir, getOpenVscodeServerDir, getUserHomeDir, isDevMode } from '@/lib/server/config'
 import { BWRAP_ARGS, bwrapHomeDir, bwrapProjectDir, readProcesses } from '@/lib/server/util'
 import { Project } from '@/prisma/generated/client'
 import { User } from 'better-auth'
-import { ChildProcess, exec, spawn } from 'node:child_process'
+import { ChildProcess, spawn } from 'node:child_process'
 import fs from 'node:fs/promises'
 import { request } from 'node:http'
 import path from 'node:path'
 import type Stream from 'node:stream'
-import { promisify } from 'node:util'
 
 /** Create a VSCode machine settings file if one doesn't exist. */
 async function ensureMachineSettings(serverDataDir: string): Promise<void> {
@@ -53,29 +45,23 @@ async function ensureMachineSettings(serverDataDir: string): Promise<void> {
   }
 }
 
-async function reloadNginx(): Promise<void> {
-  await promisify(exec)(`nginx -e ${getNginxLogDir()}/error.log -c ${getNginxConfDir()}/nginx.conf -s reload`)
-}
-
-async function waitForNginxRoute(path: string, timeoutMs = 10_000): Promise<void> {
+async function waitForSocket(socketPath: string, timeoutMs = 10_000): Promise<void> {
   const deadline = Date.now() + timeoutMs
   let status = null
   while (Date.now() < deadline) {
     status = await new Promise<number | null>(resolve => {
-      // `agent: false` creates a new HTTP client, ensuring we connect to the reloaded Nginx.
-      const req = request({ host: '127.0.0.1', port: 3000, path, method: 'GET', agent: false }, res => {
+      const req = request({ socketPath, path: '/', method: 'HEAD' }, res => {
         res.resume()
         resolve(res.statusCode ?? null)
       })
       req.on('error', () => resolve(null))
       req.end()
     })
-    // The route is gated by `auth_request`,
-    // so this unauthenticated probe should return 401 once the route is ready.
-    if (status !== null && status === 401) return
+    // Any HTTP response means the server is listening on its socket and ready to serve.
+    if (status !== null) return
     await new Promise(r => setTimeout(r, 100))
   }
-  throw new Error(`Timeout waiting for Nginx route ${path} (last HTTP status=${status})`)
+  throw new Error(`Timeout waiting for ${socketPath} (last HTTP status=${status})`)
 }
 
 /** Name of the VS Code server UDS file. */
@@ -90,7 +76,8 @@ export class VscodeServerHandle implements AsyncDisposable {
   readonly vscodeIframePath = `/_vs/${this.uuid}/`
   /** Directory in which the server places its UDS file. */
   readonly socketDir = `/tmp/vsc-${this.uuid}/`
-  private readonly socketPath = `${this.socketDir}/${VSCODE_SOCKET_FILENAME}`
+  /** Host path to the server's UDS file. */
+  readonly socketPath = `${this.socketDir}/${VSCODE_SOCKET_FILENAME}`
 
   constructor(
     readonly viewer: User,
@@ -106,8 +93,7 @@ export class VscodeServerHandle implements AsyncDisposable {
   /** Whether {@link start} has been called. */
   private startCalled = false
   /** Resolves once startup has completed successfully,
-   * i.e., the server has started listening on its port,
-   * and the Nginx route for {@link vscodeIframePath} has been set up.
+   * i.e., the server has started listening on its socket.
    * Rejects if startup throws. */
   readonly started: Promise<void>
   private readonly resolveStarted: () => void
@@ -121,28 +107,8 @@ export class VscodeServerHandle implements AsyncDisposable {
   /** Resources allocated for the server. */
   private disposables = new AsyncDisposableStack()
 
-  private get nginxUserRoutePath(): string {
-    return `${getNginxConfDir()}/user-routes/vscode-server-${this.uuid}.conf`
-  }
-
   private get description(): string {
     return `vscode-server ${this.uuid} (project ${this.project.id}, viewer ${this.viewer.id})`
-  }
-
-  private async writeNginxUserRoute() {
-    const conf = `location ^~ ${this.vscodeIframePath} {
-      auth_request /api/auth-vsc/${this.uuid};
-      proxy_pass http://unix:${this.socketPath}:/;
-      proxy_http_version 1.1;
-      proxy_set_header Upgrade $http_upgrade;
-      proxy_set_header Connection $connection_upgrade;
-      proxy_set_header Host $http_host;
-      proxy_buffering off;
-      proxy_read_timeout 86400;
-      proxy_hide_header X-Frame-Options;
-  }
-  `
-    await fs.writeFile(this.nginxUserRoutePath, conf)
   }
 
   /** Signal the server to start.
@@ -243,7 +209,7 @@ export class VscodeServerHandle implements AsyncDisposable {
             reject(new Error(`${this.description} failed to write workspace metadata: ${String(err)}`))
           })
         }),
-        // Wait for the server to start listening and for Nginx to be ready.
+        // Wait for the server to start listening.
         (async () => {
           workspaceMdataPipe.end(
             JSON.stringify({
@@ -254,13 +220,7 @@ export class VscodeServerHandle implements AsyncDisposable {
               syncPatterns: [path.join(sandboxProjectDir, '**', '*')],
             }),
           )
-          await this.writeNginxUserRoute()
-          this.disposables.defer(async () => {
-            await fs.rm(this.nginxUserRoutePath, { force: true })
-            await reloadNginx()
-          })
-          await reloadNginx()
-          await waitForNginxRoute(this.vscodeIframePath)
+          await waitForSocket(this.socketPath)
         })(),
       ])
 

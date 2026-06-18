@@ -7,7 +7,7 @@ import path from 'node:path'
  * Any 2xx makes Nginx serve the file named in the `X-Validated-File-Path` response header,
  * whereas other codes cause Nginx to reject the original request. */
 export async function GET(req: Request) {
-  const uri = req.headers.get('x-file-uri') ?? ''
+  const uri = req.headers.get('x-auth-uri') ?? ''
   // Since directory requests are rewritten to <dir>/index.html,
   // we can expect no trailing slash.
   const match = uri.match(/^\/_file\/([^/]+)\/(.*[^/])$/)
