@@ -36,8 +36,8 @@ http {
         listen 3000;
         server_name localhost;
 
-        # /_vs/<token>/* forwards to the VS Code server for the session stored in <token>,
-        # as long as <token> is valid.
+        # /_vs/<session_id>/* forwards to the VS Code server identified by <session_id>,
+        # as long as the auth_request accepts the user's session cookie.
         location ~ ^/_vs/(?<session_id>[^/]+)/.*$ {
             # AUTHENTICATION
             # Capture the current URI for the auth subrequest.
