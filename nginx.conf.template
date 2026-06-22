@@ -23,58 +23,83 @@ http {
         '' close;
     }
 
+    # $request_sub2_uri is $request_uri without the first two slashes and path components.
+    map $request_uri $request_sub2_uri {
+        "~^/[^/]+/[^/]+(/.*)$" $1;
+        default "/";
+    }
+
+    # Cache for /api/auth-route
+    proxy_cache_path /var/cache/nginx_auth_route keys_zone=auth_route_cache:8m;
+
     server {
         listen 3000;
         server_name localhost;
 
-        # Dynamic per-user routes (written by vscodeServer.ts)
-        include $NGINX_CONF_DIR/user-routes/*.conf;
+        # /_vs/<session_id>/* forwards to the VS Code server identified by <session_id>,
+        # as long as the auth_request accepts the user's session cookie.
+        location ~ ^/_vs/(?<session_id>[^/]+)/.*$ {
+            # AUTHENTICATION
+            # Capture the current URI for the auth subrequest.
+            # ($request_uri doesn't work since it's the original URI, pre-rewrite,
+            # whereas $uri evaluates to the subrequest URI in the auth subrequest's context.)
+            set $auth_route_uri $uri;
+            # Authentication is cached on the session ID and all cookies,
+            # notably the better-auth session cookie:
+            # this data grants access to all subpaths of this VSC session.
+            # (We could extract just the session cookie,
+            # but this is simpler and cookies don't change often.)
+            set $auth_route_cache_key "$session_id:$http_cookie";
+            # `auth_request` does not expand variables, so the URI is fixed;
+            # our handler reads the data to verify from X-Auth-URI.
+            auth_request /api/auth-route/vs;
 
-        # Block unmatched /_vs/* — only allow user routes installed above
-        location ^~ /_vs/ {
-            return 404;
-        }
-
-        # Target of `auth_request` in VSCode user routes.
-        # See https://docs.nginx.com/nginx/admin-guide/security-controls/configuring-subrequest-authentication/.
-        # Mostly identical to the blanket Next.js forwarding route,
-        # but importantly skips Upgrade/Connection headers:
-        # WebSocket connections to VSCode are broken if we forward these.
-        location ^~ /api/auth-vsc {
-            # Can only be reached by internal requests 
-            internal;
-            proxy_pass http://127.0.0.1:3002;
+            # PROXY SETTINGS
+            auth_request_set $socket_path $upstream_http_x_socket_path;
+            proxy_pass http://unix:$socket_path:$request_sub2_uri;
             proxy_http_version 1.1;
             proxy_set_header Host $http_host;
-            proxy_pass_request_body off;
-            proxy_set_header Content-Length "";
+
+            # Support WebSocket upgrades
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+
+            # Recommended by https://coder.com/docs/code-server/guide#using-lets-encrypt-with-nginx
+            proxy_set_header Accept-Encoding gzip;
+            # Leave connections open for 24h even if no bytes are sent.
+            proxy_read_timeout 86400;
+        }
+
+        # Block unmatched /_vs/*
+        location /_vs/ {
+            return 404;
         }
 
         # /_file/<token>/<relPath> serves the static asset at <rootDir>/<relPath>
         # where <rootDir> is <token>'s root directory, as long as <token> is valid.
-        # See `lib/server/dirToken.ts`.
-        location ~ ^/_file/[^/]+/.+$ {
+        # See `lib/server/authToken.ts`.
+        location ~ ^/_file/[^/]+/.*$ {
+            # NORMALIZATION
             # Serve index.html on directory requests.
             # `last` starts a search for a location matching the changed URI after rewriting.
             rewrite ^(.+)/$ $1/index.html last;
-            # Capture the current URI for the auth subrequest.
-            # ($request_uri doesn't work since it's the original URI, pre-rewrite,
-            # whereas $uri evaluates to /api/auth-file in the /api/auth-file block.)
-            set $auth_uri $uri;
-            # `auth_request` does not expand variables, so the URI is fixed;
-            # our handler reads <token> and <relPath> from X-File-URI.
-            auth_request /api/auth-file;
+
+            # AUTHENTICATION
+            set $auth_route_uri $uri;
+            # We must cache file request authentication on the whole URI
+            # since the auth handler returns the validated path.
+            set $auth_route_cache_key $uri;
+            auth_request /api/auth-route/file;
+
+            # FORWARDING
             # After auth succeeds, alias to the path that has been approved.
             auth_request_set $validated_path $upstream_http_x_validated_file_path;
             alias $validated_path;
-            # Static assets (e.g. HTML) can be user-authored so must be served opaque-origin.
-            # Browsers will not send SameSite cookies in requests originating from these assets.
+
+            # SANDBOXING
+            # Same restrictions as on /_vs/, since static assets are also user-authored.
             add_header Content-Security-Policy "sandbox allow-scripts" always;
-            # Code running in arbitrary origins can read the response.
-            # Notably, other static assets can programmatically fetch() this asset.
             add_header Access-Control-Allow-Origin "*" always;
-            # Set `Referer` to the origin (and only via HTTPS) on subresource requests.
-            # Using the full path would leak the token.
             add_header Referrer-Policy "strict-origin" always;
             # Auth-file ensures that $validated_path lives under <rootDir>,
             # but the underlying file could be replaced by a symlink right after auth responds.
@@ -87,17 +112,28 @@ http {
             return 404;
         }
 
-        # Target of `auth_request` in /_file/* requests.
-        location ^~ /api/auth-file {
+        # Validates that a request has the necessary permissions.
+        # Target of `auth_request` in /_file/* and /_vs/* requests.
+        # See https://docs.nginx.com/nginx/admin-guide/security-controls/configuring-subrequest-authentication/.
+        location ^~ /api/auth-route/ {
             # Can only be reached by internal requests
             internal;
+
             proxy_pass http://127.0.0.1:3002;
             proxy_http_version 1.1;
             proxy_set_header Host $http_host;
+
+            # Skip the original body (but keep the headers).
             proxy_pass_request_body off;
             proxy_set_header Content-Length "";
-            # Send the URI to be authenticated (percent-decoded) as a header.
-            proxy_set_header X-File-URI $auth_uri;
+
+            # Send the URI to be authenticated as a header.
+            proxy_set_header X-Auth-URI $auth_route_uri;
+
+            # Cache successes to avoid hitting Next.js repeatedly.
+            proxy_cache auth_route_cache;
+            proxy_cache_key $auth_route_cache_key;
+            proxy_cache_valid 200 10m;
         }
 
         # All other requests are forwarded to Next.js server.
@@ -105,10 +141,10 @@ http {
             proxy_pass http://127.0.0.1:3002;
             proxy_http_version 1.1;
             proxy_set_header Host $http_host;
+
             # Allow WebSocket connections for Next.js HMR
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection $connection_upgrade;
-            proxy_buffering off;
         }
     }
 }

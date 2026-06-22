@@ -43,5 +43,6 @@ export default async function EditorSession({ params: params_ }: { params: Promi
     return <Error>Failed to start editor session: {String(err)}</Error>
   }
 
+  // TODO: VSC should be sandboxed but can't be opaque-origin: need a subdomain.
   return <iframe id='editor-frame' src={iframeSrc} className='editor-session-iframe' />
 }

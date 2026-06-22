@@ -1,7 +1,7 @@
 import { RcMap } from '@/lib/rcMap'
 import type { User } from '@/lib/server/auth'
 import { CollabServerHandle } from '@/lib/server/collabServer'
-import { getPackageSetsDir, getWorkspacesDir } from '@/lib/server/config'
+import { getPackageSetsDir, getProjectDir, getWorkspacesDir } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { bwrapProjectDir } from '@/lib/server/util'
 import { VscodeServerHandle } from '@/lib/server/vscodeServer'
@@ -57,7 +57,7 @@ class ProjectMountHandle implements AsyncDisposable {
  * so that users can remove other directories (e.g. packages) freely. */
 async function buildProjectMount(owner: User, project: Project): Promise<ProjectMountHandle> {
   const userDir = path.join(getWorkspacesDir(), owner.name)
-  const projectDir = path.join(userDir, project.id)
+  const projectDir = getProjectDir(owner.name, project.id)
   try {
     await fs.access(projectDir)
   } catch (err) {
@@ -195,13 +195,14 @@ export class EditorSessionManager {
     void session[Symbol.asyncDispose]()
   }
 
-  /** Returns true iff `userId` is the viewer of the session `sessionId`. */
-  isViewerOf(userId: string, sessionId: string): boolean {
+  /** Return the path to `sessionId`'s VS Code UDS if `userId` is allowed to view it,
+   * else `undefined`. */
+  socketPathForViewer(userId: string, sessionId: string): string | undefined {
     for (const servers of this.vscServers.values()) {
       const s = servers.find(s => s.uuid === sessionId)
-      if (s) return s.viewer.id === userId
+      if (s) return s.viewer.id === userId ? s.socketPath : undefined
     }
-    return false
+    return undefined
   }
 
   async listSessions(): Promise<EditorSessionInfo[]> {

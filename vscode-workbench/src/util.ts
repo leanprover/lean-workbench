@@ -43,14 +43,27 @@ export function equalMaps<T, U>(a: Map<T, U>, b: Map<T, U>, eqU?: (a: U, b: U) =
 
 // FIXME: use same consts in workbench-app/collab-server for single source of truth.
 
+export function bwrapProjectDir(projectName: string) {
+  return `/workspace/${projectName}/`
+}
+
 /** Path to workspace metadata file in VSCode bwraps. */
 export const BWRAP_METADATA_PATH = '/workspace/.lean-workbench.json'
 
 export const zWorkspaceMetadata = z.object({
-  /** Name of the user viewing/editing the project. */
+  /** Scheme, host, and port through which the browser reaches the workbench. */
+  baseUrl: z.url(),
+  /** User viewing/editing the current project. */
   viewer: z.object({
     name: z.string(),
     image: z.nullish(z.string()),
+  }),
+  /** Metadata about the current project. */
+  project: z.object({
+    name: z.string(),
+    owner: z.object({
+      name: z.string(),
+    }),
   }),
   /** Files that should be synced collaboratively across viewers.
    * Patterns are matched with minimatch. */
