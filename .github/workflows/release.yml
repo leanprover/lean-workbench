@@ -27,6 +27,8 @@ jobs:
 
       - run: npm clean-install
 
+      - run: make collab-server/dist/server.js
+
       - run: make vscode-workbench.vsix
 
       # Install docker-container driver needed to import cache from GHCR below.
