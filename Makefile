@@ -14,10 +14,13 @@ clean:
 	@test "$(realpath $(WORKBENCH_ROOT) 2>/dev/null)" != "/" || { echo "ERROR: WORKBENCH_ROOT resolves to /"; exit 1; }
 	rm -rf $(WORKBENCH_ROOT)
 	
-vscode-workbench.vsix: $(shell find vscode-workbench/src -type f) vscode-workbench/.vscodeignore vscode-workbench/esbuild.mjs vscode-workbench/package.json vscode-workbench/tsconfig.json
+vscode-workbench.vsix: $(shell find vscode-workbench/src -type f) $(shell find vscode-workbench/media -type f) vscode-workbench/.vscodeignore vscode-workbench/esbuild.mjs vscode-workbench/package.json vscode-workbench/tsconfig.json package.json package-lock.json
 	cd vscode-workbench && npx vsce package --out ../vscode-workbench.vsix
 
-container: vscode-workbench.vsix
+collab-server/dist/server.js: $(shell find collab-server/src -type f) collab-server/esbuild.mjs collab-server/package.json collab-server/tsconfig.json package.json package-lock.json
+	npm --workspace collab-server run build
+
+container: vscode-workbench.vsix collab-server/dist/server.js
 	docker build $(DOCKER_BUILD_FLAGS) --tag $(IMAGE_NAME):$(IMAGE_TAG) --target runner-prod .
 
 container-dev:
