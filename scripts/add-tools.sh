@@ -19,17 +19,18 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: add-tools.sh [OPTIONS] [TOOL...]
+Usage: add-tools.sh [OPTIONS] [ITEM...]
 
 Add Lean-library package sets + templates to a seeded lean-workbench data volume.
-With no TOOL arguments, adds every tool in the registry.
+With no ITEM arguments, adds every tool and content template in the registry.
 
 Options:
   --data-dir DIR   Data directory for lean-workbench state (default: /data)
-  --force          Rebuild a tool even if its package set already exists
+  --force          Rebuild an item even if it already exists
   --help           Show this help message
 
-Tools: verbose yalep
+Tools (build their own package set): verbose yalep
+Content templates (reuse an existing package set): proofs-with-lean
 EOF
   exit 0
 }
@@ -71,9 +72,27 @@ IMPORT[yalep]="Yalep.English"
 TNAME[yalep]="Lean v4.31.0 + Yalep"
 TDESC[yalep]="Pre-built Yalep (natural-language proof tactics for teaching) + Mathlib"
 
-[[ ${#TOOLS[@]} -eq 0 ]] && TOOLS=("${ALL_TOOLS[@]}")
-for tool in "${TOOLS[@]}"; do
-  [[ -v GIT[$tool] ]] || { echo "Unknown tool: $tool (known: ${ALL_TOOLS[*]})"; exit 1; }
+# --- Content template registry ---------------------------------------------
+# Unlike a tool, a content template does not build a package set: it ships the
+# full contents of an upstream repo as the template and *reuses* an existing
+# package set (built earlier from one of the tools above). For this to avoid a
+# rebuild on first open, the repo's checked-in lake-manifest.json must pin the
+# exact revisions baked into PKGSET; pin REV to a commit you've verified.
+# proofs-with-lean @ 9fb36fe matches verbose-v4.31.0 exactly (verbose master ==
+# tag v4.31.0 == 60ff548, and all transitive deps are identical).
+ALL_CONTENT_TEMPLATES=(proofs-with-lean)
+declare -A CGIT CREV CPKGSET CTNAME CTDESC
+
+CGIT[proofs-with-lean]="https://github.com/PatrickMassot/proofs_with_lean.git"
+CREV[proofs-with-lean]="9fb36fed4ced6bcd85ee71c9560683cba14e398e"
+CPKGSET[proofs-with-lean]="verbose-v4.31.0"
+CTNAME[proofs-with-lean]="Proofs with Lean (book exercises)"
+CTDESC[proofs-with-lean]="Patrick Massot's 'Proofs with Lean' exercises, on Verbose + Mathlib"
+
+[[ ${#TOOLS[@]} -eq 0 ]] && TOOLS=("${ALL_TOOLS[@]}" "${ALL_CONTENT_TEMPLATES[@]}")
+for item in "${TOOLS[@]}"; do
+  [[ -v GIT[$item] || -v CGIT[$item] ]] \
+    || { echo "Unknown item: $item (tools: ${ALL_TOOLS[*]}; templates: ${ALL_CONTENT_TEMPLATES[*]})"; exit 1; }
 done
 
 # --- Verify the workbench is seeded ----------------------------------------
@@ -183,8 +202,47 @@ EOF
   echo "[add-tools] Done $tool: package set '$set_id', template '$template_id'."
 }
 
-for tool in "${TOOLS[@]}"; do
-  build_tool "$tool"
+# Materialize a content template from an upstream repo, reusing an existing
+# package set. The template ID is the content-template id (satisfies
+# TEMPLATE_ID_RE: no dots).
+build_content_template() {
+  local id="$1"
+  local pkgset="${CPKGSET[$id]}"
+  local template_dir="$ROOT/templates/$id"
+
+  if [[ ! -f "$ROOT/package-sets/$pkgset/packages.txt" ]]; then
+    echo "[add-tools] ERROR: content template '$id' needs package set '$pkgset', which is missing." >&2
+    echo "[add-tools] Build it first, e.g.: add-tools.sh verbose" >&2
+    exit 1
+  fi
+  if [[ -f "$template_dir/metadata.json" && "$FORCE" -eq 0 ]]; then
+    echo "[add-tools] template '$id' already present, skipping (use --force to rebuild)."
+    return
+  fi
+
+  echo "[add-tools] Fetching content template '$id' from ${CGIT[$id]}@${CREV[$id]}"
+  local work; work=$(mktemp -d)
+  WORK_DIRS+=("$work")
+  git clone --quiet "${CGIT[$id]}" "$work/repo"
+  git -C "$work/repo" checkout --quiet "${CREV[$id]}"
+  rm -rf "$work/repo/.git"
+
+  rm -rf "$template_dir"
+  mkdir -p "$template_dir"
+  cp -a "$work/repo/." "$template_dir/"
+  cat > "$template_dir/metadata.json" <<EOF
+{ "name": "${CTNAME[$id]}", "description": "${CTDESC[$id]}", "packageSet": "$pkgset" }
+EOF
+  echo "[add-tools] Done content template '$id' (reuses package set '$pkgset')."
+}
+
+# Build tools first so their package sets exist before content templates,
+# which reuse them, run -- regardless of the order items were requested.
+for item in "${TOOLS[@]}"; do
+  [[ -v GIT[$item] ]] && build_tool "$item"
+done
+for item in "${TOOLS[@]}"; do
+  [[ -v CGIT[$item] ]] && build_content_template "$item"
 done
 
 echo ""
