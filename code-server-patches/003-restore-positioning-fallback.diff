@@ -1,0 +1,605 @@
+Undoes https://github.com/microsoft/vscode/pull/312044
+and https://github.com/microsoft/vscode/pull/313443
+which break Firefox ESR 140,
+since `position-anchor` is only supported in Firefox 147 onwards.
+======================================================================================================
+diff --git a/src/vs/base/browser/overlayLayoutElement.ts b/src/vs/base/browser/overlayLayoutElement.ts
+index 6299d391..72519bde 100644
+--- a/src/vs/base/browser/overlayLayoutElement.ts
++++ b/src/vs/base/browser/overlayLayoutElement.ts
+@@ -3,10 +3,16 @@
+  *  Licensed under the MIT License. See License.txt in the project root for license information.
+  *--------------------------------------------------------------------------------------------*/
+ 
+-import { getComputedStyle, setParentFlowTo } from './dom.js';
++import { getComputedStyle, IDimension, IDomPosition, setParentFlowTo } from './dom.js';
+ import { IDisposable } from '../common/lifecycle.js';
++import { Lazy } from '../common/lazy.js';
+ import { generateUuid } from '../common/uuid.js';
+ 
++/**
++ * Whether CSS anchor positioning is supported
++ */
++const supportsAnchorPositioning = new Lazy(() => CSS.supports('(top: anchor(top))'));
++
+ /**
+  * If the element already has an `anchor-name` style, return it.
+  * Otherwise generate a fresh `--overlay-anchor-<uuid>` name, assign it, and return it.
+@@ -26,7 +32,7 @@ function getOrCreateAnchorName(element: HTMLElement): string {
+  *
+  * This is useful for cases where a dom node cannot be re-parented without losing its state, such as a iframe.
+  *
+- * Call {@link setAnchorElement} each time the layout is recalculated. When the
++ * Call {@link layoutOverAnchorElement} each time the layout is recalculated. When the
+  * same anchor element is passed again the call is a no-op (the browser keeps them in sync).
+  */
+ export class OverlayLayoutElement implements IDisposable {
+@@ -54,12 +60,14 @@ export class OverlayLayoutElement implements IDisposable {
+ 	}
+ 
+ 	public reapplyLayoutStyles(): void {
+-		this.content.style.position = 'fixed';
+-		this.content.style.top = 'anchor(top)';
+-		this.content.style.left = 'anchor(left)';
+-		this.content.style.width = 'anchor-size(width)';
+-		this.content.style.height = 'anchor-size(height)';
+-		this.content.style.pointerEvents = 'auto';
++		if (supportsAnchorPositioning.value) {
++			this.content.style.position = 'fixed';
++			this.content.style.top = 'anchor(top)';
++			this.content.style.left = 'anchor(left)';
++			this.content.style.width = 'anchor-size(width)';
++			this.content.style.height = 'anchor-size(height)';
++			this.content.style.pointerEvents = 'auto';
++		}
+ 
+ 		this._root.style.position = 'absolute';
+ 		this._root.style.pointerEvents = 'none';
+@@ -85,22 +93,46 @@ export class OverlayLayoutElement implements IDisposable {
+ 	/**
+ 	 * Position the content over `anchorElement`.
+ 	 *
+-	 * This only needs to be called when the anchor element or the clipping container changes.
++	 * For legacy browser support this should be called each time the layout is recalculated.
+ 	 */
+-	public setAnchorElement(
++	public layoutOverAnchorElement(
+ 		anchorElement: HTMLElement,
+ 		options?: {
+ 			readonly clippingContainer?: HTMLElement;
++			readonly fallbackDimension?: IDimension;
++			readonly fallbackPosition?: IDomPosition;
+ 		},
+ 	): void {
+-		if (this._currentAnchor?.element !== anchorElement) {
+-			const name = getOrCreateAnchorName(anchorElement);
+-			this.content.style.setProperty('position-anchor', name);
++		if (supportsAnchorPositioning.value) {
++			if (this._currentAnchor?.element !== anchorElement) {
++				const name = getOrCreateAnchorName(anchorElement);
++				this.content.style.setProperty('position-anchor', name);
++				setParentFlowTo(this.content, anchorElement);
++				this._currentAnchor = { element: anchorElement, name };
++			}
++		} else {
++			const cs = this.content.style;
++
++			if (options?.fallbackPosition) {
++				cs.top = `${options.fallbackPosition.top}px`;
++				cs.left = `${options.fallbackPosition.left}px`;
++			} else {
++				const anchorRect = anchorElement.getBoundingClientRect();
++				const parentRect = this.content.parentElement!.getBoundingClientRect();
++				const parentBorderTop = (parentRect.height - this.content.parentElement!.clientHeight) / 2.0;
++				const parentBorderLeft = (parentRect.width - this.content.parentElement!.clientWidth) / 2.0;
++				cs.top = `${anchorRect.top - parentRect.top - parentBorderTop}px`;
++				cs.left = `${anchorRect.left - parentRect.left - parentBorderLeft}px`;
++			}
++
+ 			setParentFlowTo(this.content, anchorElement);
+-			this._currentAnchor = { element: anchorElement, name };
++
++			const anchorRect = anchorElement.getBoundingClientRect();
++			cs.width = `${options?.fallbackDimension ? options.fallbackDimension.width : anchorRect.width}px`;
++			cs.height = `${options?.fallbackDimension ? options.fallbackDimension.height : anchorRect.height}px`;
+ 		}
+ 
+-		this._updateClipping(options?.clippingContainer);
++		this._updateClipping(anchorElement, options?.clippingContainer);
+ 		this._updateZIndex(anchorElement);
+ 	}
+ 
+@@ -121,30 +153,46 @@ export class OverlayLayoutElement implements IDisposable {
+ 		this.content.style.zIndex = zIndex;
+ 	}
+ 
+-	private _updateClipping(clippingContainer: HTMLElement | undefined): void {
+-		if (this._clippingAnchor?.element === clippingContainer) {
+-			return;
+-		}
++	private _updateClipping(anchorElement: HTMLElement, clippingContainer: HTMLElement | undefined): void {
++		if (supportsAnchorPositioning.value) {
++			if (this._clippingAnchor?.element === clippingContainer) {
++				return;
++			}
+ 
+-		this._root.style.removeProperty('position-anchor');
+-
+-		const ws = this._root.style;
+-		if (clippingContainer) {
+-			const name = getOrCreateAnchorName(clippingContainer);
+-			ws.clipPath = 'content-box';
+-			ws.setProperty('position-anchor', name);
+-			ws.setProperty('top', 'anchor(top)');
+-			ws.setProperty('left', 'anchor(left)');
+-			ws.setProperty('width', `anchor-size(width)`);
+-			ws.setProperty('height', `anchor-size(height)`);
+-			this._clippingAnchor = { element: clippingContainer, name };
++			this._root.style.removeProperty('position-anchor');
++
++			const ws = this._root.style;
++			if (clippingContainer) {
++				const name = getOrCreateAnchorName(clippingContainer);
++				ws.clipPath = 'content-box';
++				ws.setProperty('position-anchor', name);
++				ws.setProperty('top', 'anchor(top)');
++				ws.setProperty('left', 'anchor(left)');
++				ws.setProperty('width', `anchor-size(width)`);
++				ws.setProperty('height', `anchor-size(height)`);
++				this._clippingAnchor = { element: clippingContainer, name };
++			} else {
++				ws.clipPath = '';
++				ws.setProperty('top', '0');
++				ws.setProperty('left', '0');
++				ws.setProperty('right', '0');
++				ws.setProperty('bottom', '0');
++				this._clippingAnchor = undefined;
++			}
+ 		} else {
+-			ws.clipPath = '';
+-			ws.setProperty('top', '0');
+-			ws.setProperty('left', '0');
+-			ws.setProperty('right', '0');
+-			ws.setProperty('bottom', '0');
+-			this._clippingAnchor = undefined;
++			if (clippingContainer) {
++				const anchorRect = anchorElement.getBoundingClientRect();
++				const clipRect = clippingContainer.getBoundingClientRect();
++				const top = Math.max(clipRect.top - anchorRect.top, 0);
++				const right = Math.max(anchorRect.width - (anchorRect.right - clipRect.right), 0);
++				const bottom = Math.max(anchorRect.height - (anchorRect.bottom - clipRect.bottom), 0);
++				const left = Math.max(clipRect.left - anchorRect.left, 0);
++				this.content.style.clipPath = `polygon(${left}px ${top}px, ${right}px ${top}px, ${right}px ${bottom}px, ${left}px ${bottom}px)`;
++				this._clippingAnchor = { element: clippingContainer, name: '' };
++			} else {
++				this.content.style.clipPath = '';
++				this._clippingAnchor = undefined;
++			}
+ 		}
+ 	}
+ }
+diff --git a/src/vs/workbench/contrib/chat/browser/agentPluginEditor/agentPluginEditor.ts b/src/vs/workbench/contrib/chat/browser/agentPluginEditor/agentPluginEditor.ts
+index 8abd1df8..2e4e6a21 100644
+--- a/src/vs/workbench/contrib/chat/browser/agentPluginEditor/agentPluginEditor.ts
++++ b/src/vs/workbench/contrib/chat/browser/agentPluginEditor/agentPluginEditor.ts
+@@ -423,7 +423,7 @@ export class AgentPluginEditor extends EditorPane {
+ 
+ 			webview.claim(this, this.window, undefined);
+ 			setParentFlowTo(webview.container, container);
+-			webview.setAnchorElement(container);
++			webview.layoutWebviewOverElement(container);
+ 
+ 			webview.setHtml(body);
+ 			webview.claim(this, this.window, undefined);
+@@ -434,7 +434,7 @@ export class AgentPluginEditor extends EditorPane {
+ 
+ 			const removeLayoutParticipant = arrays.insert(this.layoutParticipants, {
+ 				layout: () => {
+-					webview.setAnchorElement(container);
++					webview.layoutWebviewOverElement(container);
+ 				}
+ 			});
+ 			this.contentDisposables.add(toDisposable(removeLayoutParticipant));
+diff --git a/src/vs/workbench/contrib/extensions/browser/extensionEditor.ts b/src/vs/workbench/contrib/extensions/browser/extensionEditor.ts
+index fb7d19ea..134f64c2 100644
+--- a/src/vs/workbench/contrib/extensions/browser/extensionEditor.ts
++++ b/src/vs/workbench/contrib/extensions/browser/extensionEditor.ts
+@@ -713,7 +713,7 @@ export class ExtensionEditor extends EditorPane {
+ 
+ 			webview.claim(this, this.window, this.scopedContextKeyService);
+ 			setParentFlowTo(webview.container, container);
+-			webview.setAnchorElement(container);
++			webview.layoutWebviewOverElement(container);
+ 
+ 			webview.setHtml(body);
+ 			webview.claim(this, this.window, undefined);
+diff --git a/src/vs/workbench/contrib/mcp/browser/mcpServerEditor.ts b/src/vs/workbench/contrib/mcp/browser/mcpServerEditor.ts
+index 2064627d..2660e2d8 100644
+--- a/src/vs/workbench/contrib/mcp/browser/mcpServerEditor.ts
++++ b/src/vs/workbench/contrib/mcp/browser/mcpServerEditor.ts
+@@ -498,7 +498,7 @@ export class McpServerEditor extends EditorPane {
+ 
+ 			webview.claim(this, this.window, this.scopedContextKeyService);
+ 			setParentFlowTo(webview.container, container);
+-			webview.setAnchorElement(container);
++			webview.layoutWebviewOverElement(container);
+ 
+ 			webview.setHtml(body);
+ 			webview.claim(this, this.window, undefined);
+@@ -509,7 +509,7 @@ export class McpServerEditor extends EditorPane {
+ 
+ 			const removeLayoutParticipant = arrays.insert(this.layoutParticipants, {
+ 				layout: () => {
+-					webview.setAnchorElement(container);
++					webview.layoutWebviewOverElement(container);
+ 				}
+ 			});
+ 			this.contentDisposables.add(toDisposable(removeLayoutParticipant));
+diff --git a/src/vs/workbench/contrib/notebook/browser/notebookEditorWidget.ts b/src/vs/workbench/contrib/notebook/browser/notebookEditorWidget.ts
+index 6b8d6b22..7c8cc185 100644
+--- a/src/vs/workbench/contrib/notebook/browser/notebookEditorWidget.ts
++++ b/src/vs/workbench/contrib/notebook/browser/notebookEditorWidget.ts
+@@ -216,6 +216,7 @@ export class NotebookEditorWidget extends Disposable implements INotebookEditorD
+ 	private _localCellStateListeners: DisposableStore[] = [];
+ 	private _fontInfo: FontInfo | undefined;
+ 	private _dimension?: DOM.Dimension;
++	private _position?: DOM.IDomPosition;
+ 	private _shadowElement?: HTMLElement;
+ 	private _cellLayoutManager: NotebookCellLayoutManager | undefined;
+ 
+@@ -416,6 +417,13 @@ export class NotebookEditorWidget extends Disposable implements INotebookEditorD
+ 		}));
+ 
+ 		const container = creationOptions.codeWindow ? this.layoutService.getContainer(creationOptions.codeWindow) : this.layoutService.mainContainer;
++		this._register(editorGroupsService.getPart(container).onDidScroll(e => {
++			if (!this._shadowElement || !this._isVisible) {
++				return;
++			}
++
++			this.layoutContainerOverShadowElement(this._shadowElement, this._dimension, this._position);
++		}));
+ 
+ 		this.notebookEditorService.addNotebookEditor(this);
+ 
+@@ -1874,6 +1882,7 @@ export class NotebookEditorWidget extends Disposable implements INotebookEditorD
+ 	layout(dimension: DOM.Dimension, shadowElement?: HTMLElement, position?: DOM.IDomPosition): void {
+ 		if (!shadowElement && !this._shadowElement) {
+ 			this._dimension = dimension;
++			this._position = position;
+ 			return;
+ 		}
+ 
+@@ -1887,19 +1896,20 @@ export class NotebookEditorWidget extends Disposable implements INotebookEditorD
+ 			// In floating windows, we need to ensure that the
+ 			// container is ready for us to compute certain
+ 			// layout related properties.
+-			whenContainerStylesLoaded.then(() => this.layoutNotebook(dimension, shadowElement));
++			whenContainerStylesLoaded.then(() => this.layoutNotebook(dimension, shadowElement, position));
+ 		} else {
+-			this.layoutNotebook(dimension, shadowElement);
++			this.layoutNotebook(dimension, shadowElement, position);
+ 		}
+ 
+ 	}
+ 
+-	private layoutNotebook(dimension: DOM.Dimension, shadowElement?: HTMLElement) {
++	private layoutNotebook(dimension: DOM.Dimension, shadowElement?: HTMLElement, position?: DOM.IDomPosition) {
+ 		if (shadowElement) {
+ 			this._shadowElement = shadowElement;
+ 		}
+ 
+ 		this._dimension = dimension;
++		this._position = position;
+ 		const newBodyHeight = this.getBodyHeight(dimension.height) - this.getLayoutInfo().stickyHeight;
+ 		DOM.size(this._body, dimension.width, newBodyHeight);
+ 
+@@ -1916,7 +1926,7 @@ export class NotebookEditorWidget extends Disposable implements INotebookEditorD
+ 
+ 		this._overlayContainer.inert = false;
+ 
+-		this.layoutContainerOverShadowElement(shadowElement ?? this._shadowElement);
++		this.layoutContainerOverShadowElement(shadowElement ?? this._shadowElement, dimension, position);
+ 
+ 		if (this._webviewTransparentCover) {
+ 			this._webviewTransparentCover.style.height = `${dimension.height}px`;
+@@ -1929,17 +1939,21 @@ export class NotebookEditorWidget extends Disposable implements INotebookEditorD
+ 		this._viewContext?.eventDispatcher.emit([new NotebookLayoutChangedEvent({ width: true, fontInfo: true }, this.getLayoutInfo())]);
+ 	}
+ 
+-	private layoutContainerOverShadowElement(anchorElement: HTMLElement | undefined): void {
+-		if (!anchorElement) {
++	private layoutContainerOverShadowElement(shadowElement: HTMLElement | undefined, dimension?: DOM.Dimension, position?: DOM.IDomPosition): void {
++		if (!shadowElement) {
+ 			return;
+ 		}
+ 
+ 		const modalEditorContainer = this.editorGroupsService.activeModalEditorPart?.modalElement;
+-		const isModal = DOM.isHTMLElement(modalEditorContainer) && modalEditorContainer.contains(anchorElement);
+-		const clippingContainer = isModal ? undefined : this.layoutService.getContainer(DOM.getWindow(this.getDomNode()), Parts.EDITOR_PART);
++		let clippingContainer: HTMLElement | undefined;
++		if (DOM.isHTMLElement(modalEditorContainer) && modalEditorContainer.contains(shadowElement)) {
++			clippingContainer = modalEditorContainer;
++		} else {
++			clippingContainer = this.layoutService.getContainer(DOM.getWindow(this.getDomNode()), Parts.EDITOR_PART);
++		}
+ 
+ 		this._overlayContainer.style.visibility = 'visible';
+-		this._overlayLayout.setAnchorElement(anchorElement, { clippingContainer });
++		this._overlayLayout.layoutOverAnchorElement(shadowElement, { clippingContainer, fallbackDimension: dimension, fallbackPosition: position });
+ 		this._overlayLayout.reapplyLayoutStyles();
+ 	}
+ 
+diff --git a/src/vs/workbench/contrib/webview/browser/overlayWebview.ts b/src/vs/workbench/contrib/webview/browser/overlayWebview.ts
+index b45c2e4f..683604c1 100644
+--- a/src/vs/workbench/contrib/webview/browser/overlayWebview.ts
++++ b/src/vs/workbench/contrib/webview/browser/overlayWebview.ts
+@@ -3,7 +3,7 @@
+  *  Licensed under the MIT License. See License.txt in the project root for license information.
+  *--------------------------------------------------------------------------------------------*/
+ 
+-import { getWindowById } from '../../../../base/browser/dom.js';
++import { Dimension, getWindowById } from '../../../../base/browser/dom.js';
+ import { IMouseWheelEvent } from '../../../../base/browser/mouseEvent.js';
+ import { OverlayLayoutElement } from '../../../../base/browser/overlayLayoutElement.js';
+ import { CodeWindow } from '../../../../base/browser/window.js';
+@@ -57,8 +57,6 @@ export class OverlayWebview extends Disposable implements IOverlayWebview {
+ 
+ 	private _overlayLayout: OverlayLayoutElement | undefined;
+ 
+-	private _anchorState: { readonly anchorElement: HTMLElement; readonly clippingContainer?: HTMLElement } | undefined;
+-
+ 	public constructor(
+ 		initInfo: WebviewInitInfo,
+ 		@IWorkbenchLayoutService private readonly _layoutService: IWorkbenchLayoutService,
+@@ -106,21 +104,17 @@ export class OverlayWebview extends Disposable implements IOverlayWebview {
+ 			throw new Error(`OverlayWebview has been disposed`);
+ 		}
+ 
+-		return this.overlayLayout.content;
+-	}
+-
+-	private get overlayLayout() {
+ 		if (!this._overlayLayout) {
+ 			this._overlayLayout = new OverlayLayoutElement();
+ 			this._overlayLayout.content.style.visibility = 'hidden';
+ 
+-			// Webviews cannot be reparented in the dom as it will destroy their contents.
+-			// Mount them to a high level node to avoid this depending on the active container.
++			// // Webviews cannot be reparented in the dom as it will destroy their contents.
++			// // Mount them to a high level node to avoid this depending on the active container.
+ 			const root = this._layoutService.getContainer(this.window);
+ 			root.appendChild(this._overlayLayout.root);
+ 		}
+ 
+-		return this._overlayLayout;
++		return this._overlayLayout.content;
+ 	}
+ 
+ 	public claim(owner: unknown, targetWindow: CodeWindow, scopedContextKeyService: IContextKeyService | undefined) {
+@@ -144,10 +138,6 @@ export class OverlayWebview extends Disposable implements IOverlayWebview {
+ 		this._windowId = targetWindow.vscodeWindowId;
+ 		this._show(targetWindow);
+ 
+-		if (this._anchorState) {
+-			this.overlayLayout.setAnchorElement(this._anchorState.anchorElement, { clippingContainer: this._anchorState.clippingContainer });
+-		}
+-
+ 		if (oldOwner !== owner) {
+ 			const contextKeyService = (scopedContextKeyService || this._baseContextKeyService);
+ 
+@@ -192,10 +182,12 @@ export class OverlayWebview extends Disposable implements IOverlayWebview {
+ 		}
+ 	}
+ 
+-	public setAnchorElement(anchorElement: HTMLElement, clippingContainer?: HTMLElement) {
+-		this._anchorState = { anchorElement, clippingContainer };
+-		// Force the overlay layout to be created if it doesn't exist
+-		this.overlayLayout.setAnchorElement(anchorElement, { clippingContainer });
++	public layoutWebviewOverElement(anchorElement: HTMLElement, dimension?: Dimension, clippingContainer?: HTMLElement) {
++		if (!this._overlayLayout || !this._overlayLayout.content.parentElement) {
++			return;
++		}
++
++		this._overlayLayout?.layoutOverAnchorElement(anchorElement, { clippingContainer, fallbackDimension: dimension });
+ 	}
+ 
+ 	private _show(targetWindow: CodeWindow) {
+diff --git a/src/vs/workbench/contrib/webview/browser/webview.ts b/src/vs/workbench/contrib/webview/browser/webview.ts
+index f950b7b5..d0bdc45d 100644
+--- a/src/vs/workbench/contrib/webview/browser/webview.ts
++++ b/src/vs/workbench/contrib/webview/browser/webview.ts
+@@ -3,6 +3,7 @@
+  *  Licensed under the MIT License. See License.txt in the project root for license information.
+  *--------------------------------------------------------------------------------------------*/
+ 
++import { Dimension } from '../../../../base/browser/dom.js';
+ import { IMouseWheelEvent } from '../../../../base/browser/mouseEvent.js';
+ import { CodeWindow } from '../../../../base/browser/window.js';
+ import { equals } from '../../../../base/common/arrays.js';
+@@ -343,13 +344,14 @@ export interface IOverlayWebview extends IWebview {
+ 	release(claimant: any): void;
+ 
+ 	/**
+-	 * Sets the webview to be absolutely positioned on top of another element in the DOM.
++	 * Absolutely position the webview on top of another element in the DOM.
+ 	 *
+ 	 * @param element Element to position the webview on top of. This element should
+ 	 *   be an placeholder for the webview since the webview will entirely cover it.
++	 * @param dimension Optional explicit dimensions to use for sizing the webview.
+ 	 * @param clippingContainer Optional container to clip the webview to. This should generally be a parent of `element`.
+ 	 */
+-	setAnchorElement(element: HTMLElement, clippingContainer?: HTMLElement): void;
++	layoutWebviewOverElement(element: HTMLElement, dimension?: Dimension, clippingContainer?: HTMLElement): void;
+ }
+ 
+ /**
+diff --git a/src/vs/workbench/contrib/webviewPanel/browser/webviewEditor.ts b/src/vs/workbench/contrib/webviewPanel/browser/webviewEditor.ts
+index 75a9d7e9..d62c7165 100644
+--- a/src/vs/workbench/contrib/webviewPanel/browser/webviewEditor.ts
++++ b/src/vs/workbench/contrib/webviewPanel/browser/webviewEditor.ts
+@@ -42,6 +42,7 @@ export class WebviewEditor extends EditorPane {
+ 	private _element?: HTMLElement;
+ 	private _visible = false;
+ 	private _isDisposed = false;
++	private _dimension?: DOM.Dimension;
+ 	private _clippingContainer?: HTMLElement;
+ 
+ 	private readonly _webviewVisibleDisposables = this._register(new DisposableStore());
+@@ -64,6 +65,13 @@ export class WebviewEditor extends EditorPane {
+ 		@IContextKeyService private readonly _contextKeyService: IContextKeyService,
+ 	) {
+ 		super(WebviewEditor.ID, group, telemetryService, themeService, storageService);
++
++		const part = _editorGroupsService.getPart(group);
++		this._register(Event.any(part.onDidScroll, part.onDidAddGroup, part.onDidRemoveGroup, part.onDidMoveGroup)(() => {
++			if (this.webview && this._visible) {
++				this.synchronizeWebviewContainerDimensions(this.webview);
++			}
++		}));
+ 	}
+ 
+ 	private get webview(): IOverlayWebview | undefined {
+@@ -94,6 +102,10 @@ export class WebviewEditor extends EditorPane {
+ 
+ 	public override layout(dimension: DOM.Dimension): void {
+ 		this.setEditorVisible(dimension.width > 0 && dimension.height > 0);
++		this._dimension = dimension;
++		if (this.webview && this._visible) {
++			this.synchronizeWebviewContainerDimensions(this.webview, dimension);
++		}
+ 	}
+ 
+ 	public override focus(): void {
+@@ -182,16 +194,16 @@ export class WebviewEditor extends EditorPane {
+ 
+ 		this._webviewVisibleDisposables.add(new WebviewWindowDragMonitor(this.window, () => this.webview));
+ 
+-		this.setWebviewAnchorElement(input.webview);
++		this.synchronizeWebviewContainerDimensions(input.webview, this._dimension);
+ 		this._webviewVisibleDisposables.add(this.trackFocus(input.webview));
+ 	}
+ 
+-	private setWebviewAnchorElement(webview: IOverlayWebview) {
++	private synchronizeWebviewContainerDimensions(webview: IOverlayWebview, dimension?: DOM.Dimension) {
+ 		if (!this._element?.isConnected) {
+ 			return;
+ 		}
+ 
+-		webview.setAnchorElement(this._element.parentElement!, this._clippingContainer);
++		webview.layoutWebviewOverElement(this._element.parentElement!, dimension, this._clippingContainer);
+ 	}
+ 
+ 	private trackFocus(webview: IOverlayWebview): IDisposable {
+diff --git a/src/vs/workbench/contrib/webviewView/browser/webviewViewPane.ts b/src/vs/workbench/contrib/webviewView/browser/webviewViewPane.ts
+index 06cbc76a..efa5a1b2 100644
+--- a/src/vs/workbench/contrib/webviewView/browser/webviewViewPane.ts
++++ b/src/vs/workbench/contrib/webviewView/browser/webviewViewPane.ts
+@@ -3,7 +3,7 @@
+  *  Licensed under the MIT License. See License.txt in the project root for license information.
+  *--------------------------------------------------------------------------------------------*/
+ 
+-import { addDisposableListener, EventType, findParentWithClass, getWindow } from '../../../../base/browser/dom.js';
++import { addDisposableListener, Dimension, EventType, findParentWithClass, getWindow } from '../../../../base/browser/dom.js';
+ import { CancellationTokenSource } from '../../../../base/common/cancellation.js';
+ import { Emitter } from '../../../../base/common/event.js';
+ import { DisposableStore, IDisposable, MutableDisposable, toDisposable } from '../../../../base/common/lifecycle.js';
+@@ -53,6 +53,7 @@ export class WebviewViewPane extends ViewPane {
+ 
+ 	private _container?: HTMLElement;
+ 	private _rootContainer?: HTMLElement;
++	private _resizeObserver?: ResizeObserver;
+ 
+ 	private readonly defaultTitle: string;
+ 	private setTitle: string | undefined;
+@@ -64,6 +65,8 @@ export class WebviewViewPane extends ViewPane {
+ 	private readonly viewState: WebviewViewState;
+ 	private readonly extensionId?: ExtensionIdentifier;
+ 
++	private _repositionTimeout?: Timeout;
++
+ 	constructor(
+ 		options: IViewletViewOptions,
+ 		@IConfigurationService configurationService: IConfigurationService,
+@@ -111,6 +114,8 @@ export class WebviewViewPane extends ViewPane {
+ 	override dispose() {
+ 		this._onDispose.fire();
+ 
++		clearTimeout(this._repositionTimeout);
++
+ 		super.dispose();
+ 	}
+ 
+@@ -125,7 +130,18 @@ export class WebviewViewPane extends ViewPane {
+ 		this._container = container;
+ 		this._rootContainer = undefined;
+ 
+-		this.layoutWebview();
++		if (!this._resizeObserver) {
++			this._resizeObserver = new ResizeObserver(() => {
++				setTimeout(() => {
++					this.layoutWebview();
++				}, 0);
++			});
++
++			this._register(toDisposable(() => {
++				this._resizeObserver?.disconnect();
++			}));
++			this._resizeObserver.observe(container);
++		}
+ 	}
+ 
+ 	public override saveState() {
+@@ -137,6 +153,12 @@ export class WebviewViewPane extends ViewPane {
+ 		super.saveState();
+ 	}
+ 
++	protected override layoutBody(height: number, width: number): void {
++		super.layoutBody(height, width);
++
++		this.layoutWebview(new Dimension(width, height));
++	}
++
+ 	private updateTreeVisibility() {
+ 		if (this.isBodyVisible()) {
+ 			this.activate();
+@@ -165,7 +187,9 @@ export class WebviewViewPane extends ViewPane {
+ 		webview.state = this.viewState[storageKeys.webviewState];
+ 		this._webview.value = webview;
+ 
+-		this.layoutWebview();
++		if (this._container) {
++			this.layoutWebview();
++		}
+ 
+ 		this._webviewDisposables.add(toDisposable(() => {
+ 			this._webview.value?.release(this);
+@@ -248,7 +272,11 @@ export class WebviewViewPane extends ViewPane {
+ 		return this.progressService.withProgress({ location: this.id, delay: 500 }, task);
+ 	}
+ 
+-	private layoutWebview() {
++	override onDidScrollRoot() {
++		this.layoutWebview();
++	}
++
++	private doLayoutWebview(dimension?: Dimension) {
+ 		const webviewEntry = this._webview.value;
+ 		if (!this._container || !webviewEntry) {
+ 			return;
+@@ -258,7 +286,15 @@ export class WebviewViewPane extends ViewPane {
+ 			this._rootContainer = this.findRootContainer(this._container);
+ 		}
+ 
+-		webviewEntry.setAnchorElement(this._container, this._rootContainer);
++		webviewEntry.layoutWebviewOverElement(this._container, dimension, this._rootContainer);
++	}
++
++	private layoutWebview(dimension?: Dimension) {
++		this.doLayoutWebview(dimension);
++		// Temporary fix for https://github.com/microsoft/vscode/issues/110450
++		// There is an animation that lasts about 200ms, update the webview positioning once this animation is complete.
++		clearTimeout(this._repositionTimeout);
++		this._repositionTimeout = setTimeout(() => this.doLayoutWebview(dimension), 200);
+ 	}
+ 
+ 	private findRootContainer(container: HTMLElement): HTMLElement | undefined {
