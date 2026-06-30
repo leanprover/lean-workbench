@@ -72,8 +72,6 @@ const VSCODE_SOCKET_FILENAME = 'client.sock'
 export class VscodeServerHandle implements AsyncDisposable {
   /** Unique ID of this VSCode server instance. */
   readonly uuid = crypto.randomUUID()
-  /** Route that Nginx exposes the VSCode server on. */
-  readonly vscodeIframePath = `/_vs/${this.uuid}/`
   /** Directory in which the server places its UDS file. */
   readonly socketDir = `/tmp/vsc-${this.uuid}/`
   /** Host path to the server's UDS file. */
@@ -109,6 +107,12 @@ export class VscodeServerHandle implements AsyncDisposable {
 
   private get description(): string {
     return `vscode-server ${this.uuid} (project ${this.project.id}, viewer ${this.viewer.id})`
+  }
+
+  /** Path and query string that should be used to connect to the VSCode web interface. */
+  get vscodeIframeSrc(): string {
+    const params = new URLSearchParams({ folder: bwrapProjectDir(this.project.name) })
+    return `/_vs/${this.uuid}/?${params}`
   }
 
   /** Signal the server to start.
