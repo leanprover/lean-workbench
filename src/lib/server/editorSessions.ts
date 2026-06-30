@@ -178,7 +178,7 @@ export class EditorSessionManager {
     }
 
     await vscServer.started
-    return vscServer.vscodeIframePath
+    return vscServer.vscodeIframeSrc
   }
 
   killSession(projectId: string, sessionId: string): void {
