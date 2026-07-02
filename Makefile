@@ -6,6 +6,10 @@ IMAGE_DEV_TAG = latest-dev
 DOCKER_BUILD_FLAGS ?=
 # VSCode's build process opens thousands of files
 DOCKER_BUILD_ULIMIT = --ulimit nofile=65536
+# IP Address where the HTTP server publishes to port 3000 (needs to be 0.0.0.0 in some situations)
+WORKBENCH_PUBLISH_IP ?= 127.0.0.1
+# Where the Docker's container ~/.cache lives, used mostly for Lean's download cache
+DOCKER_CACHE_DIR ?= $(CURDIR)/.docker-cache
 
 .DEFAULT_GOAL := container
 .PHONY: clean container container-dev test clean-install serve dev enter
@@ -44,14 +48,11 @@ DOCKER_RUN = docker run --rm --init --tty \
 
 serve: container
 	mkdir -p $(WORKBENCH_ROOT)
-	$(DOCKER_RUN) -p 127.0.0.1:3000:3000 $(IMAGE_NAME):$(IMAGE_TAG)
+	$(DOCKER_RUN) -p $(WORKBENCH_PUBLISH_IP):3000:3000 $(IMAGE_NAME):$(IMAGE_TAG)
 
 enter: container
 	mkdir -p $(WORKBENCH_ROOT)
 	$(DOCKER_RUN) --interactive --entrypoint bash $(IMAGE_NAME):$(IMAGE_TAG)
-
-WORKBENCH_DEV_IP ?= 127.0.0.1
-DOCKER_CACHE_DIR ?= $(CURDIR)/.docker-cache
 
 dev: container-dev
 	mkdir -p $(WORKBENCH_ROOT)
@@ -60,7 +61,7 @@ dev: container-dev
 # 9229: Node.js debugger
 	npx concurrently --names host,docker \
 		'npm run watch' \
-		'$(DOCKER_RUN) -p $(WORKBENCH_DEV_IP):3000:3000 \
+		'$(DOCKER_RUN) -p $(WORKBENCH_PUBLISH_IP):3000:3000 \
 			-p 127.0.0.1:9229:9229 \
 			-v $(DOCKER_CACHE_DIR):/root/.cache \
 			-v $(CURDIR):/app/workbench:ro \

@@ -17,10 +17,10 @@ make dev # build and run the container in development mode
 Open `http://localhost:3000`. You'll see the setup page.
 
 1. - **Skip the OAuth section** — it's optional in dev mode.
-     This is the fastest way to get a running instance. The UI forces you to
-     put *something* for "Client ID" and "Client Secret", but if you put in
-     something invalid (and then "Save Configuration") the only consequence is
-     that GitHub OAuth won't work.
+     This is the fastest way to get a running instance.
+     The UI forces you to put *something* for "Client ID" and "Client Secret",
+     but if you put in something invalid (and then "Save Configuration")
+     the only consequence is that GitHub OAuth won't work.
    - **Or** [create a GitHub OAuth App](https://github.com/settings/developers)
      with callback URL `http://localhost:3000/api/auth/github/callback`.
      Enter the resulting credentials on the setup page.
@@ -30,10 +30,9 @@ Open `http://localhost:3000`. You'll see the setup page.
 
 ### Sandboxed development
 
-Development can be done inside of Docker Sandbox (which lets one avoid
-installing Docker Desktop on OSX). The following commands inside the
-`lean-workbench` directory will create a virtual machine and allow sufficient
-cnetwork access:
+Development can be done inside of Docker Sandbox (which lets one avoid installing Docker Desktop on OSX).
+The following commands inside the `lean-workbench` directory will create a virtual machine
+and allow sufficient network access:
 
 ```
 sbx create shell --name workbench .
@@ -46,20 +45,18 @@ The sandbox can be started by running
 sbx run --name workbench
 ```
 
-Before running the usual dev setup in the sandbox, you'll need to run the
-following commands inside the sandbox. The `WORKBENCH_DEV_IP` setting is
-necessary to access workbench outside the sandbox, and the `DOCKER_CACHE_DIR`
-ensures that the docker cache doesn't have to cross the an inefficient VM
-boundary.
+Before running the usual dev setup in the sandbox, you'll need to run the following commands inside the sandbox.
+The `WORKBENCH_PUBLISH_IP` setting is necessary to access workbench outside the sandbox,
+and the `DOCKER_CACHE_DIR` ensures that the docker cache doesn't have to cross the an inefficient VM boundary.
 
 ```
-echo 'export WORKBENCH_DEV_IP=0.0.0.0' >> ~/.bashrc
+echo 'export WORKBENCH_PUBLISH_IP=0.0.0.0' >> ~/.bashrc
 echo 'export DOCKER_CACHE_DIR=lean-workbench-cache' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-You'll also need to run the following command outside the sandbox in order to
-access the sandboxed website from your computer.
+To access the sandboxed website from your computer,
+you'll also need to run the following command outside the sandbox.
 
 ```
 sbx ports workbench --publish 43000:3000
