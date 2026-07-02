@@ -111,6 +111,8 @@ export function sseStreamResponse(onCancel?: () => void): [Response, (msg: objec
   let close: () => void = () => {}
   let closed = false
   const encoder = new TextEncoder()
+  let keepAliveTimeout: ReturnType<typeof setInterval> | undefined = undefined
+
   const stream = new ReadableStream({
     start(controller) {
       send = msg => {
@@ -120,11 +122,20 @@ export function sseStreamResponse(onCancel?: () => void): [Response, (msg: objec
       close = () => {
         if (closed) return
         closed = true
+        clearInterval(keepAliveTimeout)
+        keepAliveTimeout = undefined
         controller.close()
       }
+      // nginx will close connections that don't send some message in 60s
+      keepAliveTimeout = setInterval(() => {
+        if (closed) return
+        controller.enqueue(encoder.encode(`:\n`))
+      }, 10_000)
     },
     cancel() {
       closed = true
+      clearInterval(keepAliveTimeout)
+      keepAliveTimeout = undefined
       if (onCancel) onCancel()
     },
   })

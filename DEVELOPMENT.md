@@ -36,7 +36,7 @@ and allow sufficient network access:
 
 ```
 sbx create shell --name workbench .
-sbx policy allow network --sandbox workbench '*.docker.com:443,production.cloudfront.docker.com:443,*.docker.io:443,openvsx.eclipsecontent.org:443,electronjs.org:443,*.electronjs.org:443,fonts.googleapis.com:443,github-cloud.githubusercontent.com:443,raw.githubusercontent.com:443,release-assets.githubusercontent.com:443,github.com:443,*.github.com:443,fonts.gstatic.com:443,*.lean-lang.org:443,playwright.download.prss.microsoft.com:443,nodejs.org:443,*.nodejs.com:443,deb.nodesource.com:443,*.npmjs.org:443,open-vsx.org:443,*.playwright.dev:443,checkpoint.prisma.io:443,binaries.prisma.sh:443,www.schemastore.org:443,ports.ubuntu.com:80,ports.ubuntu.com:443'
+sbx policy allow network --sandbox workbench '*.docker.com:443,production.cloudfront.docker.com:443,*.docker.io:443,openvsx.eclipsecontent.org:443,electronjs.org:443,*.electronjs.org:443,fonts.googleapis.com:443,github-cloud.githubusercontent.com:443,raw.githubusercontent.com:443,release-assets.githubusercontent.com:443,github.com:443,*.github.com:443,fonts.gstatic.com:443,*.lean-lang.org:443,playwright.download.prss.microsoft.com:443,nodejs.org:443,*.nodejs.com:443,deb.nodesource.com:443,*.npmjs.org:443,open-vsx.org:443,*.playwright.dev:443,checkpoint.prisma.io:443,binaries.prisma.sh:443,www.schemastore.org:443,ports.ubuntu.com:80,ports.ubuntu.com:443,lakecache.blob.core.windows.net:443'
 ```
 
 The sandbox can be started by running
