@@ -164,12 +164,12 @@ else
     echo "[seed-volume] WARNING: hello template source not found, skipping."
   else
     mkdir -p "$HELLO_DIR"
-    cp "$HELLO_SRC/lean-toolchain" "$HELLO_DIR/"
+    echo "$TOOLCHAIN" > "$HELLO_DIR/lean-toolchain"
     cp "$HELLO_SRC/lakefile.toml" "$HELLO_DIR/"
     cp "$HELLO_SRC/Main.lean" "$HELLO_DIR/"
-    cat > "$HELLO_DIR/metadata.json" <<'ENDJSON'
-{ "name": "Hello World", "description": "Minimal Lean project" }
-ENDJSON
+    cat > "$HELLO_DIR/metadata.json" <<EOF
+{ "name": "Lean $LEAN_VERSION", "description": "Minimal Lean project" }
+EOF
     echo "[seed-volume] hello template installed."
   fi
 fi

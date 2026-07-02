@@ -4,6 +4,12 @@ IMAGE_TAG = latest
 IMAGE_DEV_TAG = latest-dev
 # Extra flags for `docker build`, e.g. --cache-from/--cache-to in CI.
 DOCKER_BUILD_FLAGS ?=
+# VSCode's build process opens thousands of files
+DOCKER_BUILD_ULIMIT = --ulimit nofile=65536
+# IP Address where the HTTP server publishes to port 3000 (needs to be 0.0.0.0 in some situations)
+WORKBENCH_PUBLISH_IP ?= 127.0.0.1
+# Where the Docker's container ~/.cache lives, used mostly for Lean's download cache
+DOCKER_CACHE_DIR ?= $(CURDIR)/.docker-cache
 
 .DEFAULT_GOAL := container
 .PHONY: clean container container-dev test clean-install serve dev enter
@@ -21,16 +27,16 @@ collab-server/dist/server.js: $(shell find collab-server/src -type f) collab-ser
 	npm --workspace collab-server run build
 
 container: vscode-workbench.vsix collab-server/dist/server.js
-	docker build $(DOCKER_BUILD_FLAGS) --tag $(IMAGE_NAME):$(IMAGE_TAG) --target runner-prod .
+	docker build $(DOCKER_BUILD_FLAGS) $(DOCKER_BUILD_ULIMIT) --tag $(IMAGE_NAME):$(IMAGE_TAG) --target runner-prod .
 
 container-dev:
-	docker build $(DOCKER_BUILD_FLAGS) --tag $(IMAGE_NAME):$(IMAGE_DEV_TAG) --target runner-dev .
+	docker build $(DOCKER_BUILD_FLAGS) $(DOCKER_BUILD_ULIMIT) --tag $(IMAGE_NAME):$(IMAGE_DEV_TAG) --target runner-dev .
 
 test:
 # Test vscode-workbench using VS Code with our patches applied.
 # `--output type=cacheonly` skips the expensive image export at the end.
 # `--progress=plain` displays RUN step output (notably the testing step).
-	docker build $(DOCKER_BUILD_FLAGS) --target tester-vscode-workbench --output type=cacheonly --progress=plain .
+	docker build $(DOCKER_BUILD_FLAGS) $(DOCKER_BUILD_ULIMIT) --target tester-vscode-workbench --output type=cacheonly --progress=plain .
 
 DOCKER_RUN = docker run --rm --init --tty \
 	--cap-add SYS_ADMIN \
@@ -42,7 +48,7 @@ DOCKER_RUN = docker run --rm --init --tty \
 
 serve: container
 	mkdir -p $(WORKBENCH_ROOT)
-	$(DOCKER_RUN) -p 127.0.0.1:3000:3000 $(IMAGE_NAME):$(IMAGE_TAG)
+	$(DOCKER_RUN) -p $(WORKBENCH_PUBLISH_IP):3000:3000 $(IMAGE_NAME):$(IMAGE_TAG)
 
 enter: container
 	mkdir -p $(WORKBENCH_ROOT)
@@ -55,9 +61,9 @@ dev: container-dev
 # 9229: Node.js debugger
 	npx concurrently --names host,docker \
 		'npm run watch' \
- 		'$(DOCKER_RUN) -p 127.0.0.1:3000:3000 \
+		'$(DOCKER_RUN) -p $(WORKBENCH_PUBLISH_IP):3000:3000 \
 			-p 127.0.0.1:9229:9229 \
-			-v $(CURDIR)/.docker-cache:/root/.cache \
+			-v $(DOCKER_CACHE_DIR):/root/.cache \
 			-v $(CURDIR):/app/workbench:ro \
 			-v $(CURDIR)/vscode-workbench:/app/vscode-server/lib/vscode/extensions/leanprover.workbench-universal:ro \
 			$(IMAGE_NAME):$(IMAGE_DEV_TAG)'

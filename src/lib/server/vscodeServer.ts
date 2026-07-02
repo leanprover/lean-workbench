@@ -45,6 +45,33 @@ async function ensureMachineSettings(serverDataDir: string): Promise<void> {
   }
 }
 
+async function ensureUserSettings(serverDataDir: string): Promise<void> {
+  const userSettingsDir = path.join(serverDataDir, 'User')
+  const userSettingsFile = path.join(userSettingsDir, 'settings.json')
+  try {
+    await fs.access(userSettingsDir)
+  } catch {
+    await fs.mkdir(userSettingsDir, { recursive: true })
+    await fs.writeFile(
+      userSettingsFile,
+      JSON.stringify(
+        {
+          // Disable telemetry for vscode and well-behaved extensions
+          'telemetry.telemetryLevel': 'off',
+          'workbench.enableExperiments': false,
+          // Don't show vscode "what's new" content or release notes
+          'update.mode': 'none',
+          'update.showReleaseNotes': false,
+          // Hide the secondary sidebar (copilot chat) by default
+          'workbench.secondarySideBar.defaultVisibility': 'hidden',
+        },
+        null,
+        2,
+      ) + '\n',
+    )
+  }
+}
+
 async function waitForSocket(socketPath: string, timeoutMs = 10_000): Promise<void> {
   const deadline = Date.now() + timeoutMs
   let status = null
@@ -142,6 +169,7 @@ export class VscodeServerHandle implements AsyncDisposable {
       const homeDir = getUserHomeDir(this.viewer.name)
       const vscUserDataDir = path.join(homeDir, '.local', 'share', 'code-server')
       await ensureMachineSettings(vscUserDataDir)
+      await ensureUserSettings(vscUserDataDir)
 
       const sandboxHomeDir = bwrapHomeDir(this.viewer.name)
       const sandboxProjectDir = bwrapProjectDir(this.project.name)
@@ -184,6 +212,10 @@ export class VscodeServerHandle implements AsyncDisposable {
           '--auth', 'none',
           // Disable 'Do you trust this workspace?' modals.
           '--disable-workspace-trust',
+          // Disable code-server telemetry
+          '--disable-telemetry',
+          // Don't tell people they should be updating software they can't update
+          '--disable-update-check',
           // Reduce how long the extension host process waits for a web client to reconnect (default 3h).
           '--reconnection-grace-time', '60',
           sandboxProjectDir,
