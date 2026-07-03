@@ -1,9 +1,9 @@
 'use client'
 
+import { fetchOAuthConfig, updateOAuthConfig } from '@/app/admin/actions'
 import { useServerAction } from '@/lib/client/util'
 import { useState } from 'react'
 import useSWR from 'swr'
-import { fetchOAuthConfig, updateOAuthConfig } from '../actions'
 
 export function OAuthConfig() {
   const { data, mutate } = useSWR('adminOAuthConfig', () => fetchOAuthConfig())

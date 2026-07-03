@@ -1,9 +1,9 @@
 'use client'
 
+import { deleteUser, toggleAdmin } from '@/app/admin/actions'
 import { useServerAction } from '@/lib/client/util'
 import { useRouter } from 'next/navigation'
 import { startTransition, useState } from 'react'
-import { deleteUser, toggleAdmin } from '../actions'
 
 type User = { id: string; name: string; isAdmin: boolean }
 

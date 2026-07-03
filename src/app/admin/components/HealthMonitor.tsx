@@ -1,9 +1,9 @@
 'use client'
 
+import { fetchDiskUsage, fetchHealth } from '@/app/admin/actions'
 import { useServerAction } from '@/lib/client/util'
 import { startTransition, useState } from 'react'
 import useSWR from 'swr'
-import { fetchDiskUsage, fetchHealth } from '../actions'
 import { formatBytes, formatUptime } from './utils'
 
 const labelStyle = { padding: '4px 12px 4px 0', color: '#666' }
