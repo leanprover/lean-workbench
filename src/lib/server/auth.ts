@@ -1,14 +1,16 @@
-import { getConfig, hasGithubAuth, isDevMode, saveConfig } from '@/lib/server/config'
-import { getDb } from '@/lib/server/db'
-import { provisionUserHome } from '@/lib/server/user'
-import { zUserName } from '@/lib/util'
+import 'server-only'
+
 import { betterAuth, type SocialProviders } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { nextCookies } from 'better-auth/next-js'
 import crypto from 'crypto'
 import { headers } from 'next/headers'
 import { unauthorized } from 'next/navigation'
-import 'server-only'
+
+import { getConfig, hasGithubAuth, isDevMode, saveConfig } from '@/lib/server/config'
+import { getDb } from '@/lib/server/db'
+import { provisionUserHome } from '@/lib/server/user'
+import { zUserName } from '@/lib/util'
 
 async function createAuth() {
   const config = getConfig()

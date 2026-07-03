@@ -1,5 +1,6 @@
 import { getConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
+
 import { AllowlistEditor } from './AllowlistEditor'
 import { RegistrationModeControl } from './RegistrationModeControl'
 

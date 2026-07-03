@@ -1,7 +1,10 @@
-import { type ActionResponse, LEAN_VERSION_RE } from '@/lib/util'
+import 'server-only'
+
 import { spawn } from 'node:child_process'
 import path from 'node:path'
-import 'server-only'
+
+import { type ActionResponse, LEAN_VERSION_RE } from '@/lib/util'
+
 import { getConfig, getDataDir, saveConfig } from './config'
 
 export interface SeedEvent {

@@ -6,9 +6,11 @@
 
 'use server'
 
+import { forbidden } from 'next/navigation'
+
 import { requireAuth } from '@/lib/server/auth'
 import { getDb } from '@/lib/server/db'
-import { forbidden } from 'next/navigation'
+
 import { isDevMode } from './config'
 
 /** Set `isAdmin` on the requesting user. Dev mode only. */

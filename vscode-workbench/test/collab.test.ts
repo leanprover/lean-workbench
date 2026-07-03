@@ -2,6 +2,7 @@ import { HocuspocusProviderWebsocket } from '@hocuspocus/provider'
 import { Server } from '@hocuspocus/server'
 import * as assert from 'assert'
 import * as vs from 'vscode'
+
 import { YTextBinding } from '../src/textBinding'
 import { Logger } from '../src/util'
 

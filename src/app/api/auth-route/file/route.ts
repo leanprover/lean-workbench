@@ -1,7 +1,9 @@
-import { verifySignedDirToken } from '@/lib/server/dirToken'
-import { forbidden } from 'next/navigation'
 import fs from 'node:fs/promises'
 import path from 'node:path'
+
+import { forbidden } from 'next/navigation'
+
+import { verifySignedDirToken } from '@/lib/server/dirToken'
 
 /** Queried by Nginx to authorize a `/_file/<token>/<relPath>` request.
  * Any 2xx makes Nginx serve the file named in the `X-Validated-File-Path` response header,

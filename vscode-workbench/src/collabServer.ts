@@ -2,6 +2,7 @@ import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/pro
 import vs from 'vscode'
 import WebSocket from 'ws'
 import type { Awareness } from 'y-protocols/awareness'
+
 import {
   AWARENESS_CURSOR_COLORS,
   AWARENESS_DOC_NAME,

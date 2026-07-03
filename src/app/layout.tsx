@@ -1,12 +1,15 @@
 import '@/css/app.css'
-import { ConfigCtx } from '@/lib/contexts'
-import { getConfig, hasGithubAuth, isDevMode } from '@/lib/server/config'
+
 import type { Metadata } from 'next'
 import { Open_Sans } from 'next/font/google'
 import Image from 'next/image'
 import Link from 'next/link'
 import { connection } from 'next/server'
-import { Suspense, type ReactNode } from 'react'
+import { type ReactNode, Suspense } from 'react'
+
+import { ConfigCtx } from '@/lib/contexts'
+import { getConfig, hasGithubAuth, isDevMode } from '@/lib/server/config'
+
 import AvatarMenu from './AvatarMenu'
 import Breadcrumbs from './Breadcrumbs'
 import { NavbarExtra, NavbarExtraProvider } from './NavbarExtra'

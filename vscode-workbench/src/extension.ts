@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
+
 import vs from 'vscode'
+
 import { connectToCollabServer } from './collabServer'
 import { WorkbenchPanelProvider } from './panel'
 import { RemoteSelectionDecorator } from './remoteSelections'

@@ -1,9 +1,10 @@
-import { Database } from '@hocuspocus/extension-database'
-import { Server } from '@hocuspocus/server'
 import { once } from 'node:events'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
+
+import { Database } from '@hocuspocus/extension-database'
+import { Server } from '@hocuspocus/server'
 import * as Y from 'yjs'
 
 // -- CLI --

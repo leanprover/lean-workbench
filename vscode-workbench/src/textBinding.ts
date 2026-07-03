@@ -1,6 +1,7 @@
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider'
 import vs from 'vscode'
 import * as Y from 'yjs'
+
 import { Logger, logWithPrefix, shouldSyncPath, WorkspaceMetadata, YTEXT_KEY } from './util'
 
 /** Maintains a {@link YTextBinding} binding for every open {@link vs.TextDocument}

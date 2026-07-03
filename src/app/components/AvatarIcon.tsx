@@ -1,5 +1,6 @@
-import type { User } from '@/lib/server/auth'
 import Image from 'next/image'
+
+import type { User } from '@/lib/server/auth'
 
 export default function AvatarIcon({ user }: { user: Pick<User, 'name' | 'image'> }) {
   return (

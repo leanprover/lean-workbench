@@ -1,11 +1,12 @@
+import { notFound } from 'next/navigation'
+import z from 'zod'
+
 import Error from '@/app/components/Error'
 import { requireAuth } from '@/lib/server/auth'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
 import { canAccessProject } from '@/lib/server/util'
 import { zProjectName, zUserName } from '@/lib/util'
-import { notFound } from 'next/navigation'
-import z from 'zod'
 
 const zParams = z.object({
   userName: zUserName,

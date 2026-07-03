@@ -1,12 +1,14 @@
-import { getConfig, getElanDir, getOpenVscodeServerDir, getUserHomeDir, isDevMode } from '@/lib/server/config'
-import { BWRAP_ARGS, bwrapHomeDir, bwrapProjectDir, readProcesses } from '@/lib/server/util'
-import { Project } from '@/prisma/generated/client'
-import { User } from 'better-auth'
 import { ChildProcess, spawn } from 'node:child_process'
 import fs from 'node:fs/promises'
 import { request } from 'node:http'
 import path from 'node:path'
 import type Stream from 'node:stream'
+
+import { User } from 'better-auth'
+
+import { getConfig, getElanDir, getOpenVscodeServerDir, getUserHomeDir, isDevMode } from '@/lib/server/config'
+import { BWRAP_ARGS, bwrapHomeDir, bwrapProjectDir, readProcesses } from '@/lib/server/util'
+import { Project } from '@/prisma/generated/client'
 
 /** Create a VSCode machine settings file if one doesn't exist. */
 async function ensureMachineSettings(serverDataDir: string): Promise<void> {

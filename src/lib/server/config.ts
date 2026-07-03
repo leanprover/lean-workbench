@@ -1,7 +1,8 @@
+import 'server-only'
+
 import chokidar, { type FSWatcher } from 'chokidar'
 import fs from 'fs'
 import path from 'path'
-import 'server-only'
 import z from 'zod'
 
 // --- Directories ---

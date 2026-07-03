@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { getConfig } from './lib/server/config'
 
 export async function proxy(request: NextRequest) {
