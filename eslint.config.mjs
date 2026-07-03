@@ -1,8 +1,10 @@
+import { defineConfig, globalIgnores } from 'eslint/config'
 import nextVitals from 'eslint-config-next/core-web-vitals'
 import nextTs from 'eslint-config-next/typescript'
 import prettier from 'eslint-config-prettier/flat'
 import noRelativeImportPaths from 'eslint-plugin-no-relative-import-paths'
-import { defineConfig, globalIgnores } from 'eslint/config'
+import simpleImportSort from 'eslint-plugin-simple-import-sort'
+import unusedImports from 'eslint-plugin-unused-imports'
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -21,6 +23,19 @@ const eslintConfig = defineConfig([
     'branch-*/',
   ]),
   {
+    plugins: {
+      'simple-import-sort': simpleImportSort,
+      'unused-imports': unusedImports,
+    },
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'off',
+      'simple-import-sort/imports': 'warn',
+      'unused-imports/no-unused-imports': 'warn',
+      'unused-imports/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+    },
+  },
+  {
+    // Rules that only make sense in the app
     files: ['src/**/*.{mts,ts,tsx}'],
     plugins: { 'no-relative-import-paths': noRelativeImportPaths },
     rules: {
