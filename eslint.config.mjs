@@ -21,7 +21,7 @@ const eslintConfig = defineConfig([
     'branch-*/',
   ]),
   {
-    files: ['src/**/*.{mtx,ts,tsx}'],
+    files: ['src/**/*.{mts,ts,tsx}'],
     plugins: { 'no-relative-import-paths': noRelativeImportPaths },
     rules: {
       'no-relative-import-paths/no-relative-import-paths': [
