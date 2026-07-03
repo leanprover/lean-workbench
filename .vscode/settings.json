@@ -1,5 +1,4 @@
 {
-  "js/ts.preferences.importModuleSpecifier": "non-relative",
   // https://nextjs.org/docs/app/api-reference/config/typescript#ide-plugin
   "js/ts.tsdk.path": "node_modules/typescript/lib",
   "js/ts.tsdk.promptToUseWorkspaceVersion": true,
