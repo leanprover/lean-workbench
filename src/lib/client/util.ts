@@ -1,5 +1,6 @@
-import type { ActionResponse } from '@/lib/util'
 import { useActionState } from 'react'
+
+import type { ActionResponse } from '@/lib/util'
 
 /** Returns `[error, dispatchAction, pending]`. */
 export function useServerAction<Payload = void, T = void>(

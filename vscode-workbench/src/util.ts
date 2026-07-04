@@ -1,5 +1,6 @@
-import { minimatch } from 'minimatch'
 import fs from 'node:fs/promises'
+
+import { minimatch } from 'minimatch'
 import vs from 'vscode'
 import { z } from 'zod'
 

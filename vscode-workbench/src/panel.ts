@@ -1,5 +1,6 @@
 import vs from 'vscode'
 import { Awareness } from 'y-protocols/awareness'
+
 import {
   AWARENESS_SELECTION_KEY,
   AWARENESS_USER_KEY,

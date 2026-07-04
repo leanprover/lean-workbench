@@ -1,10 +1,11 @@
 'use server'
 
+import z from 'zod'
+
 import { initAuth } from '@/lib/server/auth'
 import { getConfig, hasGithubAuth, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
-import { startSeed as doStartSeed, getSeedState } from '@/lib/server/seed'
+import { getSeedState, startSeed as doStartSeed } from '@/lib/server/seed'
 import type { ActionResponse } from '@/lib/util'
-import z from 'zod'
 
 const zSetupConfig = z.object({
   baseUrl: z.url('Invalid base URL'),

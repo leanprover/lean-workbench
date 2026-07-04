@@ -1,7 +1,8 @@
 'use client'
 
-import type { RegistrationMode } from '@/lib/server/config'
 import { createContext } from 'react'
+
+import type { RegistrationMode } from '@/lib/server/config'
 
 export interface Config {
   isSetupComplete: boolean

@@ -1,9 +1,10 @@
-import { getCollabServerDir } from '@/lib/server/config'
-import { BWRAP_ARGS, bwrapProjectDir } from '@/lib/server/util'
-import { Project } from '@/prisma/generated/client'
 import { ChildProcess, spawn } from 'node:child_process'
 import fs from 'node:fs/promises'
 import path from 'node:path'
+
+import { getCollabServerDir } from '@/lib/server/config'
+import { BWRAP_ARGS, bwrapProjectDir } from '@/lib/server/util'
+import { Project } from '@/prisma/generated/client'
 
 /** Name of the `collab-server` UDS file. */
 export const COLLAB_SOCKET_FILENAME = 'collab.sock'

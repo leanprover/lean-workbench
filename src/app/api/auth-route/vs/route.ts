@@ -1,6 +1,7 @@
+import { forbidden } from 'next/navigation'
+
 import { requireAuth } from '@/lib/server/auth'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
-import { forbidden } from 'next/navigation'
 
 /** Queried by Nginx to ensure the sending user can access the given editor session.
  * Any 2xx response counts for successful authentication,

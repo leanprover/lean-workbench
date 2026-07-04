@@ -1,5 +1,6 @@
-import esbuild from 'esbuild'
 import { glob } from 'node:fs/promises'
+
+import esbuild from 'esbuild'
 
 const isProd = process.argv.includes('--production')
 const watch = process.argv.includes('--watch')

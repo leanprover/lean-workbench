@@ -1,11 +1,12 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
+import { startTransition } from 'react'
+
 import { killEditorSession } from '@/app/admin/actions'
 import ProjectLink from '@/app/components/ProjectLink'
 import { useServerAction } from '@/lib/client/util'
 import type { EditorSessionInfo } from '@/lib/server/editorSessions'
-import { useRouter } from 'next/navigation'
-import { startTransition } from 'react'
 
 export function SessionRow({ info }: { info: EditorSessionInfo }) {
   const router = useRouter()

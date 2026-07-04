@@ -1,3 +1,10 @@
+import 'server-only'
+
+import { execFile } from 'node:child_process'
+import fs from 'node:fs/promises'
+import path from 'node:path'
+import { promisify } from 'node:util'
+
 import { RcMap } from '@/lib/rcMap'
 import type { User } from '@/lib/server/auth'
 import { CollabServerHandle } from '@/lib/server/collabServer'
@@ -6,11 +13,6 @@ import { getDb } from '@/lib/server/db'
 import { bwrapProjectDir } from '@/lib/server/util'
 import { VscodeServerHandle } from '@/lib/server/vscodeServer'
 import type { Project } from '@/prisma/generated/client'
-import { execFile } from 'node:child_process'
-import fs from 'node:fs/promises'
-import path from 'node:path'
-import { promisify } from 'node:util'
-import 'server-only'
 
 const execFileAsync = promisify(execFile)
 

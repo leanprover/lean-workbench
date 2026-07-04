@@ -1,11 +1,13 @@
 'use client'
 
-import { useServerAction } from '@/lib/client/util'
 import { Route } from 'next'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { startTransition, useState } from 'react'
-import { deleteProject, renameProject, toggleVisibility, type ProjectInfo } from './actions'
+
+import { useServerAction } from '@/lib/client/util'
+
+import { deleteProject, type ProjectInfo, renameProject, toggleVisibility } from './actions'
 
 export function ProjectRow({ project, username }: { project: ProjectInfo; username: string }) {
   const router = useRouter()

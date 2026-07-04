@@ -1,9 +1,10 @@
 'use client'
 
-import { addAllowedUser, removeAllowedUser } from '@/app/admin/actions'
-import { useServerAction } from '@/lib/client/util'
 import { useRouter } from 'next/navigation'
 import { startTransition, useRef } from 'react'
+
+import { addAllowedUser, removeAllowedUser } from '@/app/admin/actions'
+import { useServerAction } from '@/lib/client/util'
 
 export function AllowlistEditor({ users }: { users: string[] }) {
   const router = useRouter()

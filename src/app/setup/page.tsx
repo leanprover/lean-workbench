@@ -1,12 +1,14 @@
 'use client'
 
-import { useServerAction } from '@/lib/client/util'
-import { ConfigCtx } from '@/lib/contexts'
-import { LEAN_VERSION_RE } from '@/lib/util'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { useContext, useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
+
+import { useServerAction } from '@/lib/client/util'
+import { ConfigCtx } from '@/lib/contexts'
+import { LEAN_VERSION_RE } from '@/lib/util'
+
 import { fetchSetupStatus, saveSetupConfig, startSeed } from './actions'
 
 type Phase = 'config' | 'seeding' | 'done' | 'error'

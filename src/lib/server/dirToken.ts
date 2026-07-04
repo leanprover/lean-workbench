@@ -1,6 +1,8 @@
-import { getConfig } from '@/lib/server/config'
-import crypto from 'node:crypto'
 import 'server-only'
+
+import crypto from 'node:crypto'
+
+import { getConfig } from '@/lib/server/config'
 
 /**
  * @module
