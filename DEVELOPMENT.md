@@ -151,7 +151,7 @@ flowchart TB
       Nginx["Nginx<br/>localhost:3000"]
       NextJS["Next.js<br/>localhost:3002"]
 
-      Nginx -->|"HTTP/WebSocket over local inet"| NextJS
+      Nginx -->|"Other routes<br/>HTTP/WebSocket over local inet"| NextJS
     end
     class CENTRAL_SERVERS logical
 
@@ -192,7 +192,7 @@ flowchart TB
     end
     class VSC_LAYER logical
 
-    Nginx -->|"HTTP/WebSocket over UDS<br/>(VSC Servers don't open ports)"| S1
+    Nginx -->|"/_vs/* routes<br/>HTTP/WebSocket over UDS<br/>(VSC Servers don't open ports)"| S1
     Nginx --> S2
     Nginx --> S3
 
