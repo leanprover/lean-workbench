@@ -3,7 +3,7 @@
 # --- base image: Node.js installation shared between builders and runners --
 FROM buildpack-deps:24.04-curl AS base
 # Should match code-server/.node-version, checked out at CODE_SERVER_VERSION.
-ARG NODE_VERSION="24.17.0"
+ARG NODE_VERSION="24.18.0"
 RUN curl -sSfL https://deb.nodesource.com/setup_24.x | bash - \
     && apt-get update \
     && apt-get install -y --no-install-recommends "nodejs=${NODE_VERSION}-1nodesource1" \
@@ -22,7 +22,7 @@ RUN apt-get update \
     && git lfs install
 
 # Shallow-clone code-server at the release tag and fetch its VS Code submodule.
-ARG CODE_SERVER_VERSION="4.128.0"
+ARG CODE_SERVER_VERSION="4.129.0"
 RUN git clone --branch "v${CODE_SERVER_VERSION}" --depth 1 \
         https://github.com/coder/code-server /code-server \
     && git -C /code-server submodule update --init --depth 1
