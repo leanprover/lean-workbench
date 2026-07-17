@@ -3,10 +3,10 @@ and https://github.com/microsoft/vscode/pull/313443
 which break Firefox ESR 140,
 since `position-anchor` is only supported in Firefox 147 onwards.
 ======================================================================================================
-diff --git a/src/vs/base/browser/overlayLayoutElement.ts b/src/vs/base/browser/overlayLayoutElement.ts
+diff --git a/lib/vscode/src/vs/base/browser/overlayLayoutElement.ts b/lib/vscode/src/vs/base/browser/overlayLayoutElement.ts
 index 6299d391..72519bde 100644
---- a/src/vs/base/browser/overlayLayoutElement.ts
-+++ b/src/vs/base/browser/overlayLayoutElement.ts
+--- a/lib/vscode/src/vs/base/browser/overlayLayoutElement.ts
++++ b/lib/vscode/src/vs/base/browser/overlayLayoutElement.ts
 @@ -3,10 +3,16 @@
   *  Licensed under the MIT License. See License.txt in the project root for license information.
   *--------------------------------------------------------------------------------------------*/
@@ -178,10 +178,10 @@ index 6299d391..72519bde 100644
  		}
  	}
  }
-diff --git a/src/vs/workbench/contrib/chat/browser/agentPluginEditor/agentPluginEditor.ts b/src/vs/workbench/contrib/chat/browser/agentPluginEditor/agentPluginEditor.ts
+diff --git a/lib/vscode/src/vs/workbench/contrib/chat/browser/agentPluginEditor/agentPluginEditor.ts b/lib/vscode/src/vs/workbench/contrib/chat/browser/agentPluginEditor/agentPluginEditor.ts
 index 8abd1df8..2e4e6a21 100644
---- a/src/vs/workbench/contrib/chat/browser/agentPluginEditor/agentPluginEditor.ts
-+++ b/src/vs/workbench/contrib/chat/browser/agentPluginEditor/agentPluginEditor.ts
+--- a/lib/vscode/src/vs/workbench/contrib/chat/browser/agentPluginEditor/agentPluginEditor.ts
++++ b/lib/vscode/src/vs/workbench/contrib/chat/browser/agentPluginEditor/agentPluginEditor.ts
 @@ -423,7 +423,7 @@ export class AgentPluginEditor extends EditorPane {
  
  			webview.claim(this, this.window, undefined);
@@ -200,10 +200,10 @@ index 8abd1df8..2e4e6a21 100644
  				}
  			});
  			this.contentDisposables.add(toDisposable(removeLayoutParticipant));
-diff --git a/src/vs/workbench/contrib/extensions/browser/extensionEditor.ts b/src/vs/workbench/contrib/extensions/browser/extensionEditor.ts
+diff --git a/lib/vscode/src/vs/workbench/contrib/extensions/browser/extensionEditor.ts b/lib/vscode/src/vs/workbench/contrib/extensions/browser/extensionEditor.ts
 index fb7d19ea..134f64c2 100644
---- a/src/vs/workbench/contrib/extensions/browser/extensionEditor.ts
-+++ b/src/vs/workbench/contrib/extensions/browser/extensionEditor.ts
+--- a/lib/vscode/src/vs/workbench/contrib/extensions/browser/extensionEditor.ts
++++ b/lib/vscode/src/vs/workbench/contrib/extensions/browser/extensionEditor.ts
 @@ -713,7 +713,7 @@ export class ExtensionEditor extends EditorPane {
  
  			webview.claim(this, this.window, this.scopedContextKeyService);
@@ -213,10 +213,10 @@ index fb7d19ea..134f64c2 100644
  
  			webview.setHtml(body);
  			webview.claim(this, this.window, undefined);
-diff --git a/src/vs/workbench/contrib/mcp/browser/mcpServerEditor.ts b/src/vs/workbench/contrib/mcp/browser/mcpServerEditor.ts
+diff --git a/lib/vscode/src/vs/workbench/contrib/mcp/browser/mcpServerEditor.ts b/lib/vscode/src/vs/workbench/contrib/mcp/browser/mcpServerEditor.ts
 index 2064627d..2660e2d8 100644
---- a/src/vs/workbench/contrib/mcp/browser/mcpServerEditor.ts
-+++ b/src/vs/workbench/contrib/mcp/browser/mcpServerEditor.ts
+--- a/lib/vscode/src/vs/workbench/contrib/mcp/browser/mcpServerEditor.ts
++++ b/lib/vscode/src/vs/workbench/contrib/mcp/browser/mcpServerEditor.ts
 @@ -498,7 +498,7 @@ export class McpServerEditor extends EditorPane {
  
  			webview.claim(this, this.window, this.scopedContextKeyService);
@@ -235,10 +235,10 @@ index 2064627d..2660e2d8 100644
  				}
  			});
  			this.contentDisposables.add(toDisposable(removeLayoutParticipant));
-diff --git a/src/vs/workbench/contrib/notebook/browser/notebookEditorWidget.ts b/src/vs/workbench/contrib/notebook/browser/notebookEditorWidget.ts
+diff --git a/lib/vscode/src/vs/workbench/contrib/notebook/browser/notebookEditorWidget.ts b/lib/vscode/src/vs/workbench/contrib/notebook/browser/notebookEditorWidget.ts
 index 6b8d6b22..7c8cc185 100644
---- a/src/vs/workbench/contrib/notebook/browser/notebookEditorWidget.ts
-+++ b/src/vs/workbench/contrib/notebook/browser/notebookEditorWidget.ts
+--- a/lib/vscode/src/vs/workbench/contrib/notebook/browser/notebookEditorWidget.ts
++++ b/lib/vscode/src/vs/workbench/contrib/notebook/browser/notebookEditorWidget.ts
 @@ -216,6 +216,7 @@ export class NotebookEditorWidget extends Disposable implements INotebookEditorD
  	private _localCellStateListeners: DisposableStore[] = [];
  	private _fontInfo: FontInfo | undefined;
@@ -329,10 +329,10 @@ index 6b8d6b22..7c8cc185 100644
  		this._overlayLayout.reapplyLayoutStyles();
  	}
  
-diff --git a/src/vs/workbench/contrib/webview/browser/overlayWebview.ts b/src/vs/workbench/contrib/webview/browser/overlayWebview.ts
+diff --git a/lib/vscode/src/vs/workbench/contrib/webview/browser/overlayWebview.ts b/lib/vscode/src/vs/workbench/contrib/webview/browser/overlayWebview.ts
 index b45c2e4f..683604c1 100644
---- a/src/vs/workbench/contrib/webview/browser/overlayWebview.ts
-+++ b/src/vs/workbench/contrib/webview/browser/overlayWebview.ts
+--- a/lib/vscode/src/vs/workbench/contrib/webview/browser/overlayWebview.ts
++++ b/lib/vscode/src/vs/workbench/contrib/webview/browser/overlayWebview.ts
 @@ -3,7 +3,7 @@
   *  Licensed under the MIT License. See License.txt in the project root for license information.
   *--------------------------------------------------------------------------------------------*/
@@ -404,10 +404,10 @@ index b45c2e4f..683604c1 100644
  	}
  
  	private _show(targetWindow: CodeWindow) {
-diff --git a/src/vs/workbench/contrib/webview/browser/webview.ts b/src/vs/workbench/contrib/webview/browser/webview.ts
+diff --git a/lib/vscode/src/vs/workbench/contrib/webview/browser/webview.ts b/lib/vscode/src/vs/workbench/contrib/webview/browser/webview.ts
 index f950b7b5..d0bdc45d 100644
---- a/src/vs/workbench/contrib/webview/browser/webview.ts
-+++ b/src/vs/workbench/contrib/webview/browser/webview.ts
+--- a/lib/vscode/src/vs/workbench/contrib/webview/browser/webview.ts
++++ b/lib/vscode/src/vs/workbench/contrib/webview/browser/webview.ts
 @@ -3,6 +3,7 @@
   *  Licensed under the MIT License. See License.txt in the project root for license information.
   *--------------------------------------------------------------------------------------------*/
@@ -433,10 +433,10 @@ index f950b7b5..d0bdc45d 100644
  }
  
  /**
-diff --git a/src/vs/workbench/contrib/webviewPanel/browser/webviewEditor.ts b/src/vs/workbench/contrib/webviewPanel/browser/webviewEditor.ts
+diff --git a/lib/vscode/src/vs/workbench/contrib/webviewPanel/browser/webviewEditor.ts b/lib/vscode/src/vs/workbench/contrib/webviewPanel/browser/webviewEditor.ts
 index 75a9d7e9..d62c7165 100644
---- a/src/vs/workbench/contrib/webviewPanel/browser/webviewEditor.ts
-+++ b/src/vs/workbench/contrib/webviewPanel/browser/webviewEditor.ts
+--- a/lib/vscode/src/vs/workbench/contrib/webviewPanel/browser/webviewEditor.ts
++++ b/lib/vscode/src/vs/workbench/contrib/webviewPanel/browser/webviewEditor.ts
 @@ -42,6 +42,7 @@ export class WebviewEditor extends EditorPane {
  	private _element?: HTMLElement;
  	private _visible = false;
@@ -490,10 +490,10 @@ index 75a9d7e9..d62c7165 100644
  	}
  
  	private trackFocus(webview: IOverlayWebview): IDisposable {
-diff --git a/src/vs/workbench/contrib/webviewView/browser/webviewViewPane.ts b/src/vs/workbench/contrib/webviewView/browser/webviewViewPane.ts
+diff --git a/lib/vscode/src/vs/workbench/contrib/webviewView/browser/webviewViewPane.ts b/lib/vscode/src/vs/workbench/contrib/webviewView/browser/webviewViewPane.ts
 index 06cbc76a..efa5a1b2 100644
---- a/src/vs/workbench/contrib/webviewView/browser/webviewViewPane.ts
-+++ b/src/vs/workbench/contrib/webviewView/browser/webviewViewPane.ts
+--- a/lib/vscode/src/vs/workbench/contrib/webviewView/browser/webviewViewPane.ts
++++ b/lib/vscode/src/vs/workbench/contrib/webviewView/browser/webviewViewPane.ts
 @@ -3,7 +3,7 @@
   *  Licensed under the MIT License. See License.txt in the project root for license information.
   *--------------------------------------------------------------------------------------------*/

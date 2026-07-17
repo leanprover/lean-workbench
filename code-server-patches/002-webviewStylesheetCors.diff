@@ -1,7 +1,7 @@
-diff --git a/src/vs/workbench/contrib/webview/browser/pre/index.html b/src/vs/workbench/contrib/webview/browser/pre/index.html
+diff --git a/lib/vscode/src/vs/workbench/contrib/webview/browser/pre/index.html b/lib/vscode/src/vs/workbench/contrib/webview/browser/pre/index.html
 index c8e655f..d9104f8 100644
---- a/src/vs/workbench/contrib/webview/browser/pre/index.html
-+++ b/src/vs/workbench/contrib/webview/browser/pre/index.html
+--- a/lib/vscode/src/vs/workbench/contrib/webview/browser/pre/index.html
++++ b/lib/vscode/src/vs/workbench/contrib/webview/browser/pre/index.html
 @@ -5,7 +5,7 @@
  	<meta charset="UTF-8">
  

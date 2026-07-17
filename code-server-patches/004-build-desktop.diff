@@ -1,0 +1,15 @@
+Extend the code-server build to also produce a desktop version of VS Code,
+which we use for testing.
+==========================================================================
+diff --git a/ci/build/build-vscode.sh b/ci/build/build-vscode.sh
+index 871a801a..a6728b03 100755
+--- a/ci/build/build-vscode.sh
++++ b/ci/build/build-vscode.sh
+@@ -112,6 +112,7 @@ EOF
+ 
+   npm run gulp core-ci
+   npm run gulp "vscode-reh-web-$VSCODE_TARGET${MINIFY:+-min}-ci"
++  npm run gulp "vscode-$VSCODE_TARGET${MINIFY:+-min}-ci"
+ 
+   # Reset so if you develop after building you will not be stuck with the wrong
+   # commit (the dev client will use `oss-dev` but the dev server will still use
