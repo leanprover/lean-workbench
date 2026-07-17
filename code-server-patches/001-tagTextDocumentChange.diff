@@ -1,7 +1,7 @@
-diff --git a/src/vs/editor/common/textModelEditSource.ts b/src/vs/editor/common/textModelEditSource.ts
+diff --git a/lib/vscode/src/vs/editor/common/textModelEditSource.ts b/lib/vscode/src/vs/editor/common/textModelEditSource.ts
 index d0ba71d2..6db5af15 100644
---- a/src/vs/editor/common/textModelEditSource.ts
-+++ b/src/vs/editor/common/textModelEditSource.ts
+--- a/lib/vscode/src/vs/editor/common/textModelEditSource.ts
++++ b/lib/vscode/src/vs/editor/common/textModelEditSource.ts
 @@ -176,7 +176,13 @@ export const EditSources = {
  	snippet: () => createEditSource({ source: 'snippet' } as const),
  	suggest: (data: { providerId: ProviderId | undefined }) => createEditSource({ source: 'suggest', ...toProperties(data.providerId) } as const),
@@ -17,10 +17,10 @@ index d0ba71d2..6db5af15 100644
  };
  
  function toProperties(version: ProviderId | undefined) {
-diff --git a/src/vs/workbench/api/browser/mainThreadBulkEdits.ts b/src/vs/workbench/api/browser/mainThreadBulkEdits.ts
+diff --git a/lib/vscode/src/vs/workbench/api/browser/mainThreadBulkEdits.ts b/lib/vscode/src/vs/workbench/api/browser/mainThreadBulkEdits.ts
 index a8237722..e3f2068e 100644
---- a/src/vs/workbench/api/browser/mainThreadBulkEdits.ts
-+++ b/src/vs/workbench/api/browser/mainThreadBulkEdits.ts
+--- a/lib/vscode/src/vs/workbench/api/browser/mainThreadBulkEdits.ts
++++ b/lib/vscode/src/vs/workbench/api/browser/mainThreadBulkEdits.ts
 @@ -7,6 +7,7 @@ import { VSBuffer, decodeBase64 } from '../../../base/common/buffer.js';
  import { revive } from '../../../base/common/marshalling.js';
  import { IBulkEditService, ResourceFileEdit, ResourceTextEdit } from '../../../editor/browser/services/bulkEditService.js';
@@ -42,10 +42,10 @@ index a8237722..e3f2068e 100644
  			this._logService.warn(`IGNORING workspace edit: ${err}`);
  			return false;
  		});
-diff --git a/src/vs/workbench/api/browser/mainThreadEditor.ts b/src/vs/workbench/api/browser/mainThreadEditor.ts
+diff --git a/lib/vscode/src/vs/workbench/api/browser/mainThreadEditor.ts b/lib/vscode/src/vs/workbench/api/browser/mainThreadEditor.ts
 index 03dfacf0..99bfed34 100644
---- a/src/vs/workbench/api/browser/mainThreadEditor.ts
-+++ b/src/vs/workbench/api/browser/mainThreadEditor.ts
+--- a/lib/vscode/src/vs/workbench/api/browser/mainThreadEditor.ts
++++ b/lib/vscode/src/vs/workbench/api/browser/mainThreadEditor.ts
 @@ -12,6 +12,7 @@ import { ISelection, Selection } from '../../../editor/common/core/selection.js'
  import { IDecorationOptions, ScrollType } from '../../../editor/common/editorCommon.js';
  import { ITextModel, ITextModelUpdateOptions } from '../../../editor/common/model.js';
@@ -67,10 +67,10 @@ index 03dfacf0..99bfed34 100644
  		if (opts.undoStopAfter) {
  			this._codeEditor.pushUndoStop();
  		}
-diff --git a/src/vs/workbench/api/common/extHost.protocol.ts b/src/vs/workbench/api/common/extHost.protocol.ts
+diff --git a/lib/vscode/src/vs/workbench/api/common/extHost.protocol.ts b/lib/vscode/src/vs/workbench/api/common/extHost.protocol.ts
 index 7da3b5b2..5d2b9b16 100644
---- a/src/vs/workbench/api/common/extHost.protocol.ts
-+++ b/src/vs/workbench/api/common/extHost.protocol.ts
+--- a/lib/vscode/src/vs/workbench/api/common/extHost.protocol.ts
++++ b/lib/vscode/src/vs/workbench/api/common/extHost.protocol.ts
 @@ -319,6 +319,7 @@ export interface IUndoStopOptions {
  
  export interface IApplyEditsOptions extends IUndoStopOptions {
@@ -88,10 +88,10 @@ index 7da3b5b2..5d2b9b16 100644
  }
  
  export interface MainThreadTextEditorsShape extends IDisposable {
-diff --git a/src/vs/workbench/api/common/extHostBulkEdits.ts b/src/vs/workbench/api/common/extHostBulkEdits.ts
+diff --git a/lib/vscode/vs/workbench/api/common/extHostBulkEdits.ts b/lib/vscode/vs/workbench/api/common/extHostBulkEdits.ts
 index a1284739..3d04aeaf 100644
---- a/src/vs/workbench/api/common/extHostBulkEdits.ts
-+++ b/src/vs/workbench/api/common/extHostBulkEdits.ts
+--- a/lib/vscode/vs/workbench/api/common/extHostBulkEdits.ts
++++ b/lib/vscode/vs/workbench/api/common/extHostBulkEdits.ts
 @@ -30,6 +30,6 @@ export class ExtHostBulkEdits {
  
  	applyWorkspaceEdit(edit: vscode.WorkspaceEdit, extension: IExtensionDescription, metadata: vscode.WorkspaceEditMetadata | undefined): Promise<boolean> {
@@ -100,10 +100,10 @@ index a1284739..3d04aeaf 100644
 +		return this._proxy.$tryApplyWorkspaceEdit(dto, undefined, metadata?.isRefactoring ?? false, metadata?.tag);
  	}
  }
-diff --git a/src/vs/workbench/api/common/extHostTextEditor.ts b/src/vs/workbench/api/common/extHostTextEditor.ts
+diff --git a/lib/vscode/src/vs/workbench/api/common/extHostTextEditor.ts b/lib/vscode/src/vs/workbench/api/common/extHostTextEditor.ts
 index b523bf14..eed0cad1 100644
---- a/src/vs/workbench/api/common/extHostTextEditor.ts
-+++ b/src/vs/workbench/api/common/extHostTextEditor.ts
+--- a/lib/vscode/src/vs/workbench/api/common/extHostTextEditor.ts
++++ b/lib/vscode/src/vs/workbench/api/common/extHostTextEditor.ts
 @@ -489,13 +489,13 @@ export class ExtHostTextEditor {
  				throw new ReadonlyError('viewColumn');
  			},
@@ -139,10 +139,10 @@ index b523bf14..eed0cad1 100644
  		});
  	}
  	private _runOnProxy(callback: () => Promise<any>): Promise<ExtHostTextEditor | undefined | null> {
-diff --git a/src/vscode-dts/vscode.proposed.textDocumentChangeReason.d.ts b/src/vscode-dts/vscode.proposed.textDocumentChangeReason.d.ts
+diff --git a/lib/vscode/src/vscode-dts/vscode.proposed.textDocumentChangeReason.d.ts b/lib/vscode/src/vscode-dts/vscode.proposed.textDocumentChangeReason.d.ts
 index f656c304..a0f04a10 100644
---- a/src/vscode-dts/vscode.proposed.textDocumentChangeReason.d.ts
-+++ b/src/vscode-dts/vscode.proposed.textDocumentChangeReason.d.ts
+--- a/lib/vscode/src/vscode-dts/vscode.proposed.textDocumentChangeReason.d.ts
++++ b/lib/vscode/src/vscode-dts/vscode.proposed.textDocumentChangeReason.d.ts
 @@ -27,4 +27,43 @@ declare module 'vscode' {
  		 */
  		readonly detailedReason: TextDocumentDetailedChangeReason | undefined;

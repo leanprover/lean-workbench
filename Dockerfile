@@ -28,36 +28,39 @@ RUN git clone --branch "v${CODE_SERVER_VERSION}" --depth 1 \
     && git -C /code-server submodule update --init --depth 1
 WORKDIR /code-server
 
-# Build (see code-server/docs/CONTRIBUTING.md)
+# Apply code-server patches (see code-server/docs/CONTRIBUTING.md)
 RUN quilt push -a
-# `--foreground-scripts` streams node-gyp's native-build output, hidden by default.
+# `--foreground-scripts` streams node-gyp's native-build output
+# which would be hidden by default.
 # However, it also serializes the execution of `prepare` scripts across different packages.
 # To recover some parallelism, `JOBS=max` parallelizes each package's native build.
 RUN JOBS=max npm_config_foreground_scripts=true npm install
 
 # Apply our patches on top of code-server's.
-# We assume that these don't modify `package.json`, so `npm install` can be cached.
+# We assume that these don't modify any `package.json`,
+# so `npm install` above can be cached.
+# Note that unlike code-server's own patches,
+# these are rooted at code-server/ rather than at code-server/lib/vscode/
+# so that we can patch both code-server and the vscode submodule.
 COPY code-server-patches/ /code-server-patches
 RUN for p in /code-server-patches/*.diff; do \
-      [ -e "$p" ] || continue; echo "Applying $p"; patch -p1 -d lib/vscode < "$p"; \
+      [ -e "$p" ] || continue; echo "Applying $p"; patch -p1 < "$p"; \
     done
 
-# Build code-server with a remote extension host (REH).
+# Build code-server (and not yet VS Code).
 RUN npm run build
+# Build VS Code with a remote extension host (REH),
+# as well as a desktop target needed by @vscode/test-electron
+# which we use to test our vscode-workbench extension
+# (see code-server-patches/004-build-desktop.diff).
 RUN VERSION="${CODE_SERVER_VERSION}" npm run build:vscode
-# Lands in /code-server/release
-RUN KEEP_MODULES=1 npm run release
-
-# Build again, this time the upstream VS Code Desktop target.
-# This is needed by @vscode/test-electron which we use to test vscode-workbench.
-# FIXME: can we avoid building twice?
 RUN arch=$(uname -m) \
     && if [ "${arch}" = "x86_64" ]; then arch="x64"; \
        elif [ "${arch}" = "aarch64" ]; then arch="arm64"; \
        else echo "unsupported architecture: ${arch}" >&2; exit 1; fi \
-    && cd /code-server/lib/vscode \
-    && npm run gulp -- vscode-linux-${arch}-min \
     && mv /code-server/lib/VSCode-linux-${arch} /vscode-desktop
+# Lands in /code-server/release
+RUN KEEP_MODULES=1 npm run release
 
 # --- vscode-workbench tester: test our extension with patched VS Code ---
 FROM base AS tester-vscode-workbench
