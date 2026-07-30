@@ -1,0 +1,124 @@
+digraph Workbench {
+    rankdir = TB;
+    // Allow edges between clusters
+    compound = true;
+    fontname = "Helvetica";
+    node [fontname = "Helvetica"; shape = box; style = filled; fillcolor = white;];
+    edge [fontname = "Helvetica"; fontsize = 10;];
+    style = filled;
+    color = transparent;
+    peripheries = 0;
+    
+    subgraph cluster_COMPUTER_A {
+        label = "Computer A";
+        fillcolor = "#5790FC33";
+        C1 [label = "VSC Client\nUser A\nProject A/foo";];
+        C2 [label = "VSC Client\nUser A\nProject B/bar";];
+    }
+    
+    subgraph cluster_COMPUTER_B {
+        label = "Computer B";
+        fillcolor = "#5790FC33";
+        C3 [label = "VSC Client\nUser B\nProject B/bar";];
+    }
+    
+    subgraph cluster_LEGEND {
+        label = "Legend";
+        fillcolor = "#EEEEEE";
+        
+        LegendMachine [label = "Machine"; fillcolor = "#5790FC33"; color = transparent;];
+        LegendBubblewrap [label = "Bubblewrap"; fillcolor = "#E4253633"; color = transparent;];
+        
+        subgraph cluster_LegendProcess {
+            label = "Process";
+            fillcolor = white;
+            color = "#333333";
+            peripheries = 1;
+            LegendSubprocess [label = "Subprocess";];
+        }
+    }
+    
+    subgraph cluster_WORKBENCH {
+        label = "Workbench Server > Docker Container";
+        fillcolor = "#5790FC33";
+        
+        
+        subgraph {
+            rank = same;
+            Nginx;
+            NextJS;
+        }
+        Nginx [label = "Nginx\nlocalhost:3000";];
+        NextJS [label = "Next.js\nlocalhost:3002";];
+        
+        subgraph cluster_BW_VSC1 {
+            label = "Editor Session 1";
+            fillcolor = "#E4253633";
+            subgraph cluster_S1 {
+                label = "VSC Server\nUser A\nProject A/foo";
+                fillcolor = white;
+                color = "#333333";
+                peripheries = 1;
+                subgraph cluster_EH1 {
+                    label = "VSC Extension Host";
+                    LSP1 [label = "Lean LSP";];
+                }
+            }
+        }
+        
+        subgraph cluster_BW_VSC2 {
+            label = "Editor Session 2";
+            fillcolor = "#E4253633";
+            subgraph cluster_S2 {
+                label = "VSC Server\nUser A\nProject B/bar";
+                fillcolor = white;
+                color = "#333333";
+                peripheries = 1;
+                subgraph cluster_EH2 {
+                    label = "VSC Extension Host";
+                    LSP2 [label = "Lean LSP";];
+                }
+            }
+        }
+        
+        subgraph cluster_BW_VSC3 {
+            label = "Editor Session 3";
+            fillcolor = "#E4253633";
+            subgraph cluster_S3 {
+                label = "VSC Server\nUser B\nProject B/bar";
+                fillcolor = white;
+                color = "#333333";
+                peripheries = 1;
+                EH3 [label = "VSC Extension Host";];
+            }
+        }
+        
+        
+        subgraph cluster_BW_CSFoo {
+            label = "";
+            fillcolor = "#E4253633";
+            CollabFoo [label = "Collab Server\nProject A/foo";];
+        }
+        
+        subgraph cluster_BW_CSBar {
+            label = "";
+            fillcolor = "#E4253633";
+            CollabBar [label = "Collab Server\nProject B/bar";];
+        }
+    }
+    
+    C1 -> Nginx [label = "HTTP/WebSocket over inet";];
+    C2 -> Nginx;
+    C3 -> Nginx;
+    
+    Nginx -> NextJS [label = "Other routes\nHTTP over local inet";];
+    
+    // Edges to clusters: point at an inner node, clip at the cluster with lhead
+    Nginx -> LSP1 [lhead = cluster_S1; label = "/_vs/* routes\nHTTP/WebSocket over UDS\n(VSC Servers don't open ports)";];
+    Nginx -> LSP2 [lhead = cluster_S2;];
+    Nginx -> EH3 [lhead = cluster_S3;];
+    
+    LSP1 -> CollabFoo [dir = both; ltail = cluster_EH1; label = "WebSocket over UDS";];
+    LSP2 -> CollabBar [dir = both; ltail = cluster_EH2;];
+    EH3 -> CollabBar [dir = both;];
+}
