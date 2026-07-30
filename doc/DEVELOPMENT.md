@@ -106,15 +106,7 @@ make clean
 
 ## Architecture
 
-```
-Browser
-    |
-    v
-nginx (reverse proxy, port 3000)
-    |
-    |-- /_vs/{viewer}/{owner}/{project}/* --> code-server (port 3010+N, in bwrap)
-    |-- everything else                   --> Next.js server (port 3002)
-```
+![Architectue diagram](./architecture.svg)
 
 Three processes run inside the Docker container:
 
