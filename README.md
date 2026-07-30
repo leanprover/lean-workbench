@@ -118,4 +118,4 @@ preserve all user workspaces, the database, and Lean toolchains.
 
 ## Development
 
-See [DEVELOPMENT.md](DEVELOPMENT.md).
+See [doc/DEVELOPMENT.md](doc/DEVELOPMENT.md).
