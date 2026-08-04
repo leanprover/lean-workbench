@@ -46,11 +46,11 @@ export function verifySignedDirToken(token: string): string | null {
   if (parts.length !== 3) return null
   const [rootDirB64, exp, sig] = parts
   const expected = hmac(`${rootDirB64}.${exp}`)
-  if (sig.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) {
+  if (sig!.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(sig!), Buffer.from(expected))) {
     return null
   }
   if (Number(exp) <= Date.now()) return null
-  return Buffer.from(rootDirB64, 'base64url').toString()
+  return Buffer.from(rootDirB64!, 'base64url').toString()
 }
 
 /** URL at which Nginx serves {@link relPath}, a path relative to {@link token}'s root. */

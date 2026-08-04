@@ -13,7 +13,7 @@ if (process.argv.length !== 3) {
   process.exit(1)
 }
 
-const projectDir = process.argv[2]
+const projectDir = process.argv[2]!
 const socketPath = path.join(process.cwd(), 'collab.sock')
 const dbPath = path.join(process.cwd(), 'collab.db')
 

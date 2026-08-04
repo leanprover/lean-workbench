@@ -48,7 +48,7 @@ export function startSeed(leanVersion: string | undefined): ActionResponse<boole
     if (!line) return
     const m = PROGRESS_RE.exec(line)
     if (m) {
-      seedState.events.push({ type: 'progress', step: parseInt(m[1]), total: parseInt(m[2]), label: m[3] })
+      seedState.events.push({ type: 'progress', step: parseInt(m[1]!), total: parseInt(m[2]!), label: m[3]! })
     } else {
       seedState.events.push({ type: 'log', line })
     }

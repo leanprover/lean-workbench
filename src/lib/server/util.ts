@@ -18,7 +18,7 @@ export function serverAction<S extends z.ZodType, T = void>(
 ): (raw: z.input<S>) => Promise<ActionResponse<T>> {
   return async raw => {
     const parsed = schema.safeParse(raw)
-    if (!parsed.success) return { error: parsed.error.issues[0].message }
+    if (!parsed.success) return { error: parsed.error.issues[0]!.message }
     return handler(parsed.data)
   }
 }
