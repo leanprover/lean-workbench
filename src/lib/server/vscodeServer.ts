@@ -315,12 +315,13 @@ export class VscodeServerHandle implements AsyncDisposable {
 
   /** Start a debugger in the extension host of the VSCode server. */
   async enableDebugger() {
-    if (!this.proc) return
+    const proc = this.proc
+    if (!proc) return
     // Send SIGUSR1 to the (assumed unique) extension host descendant of code-server:
     // https://nodejs.org/api/process.html#signal-events
-    const root = (await readProcesses()).get(this.proc.pid!)
+    const root = (await readProcesses()).get(proc.pid!)
     // Give up if parent has exited while we read proc table
-    if (!this.proc) return
+    if (this.proc !== proc) return
     const stack = root ? [root] : []
     while (stack.length > 0) {
       const proc = stack.pop()!

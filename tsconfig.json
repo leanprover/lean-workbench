@@ -21,7 +21,11 @@
     ],
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noUncheckedIndexedAccess": true
   },
   // Subfolders of `.next/` duplicated since without that `next dev` tries to rewrite this config.
   "include": [

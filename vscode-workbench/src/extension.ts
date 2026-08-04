@@ -35,7 +35,7 @@ async function ensureProjectFolderOpen(mdata: WorkspaceMetadata, log: vs.LogOutp
   const expected = bwrapProjectDir(mdata.project.name)
   if (
     vs.workspace.workspaceFolders?.length === 1 &&
-    path.resolve(vs.workspace.workspaceFolders[0].uri.fsPath) === path.resolve(expected)
+    path.resolve(vs.workspace.workspaceFolders[0]!.uri.fsPath) === path.resolve(expected)
   )
     return true
 

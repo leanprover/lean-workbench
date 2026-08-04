@@ -127,7 +127,7 @@ function parseMeminfo(): Record<string, number> {
     const result: Record<string, number> = {}
     for (const line of text.split('\n')) {
       const m = line.match(/^(\w+):\s+(\d+)/)
-      if (m) result[m[1]] = parseInt(m[2], 10) * 1024 // kB -> bytes
+      if (m) result[m[1]!] = parseInt(m[2]!, 10) * 1024 // kB -> bytes
     }
     return result
   } catch {
@@ -151,7 +151,7 @@ export async function fetchHealth(): Promise<SystemHealth> {
     const dfOut = execFileSync('df', ['-h', getDataDir()], { encoding: 'utf8' })
     const lines = dfOut.trim().split('\n')
     if (lines.length < 2) throw new Error('no dataVolumeDisk information')
-    const parts = lines[1].split(/\s+/)
+    const parts = lines[1]!.split(/\s+/)
     dataVolumeDisk = {
       total: parts[1] ?? '?',
       used: parts[2] ?? '?',
@@ -166,13 +166,13 @@ export async function fetchHealth(): Promise<SystemHealth> {
   const meminfo = parseMeminfo()
 
   // Load average from /proc/loadavg
-  let loadAvg: number[]
+  let loadAvg = [0, 0, 0]
   try {
     const text = fs.readFileSync('/proc/loadavg', 'utf8')
     const parts = text.split(' ')
-    loadAvg = [parseFloat(parts[0]), parseFloat(parts[1]), parseFloat(parts[2])]
+    loadAvg = [parseFloat(parts[0]!), parseFloat(parts[1]!), parseFloat(parts[2]!)]
   } catch {
-    loadAvg = [0, 0, 0]
+    /* ignore */
   }
 
   return {

@@ -9,7 +9,7 @@ import { type Config, useConfigCtx } from '@/lib/contexts'
 
 import Error from './components/Error'
 
-type ErrorParam = 'unable_to_create_user' | string
+type ErrorParam = string
 
 function errorParamToMsg(e: ErrorParam, cfg: Config): string {
   if (e === 'unable_to_create_user') {
@@ -50,8 +50,8 @@ export default function Root() {
             className='login-link'
             disabled={!cfg.hasGithubAuth}
             title={!cfg.hasGithubAuth ? 'Ask your administrator to set up GitHub authentication.' : undefined}
-            onClick={() => {
-              authClient.signIn.social({
+            onClick={async () => {
+              await authClient.signIn.social({
                 provider: 'github',
               })
             }}

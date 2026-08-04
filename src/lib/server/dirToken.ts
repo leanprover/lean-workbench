@@ -43,8 +43,8 @@ export function mintSignedDirToken(rootDir: string): string {
  * or `null` if the token is invalid or expired. */
 export function verifySignedDirToken(token: string): string | null {
   const parts = token.split('.')
-  if (parts.length !== 3) return null
-  const [rootDirB64, exp, sig] = parts
+  const [rootDirB64, exp, sig, ...rest] = parts
+  if (rootDirB64 === undefined || exp === undefined || sig === undefined || rest.length != 0) return null
   const expected = hmac(`${rootDirB64}.${exp}`)
   if (sig.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) {
     return null

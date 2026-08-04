@@ -27,15 +27,15 @@ export default function AvatarMenu() {
               <button
                 onClick={async () => {
                   await setIsAdmin(!user.isAdmin)
-                  session.refetch()
+                  await session.refetch()
                 }}
               >
                 {user.isAdmin ? '[DEV] Become non-admin' : '[DEV] Become admin'}
               </button>
             )}
             <button
-              onClick={() => {
-                authClient.signOut({
+              onClick={async () => {
+                await authClient.signOut({
                   fetchOptions: {
                     onSuccess: () => {
                       router.push('/')

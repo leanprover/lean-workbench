@@ -14,7 +14,7 @@ export async function provisionUserHome(user: User): Promise<void> {
 
   // Git reads `$HOME/.config/git/config` as the global config.
   const name = user.displayName?.trim() || user.name
-  const email = user.email?.trim()
+  const email = user.email.trim()
   const userBlock = ['[user]']
   if (name) userBlock.push(`\tname = ${name}`)
   if (email) userBlock.push(`\temail = ${email}`)

@@ -47,7 +47,7 @@ export default function Setup() {
 
   // Sync with server state on mount (handles page reload during seeding).
   useEffect(() => {
-    fetchSetupStatus().then(status => {
+    void fetchSetupStatus().then(status => {
       if (status.configSaved) setConfigSaved(true)
       if (status.seeded) setPhase('done')
       else if (status.seeding) setPhase('seeding')
@@ -63,7 +63,7 @@ export default function Setup() {
 
   // Stream seed events whenever we're in the seeding phase.
   useEffect(() => {
-    if (phase !== 'seeding') return
+    if (phase !== 'seeding') return undefined
     const source = new EventSource('/api/setup-events')
     source.onmessage = event => {
       const data = zSeedEvent.parse(JSON.parse(event.data as string /* EventSources ensure this in practice */))
@@ -219,12 +219,10 @@ export default function Setup() {
               <div className='setup-progress-outer'>
                 <div className='setup-progress-inner' style={{ width: `${progress.pct}%` }} />
               </div>
-              {(phase === 'seeding' || phase === 'error') && (
-                <div className='setup-progress-label'>
-                  {phase === 'seeding' && <span className='setup-spinner' />}
-                  <span>{progress.label || 'Starting...'}</span>
-                </div>
-              )}
+              <div className='setup-progress-label'>
+                {phase === 'seeding' && <span className='setup-spinner' />}
+                <span>{progress.label || 'Starting...'}</span>
+              </div>
             </div>
           )}
 

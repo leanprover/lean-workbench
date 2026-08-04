@@ -16,7 +16,7 @@ export function NewProjectForm() {
     data: templates,
     error: templatesError,
     isLoading: templatesPending,
-  } = useSWR<TemplateInfo[], string>('listTemplates', async () => {
+  } = useSWR<TemplateInfo[], unknown>('listTemplates', async () => {
     const result = await listTemplates()
     if ('error' in result) throw new Error(result.error)
     return result.ok
@@ -76,7 +76,11 @@ export function NewProjectForm() {
           </button>
         ))}
       </div>
-      {error && <div style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{error}</div>}
+      {error && (
+        <div style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>
+          {error instanceof Error ? error.message : 'Unknown error'}
+        </div>
+      )}
       <div>
         <button type='submit' disabled={createPending}>
           Create

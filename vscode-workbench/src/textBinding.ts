@@ -192,8 +192,8 @@ export class YTextBinding implements vs.Disposable {
    * Work items are atomic w.r.t. all other work items
    * (but not w.r.t. other `async` operations). */
   private enqueueTransaction(work: () => Promise<void>): void {
-    this.mutex = this.mutex.then(work).catch(e => {
-      this.log.error(e)
+    this.mutex = this.mutex.then(work).catch((e: unknown) => {
+      this.log.error(e instanceof Error ? e.message : String(e))
     })
   }
 
@@ -257,7 +257,7 @@ export class YTextBinding implements vs.Disposable {
     Y.applyUpdate(this.localYdoc, Y.encodeStateAsUpdate(this.hs.document))
     this.localYdoc.on('update', this.onLocalUpdate)
 
-    const remoteStr = this.remoteYtext.toString()
+    const remoteStr = this.remoteYtext.toJSON()
     const localStr = this.doc.getText()
     if (remoteStr === localStr) {
       this.log.trace('[initFromRemote] synced without edit')
@@ -414,7 +414,7 @@ export class YTextBinding implements vs.Disposable {
     if (this.ensureSyncTimeout) clearTimeout(this.ensureSyncTimeout)
     this.ensureSyncTimeout = setTimeout(() => {
       this.enqueueTransaction(async () => {
-        const localYtextStr = this.localYtext.toString()
+        const localYtextStr = this.localYtext.toJSON()
         const docStr = this.doc.getText()
         if (docStr !== localYtextStr) {
           this.log.debug('[ensureSync] doc<->localYdoc desync, overwriting')

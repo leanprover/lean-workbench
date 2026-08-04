@@ -70,7 +70,7 @@ export class WorkbenchPanelProvider implements vs.TreeDataProvider<PanelItem>, v
           if (!sels) continue
           filePath = sels.filePath
           if (0 < sels.selections.length) {
-            const active = sels.selections[0].active
+            const active = sels.selections[0]!.active
             const pos = new vs.Position(active.line, active.character)
             sel = new vs.Selection(pos, pos)
             break

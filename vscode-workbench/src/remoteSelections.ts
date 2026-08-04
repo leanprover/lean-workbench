@@ -117,10 +117,10 @@ export class RemoteSelectionDecorator implements vs.Disposable {
         const decos = this.decorationsFor(clientId, user.color)
         const beforeRanges: vs.DecorationOptions[] = []
         const afterRanges: vs.DecorationOptions[] = []
-        if (selection?.filePath === filePath) {
+        if (selection.filePath === filePath) {
           for (const s of selection.selections) {
             const range = new vs.Range(s.anchor.line, s.anchor.character, s.active.line, s.active.character)
-            const opts = { range, hoverMessage: user?.name }
+            const opts = { range, hoverMessage: user.name }
             // Is `active` at the start or the end of the selection?
             if (
               s.active.line < s.anchor.line ||

@@ -6,7 +6,7 @@
 declare module 'vscode' {
   // https://github.com/microsoft/vscode/issues/145307 @alexdima
 
-  export interface Extension<_T> {
+  export interface Extension<T> {
     /**
      * `true` when the extension is associated to another extension host.
      *

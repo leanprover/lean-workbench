@@ -13,7 +13,7 @@ if (process.argv.length !== 3) {
   process.exit(1)
 }
 
-const projectDir = process.argv[2]
+const projectDir = process.argv[2]!
 const socketPath = path.join(process.cwd(), 'collab.sock')
 const dbPath = path.join(process.cwd(), 'collab.db')
 
@@ -63,8 +63,9 @@ const server = new Server({
         doc.getText(YTEXT_KEY).insert(0, content)
         return Y.encodeStateAsUpdate(doc)
       },
-      async store({ documentName, state }) {
+      store({ documentName, state }) {
         upsertDocument(documentName, state)
+        return Promise.resolve()
       },
     }),
   ],
@@ -84,7 +85,8 @@ server.httpServer.listen(socketPath, () => {
   Object.defineProperty(server, 'httpURL', {
     get: () => `http+unix:${socketPath}`,
   })
-  server['showStartScreen']()
+  // Deliberate abstraction violation to call showStartScreen()
+  ;(server as unknown as { showStartScreen(): void }).showStartScreen()
 
   // No need to call `onListen` hooks here since we don't register any.
 })
@@ -96,7 +98,7 @@ console.log('Hocuspocus shutting down..')
 await Promise.all(
   [...server.hocuspocus.documents.values()].map(async doc => {
     try {
-      await fs.writeFile(checkedToDiskPath(doc.name), doc.getText(YTEXT_KEY).toString())
+      await fs.writeFile(checkedToDiskPath(doc.name), doc.getText(YTEXT_KEY).toJSON())
       console.log(`Saved '${doc.name}' to disk`)
     } catch (e) {
       console.error(`Failed to save '${doc.name}' to disk:`, e)

@@ -1,4 +1,4 @@
-import z from 'zod'
+import { z } from 'zod'
 
 /** Server actions respond with data of this shape. */
 export type ActionResponse<T = void> = { ok: T } | { error: string }
