@@ -36,7 +36,7 @@ export default async function EditorSession({ params: params_ }: { params: Promi
   if (!project || !canAccessProject(viewer, project)) notFound()
 
   const manager = getEditorSessionManager()
-  let iframeSrc = null
+  let iframeSrc: string
   try {
     iframeSrc = await manager.ensureSession(viewer, owner, project)
   } catch (err) {

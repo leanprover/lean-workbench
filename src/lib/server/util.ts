@@ -53,7 +53,10 @@ export async function readProcesses(): Promise<Map<number, ProcessInfo>> {
       const ppid = Number(status.match(/^PPid:\s*(\d+)/m)![1])
       const cmdline = (await fs.readFile(`/proc/${pid}/cmdline`, 'utf-8')).split('\0')
       procs.set(pid, { pid, ppid, cmdline, children: [] })
-    } catch {}
+    } catch {
+      // A throw likely means the process exited after readdir() and before readFile; ignore
+      continue
+    }
   }
   for (const proc of procs.values()) {
     procs.get(proc.ppid)?.children.push(proc)

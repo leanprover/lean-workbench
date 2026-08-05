@@ -132,8 +132,10 @@ export async function waitForPath(p: string, timeoutMs: number): Promise<boolean
     try {
       await fs.access(p)
       return true
-    } catch {}
-    await new Promise(r => setTimeout(r, 200))
+    } catch {
+      // path is not ready; sleep before trying again
+      await new Promise(r => setTimeout(r, 200))
+    }
   }
   return false
 }
