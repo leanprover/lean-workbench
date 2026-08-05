@@ -3,18 +3,9 @@ import 'server-only'
 import { spawn } from 'node:child_process'
 import path from 'node:path'
 
-import { type ActionResponse, LEAN_VERSION_RE } from '@/lib/util'
+import { type ActionResponse, LEAN_VERSION_RE, type SeedEvent } from '@/lib/util'
 
 import { getConfig, getDataDir, saveConfig } from './config'
-
-export interface SeedEvent {
-  type: 'log' | 'progress' | 'done' | 'error'
-  line?: string
-  step?: number
-  total?: number
-  label?: string
-  message?: string
-}
 
 export interface SeedState {
   inProgress: boolean

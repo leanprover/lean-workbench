@@ -27,3 +27,19 @@ export const zProjectName = z.string().regex(ALPHANUM_NAME_RE, 'Invalid project 
 export const zTemplateId = z.string().regex(TEMPLATE_ID_RE, 'Invalid template ID')
 
 export const LEAN_VERSION_RE = /^v4\.\d+\.\d+(-rc\d+)?$/
+
+export const zSeedEvent = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('log'), line: z.string() }),
+  z.object({ type: z.literal('progress'), step: z.number(), total: z.number(), label: z.string() }),
+  z.object({ type: z.literal('done') }),
+  z.object({ type: z.literal('error'), message: z.string() }),
+])
+export type SeedEvent = z.infer<typeof zSeedEvent>
+
+/** Assert a field in `formData` is a string or absent, return the empty string if it's absent */
+export function formString(formData: FormData, name: string): string {
+  const value = formData.get(name)
+  if (value === null) return ''
+  if (typeof value === 'string') return value
+  throw new Error(`form field '${name}' is a File unexpectedly`)
+}

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { startTransition, useState } from 'react'
 
 import { useServerAction } from '@/lib/client/util'
+import { formString } from '@/lib/util'
 
 import { deleteProject, type ProjectInfo, renameProject, toggleVisibility } from './actions'
 
@@ -15,7 +16,7 @@ export function ProjectRow({ project, username }: { project: ProjectInfo; userna
 
   const [renameError, renameAction, renamePending] = useServerAction(
     async (formData: FormData) => {
-      const name = String(formData.get('name') ?? '').trim()
+      const name = formString(formData, 'name').trim()
       if (!name) return { error: 'Name is required' }
       return renameProject({ projectId: project.id, name })
     },

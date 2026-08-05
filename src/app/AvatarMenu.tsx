@@ -2,16 +2,15 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useContext } from 'react'
 
 import AvatarIcon from '@/app/components/AvatarIcon'
 import authClient from '@/lib/client/auth'
-import { ConfigCtx } from '@/lib/contexts'
+import { useConfigCtx } from '@/lib/contexts'
 import { setIsAdmin } from '@/lib/server/actions'
 
 export default function AvatarMenu() {
   const session = authClient.useSession()
-  const cfg = useContext(ConfigCtx)
+  const cfg = useConfigCtx()
   const router = useRouter()
 
   if (session.data) {

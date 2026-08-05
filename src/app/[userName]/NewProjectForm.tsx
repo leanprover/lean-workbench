@@ -5,6 +5,7 @@ import { useState } from 'react'
 import useSWR from 'swr'
 
 import { useServerAction } from '@/lib/client/util'
+import { formString } from '@/lib/util'
 
 import { createProject, listTemplates, type TemplateInfo } from './actions'
 
@@ -25,7 +26,7 @@ export function NewProjectForm() {
 
   const [createError, createAction, createPending] = useServerAction(
     async (formData: FormData) => {
-      const name = String(formData.get('name') ?? '').trim()
+      const name = formString(formData, 'name').trim()
       if (!name) return { error: 'Name is required' }
       return createProject({ name, template: chosenTemplate })
     },

@@ -3,10 +3,9 @@
 import { Route } from 'next'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { useContext } from 'react'
 
 import authClient from '@/lib/client/auth'
-import { type Config, ConfigCtx } from '@/lib/contexts'
+import { type Config, useConfigCtx } from '@/lib/contexts'
 
 import Error from './components/Error'
 
@@ -27,7 +26,7 @@ function errorParamToMsg(e: ErrorParam, cfg: Config): string {
 }
 
 export default function Root() {
-  const cfg = useContext(ConfigCtx)
+  const cfg = useConfigCtx()
   const session = authClient.useSession()
   const error = useSearchParams().get('error')
 

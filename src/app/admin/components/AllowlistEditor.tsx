@@ -5,13 +5,14 @@ import { startTransition, useRef } from 'react'
 
 import { addAllowedUser, removeAllowedUser } from '@/app/admin/actions'
 import { useServerAction } from '@/lib/client/util'
+import { formString } from '@/lib/util'
 
 export function AllowlistEditor({ users }: { users: string[] }) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
 
   const [addError, addAction, addPending] = useServerAction(
-    (formData: FormData) => addAllowedUser({ userName: String(formData.get('username') ?? '') }),
+    (formData: FormData) => addAllowedUser({ userName: formString(formData, 'username') }),
     () => {
       if (inputRef.current) inputRef.current.value = ''
       inputRef.current?.focus()

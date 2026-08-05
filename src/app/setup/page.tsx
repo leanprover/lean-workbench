@@ -2,12 +2,13 @@
 
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { useContext, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
+import { z } from 'zod'
 
 import { useServerAction } from '@/lib/client/util'
-import { ConfigCtx } from '@/lib/contexts'
-import { LEAN_VERSION_RE } from '@/lib/util'
+import { useConfigCtx } from '@/lib/contexts'
+import { LEAN_VERSION_RE, zSeedEvent } from '@/lib/util'
 
 import { fetchSetupStatus, saveSetupConfig, startSeed } from './actions'
 
@@ -19,13 +20,13 @@ async function fetchLeanVersions(): Promise<string[]> {
   // This relies on version tags being returned first.
   const res: Response = await fetch('https://api.github.com/repos/leanprover-community/mathlib4/tags?per_page=100')
   if (!res.ok) throw new Error(`GitHub API ${res.status}`)
-  const data = (await res.json()) as { name: string }[]
+  const data = z.array(z.object({ name: z.string() })).parse(await res.json())
   for (const item of data) if (LEAN_VERSION_RE.test(item.name)) versions.push(item.name)
   return versions
 }
 
 export default function Setup() {
-  const cfg = useContext(ConfigCtx)
+  const cfg = useConfigCtx()
   const [wasCompleteOnMount] = useState(cfg.isSetupComplete)
   // Redirect to index on new visits, but keep the page open during actual setup
   if (wasCompleteOnMount) redirect('/')
@@ -65,33 +66,41 @@ export default function Setup() {
     if (phase !== 'seeding') return
     const source = new EventSource('/api/setup-events')
     source.onmessage = event => {
-      const data = JSON.parse(event.data)
-      if (data.type === 'progress') {
-        const pct = Math.round((data.step / data.total) * 100)
-        setProgress({ pct, label: `${data.label} (${data.step}/${data.total})` })
-      } else if (data.type === 'log') {
-        setLogs(prev => [...prev, data.line])
-      } else if (data.type === 'done') {
-        source.close()
-        setProgress({ pct: 100, label: '' })
-        setPhase('done')
-      } else if (data.type === 'error') {
-        source.close()
-        setSeedError(data.message)
-        setPhase('error')
-      }
-    }
-    source.onerror = () => {
-      source.close()
-      fetchSetupStatus().then(status => {
-        if (status.seeded) {
+      const data = zSeedEvent.parse(JSON.parse(event.data as string /* EventSources ensure this in practice */))
+      switch (data.type) {
+        case 'progress': {
+          const pct = Math.round((data.step / data.total) * 100)
+          setProgress({ pct, label: `${data.label} (${data.step}/${data.total})` })
+          break
+        }
+        case 'log': {
+          setLogs(prev => [...prev, data.line])
+          break
+        }
+        case 'done': {
+          source.close()
           setProgress({ pct: 100, label: '' })
           setPhase('done')
-        } else if (!status.seeding) {
-          setSeedError('Connection lost')
-          setPhase('error')
+          break
         }
-      })
+        case 'error': {
+          source.close()
+          setSeedError(data.message)
+          setPhase('error')
+          break
+        }
+      }
+    }
+    source.onerror = async () => {
+      source.close()
+      const status = await fetchSetupStatus()
+      if (status.seeded) {
+        setProgress({ pct: 100, label: '' })
+        setPhase('done')
+      } else if (!status.seeding) {
+        setSeedError('Connection lost')
+        setPhase('error')
+      }
     }
     return () => source.close()
   }, [phase])

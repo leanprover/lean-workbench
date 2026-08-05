@@ -135,7 +135,14 @@ function parseMeminfo(): Record<string, number> {
   }
 }
 
-export async function fetchHealth() {
+export interface SystemHealth {
+  dataVolumeDisk: { total: string; used: string; available: string; percent: string }
+  uptime: number
+  memory: { total: number; available: number; swapTotal: number; swapFree: number }
+  loadAvg: number[]
+}
+
+export async function fetchHealth(): Promise<SystemHealth> {
   await requireAdmin()
 
   // Disk usage
