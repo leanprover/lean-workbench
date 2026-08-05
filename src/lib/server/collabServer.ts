@@ -3,7 +3,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { getCollabServerDir } from '@/lib/server/config'
-import { BWRAP_ARGS, bwrapProjectDir } from '@/lib/server/util'
+import { BWRAP_ARGS, bwrapProjectDir, existsAsync } from '@/lib/server/util'
 import { Project } from '@/prisma/generated/client'
 
 /** Name of the `collab-server` UDS file. */
@@ -97,11 +97,7 @@ export class CollabServerHandle implements AsyncDisposable {
         (async () => {
           const socketPath = path.join(this.workDir, COLLAB_SOCKET_FILENAME)
           const deadline = Date.now() + 10_000
-          while (true) {
-            try {
-              await fs.access(socketPath)
-              break
-            } catch {}
+          while (!(await existsAsync(socketPath))) {
             if (Date.now() > deadline) throw new Error(`timeout waiting for ${this.description} to create UDS`)
             await new Promise(r => setTimeout(r, 50))
           }

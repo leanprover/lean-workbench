@@ -107,7 +107,9 @@ export class WorkbenchPanelProvider implements vs.TreeDataProvider<PanelItem>, v
         let iconUri: vs.Uri | undefined = undefined
         try {
           if (item.user.image) iconUri = vs.Uri.parse(item.user.image, true)
-        } catch {}
+        } catch {
+          this.log.debug(`ignoring unparsable avatar URL for ${item.user.name}`)
+        }
         ti.iconPath = iconUri ? iconUri : new vs.ThemeIcon('account')
         ti.command = { command: COMMAND_GOTO_AWARENESS_USER, title: 'Jump to cursor', arguments: [item.user.name] }
         return ti

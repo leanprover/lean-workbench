@@ -91,12 +91,9 @@ export const updateOAuthConfig = serverAction(zUpdateOAuth, async ({ clientId, c
   const config = getConfig()
 
   // Preserve existing secret if not provided
-  let resolvedSecret = clientSecret
+  const resolvedSecret = clientSecret ?? config.githubAuth?.clientSecret
   if (!resolvedSecret) {
-    resolvedSecret = config.githubAuth?.clientSecret
-    if (!resolvedSecret) {
-      return { error: 'Client secret is required (none configured on server)' }
-    }
+    return { error: 'Client secret is required (none configured on server)' }
   }
 
   config.githubAuth = {
@@ -142,34 +139,33 @@ export async function fetchHealth() {
   await requireAdmin()
 
   // Disk usage
-  let dataVolumeDisk = { total: '?', used: '?', available: '?', percent: '?' }
+  let dataVolumeDisk: { total: string; used: string; available: string; percent: string }
   try {
     const dfOut = execFileSync('df', ['-h', getDataDir()], { encoding: 'utf8' })
     const lines = dfOut.trim().split('\n')
-    if (lines.length >= 2) {
-      const parts = lines[1].split(/\s+/)
-      dataVolumeDisk = {
-        total: parts[1] ?? '?',
-        used: parts[2] ?? '?',
-        available: parts[3] ?? '?',
-        percent: parts[4] ?? '?',
-      }
+    if (lines.length < 2) throw new Error('no dataVolumeDisk information')
+    const parts = lines[1].split(/\s+/)
+    dataVolumeDisk = {
+      total: parts[1] ?? '?',
+      used: parts[2] ?? '?',
+      available: parts[3] ?? '?',
+      percent: parts[4] ?? '?',
     }
   } catch {
-    /* ignore df failures */
+    dataVolumeDisk = { total: '?', used: '?', available: '?', percent: '?' }
   }
 
   // Memory from /proc/meminfo
   const meminfo = parseMeminfo()
 
   // Load average from /proc/loadavg
-  let loadAvg = [0, 0, 0]
+  let loadAvg: number[]
   try {
     const text = fs.readFileSync('/proc/loadavg', 'utf8')
     const parts = text.split(' ')
     loadAvg = [parseFloat(parts[0]), parseFloat(parts[1]), parseFloat(parts[2])]
   } catch {
-    /* ignore */
+    loadAvg = [0, 0, 0]
   }
 
   return {
