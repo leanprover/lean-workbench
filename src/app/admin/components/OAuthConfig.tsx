@@ -5,6 +5,7 @@ import useSWR from 'swr'
 
 import { fetchOAuthConfig, updateOAuthConfig } from '@/app/admin/actions'
 import { useServerAction } from '@/lib/client/util'
+import { formString } from '@/lib/util'
 
 export function OAuthConfig() {
   const { data, mutate } = useSWR('adminOAuthConfig', () => fetchOAuthConfig())
@@ -13,8 +14,8 @@ export function OAuthConfig() {
   const [error, action, pending] = useServerAction(
     (formData: FormData) =>
       updateOAuthConfig({
-        clientId: String(formData.get('clientId') ?? ''),
-        clientSecret: String(formData.get('clientSecret') ?? '') || undefined,
+        clientId: formString(formData, 'clientId'),
+        clientSecret: formString(formData, 'clientSecret') || undefined,
       }),
     () => {
       setEditing(false)
