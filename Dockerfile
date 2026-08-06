@@ -166,9 +166,14 @@ RUN unzip -q /tmp/ext.vsix "extension/*" -d /tmp \
     && mv /tmp/extension /app/vscode-server/lib/vscode/extensions/leanprover.workbench-universal \
     && rm -rf /tmp/ext.vsix
 
+# Install and cache NPM dependencies
+COPY --parents package.json package-lock.json */package.json /app/workbench/
+RUN --mount=type=cache,target=/root/.npm cd /app/workbench && npm clean-install --ignore-scripts
+
+# Build workbench frontend
 COPY . /app/workbench
 RUN cd /app/workbench \
-    && npm clean-install \
+    && npm rebuild && npx next typegen && npx prisma generate \
     && mkdir -p /tmp/build-dummy \
     && LEAN_WORKBENCH_DATA_DIR=/tmp/build-dummy \
        npx next build \

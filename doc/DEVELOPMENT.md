@@ -5,7 +5,10 @@ It describes how to locally run and test the workbench software.
 
 ## Prerequisites
 
-- Docker installed and running.
+- Docker installed and running,
+  with at least 16GB memory allocated
+  (in Docker Desktop, go to Settings -> Resources -> Memory).
+- Node v24 or later is needed for `make` to work
 
 ## Running the workbench server
 
@@ -45,7 +48,7 @@ The sandbox can be started by running
 sbx run --name workbench
 ```
 
-Before running the usual dev setup in the sandbox, you'll need to run the following commands inside the sandbox.
+Before running the usual dev setup, you'll need to run the following commands *inside* the sandbox.
 The `WORKBENCH_PUBLISH_IP` setting is necessary to access workbench outside the sandbox,
 and the `DOCKER_CACHE_DIR` ensures that the docker cache doesn't have to cross the an inefficient VM boundary.
 
@@ -56,13 +59,18 @@ source ~/.bashrc
 ```
 
 To access the sandboxed website from your computer,
-you'll also need to run the following command outside the sandbox.
+you'll also need to run the following command *outside* the sandbox.
 
 ```
 sbx ports workbench --publish 43000:3000
 ```
 
-The sandboxed server will then be available at <http://localhost:43000>
+After running the makefile targets insidethe sandbox (i.e. `make dev`),
+the sandboxed server will be available on the host machine at <http://localhost:43000>
+
+Hot module reloading won't work correctly if you're making edits outside of the VM.
+Run `node scripts/hmr-nudge.mjs` in a separate `sbx` session
+in order to get hot module reloading working correctly.
 
 ## Makefile targets
 

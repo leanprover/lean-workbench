@@ -13,6 +13,7 @@
 
 # Collaboration server
 !collab-server/dist
+!collab-server/package.json
 
 # Pre-built workbench extension
 !vscode-workbench.vsix
