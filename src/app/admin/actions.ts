@@ -196,7 +196,8 @@ export async function fetchDiskUsage(): Promise<ActionResponse<{ workspaces: str
     const size = out.split('\t')[0] ?? '?'
     return { ok: { workspaces: size } }
   } catch (e: unknown) {
-    return { error: `Failed to compute disk usage: ${e instanceof Error ? e.message : String(e)}` }
+    console.error(`Failed to compute directory usage`, e)
+    return { error: `Could not compute size (the directory may be too large)` }
   }
 }
 

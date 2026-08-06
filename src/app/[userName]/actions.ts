@@ -22,10 +22,13 @@ const zTemplateMetadata = z.object({
 
 type TemplateMetadata = z.infer<typeof zTemplateMetadata>
 
-async function readTemplateMetadata(templateDir: string): Promise<TemplateMetadata | null> {
+/**
+ * Read `metadata.json` from `templateDir`,
+ * raising an exception if the file is missing or does not work.
+ */
+async function readTemplateMetadata(templateDir: string): Promise<TemplateMetadata> {
   const metaPath = path.join(templateDir, 'metadata.json')
-  const raw = await fs.readFile(metaPath, 'utf-8').catch(() => null)
-  if (raw === null) return null
+  const raw = await fs.readFile(metaPath, 'utf-8')
   return zTemplateMetadata.parse(JSON.parse(raw))
 }
 
@@ -43,18 +46,23 @@ export interface TemplateInfo {
 
 // --- Queries ---
 
-export async function listTemplates(): Promise<ActionResponse<TemplateInfo[]>> {
+export async function listTemplates(): Promise<TemplateInfo[]> {
   await requireAuth()
 
   const templatesDir = getTemplatesDir()
 
   const result: TemplateInfo[] = [{ id: 'blank', name: 'Blank', description: 'Empty workspace' }]
-  const entries = await fs.readdir(templatesDir, { withFileTypes: true }).catch(() => [])
+  const entries = await fs.readdir(templatesDir, { withFileTypes: true })
 
   for (const entry of entries) {
     if (!entry.isDirectory()) continue
-    const meta = await readTemplateMetadata(path.join(entry.parentPath, entry.name))
-    if (!meta) continue
+    let meta: TemplateMetadata
+    try {
+      meta = await readTemplateMetadata(path.join(entry.parentPath, entry.name))
+    } catch (err) {
+      console.error(`Skipping ${entry.name} due to metadata error`, err)
+      continue
+    }
     result.push({
       id: entry.name,
       name: meta.name,
@@ -62,7 +70,7 @@ export async function listTemplates(): Promise<ActionResponse<TemplateInfo[]>> {
     })
   }
 
-  return { ok: result }
+  return result
 }
 
 // --- Mutations ---
@@ -84,13 +92,10 @@ export const createProject = serverAction(
     if (template !== 'blank') {
       const templateDir = path.join(getTemplatesDir(), template)
       const meta = await readTemplateMetadata(templateDir)
-      if (!meta) return { error: `Template "${template}" not found` }
       if (meta.packageSet) {
         const packagesFile = path.join(getPackageSetsDir(), meta.packageSet, 'packages.txt')
         if (!(await existsAsync(packagesFile))) {
-          return {
-            error: `Package set "${meta.packageSet}" not found. Run seed-volume.sh first.`,
-          }
+          throw new Error(`Package set "${meta.packageSet}" not found. Run seed-volume.sh first.`)
         }
       }
     }
@@ -114,7 +119,7 @@ export const createProject = serverAction(
       await fs.rm(path.join(workspace, 'metadata.json'), { force: true })
 
       const meta = await readTemplateMetadata(templateDir)
-      packageSet = meta?.packageSet
+      packageSet = meta.packageSet
     }
 
     // Store project in DB

@@ -8,7 +8,9 @@ import { useServerAction } from '@/lib/client/util'
 import { formString } from '@/lib/util'
 
 export function OAuthConfig() {
-  const { data, mutate } = useSWR('adminOAuthConfig', () => fetchOAuthConfig())
+  const { data, mutate, error: oauthConfigError } = useSWR('adminOAuthConfig', () => fetchOAuthConfig())
+  if (oauthConfigError) throw oauthConfigError
+
   const [editing, setEditing] = useState(false)
 
   const [error, action, pending] = useServerAction(

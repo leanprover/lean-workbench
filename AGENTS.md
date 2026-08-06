@@ -22,10 +22,27 @@
   For example, prefer one state of type `'loading' | { error: E } | { result: T }`
   to three states `[loading, setLoading] = useState(); [error, setError] = useState(); [result, setResult] = useState()`.
 - For UI actions that hit the server,
-prefer `useServerAction` (`@/lib/util`) or (if `useServerAction` doesn't work) `useActionState`
+prefer `useServerAction` (`@/lib/client/util`) or (if `useServerAction` doesn't work) `useActionState`
 over manually storing response/error state with `useState`.
 - To call Server Functions on mount (e.g. to fetch data), use SWR.
-  
+
+# Error handling
+
+- Next.js interrupts are preferred when there is something appropriate available (e.g. authentication errors, forbidden())
+- ActionResponse { error } states are only for failures the user is expected to be able to encounter during usual operation,
+  and is expected to be able to act on (e.g. "A project with that name already exists").
+- Everything else (bugs, unreachable services, misconfigured hosts) should throw to an error boundary.
+- Errors thrown within the app should not be converted to ActionResponse errors, and vice versa.
+
+Some details/consequences:
+
+- Only render-phase throws hit error boundaries;
+  avoid throwing in callbacks, event handlers, and timeouts that will be silently ignored.
+- SWR puts a fetcher's throw in `error`;
+  errors from SWR should generally be re-raised inside of the React render function.
+  Sometimes SWR errors should be shown to the user instead,
+  but they should not be suppressed or ignored.
+
 # Agent instructions
 
 - Less code is better. After writing any new piece of code,

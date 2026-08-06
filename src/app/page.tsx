@@ -7,11 +7,12 @@ import { useSearchParams } from 'next/navigation'
 import authClient from '@/lib/client/auth'
 import { type Config, useConfigCtx } from '@/lib/contexts'
 
-import Error from './components/Error'
+import ErrorBox from './components/ErrorBox'
 
-type ErrorParam = 'unable_to_create_user' | string
-
-function errorParamToMsg(e: ErrorParam, cfg: Config): string {
+/**
+ * Interprets an (untrusted) `error` search parameter as OAuth callback information
+ */
+function errorParamToMsg(e: string, cfg: Config): string {
   if (e === 'unable_to_create_user') {
     let msg = 'Could not sign up.'
     if (cfg.registrationMode === 'restricted') {
@@ -21,7 +22,8 @@ function errorParamToMsg(e: ErrorParam, cfg: Config): string {
   } else if (e === 'invalid_code') {
     return 'Invalid GitHub OAuth configuration. Ask your administrator to fix it.'
   } else {
-    return e
+    // An unrecognized search parameter should not be shown directly to the user (phishing risk)
+    return 'Unexpected sign-in failure. Please try again; contact your administrator if this error continues.'
   }
 }
 
@@ -32,7 +34,7 @@ export default function Root() {
 
   return (
     <>
-      {error && <Error>Error: {errorParamToMsg(error, cfg)}</Error>}
+      {error && <ErrorBox>Error logging in: {errorParamToMsg(error, cfg)}</ErrorBox>}
       <h1>Lean Workbench</h1>
       <p>Multi-user sandboxed VS Code server.</p>
       {session.data && (

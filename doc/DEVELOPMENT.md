@@ -8,7 +8,7 @@ It describes how to locally run and test the workbench software.
 - Docker installed and running,
   with at least 16GB memory allocated
   (in Docker Desktop, go to Settings -> Resources -> Memory).
-- Node v24 or later is needed for `make` to work
+- Node v24 or later is needed for `make container` to work
 
 ## Running the workbench server
 

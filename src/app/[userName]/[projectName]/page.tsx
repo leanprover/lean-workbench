@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation'
 import z from 'zod'
 
-import Error from '@/app/components/Error'
 import { requireAuth } from '@/lib/server/auth'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
@@ -36,13 +35,8 @@ export default async function EditorSession({ params: params_ }: { params: Promi
   if (!project || !canAccessProject(viewer, project)) notFound()
 
   const manager = getEditorSessionManager()
-  let iframeSrc: string
-  try {
-    iframeSrc = await manager.ensureSession(viewer, owner, project)
-  } catch (err) {
-    console.error('Failed to start editor session:', (err as Error).message)
-    return <Error>Failed to start editor session: {String(err)}</Error>
-  }
+  // may throw to error boundary (e.g. if the project folder isn't accessible)
+  const iframeSrc = await manager.ensureSession(viewer, owner, project)
 
   // TODO: VSC should be sandboxed but can't be opaque-origin: need a subdomain.
   return <iframe id='editor-frame' src={iframeSrc} className='editor-session-iframe' />
