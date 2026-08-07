@@ -119,7 +119,7 @@ export const createProject = serverAction(
       await fs.rm(path.join(workspace, 'metadata.json'), { force: true })
 
       const meta = await readTemplateMetadata(templateDir)
-      packageSet = meta.packageSet
+      packageSet = meta?.packageSet
     }
 
     // Store project in DB

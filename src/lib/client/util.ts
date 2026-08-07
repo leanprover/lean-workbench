@@ -1,6 +1,7 @@
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
+import useSWR, { type Key, type SWRConfiguration } from 'swr'
 
-import type { ActionResponse } from '@/lib/util'
+import { type ActionResponse, unknownAsError } from '@/lib/util'
 
 /** Returns `[error, dispatchAction, pending]`. */
 export function useServerAction<Payload = void, T = void>(
@@ -13,4 +14,29 @@ export function useServerAction<Payload = void, T = void>(
     onSuccess?.(result.ok)
     return null
   }, null)
+}
+
+/**
+ * Creates a callback that will throw from the render phase.
+ * In a callback, `foo().then(bar)` might silently ignore errors;
+ * whereas `foo().then(bar).catch(rethrow)` will ensure the error is thrown to an error boundary.
+ */
+export function useThrowToBoundary(): { throwToBoundary: (error: unknown) => void } {
+  const [error, setError] = useState<unknown>()
+  if (error !== undefined) {
+    throw unknownAsError(error)
+  }
+  return { throwToBoundary: setError }
+}
+
+/**
+ * Wraps useSWR hook to ensure that any error thrown in the handler will be thrown
+ * to the closest error boundary.
+ */
+export function useThrowingSWR<T>(key: Key, fetcher: () => Promise<T>, config?: SWRConfiguration<T, unknown>) {
+  const result = useSWR<T, unknown>(key, fetcher, config)
+  if (result.error) {
+    throw unknownAsError(result.error)
+  }
+  return result
 }

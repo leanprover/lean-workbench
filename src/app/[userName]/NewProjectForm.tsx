@@ -2,22 +2,16 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import useSWR from 'swr'
 
-import { useServerAction } from '@/lib/client/util'
+import { useServerAction, useThrowingSWR } from '@/lib/client/util'
 import { formString } from '@/lib/util'
 
-import { createProject, listTemplates, type TemplateInfo } from './actions'
+import { createProject, listTemplates } from './actions'
 
 export function NewProjectForm() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const {
-    data: templates,
-    error: templatesError,
-    isLoading: templatesPending,
-  } = useSWR<TemplateInfo[], unknown>('listTemplates', listTemplates)
-  if (templatesError) throw templatesError
+  const { data: templates, isLoading: templatesPending } = useThrowingSWR('listTemplates', listTemplates)
 
   const [chosenTemplate, setChosenTemplate] = useState<string>('blank')
 

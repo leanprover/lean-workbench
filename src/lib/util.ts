@@ -43,3 +43,6 @@ export function formString(formData: FormData, name: string): string {
   if (typeof value === 'string') return value
   throw new Error(`form field '${name}' is a File unexpectedly`)
 }
+
+/** Ensure that an unknown has the form of an Error by wrapping it if appropriate */
+export const unknownAsError = (e: unknown) => (e instanceof Error ? e : new Error(String(e)))

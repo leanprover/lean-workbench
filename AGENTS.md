@@ -37,11 +37,17 @@ over manually storing response/error state with `useState`.
 Some details/consequences:
 
 - Only render-phase throws hit error boundaries;
-  avoid throwing in callbacks, event handlers, and timeouts that will be silently ignored.
+  exceptions originating from callbacks, event handlers, and timeouts must not be silently ignored.
+  Next.js gives advice for handling these cases (https://nextjs.org/docs/app/getting-started/error-handling),
+  generally we want to show the error to the user in the component
+  or else re-raise to throw to an error boundary (`throwToBoundary` is useful here).
+  (depending on whether it's user-actionable or not, as described above).
 - SWR puts a fetcher's throw in `error`;
-  errors from SWR should generally be re-raised inside of the React render function.
-  Sometimes SWR errors should be shown to the user instead,
+  use `useThrowingSWR` in the common case that this should be re-raised to an error boundary.
+  Sometimes SWR errors should be shown to the user instead (use the primitive `useSWR` in these cases),
   but they should not be suppressed or ignored.
+- Especially in administrative contexts, the expected/unexpected error distinction is blurry.
+  Don't let the guidelines prevent an admin from seeing useful information in the web interface.
 
 # Agent instructions
 

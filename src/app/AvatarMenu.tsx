@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 
 import AvatarIcon from '@/app/components/AvatarIcon'
 import authClient from '@/lib/client/auth'
+import { useThrowToBoundary } from '@/lib/client/util'
 import { useConfigCtx } from '@/lib/contexts'
 import { setIsAdmin } from '@/lib/server/actions'
 
@@ -12,6 +13,7 @@ export default function AvatarMenu() {
   const session = authClient.useSession()
   const cfg = useConfigCtx()
   const router = useRouter()
+  const { throwToBoundary } = useThrowToBoundary()
 
   if (session.data) {
     const user = session.data.user
@@ -25,9 +27,10 @@ export default function AvatarMenu() {
             {user.isAdmin && <Link href='/admin'>Admin interface</Link>}
             {cfg.isDevMode && (
               <button
-                onClick={async () => {
-                  await setIsAdmin(!user.isAdmin)
-                  session.refetch()
+                onClick={() => {
+                  setIsAdmin(!user.isAdmin)
+                    .then(() => session.refetch())
+                    .catch(throwToBoundary)
                 }}
               >
                 {user.isAdmin ? '[DEV] Become non-admin' : '[DEV] Become admin'}
@@ -35,13 +38,15 @@ export default function AvatarMenu() {
             )}
             <button
               onClick={() => {
-                authClient.signOut({
-                  fetchOptions: {
-                    onSuccess: () => {
-                      router.push('/')
+                authClient
+                  .signOut({
+                    fetchOptions: {
+                      onSuccess: () => {
+                        router.push('/')
+                      },
                     },
-                  },
-                })
+                  })
+                  .catch(throwToBoundary)
               }}
             >
               Sign out
@@ -51,7 +56,15 @@ export default function AvatarMenu() {
       </>
     )
   } else if (!session.isPending && cfg.hasGithubAuth) {
-    return <button onClick={() => authClient.signIn.social({ provider: 'github' })}>Sign in via GitHub</button>
+    return (
+      <button
+        onClick={() => {
+          authClient.signIn.social({ provider: 'github' }).catch(throwToBoundary)
+        }}
+      >
+        Sign in via GitHub
+      </button>
+    )
   } else {
     return <></>
   }

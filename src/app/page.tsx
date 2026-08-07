@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
 import authClient from '@/lib/client/auth'
+import { useThrowToBoundary } from '@/lib/client/util'
 import { type Config, useConfigCtx } from '@/lib/contexts'
 
 import ErrorBox from './components/ErrorBox'
@@ -31,6 +32,7 @@ export default function Root() {
   const cfg = useConfigCtx()
   const session = authClient.useSession()
   const error = useSearchParams().get('error')
+  const { throwToBoundary } = useThrowToBoundary()
 
   return (
     <>
@@ -53,9 +55,7 @@ export default function Root() {
             disabled={!cfg.hasGithubAuth}
             title={!cfg.hasGithubAuth ? 'Ask your administrator to set up GitHub authentication.' : undefined}
             onClick={() => {
-              authClient.signIn.social({
-                provider: 'github',
-              })
+              authClient.signIn.social({ provider: 'github' }).catch(throwToBoundary)
             }}
           >
             GitHub
@@ -67,8 +67,10 @@ export default function Root() {
                 const email = 'dev@dev.localhost'
                 const name = 'dev'
                 const password = 'dev'
-                await authClient.signUp.email({ email, name, password })
-                await authClient.signIn.email({ email, password })
+                authClient.signUp
+                  .email({ email, name, password })
+                  .then(() => authClient.signIn.email({ email, password }))
+                  .catch(throwToBoundary)
               }}
             >
               [DEV]
