@@ -8,7 +8,7 @@ import { Logger } from '../src/util'
 
 const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 
-const logLevel: vs.LogLevel = vs.LogLevel.Debug as unknown as vs.LogLevel // cast prevents TS from complaining
+const logLevel = vs.LogLevel.Debug as vs.LogLevel // cast prevents TS from complaining
 const consoleLog: Logger = {
   logLevel,
   trace: (m, ...a) => {
@@ -132,14 +132,14 @@ suite('Collaborative editing', () => {
       vs.workspace.openTextDocument({ content: '', language: 'plaintext' }),
     ])
     const bindings = docs.map(
-      (doc, i) => new YTextBinding(doc, clients[i], consoleLog, true, ensureSyncTimeoutMs, DOC_NAME),
+      (doc, i) => new YTextBinding(doc, clients[i]!, consoleLog, true, ensureSyncTimeoutMs, DOC_NAME),
     )
 
     // Route document changes to the matching binding
     // (`YTextBindingManager.onDidChangeTextDocument` does this in production).
     const changeSub = vs.workspace.onDidChangeTextDocument(e => {
       const i = docs.indexOf(e.document)
-      if (i >= 0) bindings[i].onLocalChange(e)
+      if (i >= 0) bindings[i]!.onLocalChange(e)
     })
 
     return {
@@ -166,12 +166,12 @@ suite('Collaborative editing', () => {
     await waitForInitialSync(handles.bindings, 1_000)
 
     // Type on doc0 and confirm the change reaches doc1.
-    const ed0 = await vs.window.showTextDocument(handles.docs[0], { viewColumn: COLUMNS[0], preview: false })
+    const ed0 = await vs.window.showTextDocument(handles.docs[0]!, { viewColumn: COLUMNS[0], preview: false })
     ed0.selection = new vs.Selection(0, 0, 0, 0)
     const text = 'PROBE\n'
     await vs.commands.executeCommand('default:type', { text })
     await waitForQuiescence(handles.bindings, 1_000)
-    assert.strictEqual(handles.docs[1].getText(), text)
+    assert.strictEqual(handles.docs[1]!.getText(), text)
     await handles.dispose()
   })
 
@@ -181,7 +181,7 @@ suite('Collaborative editing', () => {
     const rng = mulberry32(0xc0ffee)
     const NUM_EDITS = 100
     for (let i = 0; i < NUM_EDITS; i++) {
-      await randomEditOn(handles.docs[i % 2], COLUMNS[i % 2], rng)
+      await randomEditOn(handles.docs[i % 2]!, COLUMNS[i % 2]!, rng)
     }
   }
 
@@ -190,10 +190,10 @@ suite('Collaborative editing', () => {
     const [y0, y1] = handles.bindings.map(b => b.remoteYtext.toString())
 
     // Sanity check - YJs CRDT replicas converge.
-    assert.strictEqual(y0, y1, diffMessage('Y.Text replicas (client0 vs client1)', y0, y1))
+    assert.strictEqual(y0, y1, diffMessage('Y.Text replicas (client0 vs client1)', y0!, y1!))
     // Whether docs correctly track CRDT replicas.
-    assert.strictEqual(d0, y0, diffMessage('doc0 vs its Y.Text', d0, y0))
-    assert.strictEqual(d1, y1, diffMessage('doc1 vs its Y.Text', d1, y1))
+    assert.strictEqual(d0, y0, diffMessage('doc0 vs its Y.Text', d0!, y0!))
+    assert.strictEqual(d1, y1, diffMessage('doc1 vs its Y.Text', d1!, y1!))
   }
 
   test('Concurrent edits settle on equal states', async function () {
@@ -214,11 +214,11 @@ suite('Collaborative editing', () => {
     await waitForInitialSync(handles.bindings, 1_000)
     // Ensure both documents are visible:
     // only `TextEditor.edit`s are expected to converge without ensureSync.
-    await vs.window.showTextDocument(handles.docs[0], { viewColumn: COLUMNS[0], preview: false })
-    await vs.window.showTextDocument(handles.docs[1], { viewColumn: COLUMNS[1], preview: false })
+    await vs.window.showTextDocument(handles.docs[0]!, { viewColumn: COLUMNS[0], preview: false })
+    await vs.window.showTextDocument(handles.docs[1]!, { viewColumn: COLUMNS[1], preview: false })
     await makeConcurrentEdits(handles)
     await waitForQuiescence(handles.bindings, 3_000)
-    await assertEqualStates(handles)
+    assertEqualStates(handles)
     await handles.dispose()
   })
 })
