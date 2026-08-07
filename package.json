@@ -16,7 +16,10 @@
     "tsc:collab-server": "npm --workspace collab-server run tsc",
     "tsc:vscode-workbench": "npm --workspace vscode-workbench run tsc",
     "tsc:workbench-app": "tsc",
-    "lint": "prettier --check . && eslint"
+    "lint": "prettier --check . && eslint",
+    "lint:fix": "prettier --write . && eslint . --fix",
+    "prettier": "prettier --check .",
+    "prettier:fix": "prettier --write ."
   },
   "dependencies": {
     "@hocuspocus/provider": "^4.0.0",
