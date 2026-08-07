@@ -34,8 +34,10 @@ export function useThrowToBoundary(): { throwToBoundary: (error: unknown) => voi
  * to the closest error boundary.
  */
 export function useThrowingSWR<T>(key: Key, fetcher: () => Promise<T>, config?: SWRConfiguration<T, unknown>) {
-  const result = useSWR<T, unknown>(key, fetcher, config)
-  if (result.error) {
+  const result = useSWR<T, unknown>(key, () => fetcher(), config)
+  // On a background revalidation (like when the window refocuses), result.data will be defined
+  // Don't throw if such a background revalidation fails, just continue returning the (stale) data.
+  if (result.error && result.data === undefined) {
     throw unknownAsError(result.error)
   }
   return result
