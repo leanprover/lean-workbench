@@ -21,6 +21,8 @@ const eslintConfig = defineConfig([
     'build/',
     'next-env.d.ts',
     'branch-*/',
+    // Ignore vendored microsoft/vscode typing files
+    'vscode-workbench/src/vscode.proposed.*.d.ts',
   ]),
   {
     plugins: {

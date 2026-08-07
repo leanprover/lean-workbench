@@ -5,6 +5,7 @@
 
 import { createHash } from 'node:crypto'
 import { readFile, utimes } from 'node:fs/promises'
+
 import chokidar from 'chokidar'
 
 const paths = process.argv.length < 3 ? ['src'] : process.argv.slice(2)
