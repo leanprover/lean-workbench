@@ -1,8 +1,8 @@
-import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider'
+import { HocuspocusProvider, type HocuspocusProviderWebsocket } from '@hocuspocus/provider'
 import vs from 'vscode'
 import * as Y from 'yjs'
 
-import { Logger, logWithPrefix, shouldSyncPath, WorkspaceMetadata, YTEXT_KEY } from './util'
+import { type Logger, logWithPrefix, shouldSyncPath, type WorkspaceMetadata, YTEXT_KEY } from './util'
 
 /** Maintains a {@link YTextBinding} binding for every open {@link vs.TextDocument}
  * whose path lies within one of the syncable directories. */
@@ -192,8 +192,8 @@ export class YTextBinding implements vs.Disposable {
    * Work items are atomic w.r.t. all other work items
    * (but not w.r.t. other `async` operations). */
   private enqueueTransaction(work: () => Promise<void>): void {
-    this.mutex = this.mutex.then(work).catch(e => {
-      this.log.error(e)
+    this.mutex = this.mutex.then(work).catch((e: unknown) => {
+      this.log.error(e instanceof Error ? e : new Error(String(e)))
     })
   }
 

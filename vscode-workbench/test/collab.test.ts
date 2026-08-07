@@ -4,7 +4,7 @@ import * as assert from 'assert'
 import * as vs from 'vscode'
 
 import { YTextBinding } from '../src/textBinding'
-import { Logger } from '../src/util'
+import { type Logger } from '../src/util'
 
 const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 

@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 
 import { minimatch } from 'minimatch'
-import vs from 'vscode'
+import type vs from 'vscode'
 import { z } from 'zod'
 
 /** Subset of {@link vs.LogOutputChannel} used for our purposes. */

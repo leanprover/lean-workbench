@@ -7,7 +7,7 @@ import { z } from 'zod'
 
 import { useServerAction, useThrowingSWR, useThrowToBoundary } from '@/lib/client/util'
 import { useConfigCtx } from '@/lib/contexts'
-import { LEAN_VERSION_RE, SeedEvent, zSeedEvent } from '@/lib/util'
+import { LEAN_VERSION_RE, type SeedEvent, zSeedEvent } from '@/lib/util'
 
 import { fetchSetupStatus, saveSetupConfig, startSeed } from './actions'
 
@@ -235,12 +235,10 @@ export default function Setup() {
               <div className='setup-progress-outer'>
                 <div className='setup-progress-inner' style={{ width: `${progress.pct}%` }} />
               </div>
-              {(phase === 'seeding' || phase === 'error') && (
-                <div className='setup-progress-label'>
-                  {phase === 'seeding' && <span className='setup-spinner' />}
-                  <span>{progress.label || 'Starting...'}</span>
-                </div>
-              )}
+              <div className='setup-progress-label'>
+                {phase === 'seeding' && <span className='setup-spinner' />}
+                <span>{progress.label || 'Starting...'}</span>
+              </div>
             </div>
           )}
 

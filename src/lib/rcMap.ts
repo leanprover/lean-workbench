@@ -18,7 +18,7 @@ export class RcMap<K, V extends AsyncDisposable> implements AsyncDisposable {
       this.entries.set(key, resource)
     }
     resource.count++
-    const value = await resource.value.catch(err => {
+    const value = await resource.value.catch((err: unknown) => {
       if (--resource.count === 0) this.entries.delete(key)
       throw err
     })

@@ -3,7 +3,7 @@
 import { startTransition, useState } from 'react'
 import useSWR from 'swr'
 
-import { fetchDiskUsage, fetchHealth } from '@/app/admin/actions'
+import { fetchDiskUsage, fetchHealth, type SystemHealth } from '@/app/admin/actions'
 import { useServerAction } from '@/lib/client/util'
 
 import { formatBytes, formatUptime } from './utils'
@@ -12,7 +12,7 @@ const labelStyle = { padding: '4px 12px 4px 0', color: '#666' }
 const valueStyle = { padding: '4px 0' }
 
 export function HealthMonitor() {
-  const { data: health, error: healthError } = useSWR('adminHealth', () => fetchHealth(), {
+  const { data: health, error: healthError } = useSWR<SystemHealth, Error>('adminHealth', () => fetchHealth(), {
     refreshInterval: 30_000,
   })
   const [workspacesSize, setWorkspacesSize] = useState<string | null>(null)

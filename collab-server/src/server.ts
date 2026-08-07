@@ -84,7 +84,8 @@ server.httpServer.listen(socketPath, () => {
   Object.defineProperty(server, 'httpURL', {
     get: () => `http+unix:${socketPath}`,
   })
-  server['showStartScreen']()
+  // Deliberate abstraction violation to call showStartScreen()
+  ;(server as unknown as { showStartScreen(): void }).showStartScreen()
 
   // No need to call `onListen` hooks here since we don't register any.
 })

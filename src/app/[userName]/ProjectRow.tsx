@@ -1,6 +1,6 @@
 'use client'
 
-import { Route } from 'next'
+import { type Route } from 'next'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { startTransition, useState } from 'react'
