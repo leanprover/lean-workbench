@@ -37,8 +37,11 @@ export function useThrowingSWR<T>(key: Key, fetcher: () => Promise<T>, config?: 
   const result = useSWR<T, unknown>(key, () => fetcher(), config)
   // On a background revalidation (like when the window refocuses), result.data will be defined
   // Don't throw if such a background revalidation fails, just continue returning the (stale) data.
-  if (result.error && result.data === undefined) {
-    throw unknownAsError(result.error)
+  if (result.error !== undefined) {
+    if (result.data === undefined) {
+      throw unknownAsError(result.error)
+    }
+    console.error(`Background revalidation failed for ${key}, reusing old value`, result.error)
   }
   return result
 }

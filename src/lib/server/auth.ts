@@ -37,7 +37,7 @@ async function createAuth() {
     await saveConfig()
   }
 
-  return betterAuth({
+  const auth = betterAuth({
     database: prismaAdapter(getDb(), { provider: 'sqlite' }),
     secret: config.authSessionSecret,
     databaseHooks: {
@@ -101,6 +101,16 @@ async function createAuth() {
     },
     plugins: [nextCookies()],
   })
+
+  if (isDevMode()) {
+    const email = 'dev@dev.localhost'
+    const existing = await getDb().user.findUnique({ where: { email } })
+    if (!existing) {
+      await auth.api.signUpEmail({ body: { email, name: 'dev', password: 'dev' } })
+    }
+  }
+
+  return auth
 }
 
 export type AuthInstance = Awaited<ReturnType<typeof createAuth>>

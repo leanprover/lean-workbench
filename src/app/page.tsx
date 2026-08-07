@@ -65,12 +65,8 @@ export default function Root() {
               className='login-link'
               onClick={async () => {
                 const email = 'dev@dev.localhost'
-                const name = 'dev'
                 const password = 'dev'
-                authClient.signUp
-                  .email({ email, name, password })
-                  .then(() => authClient.signIn.email({ email, password }))
-                  .catch(throwToBoundary)
+                authClient.signIn.email({ email, password }).catch(throwToBoundary)
               }}
             >
               [DEV]
