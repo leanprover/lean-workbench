@@ -16,7 +16,7 @@
     "tsc:collab-server": "npm --workspace collab-server run tsc",
     "tsc:vscode-workbench": "npm --workspace vscode-workbench run tsc",
     "tsc:workbench-app": "tsc",
-    "lint": "prettier --check . && eslint",
+    "lint": "eslint && prettier --check .",
     "lint:fix": "eslint . --fix && prettier --write .",
     "prettier": "prettier --check .",
     "prettier:fix": "prettier --write ."
