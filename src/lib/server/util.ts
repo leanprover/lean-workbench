@@ -2,7 +2,7 @@ import 'server-only'
 
 import fs from 'node:fs/promises'
 
-import z from 'zod'
+import type z from 'zod'
 
 import type { ActionResponse } from '@/lib/util'
 import type { Project } from '@/prisma/generated/client'

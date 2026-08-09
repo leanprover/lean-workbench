@@ -1,16 +1,16 @@
 import vs from 'vscode'
-import { Awareness } from 'y-protocols/awareness'
+import { type Awareness } from 'y-protocols/awareness'
 
 import {
   AWARENESS_SELECTION_KEY,
   AWARENESS_USER_KEY,
-  AwarenessSelection,
-  AwarenessUser,
+  type AwarenessSelection,
+  type AwarenessUser,
   equalAwarenessUsers,
   equalMaps,
-  Logger,
+  type Logger,
   logWithPrefix,
-  WorkspaceMetadata,
+  type WorkspaceMetadata,
 } from './util'
 
 type PanelItem = { kind: 'onlineUsersRoot' } | { kind: 'onlineUser'; user: AwarenessUser }

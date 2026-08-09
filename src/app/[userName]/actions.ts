@@ -12,7 +12,7 @@ import { getPackageSetsDir, getTemplatesDir, getWorkspacesDir } from '@/lib/serv
 import { getDb } from '@/lib/server/db'
 import { existsAsync, serverAction } from '@/lib/server/util'
 import { type ActionResponse, zProjectId, zProjectName, zTemplateId } from '@/lib/util'
-import { Project } from '@/prisma/generated/client'
+import { type Project } from '@/prisma/generated/client'
 
 const zTemplateMetadata = z.object({
   name: z.string(),
@@ -119,7 +119,7 @@ export const createProject = serverAction(
       await fs.rm(path.join(workspace, 'metadata.json'), { force: true })
 
       const meta = await readTemplateMetadata(templateDir)
-      packageSet = meta?.packageSet
+      packageSet = meta.packageSet
     }
 
     // Store project in DB

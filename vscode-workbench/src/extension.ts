@@ -7,7 +7,7 @@ import { connectToCollabServer } from './collabServer'
 import { WorkbenchPanelProvider } from './panel'
 import { RemoteSelectionDecorator } from './remoteSelections'
 import { YTextBindingManager } from './textBinding'
-import { BWRAP_METADATA_PATH, bwrapProjectDir, WorkspaceMetadata, zWorkspaceMetadata } from './util'
+import { BWRAP_METADATA_PATH, bwrapProjectDir, type WorkspaceMetadata, zWorkspaceMetadata } from './util'
 
 /** Ensure we are in the expected Lean Workbench environment
  * and return the current workspace configuration.

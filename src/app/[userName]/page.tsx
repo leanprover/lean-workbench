@@ -1,4 +1,4 @@
-import { Route } from 'next'
+import { type Route } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import z from 'zod'

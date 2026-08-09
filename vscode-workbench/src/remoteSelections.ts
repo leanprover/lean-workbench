@@ -1,7 +1,7 @@
 import vs from 'vscode'
-import { Awareness } from 'y-protocols/awareness'
+import { type Awareness } from 'y-protocols/awareness'
 
-import { AWARENESS_SELECTION_KEY, AWARENESS_USER_KEY, AwarenessSelection, AwarenessUser } from './util'
+import { AWARENESS_SELECTION_KEY, AWARENESS_USER_KEY, type AwarenessSelection, type AwarenessUser } from './util'
 
 interface AwarenessState {
   [AWARENESS_USER_KEY]: AwarenessUser

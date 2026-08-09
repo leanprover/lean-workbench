@@ -7,10 +7,10 @@ import {
   AWARENESS_CURSOR_COLORS,
   AWARENESS_DOC_NAME,
   AWARENESS_USER_KEY,
-  AwarenessUser,
+  type AwarenessUser,
   BWRAP_COLLAB_SOCK_PATH,
   waitForPath,
-  WorkspaceMetadata,
+  type WorkspaceMetadata,
 } from './util'
 
 export class CollabServerConnection implements vs.Disposable {

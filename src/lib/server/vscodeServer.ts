@@ -1,14 +1,14 @@
-import { ChildProcess, spawn } from 'node:child_process'
+import { type ChildProcess, spawn } from 'node:child_process'
 import fs from 'node:fs/promises'
 import { request } from 'node:http'
 import path from 'node:path'
 import type Stream from 'node:stream'
 
-import { User } from 'better-auth'
+import { type User } from 'better-auth'
 
 import { getConfig, getElanDir, getOpenVscodeServerDir, getUserHomeDir, isDevMode } from '@/lib/server/config'
 import { BWRAP_ARGS, bwrapHomeDir, bwrapProjectDir, readProcesses } from '@/lib/server/util'
-import { Project } from '@/prisma/generated/client'
+import { type Project } from '@/prisma/generated/client'
 
 /** Create a VSCode machine settings file if one doesn't exist. */
 async function ensureMachineSettings(serverDataDir: string): Promise<void> {
@@ -315,20 +315,22 @@ export class VscodeServerHandle implements AsyncDisposable {
 
   /** Start a debugger in the extension host of the VSCode server. */
   async enableDebugger() {
-    if (!this.proc) return
+    const bwrapProc = this.proc
+    if (!bwrapProc) return
     // Send SIGUSR1 to the (assumed unique) extension host descendant of code-server:
     // https://nodejs.org/api/process.html#signal-events
-    const root = (await readProcesses()).get(this.proc.pid!)
-    // Give up if parent has exited while we read proc table
+    const bwrapProcInfo = (await readProcesses()).get(bwrapProc.pid!)
+
+    // Stop if the bwrap process exited (proc.once('close') resets this.proc to undefined)
     if (!this.proc) return
-    const stack = root ? [root] : []
+    const stack = bwrapProcInfo ? [bwrapProcInfo] : []
     while (stack.length > 0) {
-      const proc = stack.pop()!
-      if (proc.cmdline.includes('--type=extensionHost')) {
-        process.kill(proc.pid, 'SIGUSR1')
+      const procInfo = stack.pop()!
+      if (procInfo.cmdline.includes('--type=extensionHost')) {
+        process.kill(procInfo.pid, 'SIGUSR1')
         return
       }
-      stack.push(...proc.children)
+      stack.push(...procInfo.children)
     }
     console.warn(`Extension host not found in ${this.description}`)
   }
