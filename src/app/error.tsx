@@ -24,6 +24,7 @@ export default function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
     <div>
       <h1>Something went wrong!</h1>
       <ErrorBox>
+        {/* digest is only present in server-side errors */}
         {error.digest && (
           <p>
             Something went wrong on the server. Try again, or contact your administrator with the error code{' '}
