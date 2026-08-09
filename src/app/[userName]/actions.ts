@@ -60,7 +60,7 @@ export async function listTemplates(): Promise<TemplateInfo[]> {
     try {
       meta = await readTemplateMetadata(path.join(entry.parentPath, entry.name))
     } catch (err) {
-      console.error(`Skipping ${entry.name} due to metadata error`, err)
+      console.error(`Skipping template '${entry.name}' due to metadata error`, err)
       continue
     }
     result.push({
