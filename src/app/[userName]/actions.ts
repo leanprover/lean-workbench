@@ -24,7 +24,7 @@ type TemplateMetadata = z.infer<typeof zTemplateMetadata>
 
 /**
  * Read `metadata.json` from `templateDir`,
- * raising an exception if the file is missing or does not work.
+ * raising an exception if the file is missing or unparseable.
  */
 async function readTemplateMetadata(templateDir: string): Promise<TemplateMetadata> {
   const metaPath = path.join(templateDir, 'metadata.json')
