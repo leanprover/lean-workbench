@@ -321,8 +321,8 @@ export class VscodeServerHandle implements AsyncDisposable {
     // https://nodejs.org/api/process.html#signal-events
     const bwrapProcInfo = (await readProcesses()).get(bwrapProc.pid!)
 
-    // Give up if the bwrap process exited or was replaced while we read proc table
-    if (this.proc !== bwrapProc) return
+    // Stop if the bwrap process exited (proc.once('close') resets this.proc to undefined)
+    if (!this.proc) return
     const stack = bwrapProcInfo ? [bwrapProcInfo] : []
     while (stack.length > 0) {
       const procInfo = stack.pop()!

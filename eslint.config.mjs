@@ -55,7 +55,12 @@ const eslintConfig = defineConfig([
       '@typescript-eslint/no-unnecessary-type-assertion': 'off', // actively misleading until we turn the typescript option noUncheckedIndexedAccess on
       '@typescript-eslint/no-unused-vars': [
         'error',
-        { args: 'none', varsIgnorePattern: '^_', caughtErrors: 'none', enableAutofixRemoval: { imports: true } },
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrors: 'none',
+          enableAutofixRemoval: { imports: true },
+        },
       ],
       '@typescript-eslint/no-unsafe-return': 'off', // noisy, temporarily disabled
       '@typescript-eslint/require-await': 'off', // actively misleading in `'use server'` modules
