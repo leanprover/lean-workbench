@@ -1,14 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import useSWR from 'swr'
 
 import { fetchOAuthConfig, updateOAuthConfig } from '@/app/admin/actions'
-import { useServerAction } from '@/lib/client/util'
+import { useServerAction, useThrowingSWR } from '@/lib/client/util'
 import { formString } from '@/lib/util'
 
 export function OAuthConfig() {
-  const { data, mutate } = useSWR('adminOAuthConfig', () => fetchOAuthConfig())
+  const { data, mutate } = useThrowingSWR('adminOAuthConfig', () => fetchOAuthConfig())
+
   const [editing, setEditing] = useState(false)
 
   const [error, action, pending] = useServerAction(

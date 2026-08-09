@@ -1,4 +1,4 @@
-export default function Error({ children }: { children: React.ReactNode }) {
+export default function ErrorBox({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{

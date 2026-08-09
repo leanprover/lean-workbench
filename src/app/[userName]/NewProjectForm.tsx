@@ -2,25 +2,16 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import useSWR from 'swr'
 
-import { useServerAction } from '@/lib/client/util'
+import { useServerAction, useThrowingSWR } from '@/lib/client/util'
 import { formString } from '@/lib/util'
 
-import { createProject, listTemplates, type TemplateInfo } from './actions'
+import { createProject, listTemplates } from './actions'
 
 export function NewProjectForm() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const {
-    data: templates,
-    error: templatesError,
-    isLoading: templatesPending,
-  } = useSWR<TemplateInfo[], string>('listTemplates', async () => {
-    const result = await listTemplates()
-    if ('error' in result) throw new Error(result.error)
-    return result.ok
-  })
+  const { data: templates, isLoading: templatesPending } = useThrowingSWR('listTemplates', listTemplates)
 
   const [chosenTemplate, setChosenTemplate] = useState<string>('blank')
 
@@ -45,8 +36,6 @@ export function NewProjectForm() {
       </div>
     )
   }
-
-  const error = templatesError ?? createError
 
   return (
     <form action={createAction} className='new-project' style={{ marginTop: 16 }}>
@@ -76,7 +65,7 @@ export function NewProjectForm() {
           </button>
         ))}
       </div>
-      {error && <div style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{error}</div>}
+      {createError && <div style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{createError}</div>}
       <div>
         <button type='submit' disabled={createPending}>
           Create

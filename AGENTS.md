@@ -22,10 +22,33 @@
   For example, prefer one state of type `'loading' | { error: E } | { result: T }`
   to three states `[loading, setLoading] = useState(); [error, setError] = useState(); [result, setResult] = useState()`.
 - For UI actions that hit the server,
-prefer `useServerAction` (`@/lib/util`) or (if `useServerAction` doesn't work) `useActionState`
+prefer `useServerAction` (`@/lib/client/util`) or (if `useServerAction` doesn't work) `useActionState`
 over manually storing response/error state with `useState`.
 - To call Server Functions on mount (e.g. to fetch data), use SWR.
-  
+
+# Error handling
+
+- Next.js interrupts are preferred when there is something appropriate available (e.g. authentication errors, forbidden())
+- ActionResponse { error } states are only for failures the user is expected to be able to encounter during usual operation,
+  and is expected to be able to act on (e.g. "A project with that name already exists").
+- Everything else (bugs, unreachable services, misconfigured hosts) should throw to an error boundary.
+- Errors thrown within the app should not be converted to ActionResponse errors, and vice versa.
+
+Some details/consequences:
+
+- Only render-phase throws hit error boundaries;
+  exceptions originating from callbacks, event handlers, and timeouts must not be silently ignored.
+  Next.js gives advice for handling these cases (https://nextjs.org/docs/app/getting-started/error-handling),
+  generally we want to show the error to the user in the component
+  or else re-raise to throw to an error boundary (`throwToBoundary` is useful here).
+  (depending on whether it's user-actionable or not, as described above).
+- SWR puts a fetcher's throw in `error`;
+  use `useThrowingSWR` in the common case that this should be re-raised to an error boundary.
+  Sometimes SWR errors should be shown to the user instead (use the primitive `useSWR` in these cases),
+  but they should not be suppressed or ignored.
+- Especially in administrative contexts, the expected/unexpected error distinction is blurry.
+  Don't let the guidelines prevent an admin from seeing useful information in the web interface.
+
 # Agent instructions
 
 - Less code is better. After writing any new piece of code,

@@ -3,12 +3,11 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
-import useSWR from 'swr'
 import { z } from 'zod'
 
-import { useServerAction } from '@/lib/client/util'
+import { useServerAction, useThrowingSWR, useThrowToBoundary } from '@/lib/client/util'
 import { useConfigCtx } from '@/lib/contexts'
-import { LEAN_VERSION_RE, zSeedEvent } from '@/lib/util'
+import { LEAN_VERSION_RE, SeedEvent, zSeedEvent } from '@/lib/util'
 
 import { fetchSetupStatus, saveSetupConfig, startSeed } from './actions'
 
@@ -37,7 +36,7 @@ export default function Setup() {
   const [progress, setProgress] = useState({ pct: 0, label: '' })
   const [logs, setLogs] = useState<string[]>([])
   const [leanVersion, setLeanVersion] = useState<string | undefined>()
-  const { data: leanVersions } = useSWR('leanVersions', fetchLeanVersions)
+  const { data: leanVersions } = useThrowingSWR('leanVersions', fetchLeanVersions)
   const logRef = useRef<HTMLDivElement>(null)
 
   const [configError, saveConfigAction, savingConfig] = useServerAction(
@@ -46,13 +45,14 @@ export default function Setup() {
   )
 
   // Sync with server state on mount (handles page reload during seeding).
+  const { throwToBoundary } = useThrowToBoundary()
   useEffect(() => {
     fetchSetupStatus().then(status => {
       if (status.configSaved) setConfigSaved(true)
       if (status.seeded) setPhase('done')
       else if (status.seeding) setPhase('seeding')
-    })
-  }, [])
+    }, throwToBoundary)
+  }, [throwToBoundary])
 
   // Auto-scroll log area.
   useEffect(() => {
@@ -66,7 +66,17 @@ export default function Setup() {
     if (phase !== 'seeding') return
     const source = new EventSource('/api/setup-events')
     source.onmessage = event => {
-      const data = zSeedEvent.parse(JSON.parse(event.data as string /* EventSources ensure this in practice */))
+      let data: SeedEvent
+      try {
+        data = zSeedEvent.parse(JSON.parse(event.data as string /* EventSources ensure this in practice */))
+      } catch (err) {
+        source.close()
+        console.error('Error parsing a response from EventSource setup-events: ', err)
+        setSeedError('Unexpected response from server')
+        setPhase('error')
+        return
+      }
+
       switch (data.type) {
         case 'progress': {
           const pct = Math.round((data.step / data.total) * 100)
@@ -92,13 +102,19 @@ export default function Setup() {
       }
     }
     source.onerror = async () => {
-      source.close()
-      const status = await fetchSetupStatus()
-      if (status.seeded) {
-        setProgress({ pct: 100, label: '' })
-        setPhase('done')
-      } else if (!status.seeding) {
-        setSeedError('Connection lost')
+      try {
+        source.close()
+        const status = await fetchSetupStatus()
+        if (status.seeded) {
+          setProgress({ pct: 100, label: '' })
+          setPhase('done')
+        } else if (!status.seeding) {
+          setSeedError('Connection lost')
+          setPhase('error')
+        }
+      } catch (e) {
+        console.error('fetchSetupStatus() failed', e)
+        setSeedError('Unexpected error getting setup status')
         setPhase('error')
       }
     }
