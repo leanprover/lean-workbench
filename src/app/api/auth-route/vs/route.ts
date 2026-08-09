@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const uri = req.headers.get('x-auth-uri') ?? ''
   const match = uri.match(/^\/_vs\/([^/]+)\/.*$/)
   if (!match) forbidden()
-  const sessionId = match[1]
+  const sessionId = match[1]!
   const userSession = await requireAuth()
   const socketPath = getEditorSessionManager().socketPathForViewer(userSession.user.id, sessionId)
   if (!socketPath) forbidden()

@@ -24,7 +24,7 @@ type Params = z.infer<typeof zParams>
  * Access control is currently the same as for editing the project. */
 export async function GET(_req: Request, { params }: { params: Promise<Params> }) {
   const parsed = zParams.safeParse(await params)
-  if (!parsed.success) return new Response(parsed.error.issues[0].message, { status: 400 })
+  if (!parsed.success) return new Response(parsed.error.issues[0]!.message, { status: 400 })
   const { userName, projectName, relPath: relPathSegs } = parsed.data
 
   const session = await requireAuth()

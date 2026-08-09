@@ -51,8 +51,7 @@ const eslintConfig = defineConfig([
           checksVoidReturn: { arguments: false, attributes: false },
         },
       ],
-      '@typescript-eslint/no-unnecessary-condition': 'off', // actively misleading until we turn the typescript option noUncheckedIndexedAccess on
-      '@typescript-eslint/no-unnecessary-type-assertion': 'off', // actively misleading until we turn the typescript option noUncheckedIndexedAccess on
+      '@typescript-eslint/no-unnecessary-condition': 'error',
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
@@ -62,7 +61,6 @@ const eslintConfig = defineConfig([
           enableAutofixRemoval: { imports: true },
         },
       ],
-      '@typescript-eslint/no-unsafe-return': 'off', // noisy, temporarily disabled
       '@typescript-eslint/require-await': 'off', // actively misleading in `'use server'` modules
       '@typescript-eslint/restrict-template-expressions': 'off', // always allow `${x}` regardless of x's type
       '@typescript-eslint/use-unknown-in-catch-callback-variable': 'error', // complements how strict works in typescript for chained promises

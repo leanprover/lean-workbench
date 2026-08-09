@@ -247,8 +247,8 @@ export async function initEditorSessions() {
     for (const servers of m['vscServers'].values()) {
       for (const s of servers) Object.setPrototypeOf(s, VscodeServerHandle.prototype)
     }
-    await m['mounts'].forEach(mount => Object.setPrototypeOf(mount, ProjectMountHandle.prototype))
-    await m['collabServers'].forEach(collab => Object.setPrototypeOf(collab, CollabServerHandle.prototype))
+    await m['mounts'].forEach(mount => Object.setPrototypeOf(mount, ProjectMountHandle.prototype) as unknown)
+    await m['collabServers'].forEach(collab => Object.setPrototypeOf(collab, CollabServerHandle.prototype) as unknown)
   }
 }
 

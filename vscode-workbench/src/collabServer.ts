@@ -89,7 +89,7 @@ export async function connectToCollabServer(
   }
   const color = AWARENESS_CURSOR_COLORS.reduce(
     (acc, c) => (counts.get(acc)! <= counts.get(c)! ? acc : c),
-    AWARENESS_CURSOR_COLORS[0],
+    AWARENESS_CURSOR_COLORS[0]!,
   )
 
   awarenessProvider.setAwarenessField(AWARENESS_USER_KEY, {

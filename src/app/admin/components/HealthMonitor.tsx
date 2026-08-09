@@ -25,7 +25,7 @@ export function HealthMonitor() {
     return (
       <section>
         <h2>System health</h2>
-        <p style={{ color: '#dc2626' }}>Failed to load: {String(healthError)}</p>
+        <p style={{ color: '#dc2626' }}>Failed to load: {healthError.message}</p>
       </section>
     )
   }

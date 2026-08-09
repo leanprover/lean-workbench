@@ -11,7 +11,7 @@ export async function GET() {
   interval = setInterval(() => {
     const st = getSeedState()
     while (cursor < st.events.length) {
-      const event = st.events[cursor++]
+      const event = st.events[cursor++]!
       send(event)
       if (event.type === 'done' || event.type === 'error') {
         clearInterval(interval)

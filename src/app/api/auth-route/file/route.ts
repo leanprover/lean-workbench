@@ -14,11 +14,11 @@ export async function GET(req: Request) {
   // we can expect no trailing slash.
   const match = uri.match(/^\/_file\/([^/]+)\/(.*[^/])$/)
   if (!match) forbidden()
-  const rootDir = verifySignedDirToken(match[1])
+  const rootDir = verifySignedDirToken(match[1]!)
   if (!rootDir) forbidden()
   const realRootDir = await fs.realpath(rootDir).catch(() => null)
   if (!realRootDir) forbidden()
-  const filePath = path.resolve(realRootDir, match[2])
+  const filePath = path.resolve(realRootDir, match[2]!)
   // Ensure the absolute path with symlinks resolved lives under `realRootDir`.
   // If resolution fails, we pass `filePath` through - Nginx will 404 it.
   const realFilePath = await fs.realpath(filePath).catch(() => filePath)

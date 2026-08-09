@@ -21,7 +21,7 @@ export async function saveSetupConfig(formData: FormData): Promise<ActionRespons
     clientId: formData.get('clientId'),
     clientSecret: formData.get('clientSecret'),
   })
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
+  if (!parsed.success) return { error: parsed.error.issues[0]!.message }
 
   const { baseUrl, ...githubAuth } = parsed.data
   cfg.baseUrl = baseUrl
