@@ -63,7 +63,7 @@ export default function Setup() {
 
   // Stream seed events whenever we're in the seeding phase.
   useEffect(() => {
-    if (phase !== 'seeding') return undefined
+    if (phase !== 'seeding') return
     const source = new EventSource('/api/setup-events')
     source.onmessage = event => {
       let data: SeedEvent
