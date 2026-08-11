@@ -23,3 +23,5 @@ export async function waitForFileToExist(
     await new Promise(r => setTimeout(r, pollMs))
   }
 }
+
+export * from './directories.ts'

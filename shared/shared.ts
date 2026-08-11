@@ -6,7 +6,7 @@ import { z } from 'zod'
  * - IDs are used in file paths and in URLs.
  *   They must never contain traversal characters (`/` and `.`).
  *   Project and user IDs are currently required to be UUID v4.
- * - Names are not used in file paths, but may be used in URLs.
+ * - Project names are not used in file paths, but may be used in URLs.
  *   We enforce alphanumeric ASCII names.
  *   Names are unique up to recasing, natively in the database (`COLLATE NOCASE`).
  *   Unicode names may be added in the future.

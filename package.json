@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@hocuspocus/provider": "^4.0.0",
+    "@leanprover/workbench-shared": "*",
     "@prisma/adapter-better-sqlite3": "^7.7.0",
     "@prisma/client": "^7.7.0",
     "better-auth": "^1.6.2",

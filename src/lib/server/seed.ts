@@ -4,10 +4,11 @@ import { spawn } from 'node:child_process'
 import path from 'node:path'
 
 import { LEAN_VERSION_RE } from '@leanprover/workbench-shared'
+import { getDataDir } from '@leanprover/workbench-shared/node'
 
 import { type ActionResponse, type SeedEvent } from '@/lib/util'
 
-import { getConfig, getDataDir, saveConfig } from './config'
+import { getConfig, saveConfig } from './config'
 
 export interface SeedState {
   inProgress: boolean

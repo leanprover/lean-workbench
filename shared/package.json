@@ -1,5 +1,5 @@
 {
-  "name": "@leanprover/workbench-share",
+  "name": "@leanprover/workbench-shared",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,7 +8,7 @@
   },
   "exports": {
     ".": "./shared.ts",
-    "./node": "./node/shared.ts"
+    "./node": "./node/index.ts"
   },
   "dependencies": {
     "zod": "^4.4.3"

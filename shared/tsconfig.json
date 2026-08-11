@@ -1,9 +1,10 @@
 {
   "compilerOptions": {
     /* Support the use of type stripping in Node */
-    "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true,
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    "moduleResolution": "nodenext",
+    "module": "nodenext"
   },
   "extends": "../tsconfig.json",
   "include": ["**/*.ts"]

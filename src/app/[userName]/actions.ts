@@ -5,12 +5,11 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { zProjectId, zProjectName, zTemplateId } from '@leanprover/workbench-shared'
-import { existsAsync } from '@leanprover/workbench-shared/node'
+import { existsAsync, getPackageSetsDir, getTemplatesDir, getWorkspacesDir } from '@leanprover/workbench-shared/node'
 import { forbidden } from 'next/navigation'
 import z from 'zod'
 
 import { requireAuth } from '@/lib/server/auth'
-import { getPackageSetsDir, getTemplatesDir, getWorkspacesDir } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { serverAction } from '@/lib/server/util'
 import { type ActionResponse } from '@/lib/util'

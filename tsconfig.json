@@ -25,7 +25,8 @@
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
     "noImplicitReturns": true,
-    "noUncheckedIndexedAccess": true
+    "noUncheckedIndexedAccess": true,
+    "allowImportingTsExtensions": true
   },
   // Subfolders of `.next/` duplicated since without that `next dev` tries to rewrite this config.
   "include": [

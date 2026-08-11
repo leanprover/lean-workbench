@@ -5,10 +5,11 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { promisify } from 'node:util'
 
+import { getPackageSetsDir, getProjectDir, getWorkspacesDir } from '@leanprover/workbench-shared/node'
+
 import { RcMap } from '@/lib/rcMap'
 import type { User } from '@/lib/server/auth'
 import { CollabServerHandle } from '@/lib/server/collabServer'
-import { getPackageSetsDir, getProjectDir, getWorkspacesDir } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { bwrapProjectDir } from '@/lib/server/util'
 import { VscodeServerHandle } from '@/lib/server/vscodeServer'

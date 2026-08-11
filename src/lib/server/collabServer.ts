@@ -2,9 +2,8 @@ import { type ChildProcess, spawn } from 'node:child_process'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { waitForFileToExist } from '@leanprover/workbench-shared/node'
+import { getCollabServerDir, waitForFileToExist } from '@leanprover/workbench-shared/node'
 
-import { getCollabServerDir } from '@/lib/server/config'
 import { BWRAP_ARGS, bwrapProjectDir } from '@/lib/server/util'
 import { type Project } from '@/prisma/generated/client'
 

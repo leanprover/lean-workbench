@@ -4,9 +4,10 @@ import { request } from 'node:http'
 import path from 'node:path'
 import type Stream from 'node:stream'
 
+import { getElanDir, getOpenVscodeServerDir, getUserHomeDir } from '@leanprover/workbench-shared/node'
 import { type User } from 'better-auth'
 
-import { getConfig, getElanDir, getOpenVscodeServerDir, getUserHomeDir, isDevMode } from '@/lib/server/config'
+import { getConfig, isDevMode } from '@/lib/server/config'
 import { BWRAP_ARGS, bwrapHomeDir, bwrapProjectDir, readProcesses } from '@/lib/server/util'
 import { type Project } from '@/prisma/generated/client'
 
