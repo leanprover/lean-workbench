@@ -95,6 +95,9 @@ const zServerConfig = z.object({
    * Requests made through other URLs may misbehave,
    * e.g. better-auth will reject authentication requests. */
   baseUrl: z.url(),
+  /** A pre-generated admin password,
+   * changed immediately during initial setup. */
+  initAdminPassword: z.string().length(24).optional(),
 })
 
 /** Server configuration. Also stored on-disk in `$LEAN_WORKBENCH_DATA_DIR/config.json`. */

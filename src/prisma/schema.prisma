@@ -67,6 +67,8 @@ model Account {
   refreshTokenExpiresAt DateTime?
   scope                 String?
   idToken               String?
+  /// (Better-auth implementation detail:) this value is `$SALT:scrypt($PASSWORD, $SALT)`
+  /// where `$SALT` is randomly generated per-password.
   password              String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @default(now()) @updatedAt

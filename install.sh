@@ -162,10 +162,17 @@ EOF
   # Create data subdirectory (compose mounts ./data, not the workbench root)
   mkdir -p "$WORKBENCH_ROOT/data"
 
+  # Generate the initial admin password (the app reads it from /data)
+  INIT_ADMIN_PASSWORD=$(head -c 512 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9' | head -c 24)
+  echo "$INIT_ADMIN_PASSWORD" > "$WORKBENCH_ROOT/data/init-admin-password"
+  chmod 600 "$WORKBENCH_ROOT/data/init-admin-password"
+
   echo ""
   info "Lean Workbench is installed!"
   echo ""
-  echo "  To start (localhost-only, for initial setup):"
+  echo "  Initial admin password: $INIT_ADMIN_PASSWORD"
+  echo "    (also stored in $WORKBENCH_ROOT/data/init-admin-password)"
+  echo ""
   echo "    cd $WORKBENCH_ROOT && docker compose up -d"
   echo ""
   echo "  Then open http://localhost:$PORT to configure authentication"
