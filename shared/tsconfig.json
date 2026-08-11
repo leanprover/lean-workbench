@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    /* Support the use of type stripping in Node */
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true
+  },
+  "extends": "../tsconfig.json",
+  "include": ["**/*.ts"]
+}

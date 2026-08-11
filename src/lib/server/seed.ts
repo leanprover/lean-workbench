@@ -3,7 +3,9 @@ import 'server-only'
 import { spawn } from 'node:child_process'
 import path from 'node:path'
 
-import { type ActionResponse, LEAN_VERSION_RE, type SeedEvent } from '@/lib/util'
+import { LEAN_VERSION_RE } from '@leanprover/workbench-shared'
+
+import { type ActionResponse, type SeedEvent } from '@/lib/util'
 
 import { getConfig, getDataDir, saveConfig } from './config'
 

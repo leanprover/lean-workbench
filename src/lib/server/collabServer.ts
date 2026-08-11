@@ -2,8 +2,10 @@ import { type ChildProcess, spawn } from 'node:child_process'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
+import { waitForFileToExist } from '@leanprover/workbench-shared/node'
+
 import { getCollabServerDir } from '@/lib/server/config'
-import { BWRAP_ARGS, bwrapProjectDir, existsAsync } from '@/lib/server/util'
+import { BWRAP_ARGS, bwrapProjectDir } from '@/lib/server/util'
 import { type Project } from '@/prisma/generated/client'
 
 /** Name of the `collab-server` UDS file. */
@@ -93,15 +95,9 @@ export class CollabServerHandle implements AsyncDisposable {
             reject(new Error(`${this.description} exited before creating UDS`))
           })
         }),
-        // Wait for the server to bind the UDS.
-        (async () => {
-          const socketPath = path.join(this.workDir, COLLAB_SOCKET_FILENAME)
-          const deadline = Date.now() + 10_000
-          while (!(await existsAsync(socketPath))) {
-            if (Date.now() > deadline) throw new Error(`timeout waiting for ${this.description} to create UDS`)
-            await new Promise(r => setTimeout(r, 50))
-          }
-        })(),
+        waitForFileToExist(path.join(this.workDir, COLLAB_SOCKET_FILENAME), {
+          description: `${this.description} binding the unix data socket`,
+        }),
       ])
     })()
     await this.starting

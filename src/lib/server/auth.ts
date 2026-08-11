@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { zUserName } from '@leanprover/workbench-shared'
 import { betterAuth, type SocialProviders } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { hashPassword } from 'better-auth/crypto'
@@ -12,7 +13,6 @@ import { unauthorized } from 'next/navigation'
 import { getConfig, hasGithubAuth, isDevMode, saveConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { provisionUserHome } from '@/lib/server/user'
-import { zUserName } from '@/lib/util'
 
 async function createAuth() {
   const config = getConfig()

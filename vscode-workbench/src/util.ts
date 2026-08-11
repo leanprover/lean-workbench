@@ -1,5 +1,3 @@
-import fs from 'node:fs/promises'
-
 import { minimatch } from 'minimatch'
 import type vs from 'vscode'
 import { z } from 'zod'
@@ -124,18 +122,4 @@ export const AWARENESS_CURSOR_COLORS = ['#5790FC', '#F89C20', '#E42536', '#964A8
 export interface AwarenessSelection {
   filePath: string
   selections: Selection[]
-}
-
-export async function waitForPath(p: string, timeoutMs: number): Promise<boolean> {
-  const deadline = Date.now() + timeoutMs
-  while (Date.now() < deadline) {
-    try {
-      await fs.access(p)
-      return true
-    } catch {
-      // path is not ready; sleep before trying again
-      await new Promise(r => setTimeout(r, 200))
-    }
-  }
-  return false
 }

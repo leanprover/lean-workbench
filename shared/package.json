@@ -1,0 +1,16 @@
+{
+  "name": "@leanprover/workbench-share",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "tsc": "tsc"
+  },
+  "exports": {
+    ".": "./shared.ts",
+    "./node": "./node/shared.ts"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  }
+}

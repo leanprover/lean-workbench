@@ -1,4 +1,5 @@
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider'
+import { waitForFileToExist } from '@leanprover/workbench-shared/node'
 import vs from 'vscode'
 import WebSocket from 'ws'
 import type { Awareness } from 'y-protocols/awareness'
@@ -9,7 +10,6 @@ import {
   AWARENESS_USER_KEY,
   type AwarenessUser,
   BWRAP_COLLAB_SOCK_PATH,
-  waitForPath,
   type WorkspaceMetadata,
 } from './util'
 
@@ -49,7 +49,9 @@ export async function connectToCollabServer(
   }
 
   log.debug('Waiting for collab-server socket..')
-  if (!(await waitForPath(BWRAP_COLLAB_SOCK_PATH, 5_000))) {
+  try {
+    await waitForFileToExist(BWRAP_COLLAB_SOCK_PATH, { timeoutMs: 5_000, pollMs: 200 })
+  } catch {
     showErrorModal()
     return undefined
   }

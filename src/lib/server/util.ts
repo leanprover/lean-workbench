@@ -23,15 +23,6 @@ export function serverAction<S extends z.ZodType, T = void>(
   }
 }
 
-export async function existsAsync(p: string): Promise<boolean> {
-  try {
-    await fs.access(p)
-    return true
-  } catch {
-    return false
-  }
-}
-
 export interface ProcessInfo {
   pid: number
   /** Parent PID. */
