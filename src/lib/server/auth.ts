@@ -2,8 +2,9 @@ import 'server-only'
 
 import { betterAuth, type SocialProviders } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
+import { hashPassword } from 'better-auth/crypto'
 import { nextCookies } from 'better-auth/next-js'
-import crypto from 'crypto'
+import crypto, { randomUUID } from 'crypto'
 import { headers } from 'next/headers'
 import { unauthorized } from 'next/navigation'
 
@@ -82,12 +83,13 @@ async function createAuth() {
         // We read them via Prisma when needed.
       },
     },
-    // Email authentication in dev mode only
-    // NOTE: if ever enabled in prod, make sure to clean up dev accounts with known passwords.
+    // Email authentication
     emailAndPassword: {
       enabled: isDevMode(),
       minPasswordLength: 1,
+      disableSignUp: true, // Only make
     },
+
     socialProviders,
     baseURL: config.baseUrl,
     // FIXME: Trust both HTTP and HTTPS in dev mode; reverse proxy causes issues otherwise.
@@ -102,15 +104,42 @@ async function createAuth() {
     plugins: [nextCookies()],
   })
 
-  if (isDevMode()) {
-    const email = 'dev@dev.localhost'
-    const existing = await getDb().user.findUnique({ where: { email } })
-    if (!existing) {
-      await auth.api.signUpEmail({ body: { email, name: 'dev', password: 'dev' } })
-    }
+  return auth
+}
+
+export async function ensureBuiltinUsersExist(auth: Awaited<ReturnType<typeof createAuth>>) {
+  const adminEmail = 'admin@admin.localhost'
+  const db = getDb()
+  if (!(await db.user.findUnique({ where: { email: adminEmail } }))) {
+    const { initAdminPassword } = getConfig()
+    if (!initAdminPassword) throw new Error('no initAdminPassword')
+    const hashedPassword = await hashPassword(initAdminPassword)
+
+    await db.$transaction(async tx => {
+      // re-check inside transaction
+      const adminUser = await tx.user.findUnique({ where: { email: adminEmail } })
+      if (adminUser) return
+
+      const userId = randomUUID()
+      await tx.user.create({ data: { id: userId, name: 'admin', email: adminEmail, isAdmin: true } })
+      const accountId = randomUUID()
+      await tx.account.create({ data: { id: accountId, userId, accountId, providerId: 'credential', password: hashedPassword } })
+    })
   }
 
-  return auth
+  const devModeEmail = 'dev@dev.localhost'
+  //const adminRoute = '/data/init-admin-password'
+  if (isDevMode()) {
+    const existing = await getDb().user.findUnique({ where: { email: devModeEmail } })
+    if (!existing) {
+      await auth.api.signUpEmail({ body: { email: devModeEmail, name: 'dev', password: 'dev' } })
+    }
+  } else {
+    const { count } = await getDb().user.deleteMany({ where: { email: devModeEmail } })
+    if (count !== 0) {
+      console.warn(`Warning: deleted dev user ${devModeEmail}`)
+    }
+  }
 }
 
 export type AuthInstance = Awaited<ReturnType<typeof createAuth>>
@@ -123,8 +152,8 @@ const g = globalThis as typeof globalThis & {
 }
 
 /** (Re)initialize the authentication state. */
-export async function initAuth(): Promise<void> {
-  g.__auth = await createAuth()
+export async function initAuth() {
+  return (g.__auth = await createAuth())
 }
 
 export async function getAuth(): Promise<AuthInstance> {
