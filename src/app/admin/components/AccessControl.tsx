@@ -1,3 +1,5 @@
+import { io } from 'next/cache'
+
 import { getConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 
@@ -5,6 +7,7 @@ import { AllowlistEditor } from './AllowlistEditor'
 import { RegistrationModeControl } from './RegistrationModeControl'
 
 export async function AccessControl() {
+  await io()
   const mode = getConfig().registrationMode
   const allowed =
     mode === 'restricted' ? await getDb().allowedGithubUser.findMany({ orderBy: { githubUsername: 'asc' } }) : []

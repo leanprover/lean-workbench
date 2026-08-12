@@ -1,10 +1,10 @@
 import '@/css/app.css'
 
 import type { Metadata } from 'next'
+import { io } from 'next/cache'
 import { Open_Sans } from 'next/font/google'
 import Image from 'next/image'
 import Link from 'next/link'
-import { connection } from 'next/server'
 import { type ReactNode, Suspense } from 'react'
 
 import { ConfigCtx } from '@/lib/contexts'
@@ -30,7 +30,8 @@ export default async function RootLayout({
 }: Readonly<{
   children: ReactNode
 }>) {
-  // https://nextjs.org/docs/app/getting-started/caching#opting-out-of-the-static-shell
+  // FIXME: this is currently the only `Suspense` in the app,
+  // so we don't get static shells for any page.
   return (
     <Suspense fallback={null}>
       <RootLayoutBody>{children}</RootLayoutBody>
@@ -43,11 +44,10 @@ async function RootLayoutBody({
 }: Readonly<{
   children: ReactNode
 }>) {
-  // NOTE: together with the Suspense above, this makes the entire app dynamic:
-  // nothing is pre-rendered and every request recomputes its output HTML.
-  // This means we don't have to worry about cache invalidation,
-  // but will need fixing if it becomes a perf issue.
-  await connection()
+  // NOTE: Awaiting `io` makes the root layout dynamic
+  // (every request recomputes its output HTML),
+  // though static shells for pages may still be pre-rendered by `next build`.
+  await io()
 
   const serverCfg = getConfig()
   const clientCfg = {

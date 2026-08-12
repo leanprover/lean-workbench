@@ -164,9 +164,7 @@ function ensureConfigWatcher() {
 
 /** Return the server configuration.
  *
- * The object may be mutated. `saveConfig()` must be called after any modifications.
- *
- * Use {@link CacheTag.serverConfig} in Server Components that read this. */
+ * The object may be mutated. `saveConfig()` must be called after any modifications. */
 export function getConfig(): ServerConfig {
   if (!g.__config) initConfig()
   return g.__config!
