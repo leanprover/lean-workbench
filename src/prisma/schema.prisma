@@ -8,6 +8,7 @@ datasource db {
 }
 
 // Tables required by better-auth
+// See https://better-auth.com/docs/concepts/database#core-schema
 
 model User {
   id            String    @id
