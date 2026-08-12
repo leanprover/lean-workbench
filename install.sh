@@ -147,6 +147,22 @@ do_install() {
     ENV_FILE_SECTION=$'\n    env_file:\n      - .env'
   fi
 
+  # Create data subdirectory (docker-compose mounts $WORKBENCH_ROOT/data, not $WORKBENCH_ROOT)
+  mkdir -p "$WORKBENCH_ROOT/data"
+
+  info "Generating initial admin password..."
+  INIT_ADMIN_PASSWORD=$(head -c 512 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9' | head -c 24)
+
+  info "Writing config.json..."
+  cat > "$WORKBENCH_ROOT/data/config.json" <<EOF
+{
+  "isSetupComplete": false,
+  "baseUrl": "$URL",
+  "initAdminPassword": "$INIT_ADMIN_PASSWORD"
+}
+EOF
+  chmod 600 "$WORKBENCH_ROOT/data/config.json"
+
   info "Writing docker-compose.yml..."
   cat > "$WORKBENCH_ROOT/docker-compose.yml" <<EOF
 services:
@@ -165,22 +181,6 @@ services:
       - systempaths=unconfined
     restart: unless-stopped
 EOF
-
-  # Create data subdirectory (docker-compose mounts $WORKBENCH_ROOT/data, not $WORKBENCH_ROOT)
-  mkdir -p "$WORKBENCH_ROOT/data"
-
-  info "Generating initial admin password..."
-  INIT_ADMIN_PASSWORD=$(head -c 512 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9' | head -c 24)
-
-  info "Writing config.json..."
-  cat > "$WORKBENCH_ROOT/data/config.json" <<EOF
-{
-  "isSetupComplete": false,
-  "baseUrl": "$URL",
-  "initAdminPassword": "$INIT_ADMIN_PASSWORD"
-}
-EOF
-  chmod 600 "$WORKBENCH_ROOT/data/config.json"
 
   echo ""
   info "Lean Workbench is installed!"
