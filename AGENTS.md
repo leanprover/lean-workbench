@@ -25,6 +25,8 @@
 prefer `useServerAction` (`@/lib/client/util`) or (if `useServerAction` doesn't work) `useActionState`
 over manually storing response/error state with `useState`.
 - To call Server Functions on mount (e.g. to fetch data), use SWR.
+- RSCs must call `await io()` before accessing server state (`getConfig`, `getAuth`, etc),
+  unless they have already used a request-time API (`cookies`, `params`, etc).
 
 # Error handling
 
