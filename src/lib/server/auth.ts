@@ -49,7 +49,7 @@ async function createAuth() {
             const parsed = zUserName.safeParse(user.name)
             if (!parsed.success) return false
             const name = parsed.data
-            if (getConfig().registrationMode === 'restricted' && !(isDevMode() && name === 'dev')) {
+            if (getConfig().registrationMode === 'restricted') {
               const allowed = await getDb().allowedGithubUser.findUnique({
                 where: { githubUsername: name },
               })
@@ -86,9 +86,10 @@ async function createAuth() {
     },
     // Email authentication
     emailAndPassword: {
-      enabled: isDevMode(),
+      enabled: true,
       minPasswordLength: 1,
-      disableSignUp: true, // Only make
+      // Email accounts can only be created by direct DB access
+      disableSignUp: true,
     },
 
     socialProviders,
@@ -108,37 +109,69 @@ async function createAuth() {
   return auth
 }
 
-export async function ensureBuiltinUsersExist(auth: Awaited<ReturnType<typeof createAuth>>) {
+/** Add a user with email-and-password authentication by directly modifying the database.
+ * Return `true` if added, `false` if a user with this {@link name} or {@link email} already exists.
+ *
+ * Relies on implementation details of better-auth.
+ * Needed because better-auth exposes no authentication-free way to modify accounts. */
+async function addEmailPasswordUser(name: string, email: string, password: string, isAdmin: boolean): Promise<boolean> {
+  const db = getDb()
+  const hashedPassword = await hashPassword(password)
+  return db.$transaction(async tx => {
+    const [byName, byEmail] = await Promise.all([
+      tx.user.findUnique({ where: { name } }),
+      tx.user.findUnique({ where: { email } }),
+    ])
+    if (byName || byEmail) return false
+
+    const userId = randomUUID()
+    await tx.user.create({ data: { id: userId, name, email, isAdmin } })
+    const accountId = randomUUID()
+    await tx.account.create({
+      data: {
+        id: accountId,
+        userId,
+        accountId: userId /* better-auth convention */,
+        providerId: 'credential',
+        password: hashedPassword,
+      },
+    })
+    return true
+  })
+}
+
+/** Ensures that an admin account exists,
+ * and that a non-admin dev account exists iff we are in dev mode. */
+async function ensureBuiltinUsersExist() {
   const adminEmail = 'admin@admin.localhost'
   const db = getDb()
   if (!(await db.user.findUnique({ where: { email: adminEmail } }))) {
-    const { initAdminPassword } = getConfig()
-    if (!initAdminPassword) throw new Error('no initAdminPassword')
-    const hashedPassword = await hashPassword(initAdminPassword)
+    let { initAdminPassword } = getConfig()
+    if (!initAdminPassword) {
+      if (isDevMode()) {
+        initAdminPassword = 'dev'
+      } else {
+        throw new Error('Internal error: initial admin password not set up (did install.sh succeed?)')
+      }
+    }
 
-    await db.$transaction(async tx => {
-      // re-check inside transaction
-      const adminUser = await tx.user.findUnique({ where: { email: adminEmail } })
-      if (adminUser) return
-
-      const userId = randomUUID()
-      await tx.user.create({ data: { id: userId, name: 'admin', email: adminEmail, isAdmin: true } })
-      const accountId = randomUUID()
-      await tx.account.create({ data: { id: accountId, userId, accountId, providerId: 'credential', password: hashedPassword } })
-    })
+    const added = await addEmailPasswordUser('admin', adminEmail, initAdminPassword, true)
+    if (added) {
+      console.log(`Added admin user ${adminEmail}`)
+    }
   }
 
   const devModeEmail = 'dev@dev.localhost'
-  //const adminRoute = '/data/init-admin-password'
   if (isDevMode()) {
-    const existing = await getDb().user.findUnique({ where: { email: devModeEmail } })
-    if (!existing) {
-      await auth.api.signUpEmail({ body: { email: devModeEmail, name: 'dev', password: 'dev' } })
+    const added = await addEmailPasswordUser('dev', devModeEmail, 'dev', false)
+    if (added) {
+      console.log(`Added dev user ${devModeEmail}`)
     }
   } else {
+    // Clean up dev account in prod since its password is public
     const { count } = await getDb().user.deleteMany({ where: { email: devModeEmail } })
     if (count !== 0) {
-      console.warn(`Warning: deleted dev user ${devModeEmail}`)
+      console.warn(`Warning: deleted dev user ${devModeEmail} (disallowed in production)`)
     }
   }
 }
@@ -153,8 +186,9 @@ const g = globalThis as typeof globalThis & {
 }
 
 /** (Re)initialize the authentication state. */
-export async function initAuth() {
-  return (g.__auth = await createAuth())
+export async function initAuth(): Promise<void> {
+  await ensureBuiltinUsersExist()
+  g.__auth = await createAuth()
 }
 
 export async function getAuth(): Promise<AuthInstance> {

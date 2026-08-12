@@ -7,11 +7,10 @@ export async function register() {
   // when imports are not guarded.
   const { initConfig } = await import('@/lib/server/config')
   const { initDb } = await import('@/lib/server/db')
-  const { initAuth, ensureBuiltinUsersExist } = await import('@/lib/server/auth')
+  const { initAuth } = await import('@/lib/server/auth')
   const { initEditorSessions } = await import('@/lib/server/editorSessions')
   initConfig()
   initDb()
-  const auth = await initAuth()
-  await ensureBuiltinUsersExist(auth)
+  await initAuth()
   await initEditorSessions()
 }
