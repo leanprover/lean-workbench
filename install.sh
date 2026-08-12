@@ -215,7 +215,7 @@ while [ $# -gt 0 ]; do
     --uninstall) ACTION="uninstall"; shift ;;
     --no-pull) NO_PULL=1; shift ;;
     --dir) OPT_DIR="$2"; shift 2 ;;
-    --base-url) OPT_URL="$2"; shift 2 ;;
+    --url) OPT_URL="$2"; shift 2 ;;
     --port) OPT_PORT="$2"; shift 2 ;;
     --env-file) OPT_ENV_FILE="$2"; shift 2 ;;
     --help|-h)
