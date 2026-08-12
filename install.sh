@@ -126,9 +126,6 @@ do_install() {
   echo "  Port: $PORT"
   echo ""
 
-  # Create data directory
-  mkdir -p "$WORKBENCH_ROOT"
-
   # Pull image (skip with --dev if using a locally-built image)
   if [ "${NO_PULL:-}" != "1" ]; then
     info "Pulling Docker image..."
@@ -147,7 +144,8 @@ do_install() {
     ENV_FILE_SECTION=$'\n    env_file:\n      - .env'
   fi
 
-  # Create data subdirectory (docker-compose mounts $WORKBENCH_ROOT/data, not $WORKBENCH_ROOT)
+  # Create installation directory and data subdirectory
+  # (docker-compose mounts $WORKBENCH_ROOT/data, not $WORKBENCH_ROOT)
   mkdir -p "$WORKBENCH_ROOT/data"
 
   info "Generating initial admin password..."
