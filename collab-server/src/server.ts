@@ -5,6 +5,7 @@ import { DatabaseSync } from 'node:sqlite'
 
 import { Database } from '@hocuspocus/extension-database'
 import { Server } from '@hocuspocus/server'
+import { COLLAB_DB_FILENAME, COLLAB_SOCKET_FILENAME, YTEXT_KEY } from '@leanprover/workbench-shared'
 import * as Y from 'yjs'
 
 // -- CLI --
@@ -14,8 +15,8 @@ if (process.argv.length !== 3) {
 }
 
 const projectDir = process.argv[2]!
-const socketPath = path.join(process.cwd(), 'collab.sock')
-const dbPath = path.join(process.cwd(), 'collab.db')
+const socketPath = path.join(process.cwd(), COLLAB_SOCKET_FILENAME)
+const dbPath = path.join(process.cwd(), COLLAB_DB_FILENAME)
 
 // -- DB --
 const db = new DatabaseSync(dbPath)
@@ -30,10 +31,6 @@ const upsertDocumentStatement = db.prepare(
 const upsertDocument = (path: string, data: Uint8Array): void => {
   upsertDocumentStatement.run(path, data)
 }
-
-// -- YJS FILE MANAGEMENT --
-// TODO: use const imported from single-source-of-truth module
-const YTEXT_KEY = 'content'
 
 function checkedToDiskPath(documentName: string): string {
   const file = path.normalize(documentName)

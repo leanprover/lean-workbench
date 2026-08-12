@@ -4,11 +4,17 @@ import { request } from 'node:http'
 import path from 'node:path'
 import type Stream from 'node:stream'
 
+import {
+  BWRAP_COLLAB_SERVER_DIR,
+  BWRAP_METADATA_PATH,
+  bwrapProjectDir,
+  type WorkspaceMetadata,
+} from '@leanprover/workbench-shared'
 import { getElanDir, getOpenVscodeServerDir, getUserHomeDir } from '@leanprover/workbench-shared/node'
 import { type User } from 'better-auth'
 
 import { getConfig, isDevMode } from '@/lib/server/config'
-import { BWRAP_ARGS, bwrapHomeDir, bwrapProjectDir, readProcesses } from '@/lib/server/util'
+import { BWRAP_ARGS, bwrapHomeDir, readProcesses } from '@/lib/server/util'
 import { type Project } from '@/prisma/generated/client'
 
 /** Create a VSCode machine settings file if one doesn't exist. */
@@ -194,9 +200,9 @@ export class VscodeServerHandle implements AsyncDisposable {
           '--ro-bind', getOpenVscodeServerDir(), getOpenVscodeServerDir(),
           '--ro-bind', getElanDir(), getElanDir(),
           '--bind', homeDir, sandboxHomeDir,
-          '--bind', collabWorkDir, '/workspace/.collab-server',
+          '--bind', collabWorkDir, BWRAP_COLLAB_SERVER_DIR,
           '--bind', this.socketDir, '/workspace/.vscode-server',
-          '--ro-bind-data', '3', '/workspace/.lean-workbench.json',
+          '--ro-bind-data', '3', BWRAP_METADATA_PATH,
           '--setenv', 'HOME', sandboxHomeDir,
           '--setenv', 'ELAN_HOME', getElanDir(),
           '--setenv', 'PATH', `${getElanDir()}/bin:/usr/local/bin:/usr/bin:/bin`,
@@ -248,24 +254,24 @@ export class VscodeServerHandle implements AsyncDisposable {
             reject(new Error(`${this.description} failed to write workspace metadata: ${String(err)}`))
           })
         }),
-        // Wait for the server to start listening.
+
         (async () => {
-          workspaceMdataPipe.end(
-            JSON.stringify({
-              baseUrl: getConfig().baseUrl,
-              viewer: {
-                name: this.viewer.name,
-                image: this.viewer.image,
+          // Wait for the server to start listening.
+          const workspaceMetadata: WorkspaceMetadata = {
+            baseUrl: getConfig().baseUrl,
+            viewer: {
+              name: this.viewer.name,
+              image: this.viewer.image,
+            },
+            project: {
+              name: this.project.name,
+              owner: {
+                name: this.owner.name,
               },
-              project: {
-                name: this.project.name,
-                owner: {
-                  name: this.owner.name,
-                },
-              },
-              syncPatterns: [path.join(sandboxProjectDir, '**', '*')],
-            }),
-          )
+            },
+            syncPatterns: [path.join(sandboxProjectDir, '**', '*')],
+          }
+          workspaceMdataPipe.end(JSON.stringify(workspaceMetadata))
           await waitForSocket(this.socketPath)
         })(),
       ])

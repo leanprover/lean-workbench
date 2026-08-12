@@ -85,13 +85,6 @@ export const BWRAP_ARGS =
     '--setenv', 'LC_ALL', 'C.UTF-8',
   ]
 
-/** Where bwrap mounts the given project directory.
- * We identify project files by absolute path,
- * so this has to match across VS Code server and collab-server bwraps. */
-export function bwrapProjectDir(projectName: string) {
-  return `/workspace/${projectName}/`
-}
-
 /** Where bwrap mounts the given user's home directory. */
 export function bwrapHomeDir(userName: string) {
   return `/home/${userName}/`

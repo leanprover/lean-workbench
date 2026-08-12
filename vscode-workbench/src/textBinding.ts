@@ -1,8 +1,9 @@
 import { HocuspocusProvider, type HocuspocusProviderWebsocket } from '@hocuspocus/provider'
+import { type WorkspaceMetadata, YTEXT_KEY } from '@leanprover/workbench-shared'
 import vs from 'vscode'
 import * as Y from 'yjs'
 
-import { type Logger, logWithPrefix, shouldSyncPath, type WorkspaceMetadata, YTEXT_KEY } from './util'
+import { type Logger, logWithPrefix, shouldSyncPath } from './util'
 
 /** Maintains a {@link YTextBinding} binding for every open {@link vs.TextDocument}
  * whose path lies within one of the syncable directories. */

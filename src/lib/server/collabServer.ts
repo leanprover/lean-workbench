@@ -2,16 +2,11 @@ import { type ChildProcess, spawn } from 'node:child_process'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
+import { BWRAP_COLLAB_SERVER_DIR, bwrapProjectDir, COLLAB_SOCKET_FILENAME } from '@leanprover/workbench-shared'
 import { getCollabServerDir, waitForFileToExist } from '@leanprover/workbench-shared/node'
 
-import { BWRAP_ARGS, bwrapProjectDir } from '@/lib/server/util'
+import { BWRAP_ARGS } from '@/lib/server/util'
 import { type Project } from '@/prisma/generated/client'
-
-/** Name of the `collab-server` UDS file. */
-export const COLLAB_SOCKET_FILENAME = 'collab.sock'
-
-/** Name of the `collab-server` database file. */
-export const COLLAB_DB_FILENAME = 'collab.db'
 
 /** Manages a collaboration server instance.
  * Non-reusable; construct a new handle to start a new server. */
@@ -68,8 +63,8 @@ export class CollabServerHandle implements AsyncDisposable {
           // We don't need internet access.
           '--unshare-net',
           '--ro-bind', getCollabServerDir(), getCollabServerDir(),
-          '--bind', this.workDir, '/workspace/.collab-server',
-          '--chdir', '/workspace/.collab-server',
+          '--bind', this.workDir, BWRAP_COLLAB_SERVER_DIR,
+          '--chdir', BWRAP_COLLAB_SERVER_DIR,
           ...this.projectBindArgs,
           '--',
           '/usr/bin/node',

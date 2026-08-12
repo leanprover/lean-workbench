@@ -24,3 +24,32 @@ export const zProjectName = z.string().regex(ALPHANUM_NAME_RE, 'Invalid project 
 export const zTemplateId = z.string().regex(TEMPLATE_ID_RE, 'Invalid template ID')
 
 export const LEAN_VERSION_RE = /^v4\.\d+\.\d+(-rc\d+)?$/
+
+/** Metadata of a Lean Workbench project workspace. */
+export type WorkspaceMetadata = z.infer<typeof zWorkspaceMetadata>
+
+/** Validator for {@link WorkspaceMetadata} */
+export const zWorkspaceMetadata = z.object({
+  /** Scheme, host, and port through which the browser reaches the workbench. */
+  baseUrl: z.url(),
+  /** User viewing/editing the current project. */
+  viewer: z.object({
+    name: z.string(),
+    image: z.nullish(z.string()),
+  }),
+  /** Metadata about the current project. */
+  project: z.object({
+    name: z.string(),
+    owner: z.object({
+      name: z.string(),
+    }),
+  }),
+  /** Files that should be synced collaboratively across viewers.
+   * Patterns are matched with minimatch. */
+  syncPatterns: z.array(z.string()),
+  /** Files that should be excluded from collaborative sync.
+   * Patterns are matched with minimatch. */
+  excludeSyncPatterns: z.array(z.string()).optional(),
+})
+
+export * from './consts.ts'

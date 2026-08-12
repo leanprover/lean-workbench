@@ -1,3 +1,4 @@
+import { type WorkspaceMetadata } from '@leanprover/workbench-shared'
 import vs from 'vscode'
 import { type Awareness } from 'y-protocols/awareness'
 
@@ -10,7 +11,6 @@ import {
   equalMaps,
   type Logger,
   logWithPrefix,
-  type WorkspaceMetadata,
 } from './util'
 
 type PanelItem = { kind: 'onlineUsersRoot' } | { kind: 'onlineUser'; user: AwarenessUser }
