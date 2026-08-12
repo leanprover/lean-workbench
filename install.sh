@@ -113,6 +113,11 @@ do_install() {
   # Expand ~ if present
   WORKBENCH_ROOT="${WORKBENCH_ROOT/#\~/$HOME}"
 
+  # Refuse to overwrite an existing installation
+  if [ -e "$WORKBENCH_ROOT" ]; then
+    error "$WORKBENCH_ROOT already exists. Uninstall first (--uninstall), move the directory, or pick a different --dir."
+  fi
+
   info "Configuration:"
   echo "  Workbench root: $WORKBENCH_ROOT"
   echo "  Port: $PORT"
