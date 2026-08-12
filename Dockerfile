@@ -76,7 +76,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Minimal set of files needed to build vscode-workbench.
-COPY --parents vscode-workbench/ package.json package-lock.json tsconfig.json /workbench/
+COPY --parents vscode-workbench/ shared/ package.json package-lock.json tsconfig.json /workbench/
 RUN cd /workbench && npm clean-install --ignore-scripts
 
 COPY --from=builder-code-server /vscode-desktop /vscode-desktop
