@@ -10,11 +10,14 @@ export async function existsAsync(p: string): Promise<boolean> {
   }
 }
 
-/** Polls a file waiting for it to exist, throwing if the file doesn't exist by the deadline */
+/**
+ * Polls a file waiting for an observation that the file exists,
+ * throwing if the file is never observed by the deadline.
+ */
 export async function waitForFileToExist(
   path: string,
   options?: { timeoutMs?: number; pollMs?: number; description?: string },
-) {
+): Promise<void> {
   const timeoutMs = options?.timeoutMs ?? 10_000
   const pollMs = options?.pollMs ?? 50
   const deadline = Date.now() + timeoutMs
