@@ -68,7 +68,7 @@ do_uninstall() {
   fi
 
   # Optionally remove data
-  if ask_yesno "Remove data directory at $data_dir?\n(This will delete all workspaces and projects)"; then
+  if ask_yesno "Remove data directory at $data_dir?\n(THIS WILL DELETE ALL USERS AND PROJECTS!)"; then
     rm -rf "$data_dir"
     info "Removed $data_dir"
   else
@@ -94,7 +94,16 @@ do_install() {
 
   # Prompt for configuration (skip if provided via flags)
   WORKBENCH_ROOT="${OPT_DIR:-$(ask_input "Where should Lean Workbench store its data?" "$HOME/.lean-workbench")}"
-  PORT="${OPT_PORT:-$(ask_input "Which port should the server listen on?" "8080")}"
+  PORT="${OPT_PORT:-$(ask_input "Which localhost port should the server listen on?" "8080")}"
+  URL="${OPT_URL:-$(ask_input "At which URL will you host the Lean Workbench?" "http://localhost:$PORT")}"
+
+  # Remove trailing slash if present.
+  URL="${URL%/}"
+  # The app expects baseUrl to be an HTTP(S) origin: scheme, hostname, optional port (see zServerConfig).
+  # The restricted character set here keeps the config.json below as valid JSON.
+  if ! [[ "$URL" =~ ^https?://[A-Za-z0-9._-]+(:[0-9]+)?$ ]]; then
+    error "Invalid URL \"$URL\". Expected an alphanumeric HTTP(S) URL (optionally with a port), e.g. \"https://myserver.com\"."
+  fi
 
   # Validate port
   if ! [[ "$PORT" =~ ^[0-9]+$ ]] || [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then
@@ -130,16 +139,14 @@ do_install() {
     ENV_FILE_SECTION=$'\n    env_file:\n      - .env'
   fi
 
-  # Helper to write a compose file
-  write_compose() {
-    local file="$1" bind_addr="$2"
-    cat > "$file" <<EOF
+  info "Writing docker-compose.yml..."
+  cat > "$WORKBENCH_ROOT/docker-compose.yml" <<EOF
 services:
   lean-workbench:
     image: $IMAGE
     container_name: lean-workbench
     ports:
-      - "${bind_addr}:${PORT}:3000"
+      - "127.0.0.1:${PORT}:3000"
     volumes:
       - ./data:/data${ENV_FILE_SECTION}
     cap_add:
@@ -150,41 +157,38 @@ services:
       - systempaths=unconfined
     restart: unless-stopped
 EOF
-  }
 
-  # Write compose files: localhost-only for setup, 0.0.0.0 for production
-  info "Writing docker-compose.yml (localhost-only, for setup)..."
-  write_compose "$WORKBENCH_ROOT/docker-compose.yml" "127.0.0.1"
-
-  info "Writing docker-compose.prod.yml (all interfaces, for production)..."
-  write_compose "$WORKBENCH_ROOT/docker-compose.prod.yml" "0.0.0.0"
-
-  # Create data subdirectory (compose mounts ./data, not the workbench root)
+  # Create data subdirectory (docker-compose mounts $WORKBENCH_ROOT/data, not $WORKBENCH_ROOT)
   mkdir -p "$WORKBENCH_ROOT/data"
 
-  # Generate the initial admin password (the app reads it from /data)
+  info "Generating initial admin password..."
   INIT_ADMIN_PASSWORD=$(head -c 512 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9' | head -c 24)
-  echo "$INIT_ADMIN_PASSWORD" > "$WORKBENCH_ROOT/data/init-admin-password"
-  chmod 600 "$WORKBENCH_ROOT/data/init-admin-password"
+
+  info "Writing config.json..."
+  cat > "$WORKBENCH_ROOT/data/config.json" <<EOF
+{
+  "isSetupComplete": false,
+  "baseUrl": "$URL",
+  "initAdminPassword": "$INIT_ADMIN_PASSWORD"
+}
+EOF
+  chmod 600 "$WORKBENCH_ROOT/data/config.json"
 
   echo ""
   info "Lean Workbench is installed!"
   echo ""
   echo "  Initial admin password: $INIT_ADMIN_PASSWORD"
-  echo "    (also stored in $WORKBENCH_ROOT/data/init-admin-password)"
+  echo "    (also stored in $WORKBENCH_ROOT/data/config.json)"
   echo ""
+  echo "  To start:"
   echo "    cd $WORKBENCH_ROOT && docker compose up -d"
   echo ""
-  echo "  Then open http://localhost:$PORT to configure authentication"
-  echo "  and complete setup."
-  echo ""
-  echo "  After setup, you can switch to production mode:"
-  echo "    cd $WORKBENCH_ROOT && docker compose down"
-  echo "    docker compose -f docker-compose.prod.yml up -d"
+  echo "  Then set up a tunnel or reverse proxy forwarding $URL to http://localhost:$PORT,"
+  echo "  and connect to $URL to configure authentication and complete setup."
   echo ""
   echo "  Other commands:"
-  echo "    docker compose -f $WORKBENCH_ROOT/docker-compose.yml logs -f     # view logs"
-  echo "    docker compose -f $WORKBENCH_ROOT/docker-compose.yml pull        # update image"
+  echo "    docker compose -f $WORKBENCH_ROOT/docker-compose.yml logs -f # see live logs"
+  echo "    docker compose -f $WORKBENCH_ROOT/docker-compose.yml pull    # update image"
   echo ""
   echo "  To uninstall:"
   echo "    $(realpath "$0") --uninstall"
@@ -193,20 +197,20 @@ EOF
   if ask_yesno "Start Lean Workbench now?"; then
     docker compose -f "$WORKBENCH_ROOT/docker-compose.yml" up -d
     echo ""
-    info "Lean Workbench is running at http://localhost:$PORT"
-    echo "  Open http://localhost:$PORT to configure authentication and complete setup."
+    info "Lean Workbench is running at http://localhost:$PORT."
   fi
 }
 
 # --- Main ---
 
-OPT_DIR="" OPT_PORT="" NO_PULL="" OPT_ENV_FILE="" ACTION="install"
+OPT_DIR="" OPT_URL="" OPT_PORT="" NO_PULL="" OPT_ENV_FILE="" ACTION="install"
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --uninstall) ACTION="uninstall"; shift ;;
     --no-pull) NO_PULL=1; shift ;;
     --dir) OPT_DIR="$2"; shift 2 ;;
+    --base-url) OPT_URL="$2"; shift 2 ;;
     --port) OPT_PORT="$2"; shift 2 ;;
     --env-file) OPT_ENV_FILE="$2"; shift 2 ;;
     --help|-h)
@@ -215,11 +219,12 @@ while [ $# -gt 0 ]; do
       echo "Install Lean Workbench with Docker Compose."
       echo ""
       echo "Options:"
-      echo "  --dir DIR    Workbench root directory (default: ~/.lean-workbench)"
-      echo "  --port PORT  Server port (default: 8080)"
-      echo "  --no-pull    Skip docker pull (use locally-built image)"
-      echo "  --env-file F Copy env file into workbench root directory (dev only, not for production)"
-      echo "  --uninstall  Stop and remove Lean Workbench"
+      echo "  --dir DIR       Workbench root directory (default: ~/.lean-workbench)"
+      echo "  --url URL       The URL on which you will host the Lean Workbench (default: http://localhost:PORT)"
+      echo "  --port PORT     Localhost port on which the server will listen (default: 8080)"
+      echo "  --no-pull       Skip docker pull, use locally installed image"
+      echo "  --env-file FILE Copy env file into workbench root directory (dev only, not for production)"
+      echo "  --uninstall     Stop and remove Lean Workbench"
       exit 0
       ;;
     *) error "Unknown option: $1. Try --help." ;;
