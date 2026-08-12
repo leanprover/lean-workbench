@@ -191,8 +191,13 @@ EOF
   echo "  To start:"
   echo "    cd $WORKBENCH_ROOT && docker compose up -d"
   echo ""
-  echo "  Then set up a tunnel or reverse proxy forwarding $URL to http://localhost:$PORT,"
-  echo "  and connect to $URL to configure authentication and complete setup."
+  localhost_url="http://localhost:$PORT"
+  if [[ "$URL" == "$localhost_url" ]]; then
+    echo "  Then connect to $URL to configure authentication and complete setup."
+  else
+    echo "  Then set up a tunnel or reverse proxy forwarding $URL to $localhost_url,"
+    echo "  and connect to $URL to configure authentication and complete setup."
+  fi
   echo ""
   echo "  Other commands:"
   echo "    docker compose -f $WORKBENCH_ROOT/docker-compose.yml logs -f # see live logs"
