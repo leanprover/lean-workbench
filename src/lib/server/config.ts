@@ -86,7 +86,7 @@ export const zGithubAuthConfig = z.object({
 export type GithubAuthConfig = z.infer<typeof zGithubAuthConfig>
 
 const zServerConfig = z.object({
-  registrationMode: zRegistrationMode,
+  registrationMode: zRegistrationMode.default('open'),
   isSetupComplete: z.boolean(),
   githubAuth: zGithubAuthConfig.optional(),
   /** 256 random bits, hex-encoded as a 512-bit string. */
