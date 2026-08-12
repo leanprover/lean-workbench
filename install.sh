@@ -94,21 +94,6 @@ do_install() {
 
   # Prompt for configuration (skip if provided via flags)
   WORKBENCH_ROOT="${OPT_DIR:-$(ask_input "Where should Lean Workbench store its data?" "$HOME/.lean-workbench")}"
-  PORT="${OPT_PORT:-$(ask_input "Which localhost port should the server listen on?" "8080")}"
-  URL="${OPT_URL:-$(ask_input "At which URL will you host the Lean Workbench?" "http://localhost:$PORT")}"
-
-  # Remove trailing slash if present.
-  URL="${URL%/}"
-  # The app expects baseUrl to be an HTTP(S) origin: scheme, hostname, optional port (see zServerConfig).
-  # The restricted character set here keeps the config.json below as valid JSON.
-  if ! [[ "$URL" =~ ^https?://[A-Za-z0-9._-]+(:[0-9]+)?$ ]]; then
-    error "Invalid URL \"$URL\". Expected an alphanumeric HTTP(S) URL (optionally with a port), e.g. \"https://myserver.com\"."
-  fi
-
-  # Validate port
-  if ! [[ "$PORT" =~ ^[0-9]+$ ]] || [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then
-    error "Invalid port: $PORT"
-  fi
 
   # Expand ~ if present
   WORKBENCH_ROOT="${WORKBENCH_ROOT/#\~/$HOME}"
@@ -116,6 +101,24 @@ do_install() {
   # Refuse to overwrite an existing installation
   if [ -e "$WORKBENCH_ROOT" ]; then
     error "$WORKBENCH_ROOT already exists. Uninstall first (--uninstall), move the directory, or pick a different --dir."
+  fi
+
+  PORT="${OPT_PORT:-$(ask_input "Which localhost port should the server listen on?" "8080")}"
+
+  # Validate port
+  if ! [[ "$PORT" =~ ^[0-9]+$ ]] || [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then
+    error "Invalid port: $PORT"
+  fi
+
+  URL="${OPT_URL:-$(ask_input "At which URL will you host the Lean Workbench?" "http://localhost:$PORT")}"
+
+  # Remove trailing slash if present.
+  URL="${URL%/}"
+
+  # The app expects baseUrl to be an HTTP(S) origin: scheme, hostname, optional port (see zServerConfig).
+  # The restricted character set here keeps the config.json below as valid JSON.
+  if ! [[ "$URL" =~ ^https?://[A-Za-z0-9._-]+(:[0-9]+)?$ ]]; then
+    error "Invalid URL \"$URL\". Expected an alphanumeric HTTP(S) URL (optionally with a port), e.g. \"https://myserver.com\"."
   fi
 
   info "Configuration:"
