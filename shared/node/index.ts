@@ -10,7 +10,7 @@ export async function existsAsync(p: string): Promise<boolean> {
   }
 }
 
-/** Polls a file waiting for it to exist, throwing if it the file doesn't exist by the deadline */
+/** Polls a file waiting for it to exist, throwing if the file doesn't exist by the deadline */
 export async function waitForFileToExist(
   path: string,
   options?: { timeoutMs?: number; pollMs?: number; description?: string },
