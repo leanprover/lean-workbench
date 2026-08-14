@@ -110,7 +110,7 @@ do_install() {
     error "Invalid port: $PORT"
   fi
 
-  URL="${OPT_URL:-$(ask_input "At which URL will you host the Lean Workbench?" "http://localhost:$PORT")}"
+  URL="${OPT_URL:-$(ask_input "At which URL will users access the Lean Workbench?" "https://example.com")}"
 
   # Remove trailing slash if present.
   URL="${URL%/}"
@@ -186,9 +186,6 @@ EOF
   echo "  Initial admin password: $INIT_ADMIN_PASSWORD"
   echo "    (also stored in $WORKBENCH_ROOT/data/config.json)"
   echo ""
-  echo "  To start:"
-  echo "    cd $WORKBENCH_ROOT && docker compose up -d"
-  echo ""
   localhost_url="http://localhost:$PORT"
   if [[ "$URL" == "$localhost_url" ]]; then
     echo "  Then connect to $URL to configure authentication and complete setup."
@@ -197,12 +194,16 @@ EOF
     echo "  and connect to $URL to configure authentication and complete setup."
   fi
   echo ""
-  echo "  Other commands:"
+  echo "  Useful commands:"
+  echo "    docker compose -f $WORKBENCH_ROOT/docker-compose.yml up -d   # start lean workbench"
+  echo "    docker compose -f $WORKBENCH_ROOT/docker-compose.yml down    # stop running workbench"
   echo "    docker compose -f $WORKBENCH_ROOT/docker-compose.yml logs -f # see live logs"
   echo "    docker compose -f $WORKBENCH_ROOT/docker-compose.yml pull    # update image"
   echo ""
+  echo ""
   echo "  To uninstall:"
   echo "    $(realpath "$0") --uninstall"
+  echo ""
 
   # Offer to start now
   if ask_yesno "Start Lean Workbench now?"; then
