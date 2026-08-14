@@ -163,13 +163,7 @@ export default function SetupFlow({ baseUrl }: SetupFlowProps) {
           </div>
           <div className='setup-field'>
             <label htmlFor='clientSecret'>Client Secret</label>
-            <input
-              type='password'
-              id='clientSecret'
-              name='clientSecret'
-              placeholder='Enter client secret'
-              required
-            />
+            <input type='password' id='clientSecret' name='clientSecret' placeholder='Enter client secret' required />
           </div>
           <button type='submit' className='primary' disabled={savingConfig}>
             {savingConfig ? 'Saving...' : 'Save Configuration'}
