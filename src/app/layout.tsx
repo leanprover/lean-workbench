@@ -1,7 +1,6 @@
 import '@/css/app.css'
 
 import type { Metadata } from 'next'
-import { io } from 'next/cache'
 import { Open_Sans } from 'next/font/google'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -48,6 +47,7 @@ export default async function RootLayout({
             </Suspense>
           </nav>
           <main style={{ maxWidth: '600px' }}>
+            // FIXME: we currently don't get static shells for any page due to this `Suspense`.
             <Suspense fallback={null}>
               <ConfigCtxProvider>{children}</ConfigCtxProvider>
             </Suspense>
