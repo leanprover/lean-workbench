@@ -61,7 +61,7 @@ You'll see the setup page, which has two steps:
 settings:
 - **Homepage URL:** your public URL
 - **Authorization callback URL:**
-  e.g. `https://your-domain.example.com/api/auth/callback/github` — the setup
+  e.g. `https://your-domain.com/api/auth/callback/github` — the setup
   page shows the exact URL to use.
 
 Copy the **Client ID** and **Client Secret** from GitHub into the

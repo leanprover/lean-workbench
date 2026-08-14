@@ -100,17 +100,19 @@ do_install() {
 
   # Refuse to overwrite an existing installation
   if [ -e "$WORKBENCH_ROOT" ]; then
-    error "$WORKBENCH_ROOT already exists. Uninstall first (--uninstall), move the directory, or pick a different --dir."
+    error "$WORKBENCH_ROOT already exists. Uninstall first (--uninstall), move the directory, or pick a different directory."
   fi
 
-  PORT="${OPT_PORT:-$(ask_input "Which localhost port should the server listen on?" "8080")}"
+  ADDR="${OPT_ADDR:-$(ask_input "Which address should the HTTP server listen on?" "127.0.0.1")}"
+
+  PORT="${OPT_PORT:-$(ask_input "Which port should the HTTP server listen on?" "8080")}"
 
   # Validate port
   if ! [[ "$PORT" =~ ^[0-9]+$ ]] || [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then
     error "Invalid port: $PORT"
   fi
 
-  URL="${OPT_URL:-$(ask_input "At which public URL will users access the Lean Workbench?" "https://your-domain.example.com")}"
+  URL="${OPT_URL:-$(ask_input "At which URL will you publish the Lean Workbench?" "https://your-domain.com")}"
 
   # Remove trailing slash if present.
   URL="${URL%/}"
@@ -118,12 +120,14 @@ do_install() {
   # The app expects baseUrl to be an HTTP(S) origin: scheme, hostname, optional port (see zServerConfig).
   # The restricted character set here keeps the config.json below as valid JSON.
   if ! [[ "$URL" =~ ^https?://[A-Za-z0-9._-]+(:[0-9]+)?$ ]]; then
-    error "Invalid URL \"$URL\". Expected an alphanumeric HTTP(S) URL (optionally with a port), e.g. \"https://myserver.com\"."
+    error "Invalid URL \"$URL\". Expected an alphanumeric HTTP(S) URL (optionally with a port), e.g. \"https://your-domain.com\"."
   fi
 
   info "Configuration:"
-  echo "  Workbench root: $WORKBENCH_ROOT"
+  echo "  Workbench directory: $WORKBENCH_ROOT"
+  echo "  Address: $ADDR"
   echo "  Port: $PORT"
+  echo "  Public URL: $URL"
   echo ""
 
   # Pull image (skip with --dev if using a locally-built image)
@@ -168,7 +172,7 @@ services:
     image: $IMAGE
     container_name: lean-workbench
     ports:
-      - "127.0.0.1:${PORT}:3000"
+      - "${ADDR}:${PORT}:3000"
     volumes:
       - ./data:/data${ENV_FILE_SECTION}
     cap_add:
@@ -186,20 +190,19 @@ EOF
   echo "  Initial admin password: $INIT_ADMIN_PASSWORD"
   echo "    (also stored in $WORKBENCH_ROOT/data/config.json)"
   echo ""
-  localhost_url="http://localhost:$PORT"
-  if [[ "$URL" == "$localhost_url" ]]; then
-    echo "  Then connect to $URL to configure authentication and complete setup."
+  local_url="http://$ADDR:$PORT"
+  if [[ "$URL" == "$local_url" ]]; then
+    echo "  Then connect to $URL to configure authentication and complete the setup."
   else
-    echo "  Then set up a tunnel or reverse proxy forwarding $URL to $localhost_url,"
-    echo "  and connect to $URL to configure authentication and complete setup."
+    echo "  Then set up a tunnel or reverse proxy forwarding $URL to $local_url,"
+    echo "  and connect to $URL to configure authentication and complete the setup."
   fi
   echo ""
   echo "  Useful commands:"
-  echo "    docker compose -f $WORKBENCH_ROOT/docker-compose.yml up -d   # start lean workbench"
-  echo "    docker compose -f $WORKBENCH_ROOT/docker-compose.yml down    # stop running workbench"
+  echo "    docker compose -f $WORKBENCH_ROOT/docker-compose.yml up -d   # start the workbench"
+  echo "    docker compose -f $WORKBENCH_ROOT/docker-compose.yml down    # stop a running workbench"
   echo "    docker compose -f $WORKBENCH_ROOT/docker-compose.yml logs -f # see live logs"
   echo "    docker compose -f $WORKBENCH_ROOT/docker-compose.yml pull    # update image"
-  echo ""
   echo ""
   echo "  To uninstall:"
   echo "    $(realpath "$0") --uninstall"
@@ -209,20 +212,21 @@ EOF
   if ask_yesno "Start Lean Workbench now?"; then
     docker compose -f "$WORKBENCH_ROOT/docker-compose.yml" up -d
     echo ""
-    info "Lean Workbench is running at http://localhost:$PORT."
+    info "Lean Workbench is listening on http://$ADDR:$PORT."
   fi
 }
 
 # --- Main ---
 
-OPT_DIR="" OPT_URL="" OPT_PORT="" NO_PULL="" OPT_ENV_FILE="" ACTION="install"
+OPT_DIR="" OPT_URL="" OPT_ADDR="" OPT_PORT="" NO_PULL="" OPT_ENV_FILE="" ACTION="install"
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --uninstall) ACTION="uninstall"; shift ;;
     --no-pull) NO_PULL=1; shift ;;
     --dir) OPT_DIR="$2"; shift 2 ;;
-    --url) OPT_URL="$2"; shift 2 ;;
+    --pub-url) OPT_URL="$2"; shift 2 ;;
+    --addr) OPT_ADDR="$2"; shift 2 ;;
     --port) OPT_PORT="$2"; shift 2 ;;
     --env-file) OPT_ENV_FILE="$2"; shift 2 ;;
     --help|-h)
@@ -231,11 +235,12 @@ while [ $# -gt 0 ]; do
       echo "Install Lean Workbench with Docker Compose."
       echo ""
       echo "Options:"
-      echo "  --dir DIR       Workbench root directory (default: ~/.lean-workbench)"
-      echo "  --url URL       The public URL on which users will access the Lean Workbench (e.g.: https://your-domain.example.com)"
-      echo "  --port PORT     Localhost port on which the server will listen (default: 8080)"
+      echo "  --dir DIR       Directory where Lean Workbench stores its data (default: ~/.lean-workbench)"
+      echo "  --pub-url URL   URL on which you will publish the Lean Workbench (e.g. https://your-domain.com)"
+      echo "  --addr ADDR     Address on which the HTTP server will listen (default: 127.0.0.1)"
+      echo "  --port PORT     Port on which the HTTP server will listen (default: 8080)"
       echo "  --no-pull       Skip docker pull, use locally installed image"
-      echo "  --env-file FILE Copy env file into workbench root directory (dev only, not for production)"
+      echo "  --env-file FILE Copy env file into workbench directory (dev only, not for production)"
       echo "  --uninstall     Stop and remove Lean Workbench"
       exit 0
       ;;
