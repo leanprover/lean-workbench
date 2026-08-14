@@ -232,7 +232,7 @@ while [ $# -gt 0 ]; do
       echo ""
       echo "Options:"
       echo "  --dir DIR       Workbench root directory (default: ~/.lean-workbench)"
-      echo "  --url URL       The URL on which you will host the Lean Workbench (default: http://localhost:PORT)"
+      echo "  --url URL       The URL on which users will access the Lean Workbench (default: https://example.com)"
       echo "  --port PORT     Localhost port on which the server will listen (default: 8080)"
       echo "  --no-pull       Skip docker pull, use locally installed image"
       echo "  --env-file FILE Copy env file into workbench root directory (dev only, not for production)"
