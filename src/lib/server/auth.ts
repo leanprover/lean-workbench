@@ -87,17 +87,16 @@ async function createAuth() {
     // Email authentication
     emailAndPassword: {
       enabled: true,
-      minPasswordLength: 1,
+      minPasswordLength: 8,
       // Email accounts can only be created by direct DB access
       disableSignUp: true,
     },
 
     socialProviders,
     baseURL: config.baseUrl,
-    // FIXME: Trust both HTTP and HTTPS in dev mode; reverse proxy causes issues otherwise.
-    // trustedOrigins: config.isDevMode
-    //   ? [env.ORIGIN.replace('https:', 'http:'), env.ORIGIN.replace('http:', 'https:')]
-    //   : [],
+    trustedOrigins: isDevMode()
+      ? /* allow anything in dev mode */ req => [req?.headers.get('origin')]
+      : /* require the baseUrl from config.baseUrl */ [config.baseUrl],
     onAPIError: {
       // Redirect to root with an error search param if something goes wrong,
       // e.g. the GitHub username is not on the allowlist.
