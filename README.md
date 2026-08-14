@@ -21,7 +21,7 @@ real users will connect to.
 ### Prerequisites
 
 - A Linux server (or VM) with [Docker](https://docs.docker.com/get-docker/) installed
-- A domain name or IP address that users will use to reach the server
+- A domain name or IP address that users will use to reach the server.
 - A [GitHub OAuth App](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app) (created during setup below)
 
 ### Step 1: Install
@@ -36,14 +36,13 @@ The installer will prompt for:
 - **Data directory** (default: `~/.lean-workbench`) — where all
   persistent data (database, workspaces, Lean toolchains) is stored.
 - **Port** (default: `8080`) — the port the server listens on.
+- **Public URL** — the URL that users use to access Lean Workbench.
   The right choice for this may depend on other aspects of your particular configuration,
   e.g. whether you have a proxy terminating SSL for you.
 
-It pulls the Docker image, and generates two Docker Compose files in
-the data directory:
-- `docker-compose.yml` — binds to `127.0.0.1` only (for initial
-  setup, so the setup page is not exposed to the internet).
-- `docker-compose.prod.yml` — binds to `0.0.0.0` (for production).
+It pulls the Docker image, and generates `docker-compose.yml`,
+which binds to `127.0.0.1`.
+(Depending on your network setup, you may need to edit this to be `0.0.0.0` in `docker-compose.yml`)
 
 The installer should offer to start the service for you. Otherwise:
 
@@ -54,16 +53,15 @@ docker compose up -d
 
 ### Step 2: First-run setup (web UI)
 
-Open `http://localhost:<port>` in a browser on the server (or via SSH
-tunnel). You'll see the setup page, which has two steps:
+Open the public URL in a browser.
+You'll see the setup page, which has two steps:
 
 **2a. Configure GitHub OAuth.** You need a GitHub OAuth App.
 [Create one here](https://github.com/settings/developers) with these
 settings:
-- **Homepage URL:** `https://your-domain.example.com` (or your actual
-  URL).
+- **Homepage URL:** your public URL
 - **Authorization callback URL:**
-  `https://your-domain.example.com/api/auth/callback/github` — the setup
+  e.g. `https://your-domain.example.com/api/auth/callback/github` — the setup
   page shows the exact URL to use.
 
 Copy the **Client ID** and **Client Secret** from GitHub into the
@@ -80,25 +78,12 @@ A progress bar and log output are shown in real time. This takes
 5--30 minutes depending on network speed. When it finishes, the setup
 page redirects to the landing page.
 
-### Step 3: Switch to production
-
-Stop the localhost-only service and start the production one:
-
-```bash
-cd ~/.lean-workbench
-docker compose down
-docker compose -f docker-compose.prod.yml up -d
-```
-
-The server is now accessible on all network interfaces. Put it behind
-a reverse proxy (nginx, Caddy, etc.) with TLS if you want HTTPS.
-
 ### Updating
 
 ```bash
 cd ~/.lean-workbench
-docker compose -f docker-compose.prod.yml pull
-docker compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.yml pull
+docker compose -f docker-compose.yml up -d
 ```
 
 ### Uninstalling

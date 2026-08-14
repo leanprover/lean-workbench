@@ -110,7 +110,7 @@ do_install() {
     error "Invalid port: $PORT"
   fi
 
-  URL="${OPT_URL:-$(ask_input "At which URL will users access the Lean Workbench?" "https://example.com")}"
+  URL="${OPT_URL:-$(ask_input "At which public URL will users access the Lean Workbench?" "https://your-domain.example.com")}"
 
   # Remove trailing slash if present.
   URL="${URL%/}"
@@ -232,7 +232,7 @@ while [ $# -gt 0 ]; do
       echo ""
       echo "Options:"
       echo "  --dir DIR       Workbench root directory (default: ~/.lean-workbench)"
-      echo "  --url URL       The URL on which users will access the Lean Workbench (default: https://example.com)"
+      echo "  --url URL       The public URL on which users will access the Lean Workbench (e.g.: https://your-domain.example.com)"
       echo "  --port PORT     Localhost port on which the server will listen (default: 8080)"
       echo "  --no-pull       Skip docker pull, use locally installed image"
       echo "  --env-file FILE Copy env file into workbench root directory (dev only, not for production)"
