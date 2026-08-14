@@ -15,6 +15,8 @@ export default function AvatarMenu() {
   const router = useRouter()
   const { throwToBoundary } = useThrowToBoundary()
 
+  if (!cfg.isSetupComplete) return null
+
   if (session.data) {
     const user = session.data.user
     return (
