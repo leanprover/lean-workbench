@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { connection } from 'next/server'
 import z from 'zod'
 
 import { requireAuth } from '@/lib/server/auth'
@@ -18,7 +19,7 @@ export default async function EditorSession({ params: params_ }: { params: Promi
   // Suspend during pre-rendering and on <Link> prefetches
   // instead of running this (expensive) handler.
   await connection()
-  
+
   const parsed = zParams.safeParse(await params_)
   // 400 would be better, but RSCs can't return a Response and there is no 400 helper in Next.js.
   if (!parsed.success) notFound()
