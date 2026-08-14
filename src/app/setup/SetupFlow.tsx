@@ -159,17 +159,15 @@ export default function SetupFlow({ baseUrl }: SetupFlowProps) {
           </p>
           <div className='setup-field'>
             <label htmlFor='clientId'>Client ID</label>
-            <input data-1p-ignore type='text' id='clientId' name='clie3ntId' placeholder='Ov23li...' required />
+            <input type='text' id='clientId' name='clientId' placeholder='Ov23li...' autoComplete='off' required />
           </div>
           <div className='setup-field'>
             <label htmlFor='clientSecret'>Client Secret</label>
             <input
-              data-1p-ignore
               type='password'
               id='clientSecret'
               name='clientSecret'
               placeholder='Enter client secret'
-              autoComplete='off'
               required
             />
           </div>

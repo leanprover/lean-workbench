@@ -70,9 +70,8 @@ export default function Unauthorized() {
           <label htmlFor='one-time-password'>
             One-time initialization password
             <input
-              data-1p-ignore
               id='one-time-password'
-              autoComplete='current-password'
+              autoComplete='off'
               type='password'
               value={oneTimePassword}
               onChange={e => {
