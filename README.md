@@ -21,6 +21,8 @@ It is written with IT staff/system administrators in mind.
 
 - A Linux machine (or VM) with [Docker](https://docs.docker.com/get-docker/) installed.
   - 3GiB of RAM per concurrent user is recommended.
+  - A dedicated, unprivileged machine is recommended:
+    the Workbench container does not isolate untrusted processes from the host.
 - A domain or IP address on which you will publish the Workbench.
 - A GitHub account that will own the [OAuth App](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app)
   used to authorize GitHub-based logins on the instance.
@@ -34,8 +36,7 @@ Supporting secure HTTPS connections (strongly recommended),
 firewalled corporate/university networks, etc,
 is the instance administrator's responsibility.
 
-Make a note of the **public URL** on which you will publish the instance
-(e.g. `https://lean.math.uni.edu` or `http://lean.internal-lan.uni.edu`),
+Make a note of the **public URL** on which you will publish the instance (e.g. `https://lean.math.uni.edu`),
 as well as the **local address and port** on which the Workbench HTTP server should listen.
 
 Workflows for two common cases are described below.
@@ -104,11 +105,15 @@ Nginx terminates SSL and forwards HTTP traffic to the Workbench via local loopba
 Run the installer on your Linux server:
 
 ```bash
-curl -sSf https://raw.githubusercontent.com/leanprover/lean-workbench/main/install.sh | bash
+bash <(curl -sSf https://raw.githubusercontent.com/leanprover/lean-workbench/main/install.sh)
 ```
 The installer will prompt for the public URL, local address and port from Step 0,
 as well as a **data directory** (default: `~/.lean-workbench`)
 where all persistent data (database, users' projects, Lean toolchains) is stored.
+
+> [!WARNING]
+> The local address defaults to 127.0.0.1 instead of 0.0.0.0
+> to prevent accidental exposure of the insecure HTTP service to the internet.
 
 It will then download the Docker container image
 and generate a `docker-compose.yml` file reflecting your network configuration.
@@ -175,9 +180,15 @@ This stops the service and optionally removes the Docker image and data director
 
 ### Backups
 
-All persistent state is in the data directory
-(default: `~/.lean-workbench`). You can back up this directory to
-preserve all user workspaces, the database, and Lean toolchains.
+All persistent state is in the data directory (default: `~/.lean-workbench`).
+You can back up this directory to preserve users' projects, the database, and Lean toolchains.
+Make sure to **stop the Docker service** (`cd ~/.lean-workbench && docker compose down`)
+before making the backup.
+Otherwise, a partially-written, corrupted database may be copied.
+
+> [!CAUTION]
+> The data directory contains authentication secrets.
+> Backups should not be shared in whole with untrusted parties.
 
 ## Development
 
