@@ -1,7 +1,10 @@
+import { requireAdmin } from '@/app/admin/actions'
 import { getSeedState } from '@/lib/server/seed'
 import { sseStreamResponse } from '@/lib/server/util'
 
 export async function GET() {
+  await requireAdmin()
+
   // eslint-disable-next-line prefer-const
   let interval: ReturnType<typeof setInterval> | undefined
   const [response, send, close] = sseStreamResponse(() => {
