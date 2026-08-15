@@ -20,7 +20,7 @@ It is written with IT staff/system administrators in mind.
 ### Prerequisites
 
 - A Linux machine (or VM) with [Docker](https://docs.docker.com/get-docker/) installed.
-  - 3GiB of RAM per concurrent user is recommended.
+  - 3 GiB of RAM per concurrent user is recommended.
   - A dedicated, unprivileged machine is recommended:
     the Workbench container does not isolate untrusted processes from the host.
 - A domain or IP address on which you will publish the Workbench.
@@ -33,7 +33,7 @@ The networking features of Lean Workbench are intentionally minimal:
 our HTTP server listens on a local interface and port of your choice,
 but does not handle anything beyond that.
 Supporting secure HTTPS connections (strongly recommended),
-firewalled corporate/university networks, etc,
+firewalled corporate/university networks, etc.,
 is the instance administrator's responsibility.
 
 Make a note of the **public URL** on which you will publish the instance (e.g. `https://lean.math.uni.edu`),
@@ -80,16 +80,19 @@ Nginx terminates SSL and forwards HTTP traffic to the Workbench via local loopba
            location / {
                proxy_pass http://127.0.0.1:8080;
                proxy_http_version 1.1;
-               proxy_set_header Host       $http_host;
-           
+               proxy_set_header Host              $host;
+               proxy_set_header X-Forwarded-Host  $host;
+               proxy_set_header X-Forwarded-Proto $scheme;
+               proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+
                # Proxy WebSocket traffic
                proxy_set_header Upgrade    $http_upgrade;
                proxy_set_header Connection $connection_upgrade;
-           
+
                # Leave connections open for 24h
                proxy_read_timeout 86400;
                proxy_send_timeout 86400;
-           
+
                # Stream SSE without delay
                proxy_buffering off;
            }
@@ -107,9 +110,9 @@ Run the installer on your Linux server:
 ```bash
 bash <(curl -sSf https://raw.githubusercontent.com/leanprover/lean-workbench/main/install.sh)
 ```
-The installer will prompt for the public URL, local address and port from Step 0,
-as well as a **data directory** (default: `~/.lean-workbench`)
-where all persistent data (database, users' projects, Lean toolchains) is stored.
+The installer will prompt for a **data directory** (default: `~/.lean-workbench`)
+where all persistent data (database, users' projects, Lean toolchains) is stored,
+as well as the public URL, local address and port from Step 0.
 
 > [!WARNING]
 > The local address defaults to 127.0.0.1 instead of 0.0.0.0
@@ -120,6 +123,7 @@ and generate a `docker-compose.yml` file reflecting your network configuration.
 
 The installer will print an **initial administrator password**.
 Save it for Step 2.
+(You can also find it in `data/config.json` in the data directory.)
 
 Finally, the installer will offer to start the container for you.
 Otherwise, to start it yourself:
@@ -153,21 +157,23 @@ You'll see the setup page, which has three steps:
    This runs a script inside the container that:
 
    - Installs the [elan](https://github.com/leanprover/elan) Lean version manager.
-   - Downloads Mathlib source and pre-compiled `.olean` files (~5 GB) for the latest Lean release.
+   - Downloads Mathlib source and pre-compiled `.olean` files (~5 GB).
    - Creates project templates.
 
    A progress bar and log output are shown in real time.
    This takes 5–30 minutes depending on network speed.
-   
+
 Setup is now complete.
-Click *Continue to the Lean Workbench* or refresh to see the landing page.
+Click *Continue to Lean Workbench* or refresh to see the landing page.
 
 ### Updating
 
+We recommend backing up the data directory before updating the container.
+
 ```bash
 cd ~/.lean-workbench   # your data directory
-docker compose -f docker-compose.yml pull
-docker compose -f docker-compose.yml up -d
+docker compose pull
+docker compose up -d
 ```
 
 ### Uninstalling

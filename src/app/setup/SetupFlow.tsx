@@ -140,7 +140,7 @@ export default function SetupFlow({ baseUrl }: SetupFlowProps) {
   return (
     <>
       <h1>Setup</h1>
-      <h2>Step 1: Configuration</h2>
+      <h2>Configuration</h2>
       {configSaved ? (
         <div className='setup-done-msg'>Configuration saved.</div>
       ) : (
@@ -175,7 +175,7 @@ export default function SetupFlow({ baseUrl }: SetupFlowProps) {
 
       <hr className='setup-divider' />
 
-      <h2>Step 2: Initialize Data Volume</h2>
+      <h2>Initialize Data Volume</h2>
       <p style={{ color: '#607D8B', fontSize: '13px' }}>
         Install elan, download pre-compiled Mathlib, and set up project templates. This may take several minutes.
       </p>
