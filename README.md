@@ -21,8 +21,8 @@ It is written with IT staff/system administrators in mind.
 
 - A Linux machine (or VM) with [Docker](https://docs.docker.com/get-docker/) installed.
   - 3 GiB of RAM per concurrent user is recommended.
-  - A dedicated, unprivileged machine is recommended:
-    the Workbench container does not isolate untrusted processes from the host.
+  - A dedicated machine (hosting nothing else) is recommended:
+    the Workbench container runs with elevated privileges.
 - A domain or IP address on which you will publish the Workbench.
 - A GitHub account that will own the [OAuth App](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app)
   used to authorize GitHub-based logins on the instance.
@@ -188,13 +188,14 @@ This stops the service and optionally removes the Docker image and data director
 
 All persistent state is in the data directory (default: `~/.lean-workbench`).
 You can back up this directory to preserve users' projects, the database, and Lean toolchains.
-Make sure to **stop the Docker service** (`cd ~/.lean-workbench && docker compose down`)
+Make sure to **stop the Workbench container** (`cd ~/.lean-workbench && docker compose down`)
 before making the backup.
-Otherwise, a partially-written, corrupted database may be copied.
+Otherwise, a partially written, corrupted database may be copied.
 
 > [!CAUTION]
 > The data directory contains authentication secrets.
-> Backups should not be shared in whole with untrusted parties.
+> Backups should not be shared in whole with untrusted parties
+> (individual project directories are fine to share).
 
 ## Development
 
