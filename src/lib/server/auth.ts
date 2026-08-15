@@ -96,7 +96,7 @@ async function createAuth() {
     baseURL: config.baseUrl,
     trustedOrigins: isDevMode()
       ? /* allow anything in dev mode */ req => [req?.headers.get('origin')]
-      : /* require the baseUrl from config.baseUrl */ [config.baseUrl],
+      : /* require the configured public URL */ [config.baseUrl],
     onAPIError: {
       // Redirect to root with an error search param if something goes wrong,
       // e.g. the GitHub username is not on the allowlist.
