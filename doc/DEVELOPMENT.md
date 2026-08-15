@@ -19,6 +19,7 @@ make dev # build and run the container in development mode
 
 Open `http://localhost:3000`. You'll see the setup page.
 
+1. Use `dev` as the initial administrator password.
 1. - **Skip the OAuth section** — it's optional in dev mode.
      This is the fastest way to get a running instance.
      The UI forces you to put *something* for "Client ID" and "Client Secret",
@@ -27,9 +28,9 @@ Open `http://localhost:3000`. You'll see the setup page.
    - **Or** [create a GitHub OAuth App](https://github.com/settings/developers)
      with callback URL `http://localhost:3000/api/auth/callback/github`.
      Enter the resulting credentials on the setup page.
-2. Click **Start Setup** to seed the data volume (downloads Mathlib,
+1. Click **Start Setup** to seed the data volume (downloads Mathlib,
    takes 5--30 min on first run).
-3. When seeding finishes, you're redirected to the landing page.
+1. When seeding finishes, you're redirected to the landing page.
 
 ### Sandboxed development
 
