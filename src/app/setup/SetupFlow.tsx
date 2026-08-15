@@ -151,7 +151,7 @@ export default function SetupFlow({ baseUrl }: SetupFlowProps) {
             <a href='https://github.com/settings/developers' target='_blank' rel='noreferrer'>
               GitHub OAuth App
             </a>
-            . When prompted, set the &quot;Authorization callback URL&quot; to
+            . When prompted, set the &quot;Redirect URI&quot; to
           </p>
           <code>{`${baseUrl}/api/auth/callback/github`}</code>
           <p style={{ color: '#607D8B', fontSize: '13px' }}>
