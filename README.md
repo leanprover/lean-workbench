@@ -48,11 +48,11 @@ It requires a Cloudflare account with DNS administration privileges for `your-do
 
 1. Follow [Cloudflare instructions](https://developers.cloudflare.com/tunnel/setup/) to:
    - **Set up a tunnel** (`cloudflared`) on your machine.
-   - **Publish an application** on your chosen hostname `subdomain.your-domain.com`,
+   - **Publish an application** on your chosen hostname `your-domain.com`,
       with `http://127.0.0.1:8080` as the Service URL.
 1. **Move to Step 1** below.
-   Use `https://subdomain.your-domain.com` as the public URL,
-   and `127.0.0.1:8080` as the local address and port.
+   Use `127.0.0.1:8080` as the local address and port,
+   and `https://your-domain.com` as the public URL.
 
 #### Network Setup B: Let's Encrypt with Nginx
 
@@ -100,8 +100,8 @@ Nginx terminates SSL and forwards HTTP traffic to the Workbench via local loopba
    }
    ```
 1. **Move to Step 1** below.
-   Use `https://your-domain.com` as the public URL,
-   and `127.0.0.1:8080` as the local address and port.
+   Use `127.0.0.1:8080` as the local address and port,
+   and `https://your-domain.com` as the public URL.
 
 ### Step 1: Install and launch
 
@@ -112,7 +112,7 @@ bash <(curl -sSf https://raw.githubusercontent.com/leanprover/lean-workbench/mai
 ```
 The installer will prompt for a **data directory** (default: `~/.lean-workbench`)
 where all persistent data (database, users' projects, Lean toolchains) is stored,
-as well as the public URL, local address and port from Step 0.
+as well as the local address, port, and public URL from Step 0.
 
 > [!WARNING]
 > The local address defaults to 127.0.0.1 instead of 0.0.0.0
