@@ -138,6 +138,9 @@ do_install() {
     info "Skipping docker pull, using local image."
   fi
 
+  # Create installation directory
+  mkdir -p "$WORKBENCH_ROOT"
+
   # Copy env file if provided (dev only — credentials end up on disk in
   # the data directory, so don't use this in production)
   local ENV_FILE_SECTION=""
