@@ -85,3 +85,9 @@ export const BWRAP_COLLAB_SERVER_DIR = '/workspace/.collab-server'
 
 /** Collab-server socket path in the VSCode and collab-server bwraps. */
 export const BWRAP_COLLAB_SOCK_PATH = `${BWRAP_COLLAB_SERVER_DIR}/${COLLAB_SOCKET_FILENAME}`
+
+/** Pseudo-email for the admin user */
+export const adminEmail = 'admin@admin.localhost'
+
+/** Pseudo-email for the dev user */
+export const devModeEmail = 'dev@dev.localhost'

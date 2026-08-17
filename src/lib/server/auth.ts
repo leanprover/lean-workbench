@@ -113,7 +113,12 @@ async function createAuth() {
  *
  * Relies on implementation details of better-auth.
  * Needed because better-auth exposes no authentication-free way to modify accounts. */
-async function addEmailPasswordUser(name: string, email: string, password: string, isAdmin: boolean): Promise<boolean> {
+export async function addEmailPasswordUser(
+  name: string,
+  email: string,
+  password: string,
+  isAdmin: boolean,
+): Promise<boolean> {
   const db = getDb()
   const hashedPassword = await hashPassword(password)
   return db.$transaction(async tx => {
@@ -139,42 +144,6 @@ async function addEmailPasswordUser(name: string, email: string, password: strin
   })
 }
 
-/** Ensures that an admin account exists,
- * and that a non-admin dev account exists iff we are in dev mode. */
-async function ensureBuiltinUsersExist() {
-  const adminEmail = 'admin@admin.localhost'
-  const db = getDb()
-  if (!(await db.user.findUnique({ where: { email: adminEmail } }))) {
-    let { initAdminPassword } = getConfig()
-    if (!initAdminPassword) {
-      if (isDevMode()) {
-        initAdminPassword = 'dev'
-      } else {
-        throw new Error('Internal error: initial admin password not set up (did install.sh succeed?)')
-      }
-    }
-
-    const added = await addEmailPasswordUser('admin', adminEmail, initAdminPassword, true)
-    if (added) {
-      console.log(`Added admin user ${adminEmail}`)
-    }
-  }
-
-  const devModeEmail = 'dev@dev.localhost'
-  if (isDevMode()) {
-    const added = await addEmailPasswordUser('dev', devModeEmail, 'dev', false)
-    if (added) {
-      console.log(`Added dev user ${devModeEmail}`)
-    }
-  } else {
-    // Clean up dev account in prod since its password is public
-    const { count } = await getDb().user.deleteMany({ where: { email: devModeEmail } })
-    if (count !== 0) {
-      console.warn(`Warning: deleted dev user ${devModeEmail} (disallowed in production)`)
-    }
-  }
-}
-
 export type AuthInstance = Awaited<ReturnType<typeof createAuth>>
 export type SessionAndUser = AuthInstance['$Infer']['Session']
 export type Session = SessionAndUser['session']
@@ -186,7 +155,6 @@ const g = globalThis as typeof globalThis & {
 
 /** (Re)initialize the authentication state. */
 export async function initAuth(): Promise<void> {
-  await ensureBuiltinUsersExist()
   g.__auth = await createAuth()
 }
 
@@ -199,7 +167,7 @@ export async function getAuth(): Promise<AuthInstance> {
 export async function requireAuth(): Promise<SessionAndUser> {
   await io()
   const auth = await getAuth()
-  const session = await auth.api.getSession({ headers: await headers() })
+  const session = await auth.api.getSession({ headers: await headers(), query: { disableRefresh: true } })
   if (!session) unauthorized()
   return session
 }

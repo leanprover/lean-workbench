@@ -1,5 +1,6 @@
 'use client'
 
+import { devModeEmail } from '@leanprover/workbench-shared'
 import { type Route } from 'next'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -9,6 +10,7 @@ import { useThrowToBoundary } from '@/lib/client/util'
 import { type Config, useConfigCtx } from '@/lib/contexts'
 
 import ErrorBox from './components/ErrorBox'
+import { ensureDevUser } from '@/lib/server/actions'
 
 /**
  * Interprets an (untrusted) `error` search parameter as OAuth callback information
@@ -64,8 +66,9 @@ export default function Root() {
             <button
               className='login-link'
               onClick={async () => {
-                const email = 'dev@dev.localhost'
+                const email = devModeEmail
                 const password = 'dev'
+                await ensureDevUser()
                 authClient.signIn.email({ email, password }).catch(throwToBoundary)
               }}
             >
