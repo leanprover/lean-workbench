@@ -6,9 +6,10 @@
 
 'use server'
 
+import { devModeEmail } from '@leanprover/workbench-shared'
 import { forbidden } from 'next/navigation'
 
-import { requireAuth } from '@/lib/server/auth'
+import { addEmailPasswordUser, requireAuth } from '@/lib/server/auth'
 import { getDb } from '@/lib/server/db'
 
 import { isDevMode } from './config'
@@ -26,4 +27,12 @@ export async function setIsAdmin(isAdmin: boolean) {
     where: { id: session.user.id },
     data: { isAdmin },
   })
+}
+
+export async function ensureDevUser() {
+  if (!isDevMode()) {
+    forbidden()
+  }
+
+  await addEmailPasswordUser('dev', devModeEmail, 'dev', false)
 }

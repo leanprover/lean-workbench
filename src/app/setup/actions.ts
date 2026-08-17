@@ -1,10 +1,90 @@
 'use server'
 
+import { adminEmail } from '@leanprover/workbench-shared'
+import { hashPassword } from 'better-auth/crypto'
+import { randomUUID } from 'crypto'
+import { z } from 'zod'
+
 import { requireAdmin } from '@/app/admin/actions'
 import { initAuth } from '@/lib/server/auth'
-import { getConfig, hasGithubAuth, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
+import { getConfig, hasGithubAuth, isDevMode, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
+import { getDb } from '@/lib/server/db'
 import { getSeedState, startSeed as doStartSeed } from '@/lib/server/seed'
 import type { ActionResponse } from '@/lib/util'
+
+const zInitialLogin = z.object({
+  initAdminPassword: z.string(),
+  newAdminPassword: z.string(),
+})
+
+/**
+ * If `initialAdminPassword` is set in the config JSON, then this function will allow that
+ * admin password to be used to reset the password
+ */
+export async function initialLogin(formData: FormData): Promise<ActionResponse<null>> {
+  const cfg = getConfig()
+
+  const parsed = zInitialLogin.safeParse({
+    initAdminPassword: formData.get('initAdminPassword'),
+    newAdminPassword: formData.get('newAdminPassword'),
+  })
+  if (!parsed.success) return { error: parsed.error.issues[0]!.message }
+
+  let initialAdminPassword: string
+  if (isDevMode()) {
+    initialAdminPassword = 'dev'
+  } else if (cfg.initAdminPassword) {
+    initialAdminPassword = cfg.initAdminPassword
+  } else {
+    // there's no initial admin password in the setup
+    // this may be because we already created the admin user
+    const adminUser = await getDb().user.findUnique({ where: { email: adminEmail } })
+    if (adminUser) return { error: 'The admin user is already set up' }
+
+    // or because something was misconfigured
+    throw new Error('Initial admin password was not set up (did install.sh succeed?)')
+  }
+
+  if (parsed.data.initAdminPassword !== initialAdminPassword) {
+    // Ham-fisted timing attack resistance
+    await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000))
+    return { error: 'Incorrect initial admin password' }
+  }
+
+  // At this point, unconditionally overwrite the admin user's account information password
+  const db = getDb()
+  const hashedPassword = await hashPassword(parsed.data.newAdminPassword)
+  await db.$transaction(async tx => {
+    const existingAdminUser = await tx.user.findUnique({ where: { email: adminEmail } })
+
+    let userId
+    if (existingAdminUser) {
+      console.log(`Overwriting password for existing admin user`)
+      userId = existingAdminUser.id
+      await tx.account.deleteMany({ where: { userId: existingAdminUser.id } })
+    } else {
+      console.log(`Creating admin user with provided password`)
+      userId = randomUUID()
+      await tx.user.create({ data: { id: userId, name: 'admin', email: adminEmail, isAdmin: true } })
+    }
+
+    await tx.account.create({
+      data: {
+        id: randomUUID(),
+        userId,
+        accountId: userId /* better-auth convention */,
+        providerId: 'credential',
+        password: hashedPassword,
+      },
+    })
+  })
+
+  // Delete the initial admin password to prevent further resets
+  delete cfg.initAdminPassword
+  await saveConfig()
+
+  return { ok: null }
+}
 
 export async function saveSetupConfig(formData: FormData): Promise<ActionResponse<boolean>> {
   await requireAdmin()
