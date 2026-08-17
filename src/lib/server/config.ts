@@ -86,7 +86,7 @@ export const zGithubAuthConfig = z.object({
 export type GithubAuthConfig = z.infer<typeof zGithubAuthConfig>
 
 const zServerConfig = z.object({
-  registrationMode: zRegistrationMode,
+  registrationMode: zRegistrationMode.default('open'),
   isSetupComplete: z.boolean(),
   githubAuth: zGithubAuthConfig.optional(),
   /** 256 random bits, hex-encoded as a 512-bit string. */
@@ -95,6 +95,9 @@ const zServerConfig = z.object({
    * Requests made through other URLs may misbehave,
    * e.g. better-auth will reject authentication requests. */
   baseUrl: z.url(),
+  /** A pre-generated admin password,
+   * changed immediately during initial setup. */
+  initAdminPassword: z.string().length(24).optional(),
 })
 
 /** Server configuration. Also stored on-disk in `$LEAN_WORKBENCH_DATA_DIR/config.json`. */

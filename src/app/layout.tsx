@@ -37,7 +37,9 @@ export default async function RootLayout({
               <Image src='/static/lean-logo.svg' alt='Lean logo' width={70} height={16} loading='eager' />
               <span className='logo-text'>Lean Workbench</span>
             </Link>
-            <Breadcrumbs />
+            <Suspense fallback={null}>
+              <Breadcrumbs />
+            </Suspense>
             <span className='spacer'></span>
             <Suspense fallback={null}>
               <ConfigCtxProvider>
@@ -47,7 +49,7 @@ export default async function RootLayout({
             </Suspense>
           </nav>
           <main style={{ maxWidth: '600px' }}>
-            // FIXME: we currently don't get static shells for any page due to this `Suspense`.
+            {/* FIXME: we currently don't get static shells for any page due to this `Suspense`. */}
             <Suspense fallback={null}>
               <ConfigCtxProvider>{children}</ConfigCtxProvider>
             </Suspense>

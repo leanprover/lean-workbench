@@ -1,30 +1,24 @@
 'use server'
 
-import z from 'zod'
-
+import { requireAdmin } from '@/app/admin/actions'
 import { initAuth } from '@/lib/server/auth'
 import { getConfig, hasGithubAuth, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
 import { getSeedState, startSeed as doStartSeed } from '@/lib/server/seed'
 import type { ActionResponse } from '@/lib/util'
 
-const zSetupConfig = z.object({
-  baseUrl: z.url('Invalid base URL'),
-  ...zGithubAuthConfig.shape,
-})
-
 export async function saveSetupConfig(formData: FormData): Promise<ActionResponse<boolean>> {
+  await requireAdmin()
+
   const cfg = getConfig()
   if (cfg.isSetupComplete) return { error: 'Setup already completed' }
 
-  const parsed = zSetupConfig.safeParse({
-    baseUrl: formData.get('baseUrl'),
+  const parsed = zGithubAuthConfig.safeParse({
     clientId: formData.get('clientId'),
     clientSecret: formData.get('clientSecret'),
   })
   if (!parsed.success) return { error: parsed.error.issues[0]!.message }
 
-  const { baseUrl, ...githubAuth } = parsed.data
-  cfg.baseUrl = baseUrl
+  const githubAuth = parsed.data
   cfg.githubAuth = githubAuth
   await saveConfig()
 
@@ -35,10 +29,14 @@ export async function saveSetupConfig(formData: FormData): Promise<ActionRespons
 }
 
 export async function startSeed(leanVersion: string | undefined): Promise<ActionResponse<boolean>> {
+  await requireAdmin()
+
   return doStartSeed(leanVersion)
 }
 
 export async function fetchSetupStatus() {
+  await requireAdmin()
+
   const cfg = getConfig()
   const st = getSeedState()
   return {

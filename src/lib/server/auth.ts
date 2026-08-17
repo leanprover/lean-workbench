@@ -2,8 +2,9 @@ import 'server-only'
 
 import { betterAuth, type SocialProviders } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
+import { hashPassword } from 'better-auth/crypto'
 import { nextCookies } from 'better-auth/next-js'
-import crypto from 'crypto'
+import crypto, { randomUUID } from 'crypto'
 import { io } from 'next/cache'
 import { headers } from 'next/headers'
 import { unauthorized } from 'next/navigation'
@@ -48,7 +49,7 @@ async function createAuth() {
             const parsed = zUserName.safeParse(user.name)
             if (!parsed.success) return false
             const name = parsed.data
-            if (getConfig().registrationMode === 'restricted' && !(isDevMode() && name === 'dev')) {
+            if (getConfig().registrationMode === 'restricted') {
               const allowed = await getDb().allowedGithubUser.findUnique({
                 where: { githubUsername: name },
               })
@@ -83,18 +84,19 @@ async function createAuth() {
         // We read them via Prisma when needed.
       },
     },
-    // Email authentication in dev mode only
-    // NOTE: if ever enabled in prod, make sure to clean up dev accounts with known passwords.
+    // Email authentication
     emailAndPassword: {
-      enabled: isDevMode(),
-      minPasswordLength: 1,
+      enabled: true,
+      minPasswordLength: 8,
+      // Email accounts can only be created by direct DB access
+      disableSignUp: true,
     },
+
     socialProviders,
     baseURL: config.baseUrl,
-    // FIXME: Trust both HTTP and HTTPS in dev mode; reverse proxy causes issues otherwise.
-    // trustedOrigins: config.isDevMode
-    //   ? [env.ORIGIN.replace('https:', 'http:'), env.ORIGIN.replace('http:', 'https:')]
-    //   : [],
+    trustedOrigins: isDevMode()
+      ? /* allow anything in dev mode */ req => [req?.headers.get('origin')]
+      : /* require the configured public URL */ [config.baseUrl],
     onAPIError: {
       // Redirect to root with an error search param if something goes wrong,
       // e.g. the GitHub username is not on the allowlist.
@@ -103,15 +105,74 @@ async function createAuth() {
     plugins: [nextCookies()],
   })
 
-  if (isDevMode()) {
-    const email = 'dev@dev.localhost'
-    const existing = await getDb().user.findUnique({ where: { email } })
-    if (!existing) {
-      await auth.api.signUpEmail({ body: { email, name: 'dev', password: 'dev' } })
+  return auth
+}
+
+/** Add a user with email-and-password authentication by directly modifying the database.
+ * Return `true` if added, `false` if a user with this {@link name} or {@link email} already exists.
+ *
+ * Relies on implementation details of better-auth.
+ * Needed because better-auth exposes no authentication-free way to modify accounts. */
+async function addEmailPasswordUser(name: string, email: string, password: string, isAdmin: boolean): Promise<boolean> {
+  const db = getDb()
+  const hashedPassword = await hashPassword(password)
+  return db.$transaction(async tx => {
+    const [byName, byEmail] = await Promise.all([
+      tx.user.findUnique({ where: { name } }),
+      tx.user.findUnique({ where: { email } }),
+    ])
+    if (byName || byEmail) return false
+
+    const userId = randomUUID()
+    await tx.user.create({ data: { id: userId, name, email, isAdmin } })
+    const accountId = randomUUID()
+    await tx.account.create({
+      data: {
+        id: accountId,
+        userId,
+        accountId: userId /* better-auth convention */,
+        providerId: 'credential',
+        password: hashedPassword,
+      },
+    })
+    return true
+  })
+}
+
+/** Ensures that an admin account exists,
+ * and that a non-admin dev account exists iff we are in dev mode. */
+async function ensureBuiltinUsersExist() {
+  const adminEmail = 'admin@admin.localhost'
+  const db = getDb()
+  if (!(await db.user.findUnique({ where: { email: adminEmail } }))) {
+    let { initAdminPassword } = getConfig()
+    if (!initAdminPassword) {
+      if (isDevMode()) {
+        initAdminPassword = 'dev'
+      } else {
+        throw new Error('Internal error: initial admin password not set up (did install.sh succeed?)')
+      }
+    }
+
+    const added = await addEmailPasswordUser('admin', adminEmail, initAdminPassword, true)
+    if (added) {
+      console.log(`Added admin user ${adminEmail}`)
     }
   }
 
-  return auth
+  const devModeEmail = 'dev@dev.localhost'
+  if (isDevMode()) {
+    const added = await addEmailPasswordUser('dev', devModeEmail, 'dev', false)
+    if (added) {
+      console.log(`Added dev user ${devModeEmail}`)
+    }
+  } else {
+    // Clean up dev account in prod since its password is public
+    const { count } = await getDb().user.deleteMany({ where: { email: devModeEmail } })
+    if (count !== 0) {
+      console.warn(`Warning: deleted dev user ${devModeEmail} (disallowed in production)`)
+    }
+  }
 }
 
 export type AuthInstance = Awaited<ReturnType<typeof createAuth>>
@@ -125,6 +186,7 @@ const g = globalThis as typeof globalThis & {
 
 /** (Re)initialize the authentication state. */
 export async function initAuth(): Promise<void> {
+  await ensureBuiltinUsersExist()
   g.__auth = await createAuth()
 }
 
