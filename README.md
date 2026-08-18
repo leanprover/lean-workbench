@@ -19,7 +19,7 @@ It is written with IT staff/system administrators in mind.
 
 ### Prerequisites
 
-- A Linux machine (or VM) with [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install) installed.
+- A Linux machine (or VM) with [Docker](https://docs.docker.com/engine/install/) installed.
   - 3 GiB of RAM per concurrent user is recommended.
   - A dedicated machine (hosting nothing else) is recommended:
     the Workbench container runs with elevated privileges.
@@ -66,18 +66,59 @@ Nginx terminates SSL and forwards HTTP traffic to the Workbench via local loopba
    You can follow [DigitalOcean instructions](https://www.digitalocean.com/community/tutorials/how-to-configure-nginx-as-a-reverse-proxy-on-ubuntu-22-04
 ) to this end.
 
-1. **Configure Nginx** to proxy traffic to `http://127.0.0.1:8080`.
-   Your `/etc/nginx/sites-enabled/<your-site>` configuration should probably include:
+   Do not follow the "Testing your Reverse Proxy with Gunicorn" step in the DigitalOcean tutorial;
+   you'll set up your reverse proxy to work with Lean Workbench.
+   For now, visiting `https://your-domain.com` should result in a 502 Bad Gateway error.
+   (If you don't even get a 502 Bad Gateway error, you may need to run `sudo ufw allow 'Nginx HTTPS'`)
+
+1. **Configure Nginx**
+   If you followed the DigitalOcean tutorial, you should now have a `/etc/nginx/sites-enabled/<your-site>` site that looks like this:
+
+   ```
+   server {
+      server_name your-domain.com;
+
+      location / {
+         proxy_pass http://127.0.0.1:8080;
+         include proxy_params;
+      }
+
+      listen [::]:443 ssl ipv6only=on; # managed by Certbot
+      listen 443 ssl; # managed by Certbot
+      ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem; # managed by Certbot
+      ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem; # managed by Certbot
+      include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+      ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+   }
+   server {
+      if ($host = your-domain.com) {
+         return 301 https://$host$request_uri;
+      } # managed by Certbot
+
+
+      listen 80;
+      listen [::]:80;
+
+      server_name your-domain.com;
+      return 404; # managed by Certbot
+   }
+   ```
+
+   You will need to modify that file in two ways.
+   First, at the beginning, before the first `server`, add:
+
    ```nginx
    # Needed for WebSockets
    map $http_upgrade $connection_upgrade {
        default upgrade;
        ''      close;
    }
+   ```
 
-   server {
-       ... HTTPS configuration ...
+   Second, **replace** the block beginning with `location /` with the following:
 
+   ```nginx
        location / {
            proxy_pass http://127.0.0.1:8080;
            proxy_http_version 1.1;
@@ -97,11 +138,11 @@ Nginx terminates SSL and forwards HTTP traffic to the Workbench via local loopba
            # Stream SSE without delay
            proxy_buffering off;
        }
-   }
    ```
-
+1. Save the changes to `/etc/nginx/sites-enabled/<your-site>`
+1. Restart Nginx again (`sudo systemctl restart nginx.service`).
 1. **Move to Step 1** below.
-   Use `127.0.0.1:8080` as the local address and port,
+   Use the default `127.0.0.1:8080` as the local address and port,
    and `https://your-domain.com` as the public URL.
 
 ### Step 1: Install and launch
@@ -111,6 +152,11 @@ Run the installer on your Linux server:
 ```bash
 bash <(curl -sSf https://raw.githubusercontent.com/leanprover/lean-workbench/main/install.sh)
 ```
+
+> [!TIP]
+> If you get a message "ERROR: Cannot connect to Docker. Is the Docker daemon running? Is your user in the docker group?"
+> then you may need to add the current user to the docker group (`sudo usermod -aG docker "$USER"`), log out, and log back in.
+
 The installer will prompt for a **data directory** (default: `~/.lean-workbench`)
 where all persistent data (database, users' projects, Lean toolchains) is stored,
 as well as the local address, port, and public URL from Step 0.
@@ -127,11 +173,10 @@ Save it for Step 2.
 (You can also find it in `data/config.json` in the data directory.)
 
 Finally, the installer will offer to start the container for you.
-Otherwise, to start it yourself:
+You can either say "yes", or you can start it yourself:
 
 ```bash
-cd ~/.lean-workbench   # your data directory
-docker compose up -d
+docker compose -f ~/.lean-workbench up -d
 ```
 
 ### Step 2: Complete setup via web UI
