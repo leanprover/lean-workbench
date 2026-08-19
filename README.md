@@ -19,7 +19,7 @@ It is written with IT staff/system administrators in mind.
 
 ### Prerequisites
 
-- A Linux machine (or VM) with [Docker](https://docs.docker.com/get-docker/) installed.
+- A Linux machine (or VM) with [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install) installed.
   - 3 GiB of RAM per concurrent user is recommended.
   - A dedicated machine (hosting nothing else) is recommended:
     the Workbench container runs with elevated privileges.
@@ -61,44 +61,45 @@ you obtain an SSL certificate from Let's Encrypt
 and launch an Nginx reverse proxy.
 Nginx terminates SSL and forwards HTTP traffic to the Workbench via local loopback.
 
-1. Follow [certbot instructions](https://certbot.eff.org/instructions?ws=nginx&os=snap)
-   to **set up Nginx with HTTPS** on your Linux machine
+1. **Set up Nginx with HTTPS** on your Linux machine
    and publish it to `https://your-domain.com`.
+   You can follow [DigitalOcean instructions](https://www.digitalocean.com/community/tutorials/how-to-configure-nginx-as-a-reverse-proxy-on-ubuntu-22-04
+) to this end.
+
 1. **Configure Nginx** to proxy traffic to `http://127.0.0.1:8080`.
-   Your configuration should probably include:
+   Your `/etc/nginx/sites-enabled/<your-site>` configuration should probably include:
    ```nginx
-   http {
-       # Needed for WebSockets
-       map $http_upgrade $connection_upgrade {
-           default upgrade;
-           ''      close;
-       }
+   # Needed for WebSockets
+   map $http_upgrade $connection_upgrade {
+       default upgrade;
+       ''      close;
+   }
 
-       server {
-           ... HTTPS configuration ...
+   server {
+       ... HTTPS configuration ...
 
-           location / {
-               proxy_pass http://127.0.0.1:8080;
-               proxy_http_version 1.1;
-               proxy_set_header Host              $host;
-               proxy_set_header X-Forwarded-Host  $host;
-               proxy_set_header X-Forwarded-Proto $scheme;
-               proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+       location / {
+           proxy_pass http://127.0.0.1:8080;
+           proxy_http_version 1.1;
+           proxy_set_header Host              $host;
+           proxy_set_header X-Forwarded-Host  $host;
+           proxy_set_header X-Forwarded-Proto $scheme;
+           proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
 
-               # Proxy WebSocket traffic
-               proxy_set_header Upgrade    $http_upgrade;
-               proxy_set_header Connection $connection_upgrade;
+           # Proxy WebSocket traffic
+           proxy_set_header Upgrade    $http_upgrade;
+           proxy_set_header Connection $connection_upgrade;
 
-               # Leave connections open for 24h
-               proxy_read_timeout 86400;
-               proxy_send_timeout 86400;
+           # Leave connections open for 24h
+           proxy_read_timeout 86400;
+           proxy_send_timeout 86400;
 
-               # Stream SSE without delay
-               proxy_buffering off;
-           }
+           # Stream SSE without delay
+           proxy_buffering off;
        }
    }
    ```
+
 1. **Move to Step 1** below.
    Use `127.0.0.1:8080` as the local address and port,
    and `https://your-domain.com` as the public URL.
