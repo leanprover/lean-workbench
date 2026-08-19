@@ -91,6 +91,9 @@ do_install() {
   if ! docker info &>/dev/null 2>&1; then
     error "Cannot connect to Docker. Is the Docker daemon running? Is your user in the docker group?"
   fi
+  if ! docker compose &>/dev/null 2>&1; then
+    error "Docker Compose is not installed. Install it first: https://docs.docker.com/compose/install"
+  fi
 
   # Prompt for configuration (skip if provided via flags)
   WORKBENCH_ROOT="${OPT_DIR:-$(ask_input "Where should Lean Workbench store its data?" "$HOME/.lean-workbench")}"
@@ -208,7 +211,7 @@ EOF
   echo "    docker compose -f $WORKBENCH_ROOT/docker-compose.yml pull    # update image"
   echo ""
   echo "  To uninstall:"
-  echo "    $(realpath "$0") --uninstall"
+  echo "    bash <(curl -sSf https://raw.githubusercontent.com/leanprover/lean-workbench/main/install.sh) --uninstall"
   echo ""
 
   # Offer to start now
