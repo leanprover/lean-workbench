@@ -91,7 +91,7 @@ do_install() {
   if ! docker info &>/dev/null 2>&1; then
     error "Cannot connect to Docker. Is the Docker daemon running? Is your user in the docker group?"
   fi
-  if ! docker compose &>/dev/null 2>&1; then
+  if ! docker compose version &>/dev/null 2>&1; then
     error "Docker Compose is not installed. Install it first: https://docs.docker.com/compose/install"
   fi
 
