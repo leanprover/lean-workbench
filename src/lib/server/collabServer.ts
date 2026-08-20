@@ -90,7 +90,7 @@ export class CollabServerHandle implements AsyncDisposable {
           })
         }),
         waitForFileToExist(path.join(this.workDir, COLLAB_SOCKET_FILENAME), {
-          description: `${this.description} binding the unix data socket`,
+          description: `${this.description} binding the unix domain socket`,
         }),
       ])
     })()
