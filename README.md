@@ -23,7 +23,8 @@ It is written with IT staff/system administrators in mind.
   - 3 GiB of RAM per concurrent user is recommended.
   - A dedicated machine (hosting nothing else) is recommended:
     the Workbench container runs with elevated privileges.
-- Docker and Docker Compose.
+- Docker and Docker Compose
+
   These both come with [Docker Engine](https://docs.docker.com/engine/install/),
   which we recommend over the [unofficial packages](https://docs.docker.com/engine/install/ubuntu/#uninstall-old-versions) that may come with the operating.
 - A domain (or IP address) on which you will publish the Workbench.
