@@ -24,7 +24,7 @@ export default function CreateAdmin() {
           installer and then set a new one.
         </p>
         <form action={action} style={{ display: 'grid', gap: 4 }}>
-          <label htmlFor='one-time-password'>Initial password</label>
+          <label htmlFor='initAdminPassword'>Initial password</label>
           <input
             id='initAdminPassword'
             name='initAdminPassword'
@@ -33,7 +33,7 @@ export default function CreateAdmin() {
             required
             style={{ width: '100%', marginTop: 4 }}
           />
-          <label htmlFor='new-password'>New password</label>
+          <label htmlFor='newAdminPassword'>New password</label>
           <input
             id='newAdminPassword'
             name='newAdminPassword'
@@ -61,7 +61,7 @@ export default function CreateAdmin() {
             style={{ width: '100%', marginTop: 4 }}
           ></input>
           {!newPasswordsMatch && <p style={{ color: '#F00' }}>New passwords don&apos;t match</p>}
-          <button type='submit' disabled={pending || !!error || newPassword.trim() === '' || !newPasswordsMatch}>
+          <button type='submit' disabled={pending || newPassword.trim() === '' || !newPasswordsMatch}>
             Log in
           </button>
           {error && <p style={{ color: '#F00' }}>{error}</p>}

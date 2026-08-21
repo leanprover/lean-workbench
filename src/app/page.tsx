@@ -68,8 +68,12 @@ export default function Root() {
               onClick={async () => {
                 const email = devModeEmail
                 const password = 'dev'
-                await ensureDevUser()
-                authClient.signIn.email({ email, password }).catch(throwToBoundary)
+                try {
+                  await ensureDevUser()
+                  await authClient.signIn.email({ email, password })
+                } catch (e) {
+                  throwToBoundary(e)
+                }
               }}
             >
               [DEV]
