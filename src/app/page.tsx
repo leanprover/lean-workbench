@@ -8,9 +8,9 @@ import { useSearchParams } from 'next/navigation'
 import authClient from '@/lib/client/auth'
 import { useThrowToBoundary } from '@/lib/client/util'
 import { type Config, useConfigCtx } from '@/lib/contexts'
+import { ensureDevUser } from '@/lib/server/actions'
 
 import ErrorBox from './components/ErrorBox'
-import { ensureDevUser } from '@/lib/server/actions'
 
 /**
  * Interprets an (untrusted) `error` search parameter as OAuth callback information
