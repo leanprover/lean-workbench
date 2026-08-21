@@ -86,13 +86,13 @@ do_uninstall() {
 do_install() {
   # Check prerequisites
   if ! command -v docker &>/dev/null; then
-    error "Docker is not installed. Install Docker first: https://docs.docker.com/get-docker/"
+    error "Docker is not installed. Install Docker first: https://docs.docker.com/engine/install/"
   fi
   if ! docker info &>/dev/null 2>&1; then
     error "Cannot connect to Docker. Is the Docker daemon running? Is your user in the docker group?"
   fi
   if ! docker compose version &>/dev/null 2>&1; then
-    error "Docker Compose is not installed. Install it first: https://docs.docker.com/compose/install"
+    error "Docker Compose is not installed. Install Docker Engine (which includes Compose) first: https://docs.docker.com/engine/install/"
   fi
 
   # Prompt for configuration (skip if provided via flags)
@@ -197,12 +197,9 @@ EOF
   echo "    (also stored in $WORKBENCH_ROOT/data/config.json)"
   echo ""
   local_url="http://$ADDR:$PORT"
-  if [[ "$URL" == "$local_url" ]]; then
-    echo "  Then connect to $URL to configure authentication and complete the setup."
-  else
-    echo "  Then set up a tunnel or reverse proxy forwarding $URL to $local_url,"
-    echo "  and connect to $URL to configure authentication and complete the setup."
-  fi
+  echo "  If you have not already done so, configure the network"
+  echo "  to forward $URL to $local_url (see the README for details)."
+  echo "  Then connect to $URL to complete setup."
   echo ""
   echo "  Useful commands:"
   echo "    docker compose -f $WORKBENCH_ROOT/docker-compose.yml up -d   # start the workbench"
