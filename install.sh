@@ -196,6 +196,7 @@ EOF
   echo "  Initial admin password: $INIT_ADMIN_PASSWORD"
   echo "    (also stored in $WORKBENCH_ROOT/data/config.json)"
   echo ""
+  local_url="http://$ADDR:$PORT"
   echo "  If you have not already done so, configure the network"
   echo "  to forward $URL to $local_url (see the README for details)."
   echo "  Then connect to $URL to complete setup."
