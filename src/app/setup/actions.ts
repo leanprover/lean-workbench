@@ -30,6 +30,7 @@ export async function initialLogin(formData: FormData): Promise<ActionResponse<n
     newAdminPassword: formData.get('newAdminPassword'),
   })
   if (!parsed.success) return { error: parsed.error.issues[0]!.message }
+  if (parsed.data.newAdminPassword.length < 8) return { error: 'Password is too short' }
 
   let initialAdminPassword: string
   if (isDevMode()) {
