@@ -12,6 +12,7 @@ import { RcMap } from '@/lib/rcMap'
 import type { User } from '@/lib/server/auth'
 import { CollabServerHandle } from '@/lib/server/collabServer'
 import { getDb } from '@/lib/server/db'
+import { LeanLspHandle } from '@/lib/server/leanLspServer'
 import { VscodeServerHandle } from '@/lib/server/vscodeServer'
 import type { Project } from '@/prisma/generated/client'
 
@@ -24,7 +25,7 @@ class ProjectMountHandle implements AsyncDisposable {
     /** Host overlayfs mount backing {@link bindArgs}, torn down on disposal;
      * absent when the project has no package sets. */
     private readonly overlay?: { mergedDir: string; workDir: string },
-  ) {}
+  ) { }
 
   async [Symbol.asyncDispose]() {
     if (!this.overlay) return
@@ -138,6 +139,12 @@ export class EditorSessionManager {
    * and resources are cleaned up afterwards. */
   private vscServers = new Map<string, VscodeServerHandle[]>()
 
+  /** projectId ↦ [{@link LeanLspHandle}s serving views of that project]
+   *
+   * A view boots a bare `lake serve` in place of a whole editor.
+   * Like {@link vscServers}, entries are removed as soon as shutdown begins. */
+  private lspServers = new Map<string, LeanLspHandle[]>()
+
   /** Starts a session for `viewer` to read/edit `project` owned by `owner`,
    * reusing a current session if one already exists.
    * Assumes that `viewer` has permissions to view `project`.
@@ -182,6 +189,50 @@ export class EditorSessionManager {
 
     await vscServer.started
     return vscServer.vscodeIframeSrc
+  }
+
+  /** Boots the backend a view of `project` needs, reusing one if `viewer` already has it.
+   * Assumes `viewer` may view `project`. Returns the browser URL of the view's backend.
+   *
+   * The backend shares the editor's ref-counted {@link ProjectMountHandle},
+   * so a view and the editor run against a single mount.
+   * `hello` needs only a Lean LSP server (no collab, no VS Code). */
+  async ensureView(viewer: User, owner: User, project: Project, viewKind: 'hello'): Promise<string> {
+    void viewKind // only 'hello' exists today
+    const existing = (this.lspServers.get(project.id) ?? []).find(s => s.viewer.id === viewer.id)
+    if (existing) {
+      await existing.started
+      return existing.viewSocketUrl
+    }
+
+    await using stack = new AsyncDisposableStack()
+    const lsp = stack.use(new LeanLspHandle(viewer, owner, project))
+    lsp.addDisposable(async () => {
+      this.lspServers.set(
+        project.id,
+        (this.lspServers.get(project.id) ?? []).filter(s => s !== lsp),
+      )
+    })
+    // Store before any `await` so concurrent calls for the same viewer reuse this handle.
+    this.lspServers.set(project.id, [...(this.lspServers.get(project.id) ?? []), lsp])
+
+    const mountLease = await this.mounts.acquire(project.id, () => buildProjectMount(owner, project))
+    lsp.addDisposable(async () => mountLease[Symbol.asyncDispose]())
+
+    lsp.start(mountLease.value.bindArgs)
+    await lsp.started
+
+    stack.move()
+    return lsp.viewSocketUrl
+  }
+
+  /** Return the bridge UDS path for view `sessionId` if `userId` may view it, else `undefined`. */
+  viewSocketPathForViewer(userId: string, sessionId: string): string | undefined {
+    for (const servers of this.lspServers.values()) {
+      const s = servers.find(s => s.uuid === sessionId)
+      if (s) return s.viewer.id === userId ? s.socketPath : undefined
+    }
+    return undefined
   }
 
   killSession(projectId: string, sessionId: string): void {
@@ -247,6 +298,9 @@ export async function initEditorSessions() {
     Object.setPrototypeOf(m['collabServers'], RcMap.prototype)
     for (const servers of m['vscServers'].values()) {
       for (const s of servers) Object.setPrototypeOf(s, VscodeServerHandle.prototype)
+    }
+    for (const servers of m['lspServers'].values()) {
+      for (const s of servers) Object.setPrototypeOf(s, LeanLspHandle.prototype)
     }
     await m['mounts'].forEach(mount => Object.setPrototypeOf(mount, ProjectMountHandle.prototype) as unknown)
     await m['collabServers'].forEach(collab => Object.setPrototypeOf(collab, CollabServerHandle.prototype) as unknown)

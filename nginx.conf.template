@@ -75,6 +75,32 @@ http {
             return 404;
         }
 
+        # /_view/<kind>/<session_id>/* forwards to the view backend identified by <session_id>
+        # (e.g. a Lean LSP bridge), as long as the auth_request accepts the user's session cookie.
+        # Mirrors /_vs/; the backend is a WebSocket server, so the proxied path is fixed at /.
+        location ~ ^/_view/[^/]+/(?<session_id>[^/]+)/.*$ {
+            set $auth_route_uri $uri;
+            set $auth_route_cache_key "$session_id:$http_cookie";
+            auth_request /api/auth-route/view;
+
+            auth_request_set $socket_path $upstream_http_x_socket_path;
+            proxy_pass http://unix:$socket_path:/;
+            proxy_http_version 1.1;
+            proxy_set_header Host $http_host;
+
+            # Support WebSocket upgrades
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+
+            # Leave connections open for 24h even if no bytes are sent.
+            proxy_read_timeout 86400;
+        }
+
+        # Block unmatched /_view/*
+        location /_view/ {
+            return 404;
+        }
+
         # /_file/<token>/<relPath> serves the static asset at <rootDir>/<relPath>
         # where <rootDir> is <token>'s root directory, as long as <token> is valid.
         # See `lib/server/authToken.ts`.
