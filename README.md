@@ -167,7 +167,7 @@ You'll see the setup page, which has three steps:
 Setup is now complete.
 Click *Continue to Lean Workbench* or refresh to see the landing page.
 
-### Updating
+## Updating
 
 We recommend backing up the data directory before updating the container.
 
@@ -177,7 +177,7 @@ docker compose pull
 docker compose up -d
 ```
 
-### Uninstalling
+## Uninstalling
 
 ```bash
 bash <(curl -sSf https://raw.githubusercontent.com/leanprover/lean-workbench/main/install.sh) --uninstall
@@ -185,7 +185,7 @@ bash <(curl -sSf https://raw.githubusercontent.com/leanprover/lean-workbench/mai
 
 This stops the service and optionally removes the Docker image and data directory.
 
-### Backups
+## Backups
 
 All persistent state is in the data directory (default: `~/.lean-workbench`).
 You can back up this directory to preserve users' projects, the database, and Lean toolchains.
