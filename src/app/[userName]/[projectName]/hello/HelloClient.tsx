@@ -5,23 +5,28 @@ import useSWR from 'swr'
 
 import { LeanLspSession } from '@/lib/leanLspClient'
 
+import { getProbeContext } from './actions'
+import { PROBE_FILE } from './probe'
+
 /** Interactive probe that the project's own files feed the view's LSP, with no VS Code in the loop:
- * the server reads the project file off the mount and hands it down as context, and the live
- * `lake serve` answers hover queries for whatever identifier you type — including ones the project
- * itself defines. */
+ * on each (re)connect the server reads the current project file off the mount and hands it down as
+ * context, and the live `lake serve` answers hover queries for whatever identifier you type —
+ * including ones the project itself defines. */
 export default function HelloClient({
   viewUrl,
   projectDir,
-  fileName,
-  fileText,
+  userName,
+  projectName,
 }: {
   viewUrl: string
   projectDir: string
-  fileName: string
-  fileText: string
+  userName: string
+  projectName: string
 }) {
   const sessionRef = useRef<LeanLspSession | null>(null)
-  sessionRef.current ??= new LeanLspSession(viewUrl, projectDir, fileName, fileText)
+  sessionRef.current ??= new LeanLspSession(viewUrl, projectDir, PROBE_FILE, () =>
+    getProbeContext(userName, projectName),
+  )
   useEffect(() => () => sessionRef.current?.close(), [])
 
   const [input, setInput] = useState('main')
@@ -38,8 +43,8 @@ export default function HelloClient({
     <main style={{ padding: '1rem', fontFamily: 'monospace' }}>
       <h1>Hello, Lean LSP</h1>
       <p>
-        Querying a standalone <code>lake serve</code> with <code>{fileName}</code> loaded as context. Type an identifier
-        (e.g. <code>main</code>, <code>Nat.add</code>) to see its type and docstring.
+        Querying a standalone <code>lake serve</code> with <code>{PROBE_FILE}</code> loaded as context. Type an
+        identifier (e.g. <code>main</code>, <code>Nat.add</code>) to see its type and docstring.
       </p>
       <form
         onSubmit={e => {

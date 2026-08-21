@@ -39,6 +39,10 @@ export class JsonRpcWebSocket {
     })
   }
 
+  get isOpen(): boolean {
+    return this.ws.readyState === WebSocket.OPEN
+  }
+
   private rejectPending(error: unknown) {
     for (const p of this.pending.values()) p.reject(error)
     this.pending.clear()
@@ -99,15 +103,21 @@ interface FileProgressParams {
   processing?: unknown[]
 }
 
-/** A live LSP session for one project view, reused across identifier lookups.
+/** A Lean LSP session for one project view, reused across identifier lookups.
  *
  * It keeps the project's file open as context, so {@link lookup} resolves identifiers the
  * project itself defines (not just Lean core), demonstrating that the project's own source
- * reaches `lake serve`. */
+ * reaches `lake serve`.
+ *
+ * The connection self-heals: if the socket is not open when a lookup runs (e.g. it was closed
+ * while the page sat in the back/forward cache), it reconnects and reloads the context, so a
+ * lookup behaves like a fresh page without a manual reload. */
 export class LeanLspSession {
-  private ready: Promise<JsonRpcWebSocket> | undefined
+  private client: JsonRpcWebSocket | undefined
+  private connecting: Promise<JsonRpcWebSocket> | undefined
   private opened = false
   private version = 0
+  private baseText = ''
   private readonly uri: string
   /** Resolvers waiting for the file worker to finish elaborating the latest text. */
   private idleWaiters: (() => void)[] = []
@@ -116,39 +126,48 @@ export class LeanLspSession {
     private readonly path: string,
     private readonly projectDir: string,
     fileName: string,
-    /** The project file's contents, used as the context every lookup elaborates against. */
-    private readonly baseText: string,
+    /** Fetches the current context file contents; called afresh on every (re)connect. */
+    private readonly loadContext: () => Promise<string>,
   ) {
     this.uri = `file://${projectDir}${fileName}`
   }
 
-  private connect(): Promise<JsonRpcWebSocket> {
-    if (this.ready) return this.ready
-    this.ready = (async () => {
-      const client = await JsonRpcWebSocket.connect(this.path, (method, params) => {
+  private async open(): Promise<JsonRpcWebSocket> {
+    const [client, baseText] = await Promise.all([
+      JsonRpcWebSocket.connect(this.path, (method, params) => {
         if (method !== '$/lean/fileProgress') return
         const p = params as FileProgressParams
         if (p.textDocument?.uri === this.uri && (p.processing?.length ?? 0) === 0) {
           this.idleWaiters.splice(0).forEach(resolve => resolve())
         }
-      })
-      const rootUri = `file://${this.projectDir.replace(/\/$/, '')}`
-      await client.request('initialize', {
-        processId: null,
-        rootUri,
-        capabilities: {},
-        workspaceFolders: [{ uri: rootUri, name: 'project' }],
-      })
-      client.notify('initialized', {})
-      return client
-    })()
-    return this.ready
+      }),
+      this.loadContext(),
+    ])
+    this.baseText = baseText
+    const rootUri = `file://${this.projectDir.replace(/\/$/, '')}`
+    await client.request('initialize', {
+      processId: null,
+      rootUri,
+      capabilities: {},
+      workspaceFolders: [{ uri: rootUri, name: 'project' }],
+    })
+    client.notify('initialized', {})
+    this.client = client
+    this.opened = false
+    this.idleWaiters = []
+    return client
+  }
+
+  private ensureClient(): Promise<JsonRpcWebSocket> {
+    if (this.client?.isOpen) return Promise.resolve(this.client)
+    this.connecting ??= this.open().finally(() => (this.connecting = undefined))
+    return this.connecting
   }
 
   /** Look up `identifier` in the project's context, returning the LSP's hover text
    * (type plus docstring), or `null` if it resolves to nothing. */
   async lookup(identifier: string): Promise<string | null> {
-    const client = await this.connect()
+    const client = await this.ensureClient()
 
     const base = this.baseText.endsWith('\n') ? this.baseText : this.baseText === '' ? '' : this.baseText + '\n'
     const checkLine = base.split('\n').length - 1
@@ -188,6 +207,6 @@ export class LeanLspSession {
   }
 
   close(): void {
-    void this.ready?.then(client => client.close())
+    this.client?.close()
   }
 }
