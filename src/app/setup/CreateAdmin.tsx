@@ -1,9 +1,7 @@
 'use client'
 
-import { adminEmail } from '@leanprover/workbench-shared'
 import { useState } from 'react'
 
-import authClient from '@/lib/client/auth'
 import { useServerAction } from '@/lib/client/util'
 
 import { initialLogin } from './actions'
@@ -14,11 +12,7 @@ export default function CreateAdmin() {
   const newPasswordsMatch =
     newPassword.trim() === '' || confirmNewPassword.trim() === '' || newPassword === confirmNewPassword
 
-  const [error, action, pending] = useServerAction(initialLogin, async () => {
-    // We just created the auth user, so we should be able to log in as them
-    await authClient.signIn.email({ email: adminEmail, password: newPassword })
-    window.location.reload()
-  })
+  const [error, action, pending] = useServerAction(initialLogin, async () => window.location.reload())
 
   return (
     <div>

@@ -3,10 +3,11 @@
 import { adminEmail } from '@leanprover/workbench-shared'
 import { hashPassword } from 'better-auth/crypto'
 import { randomUUID } from 'crypto'
+import { headers } from 'next/headers'
 import { z } from 'zod'
 
 import { requireAdmin } from '@/app/admin/actions'
-import { initAuth } from '@/lib/server/auth'
+import { getAuth, initAuth } from '@/lib/server/auth'
 import { getConfig, hasGithubAuth, isDevMode, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { getSeedState, startSeed as doStartSeed } from '@/lib/server/seed'
@@ -19,8 +20,8 @@ const zInitialLogin = z.object({
 })
 
 /**
- * If `initialAdminPassword` is set in the config JSON, then this function will allow that
- * admin password to be used to reset the password
+ * If `initAdminPassword` is set in the config JSON, then this server function will allow a
+ * request containing that `initAdminPassword` to set or reset the admin password.
  */
 export async function initialLogin(formData: FormData): Promise<ActionResponse<null>> {
   const cfg = getConfig()
@@ -52,7 +53,7 @@ export async function initialLogin(formData: FormData): Promise<ActionResponse<n
     return { error: 'Incorrect initial admin password' }
   }
 
-  // At this point, unconditionally overwrite the admin user's account information password
+  // Unconditionally overwrite the admin user's account information password
   const db = getDb()
   const hashedPassword = await hashPassword(parsed.data.newAdminPassword)
   await db.$transaction(async tx => {
@@ -83,6 +84,13 @@ export async function initialLogin(formData: FormData): Promise<ActionResponse<n
   // Delete the initial admin password to prevent further resets
   delete cfg.initAdminPassword
   await saveConfig()
+
+  // We just created the user, so this should work
+  const auth = await getAuth()
+  await auth.api.signInEmail({
+    body: { email: adminEmail, password: parsed.data.newAdminPassword },
+    headers: await headers(),
+  })
 
   return { ok: null }
 }
