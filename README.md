@@ -217,6 +217,11 @@ You'll see the setup page, which has three steps:
 Setup is now complete.
 Click *Continue to Lean Workbench* or refresh to see the landing page.
 
+## Administration
+
+Workbench setup creates a built-in password-protected admin user.
+To log in as this user, go to `/admin` while not logged in as another user.
+
 ## Updating
 
 We recommend backing up the data directory before updating the container.
