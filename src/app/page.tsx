@@ -1,6 +1,6 @@
 'use client'
 
-import { devModeEmail } from '@leanprover/workbench-shared'
+import { devModeEmail, devModePassword } from '@leanprover/workbench-shared'
 import { type Route } from 'next'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -66,11 +66,9 @@ export default function Root() {
             <button
               className='login-link'
               onClick={async () => {
-                const email = devModeEmail
-                const password = 'dev'
                 try {
                   await ensureDevUser()
-                  await authClient.signIn.email({ email, password })
+                  await authClient.signIn.email({ email: devModeEmail, password: devModePassword })
                 } catch (e) {
                   throwToBoundary(e)
                 }
