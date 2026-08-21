@@ -92,7 +92,7 @@ do_install() {
     error "Cannot connect to Docker. Is the Docker daemon running? Is your user in the docker group?"
   fi
   if ! docker compose version &>/dev/null 2>&1; then
-    error "Docker Compose is not installed. Install it first: https://docs.docker.com/compose/install"
+    error "Docker Compose is not installed. Install Docker Engine (which includes Compose) first: https://docs.docker.com/engine/install/"
   fi
 
   # Prompt for configuration (skip if provided via flags)
