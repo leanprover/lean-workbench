@@ -167,7 +167,7 @@ export async function getAuth(): Promise<AuthInstance> {
 export async function requireAuth(): Promise<SessionAndUser> {
   await io()
   const auth = await getAuth()
-  const session = await auth.api.getSession({ headers: await headers(), query: { disableRefresh: true } })
+  const session = await auth.api.getSession({ headers: await headers() })
   if (!session) unauthorized()
   return session
 }
