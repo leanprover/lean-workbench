@@ -85,3 +85,9 @@ export const adminEmail = 'admin@admin.localhost'
 
 /** Pseudo-email for the dev user */
 export const devModeEmail = 'dev@dev.localhost'
+
+/**
+ * Dev password, used both as the password for the dev user,
+ * and as the initAdminPassword in dev mode.
+ */
+export const devModePassword = 'dev'

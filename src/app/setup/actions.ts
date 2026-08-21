@@ -1,6 +1,6 @@
 'use server'
 
-import { adminEmail } from '@leanprover/workbench-shared'
+import { adminEmail, devModePassword } from '@leanprover/workbench-shared'
 import { hashPassword } from 'better-auth/crypto'
 import { randomUUID } from 'crypto'
 import { headers } from 'next/headers'
@@ -34,7 +34,7 @@ export async function initialLogin(formData: FormData): Promise<ActionResponse<n
 
   let initialAdminPassword: string
   if (isDevMode()) {
-    initialAdminPassword = 'dev'
+    initialAdminPassword = devModePassword
   } else if (cfg.initAdminPassword) {
     initialAdminPassword = cfg.initAdminPassword
   } else {
@@ -44,7 +44,7 @@ export async function initialLogin(formData: FormData): Promise<ActionResponse<n
     if (adminUser) return { error: 'The admin user is already set up' }
 
     // or because something was misconfigured
-    throw new Error('Initial admin password was not set up (did install.sh succeed?)')
+    throw new Error('Initial admin password misconfigured')
   }
 
   if (parsed.data.initAdminPassword !== initialAdminPassword) {

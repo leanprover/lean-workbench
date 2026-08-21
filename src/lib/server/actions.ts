@@ -6,7 +6,7 @@
 
 'use server'
 
-import { devModeEmail } from '@leanprover/workbench-shared'
+import { devModeEmail, devModePassword } from '@leanprover/workbench-shared'
 import { forbidden } from 'next/navigation'
 
 import { addEmailPasswordUser, requireAuth } from '@/lib/server/auth'
@@ -34,5 +34,5 @@ export async function ensureDevUser() {
     forbidden()
   }
 
-  await addEmailPasswordUser('dev', devModeEmail, 'dev', false)
+  await addEmailPasswordUser('dev', devModeEmail, devModePassword, false)
 }
