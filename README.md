@@ -19,7 +19,7 @@ It is written with IT staff/system administrators in mind.
 
 ### Prerequisites
 
-- A Linux machine (or VM) with [Docker](https://docs.docker.com/engine/install/) installed.
+- A Linux machine (or VM) with [Docker Engine](https://docs.docker.com/engine/install/) (rather than one of the [unofficial packages](https://docs.docker.com/engine/install/ubuntu/#uninstall-old-versions)) installed.
   - 3 GiB of RAM per concurrent user is recommended.
   - A dedicated machine (hosting nothing else) is recommended:
     the Workbench container runs with elevated privileges.
