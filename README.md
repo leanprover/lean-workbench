@@ -26,7 +26,7 @@ It is written with IT staff/system administrators in mind.
 - Docker and Docker Compose
 
   These both come with [Docker Engine](https://docs.docker.com/engine/install/),
-  which we recommend over the [unofficial packages](https://docs.docker.com/engine/install/ubuntu/#uninstall-old-versions) that may come with the operating.
+  which we recommend over [unofficial packages](https://docs.docker.com/engine/install/ubuntu/#uninstall-old-versions) that may come with the Linux distribution.
 - A domain (or IP address) on which you will publish the Workbench.
   Whenever you see `your-domain.com` in these setup instructions, replace it with your actual domain.
 - A GitHub account that will own the [OAuth App](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app)
