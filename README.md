@@ -19,11 +19,15 @@ It is written with IT staff/system administrators in mind.
 
 ### Prerequisites
 
-- A Linux machine (or VM) with [Docker Engine](https://docs.docker.com/engine/install/) (rather than one of the [unofficial packages](https://docs.docker.com/engine/install/ubuntu/#uninstall-old-versions)) installed.
+- A Linux machine (or VM)
   - 3 GiB of RAM per concurrent user is recommended.
   - A dedicated machine (hosting nothing else) is recommended:
     the Workbench container runs with elevated privileges.
-- A domain or IP address on which you will publish the Workbench.
+- Docker and Docker Compose.
+  These both come with [Docker Engine](https://docs.docker.com/engine/install/),
+  which we recommend over the [unofficial packages](https://docs.docker.com/engine/install/ubuntu/#uninstall-old-versions) that may come with the operating.
+- A domain (or IP address) on which you will publish the Workbench.
+  Whenever you see `your-domain.com` in these setup instructions, replace it with your actual domain.
 - A GitHub account that will own the [OAuth App](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app)
   used to authorize GitHub-based logins on the instance.
 
