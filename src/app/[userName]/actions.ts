@@ -4,14 +4,15 @@ import crypto from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
+import { zProjectId, zProjectName, zTemplateId } from '@leanprover/workbench-shared'
+import { existsAsync, getPackageSetsDir, getTemplatesDir, getWorkspacesDir } from '@leanprover/workbench-shared/node'
 import { forbidden } from 'next/navigation'
 import z from 'zod'
 
 import { requireAuth } from '@/lib/server/auth'
-import { getPackageSetsDir, getTemplatesDir, getWorkspacesDir } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
-import { existsAsync, serverAction } from '@/lib/server/util'
-import { type ActionResponse, zProjectId, zProjectName, zTemplateId } from '@/lib/util'
+import { serverAction } from '@/lib/server/util'
+import { type ActionResponse } from '@/lib/util'
 import { type Project } from '@/prisma/generated/client'
 
 const zTemplateMetadata = z.object({

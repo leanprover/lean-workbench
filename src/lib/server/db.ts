@@ -1,11 +1,11 @@
 import 'server-only'
 
+import { getDbDir } from '@leanprover/workbench-shared/node'
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 import { execSync } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 
-import { getDbDir } from '@/lib/server/config'
 import { PrismaClient } from '@/prisma/generated/client'
 
 // https://www.prisma.io/docs/orm/prisma-client/setup-and-configuration/databases-connections#prevent-hot-reloading-from-creating-new-instances-of-prismaclient

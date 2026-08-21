@@ -3,8 +3,9 @@ import 'server-only'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
+import { getUserHomeDir } from '@leanprover/workbench-shared/node'
+
 import type { User } from '@/lib/server/auth'
-import { getUserHomeDir } from '@/lib/server/config'
 
 /** Create a persistent home directory for the given user,
  * seeding a global Git identity from their profile when available. */

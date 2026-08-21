@@ -1,3 +1,4 @@
+import { zUserName } from '@leanprover/workbench-shared'
 import { type Route } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -5,7 +6,6 @@ import z from 'zod'
 
 import { requireAuth } from '@/lib/server/auth'
 import { getDb } from '@/lib/server/db'
-import { zUserName } from '@/lib/util'
 
 import { NewProjectForm } from './NewProjectForm'
 import { ProjectRow } from './ProjectRow'

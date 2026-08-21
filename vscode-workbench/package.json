@@ -79,8 +79,9 @@
   },
   "dependencies": {
     "@hocuspocus/provider": "^4.0",
+    "@leanprover/workbench-shared": "*",
     "minimatch": "^10.2",
     "ws": "^8.20",
-    "zod": "^4.4"
+    "zod": "^4.4.3"
   }
 }

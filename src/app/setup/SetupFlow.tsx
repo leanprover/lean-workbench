@@ -1,5 +1,6 @@
 'use client'
 
+import { LEAN_VERSION_RE } from '@leanprover/workbench-shared'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
@@ -7,7 +8,7 @@ import z from 'zod'
 
 import { useServerAction, useThrowingSWR, useThrowToBoundary } from '@/lib/client/util'
 import { useConfigCtx } from '@/lib/contexts'
-import { LEAN_VERSION_RE, type SeedEvent, zSeedEvent } from '@/lib/util'
+import { type SeedEvent, zSeedEvent } from '@/lib/util'
 
 import { fetchSetupStatus, saveSetupConfig, startSeed } from './actions'
 

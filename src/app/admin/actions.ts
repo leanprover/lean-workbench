@@ -4,15 +4,17 @@ import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { zProjectId, zUserId, zUserName } from '@leanprover/workbench-shared'
+import { getDataDir, getWorkspacesDir } from '@leanprover/workbench-shared/node'
 import { forbidden } from 'next/navigation'
 import z from 'zod'
 
 import { initAuth, requireAuth } from '@/lib/server/auth'
-import { getConfig, getDataDir, getWorkspacesDir, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
+import { getConfig, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
 import { serverAction } from '@/lib/server/util'
-import { type ActionResponse, zProjectId, zUserId, zUserName } from '@/lib/util'
+import { type ActionResponse } from '@/lib/util'
 
 export async function requireAdmin() {
   const session = await requireAuth()

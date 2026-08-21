@@ -1,13 +1,13 @@
+import { zProjectName, zUserName } from '@leanprover/workbench-shared'
+import { getProjectDir } from '@leanprover/workbench-shared/node'
 import type { Route } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import z from 'zod'
 
 import { requireAuth } from '@/lib/server/auth'
-import { getProjectDir } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { mintSignedDirToken, signedDirFileUrl } from '@/lib/server/dirToken'
 import { canAccessProject } from '@/lib/server/util'
-import { zProjectName, zUserName } from '@/lib/util'
 
 const zParams = z.object({
   userName: zUserName,

@@ -5,6 +5,7 @@
   "type": "module",
   "workspaces": [
     "collab-server",
+    "shared",
     "vscode-workbench"
   ],
   "scripts": {
@@ -12,9 +13,7 @@
     "watch": "concurrently --names collab-server,vscode-workbench 'npm run watch:collab-server' 'npm run watch:vscode-workbench'",
     "watch:collab-server": "npm --workspace collab-server run watch",
     "watch:vscode-workbench": "npm --workspace vscode-workbench run watch",
-    "tsc": "concurrently --names collab-server,vscode-workbench,workbench-app 'npm run tsc:collab-server' 'npm run tsc:vscode-workbench' 'npm run tsc:workbench-app'",
-    "tsc:collab-server": "npm --workspace collab-server run tsc",
-    "tsc:vscode-workbench": "npm --workspace vscode-workbench run tsc",
+    "tsc": "concurrently --names next,packages 'npm run tsc:workbench-app' 'npm run tsc --workspaces'",
     "tsc:workbench-app": "tsc",
     "lint": "eslint && prettier --check .",
     "lint:fix": "eslint . --fix && prettier --write .",
@@ -23,6 +22,7 @@
   },
   "dependencies": {
     "@hocuspocus/provider": "^4.0.0",
+    "@leanprover/workbench-shared": "*",
     "@prisma/adapter-better-sqlite3": "^7.7.0",
     "@prisma/client": "^7.7.0",
     "better-auth": "^1.6.2",
@@ -33,7 +33,7 @@
     "react-dom": "^19.2.4",
     "swr": "^2.4.1",
     "ws": "^8.20.0",
-    "zod": "^4.3.6"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

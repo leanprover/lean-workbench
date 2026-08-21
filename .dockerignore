@@ -10,6 +10,7 @@
 !package.json
 !prisma.config.ts
 !tsconfig.json
+!shared
 
 # Collaboration server
 !collab-server/dist

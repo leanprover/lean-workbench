@@ -1,13 +1,18 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
+import {
+  BWRAP_METADATA_PATH,
+  bwrapProjectDir,
+  type WorkspaceMetadata,
+  zWorkspaceMetadata,
+} from '@leanprover/workbench-shared'
 import vs from 'vscode'
 
 import { connectToCollabServer } from './collabServer'
 import { WorkbenchPanelProvider } from './panel'
 import { RemoteSelectionDecorator } from './remoteSelections'
 import { YTextBindingManager } from './textBinding'
-import { BWRAP_METADATA_PATH, bwrapProjectDir, type WorkspaceMetadata, zWorkspaceMetadata } from './util'
 
 /** Ensure we are in the expected Lean Workbench environment
  * and return the current workspace configuration.

@@ -1,17 +1,11 @@
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider'
+import { BWRAP_COLLAB_SOCK_PATH, type WorkspaceMetadata } from '@leanprover/workbench-shared'
+import { waitForFileToExist } from '@leanprover/workbench-shared/node'
 import vs from 'vscode'
 import WebSocket from 'ws'
 import type { Awareness } from 'y-protocols/awareness'
 
-import {
-  AWARENESS_CURSOR_COLORS,
-  AWARENESS_DOC_NAME,
-  AWARENESS_USER_KEY,
-  type AwarenessUser,
-  BWRAP_COLLAB_SOCK_PATH,
-  waitForPath,
-  type WorkspaceMetadata,
-} from './util'
+import { AWARENESS_CURSOR_COLORS, AWARENESS_DOC_NAME, AWARENESS_USER_KEY, type AwarenessUser } from './util'
 
 export class CollabServerConnection implements vs.Disposable {
   constructor(
@@ -49,7 +43,9 @@ export async function connectToCollabServer(
   }
 
   log.debug('Waiting for collab-server socket..')
-  if (!(await waitForPath(BWRAP_COLLAB_SOCK_PATH, 5_000))) {
+  try {
+    await waitForFileToExist(BWRAP_COLLAB_SOCK_PATH, { timeoutMs: 5_000, pollMs: 200 })
+  } catch {
     showErrorModal()
     return undefined
   }

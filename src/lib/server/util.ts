@@ -23,15 +23,6 @@ export function serverAction<S extends z.ZodType, T = void>(
   }
 }
 
-export async function existsAsync(p: string): Promise<boolean> {
-  try {
-    await fs.access(p)
-    return true
-  } catch {
-    return false
-  }
-}
-
 export interface ProcessInfo {
   pid: number
   /** Parent PID. */
@@ -93,13 +84,6 @@ export const BWRAP_ARGS =
     // Override the locale with one that is always present
     '--setenv', 'LC_ALL', 'C.UTF-8',
   ]
-
-/** Where bwrap mounts the given project directory.
- * We identify project files by absolute path,
- * so this has to match across VS Code server and collab-server bwraps. */
-export function bwrapProjectDir(projectName: string) {
-  return `/workspace/${projectName}/`
-}
 
 /** Where bwrap mounts the given user's home directory. */
 export function bwrapHomeDir(userName: string) {
