@@ -1,12 +1,11 @@
 'use client'
 
-import { LEAN_VERSION_RE } from '@leanprover/workbench-shared'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
-import z from 'zod'
 
-import { useServerAction, useThrowingSWR, useThrowToBoundary } from '@/lib/client/util'
+import ErrorBox from '@/app/components/ErrorBox'
+import { useServerAction } from '@/lib/client/util'
 import { useConfigCtx } from '@/lib/contexts'
 import { type SeedEvent, zSeedEvent } from '@/lib/util'
 
@@ -14,47 +13,29 @@ import { fetchSetupStatus, saveSetupConfig, startSeed } from './actions'
 
 type Phase = 'config' | 'seeding' | 'done' | 'error'
 
-/** Fetch mathlib4 v4.* tags, newest-first, paginating until exhausted. */
-async function fetchLeanVersions(): Promise<string[]> {
-  const versions: string[] = []
-  // This relies on version tags being returned first.
-  const res: Response = await fetch('https://api.github.com/repos/leanprover-community/mathlib4/tags?per_page=100')
-  if (!res.ok) throw new Error(`GitHub API ${res.status}`)
-  const data = z.array(z.object({ name: z.string() })).parse(await res.json())
-  for (const item of data) if (LEAN_VERSION_RE.test(item.name)) versions.push(item.name)
-  return versions
-}
-
 interface SetupFlowProps {
   baseUrl: string
+  leanVersions: string[]
+  initialSetupStatus: Awaited<ReturnType<typeof fetchSetupStatus>>
 }
 
-export default function SetupFlow({ baseUrl }: SetupFlowProps) {
+export default function SetupFlow({ baseUrl, leanVersions, initialSetupStatus }: SetupFlowProps) {
   const cfg = useConfigCtx()
   const [wasCompleteOnMount] = useState(cfg.isSetupComplete)
   // Redirect to index on new visits, but keep the page open during actual setup
   if (wasCompleteOnMount) redirect('/')
 
-  const [configSaved, setConfigSaved] = useState(false)
-  const [phase, setPhase] = useState<Phase>('config')
+  const [configSaved, setConfigSaved] = useState(initialSetupStatus.configSaved)
+  const [phase, setPhase] = useState<Phase>(
+    initialSetupStatus.seeded ? 'done' : initialSetupStatus.seeding ? 'seeding' : 'config',
+  )
   const [seedError, setSeedError] = useState('')
   const [progress, setProgress] = useState({ pct: 0, label: '' })
   const [logs, setLogs] = useState<string[]>([])
-  const [leanVersion, setLeanVersion] = useState<string | undefined>()
-  const { data: leanVersions } = useThrowingSWR('leanVersions', fetchLeanVersions)
+  const [leanVersion, setLeanVersion] = useState('LATEST')
   const logRef = useRef<HTMLDivElement>(null)
 
   const [configError, saveConfigAction, savingConfig] = useServerAction(saveSetupConfig, () => setConfigSaved(true))
-
-  // Sync with server state on mount (handles page reload during seeding).
-  const { throwToBoundary } = useThrowToBoundary()
-  useEffect(() => {
-    fetchSetupStatus().then(status => {
-      if (status.configSaved) setConfigSaved(true)
-      if (status.seeded) setPhase('done')
-      else if (status.seeding) setPhase('seeding')
-    }, throwToBoundary)
-  }, [throwToBoundary])
 
   // Auto-scroll log area.
   useEffect(() => {
@@ -185,24 +166,28 @@ export default function SetupFlow({ baseUrl }: SetupFlowProps) {
       ) : (
         <>
           {phase !== 'seeding' && (
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <button className='primary' disabled={!configSaved} onClick={handleStartSeed}>
-                {phase === 'error' ? 'Retry Setup' : 'Start Setup'}
-              </button>
-              with Lean version:
-              <select
-                value={leanVersion ?? ''}
-                onChange={e => setLeanVersion(e.target.value || undefined)}
-                disabled={!leanVersions}
-              >
-                <option>{leanVersions ? 'Latest' : 'Loading…'}</option>
-                {leanVersions?.map(v => (
-                  <option key={v} value={v}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <>
+              {leanVersions.length === 0 && (
+                <ErrorBox>
+                  Warning: could not get full list of Lean versions, only &quot;Latest&quot; is available
+                </ErrorBox>
+              )}
+
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button className='primary' disabled={!configSaved} onClick={handleStartSeed}>
+                  {phase === 'error' ? 'Retry Setup' : 'Start Setup'}
+                </button>
+                with Lean version:
+                <select value={leanVersion} onChange={e => setLeanVersion(e.target.value)}>
+                  <option value='LATEST'>Latest</option>
+                  {leanVersions.map(v => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
           )}
 
           {(phase === 'seeding' || phase === 'error') && progress.pct > 0 && (
