@@ -118,7 +118,7 @@ export async function saveSetupConfig(formData: FormData): Promise<ActionRespons
   return { ok: true }
 }
 
-export async function startSeed(leanVersion: string | undefined): Promise<ActionResponse<boolean>> {
+export async function startSeed(leanVersion: string): Promise<ActionResponse<boolean>> {
   await requireAdmin()
 
   return doStartSeed(leanVersion)

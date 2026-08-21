@@ -28,12 +28,12 @@ export function getSeedState(): Readonly<SeedState> {
   return seedState
 }
 
-export function startSeed(leanVersion: string | undefined): ActionResponse<boolean> {
+export function startSeed(leanVersion: string): ActionResponse<boolean> {
   const cfg = getConfig()
   if (cfg.isSetupComplete) return { error: 'Already seeded' }
   if (!cfg.githubAuth) return { error: 'Configure GitHub authentication first' }
   if (seedState.inProgress) return { error: 'Seeding already in progress' }
-  if (leanVersion && !LEAN_VERSION_RE.test(leanVersion)) return { error: 'Invalid Lean version' }
+  if (leanVersion !== 'LATEST' && !LEAN_VERSION_RE.test(leanVersion)) return { error: 'Invalid Lean version' }
 
   seedState.inProgress = true
   seedState.events.length = 0
@@ -42,7 +42,7 @@ export function startSeed(leanVersion: string | undefined): ActionResponse<boole
   const scriptsDir = path.join(process.cwd(), 'scripts')
 
   const args = [path.join(scriptsDir, 'seed-volume.sh'), '--data-dir', getDataDir()]
-  if (leanVersion) args.push('--lean-version', leanVersion)
+  if (leanVersion !== 'LATEST') args.push('--lean-version', leanVersion)
   const child = spawn('bash', args, {
     stdio: ['ignore', 'pipe', 'pipe'],
   })
