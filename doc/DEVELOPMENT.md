@@ -63,7 +63,7 @@ To access the sandboxed website from your computer,
 you'll also need to run the following command *outside* the sandbox.
 
 ```
-sbx ports workbench --publish 43000:3000
+sbx ports workbench --publish 43000:3000/tcp4
 ```
 
 After running the makefile targets insidethe sandbox (i.e. `make dev`),
