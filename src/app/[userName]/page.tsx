@@ -16,6 +16,8 @@ const zParams = z.object({
 
 type Params = z.infer<typeof zParams>
 
+export const instant = false
+
 export default async function ProfileBody({ params: params_ }: { params: Promise<Params> }) {
   const parsed = zParams.safeParse(await params_)
   // 400 would be better, but RSCs can't return a Response and there is no 400 helper in Next.js.

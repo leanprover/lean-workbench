@@ -5,6 +5,7 @@ import { OAuthConfig } from './components/OAuthConfig'
 import { SessionViewer } from './components/SessionViewer'
 import { UserManagement } from './components/UserManagement'
 
+export const instant = false
 export default async function AdminPage() {
   await requireAdmin()
   return (

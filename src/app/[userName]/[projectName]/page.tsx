@@ -20,6 +20,7 @@ export default async function EditorSession({ params: params_ }: { params: Promi
   // instead of running this (expensive) handler.
   await connection()
 
+  await new Promise(f => setTimeout(f, 1000))
   const parsed = zParams.safeParse(await params_)
   // 400 would be better, but RSCs can't return a Response and there is no 400 helper in Next.js.
   if (!parsed.success) notFound()
