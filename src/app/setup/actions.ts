@@ -24,6 +24,7 @@ const zInitialLogin = z.object({
  */
 export async function initialLogin(formData: FormData): Promise<ActionResponse<null>> {
   const cfg = getConfig()
+  if (cfg.isSetupComplete) return { error: 'Cannot reset password after setup is complete' }
 
   const parsed = zInitialLogin.safeParse({
     initAdminPassword: formData.get('initAdminPassword'),
