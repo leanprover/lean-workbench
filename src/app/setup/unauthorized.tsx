@@ -7,7 +7,6 @@ import { getConfig, isDevMode } from '@/lib/server/config'
 
 import CreateAdmin from './CreateAdmin'
 
-export const instant = false
 export default async function Unauthorized() {
   await io()
   const config = getConfig()
