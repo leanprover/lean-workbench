@@ -11,7 +11,7 @@ export const instant = false
 export default async function Unauthorized() {
   await io()
   const config = getConfig()
-  if (isDevMode() || config.initAdminPassword) {
+  if (!config.isSetupComplete && (isDevMode() || config.initAdminPassword)) {
     return <CreateAdmin />
   } else {
     return <AdminLogin />
