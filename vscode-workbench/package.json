@@ -27,7 +27,19 @@
       {
         "command": "leanprover-workbench.previewFile",
         "title": "Preview File",
+        "category": "Lean Workbench",
+        "description": "Preview this file in the builtin browser."
+      },
+      {
+        "command": "leanprover-workbench.internal.collab.followCursor",
+        "title": "Follow Cursor",
         "category": "Lean Workbench"
+      },
+      {
+        "command": "leanprover-workbench.collab.unfollowCursor",
+        "title": "Unfollow Cursor",
+        "category": "Lean Workbench",
+        "description": "Stop following the collaborator's cursor."
       }
     ],
     "menus": {
@@ -36,6 +48,26 @@
           "command": "leanprover-workbench.previewFile",
           "when": "resourceExtname == .html",
           "group": "1_leanprover_workbench"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "leanprover-workbench.internal.collab.followCursor",
+          "when": "false"
+        },
+        {
+          "command": "leanprover-workbench.collab.unfollowCursor",
+          "when": "leanprover-workbench.collab.isFollowingCursor"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "leanprover-workbench.internal.collab.followCursor",
+          "when": "view == leanprover-workbench-view && viewItem == followableOnlineUser"
+        },
+        {
+          "command": "leanprover-workbench.collab.unfollowCursor",
+          "when": "view == leanprover-workbench-view && viewItem == followedOnlineUser"
         }
       ]
     },

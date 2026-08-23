@@ -1,11 +1,11 @@
 import vs from 'vscode'
 import { type Awareness } from 'y-protocols/awareness'
 
-import { AWARENESS_SELECTION_KEY, AWARENESS_USER_KEY, type AwarenessSelection, type AwarenessUser } from './util'
+import { AWARENESS_SELECTION_KEY, AWARENESS_USER_KEY, type AwarenessSelections, type AwarenessUser } from './util'
 
 interface AwarenessState {
   [AWARENESS_USER_KEY]: AwarenessUser
-  [AWARENESS_SELECTION_KEY]: AwarenessSelection
+  [AWARENESS_SELECTION_KEY]: AwarenessSelections
 }
 
 class ClientDecorations implements vs.Disposable {
@@ -66,12 +66,12 @@ export class RemoteSelectionDecorator implements vs.Disposable {
             anchor: { line: s.anchor.line, character: s.anchor.character },
             active: { line: s.active.line, character: s.active.character },
           })),
-        } satisfies AwarenessSelection)
+        } satisfies AwarenessSelections)
       }),
       vs.workspace.onDidCloseTextDocument(doc => {
         if (doc.uri.scheme !== 'file') return
         // If cursor was in the now-closed doc, clear it.
-        const sel = this.awareness.getLocalState()?.[AWARENESS_SELECTION_KEY] as AwarenessSelection | undefined
+        const sel = this.awareness.getLocalState()?.[AWARENESS_SELECTION_KEY] as AwarenessSelections | undefined
         if (sel?.filePath === doc.uri.fsPath) {
           this.awareness.setLocalStateField(AWARENESS_SELECTION_KEY, null)
         }
@@ -94,7 +94,7 @@ export class RemoteSelectionDecorator implements vs.Disposable {
     const next = new Map<number, AwarenessState>()
     for (const [clientId, state] of states.entries()) {
       if (clientId === this.localClientId) continue
-      const selection = state[AWARENESS_SELECTION_KEY] as AwarenessSelection | undefined
+      const selection = state[AWARENESS_SELECTION_KEY] as AwarenessSelections | undefined
       const user = state[AWARENESS_USER_KEY] as AwarenessUser | undefined
       if (!selection || !user) continue
       next.set(clientId, { selection, user })

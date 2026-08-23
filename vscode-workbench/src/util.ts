@@ -74,7 +74,7 @@ export const AWARENESS_SELECTION_KEY = 'selection'
 /** Colors for remote collaborator cursors. */
 export const AWARENESS_CURSOR_COLORS = ['#5790FC', '#F89C20', '#E42536', '#964A8B', '#9C9CA1', '#7A21DD']
 
-export interface AwarenessSelection {
+export interface AwarenessSelections {
   filePath: string
   selections: Selection[]
 }
