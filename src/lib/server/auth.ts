@@ -139,8 +139,28 @@ async function addEmailPasswordUser(name: string, email: string, password: strin
   })
 }
 
+/** Email address of the dev-mode account with user name {@link name}. */
+function devUserEmail(name: string): string {
+  return `${name}@dev.localhost`
+}
+
+/** Ensure the non-admin dev-mode account named {@link name} exists,
+ * returning credentials to sign in to it.
+ * Throws if the name is taken by a non-dev account. */
+export async function ensureDevUserAccount(name: string): Promise<{ email: string; password: string }> {
+  const email = devUserEmail(name)
+  const password = 'dev'
+  const added = await addEmailPasswordUser(name, email, password, false)
+  if (added) {
+    console.log(`Added dev user ${email}`)
+  } else if (!(await getDb().user.findUnique({ where: { email } }))) {
+    throw new Error(`Cannot create dev user '${name}': the user name is already taken`)
+  }
+  return { email, password }
+}
+
 /** Ensures that an admin account exists,
- * and that a non-admin dev account exists iff we are in dev mode. */
+ * and that no dev accounts exist unless we are in dev mode. */
 async function ensureBuiltinUsersExist() {
   const adminEmail = 'admin@admin.localhost'
   const db = getDb()
@@ -160,17 +180,11 @@ async function ensureBuiltinUsersExist() {
     }
   }
 
-  const devModeEmail = 'dev@dev.localhost'
-  if (isDevMode()) {
-    const added = await addEmailPasswordUser('dev', devModeEmail, 'dev', false)
-    if (added) {
-      console.log(`Added dev user ${devModeEmail}`)
-    }
-  } else {
-    // Clean up dev account in prod since its password is public
-    const { count } = await getDb().user.deleteMany({ where: { email: devModeEmail } })
+  if (!isDevMode()) {
+    // Clean up dev accounts in prod since their passwords are public
+    const { count } = await db.user.deleteMany({ where: { email: { endsWith: devUserEmail('') } } })
     if (count !== 0) {
-      console.warn(`Warning: deleted dev user ${devModeEmail} (disallowed in production)`)
+      console.warn(`Warning: deleted ${count} dev user account(s) (disallowed in production)`)
     }
   }
 }

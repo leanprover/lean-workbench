@@ -3,10 +3,12 @@
 import { type Route } from 'next'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { useState } from 'react'
 
 import authClient from '@/lib/client/auth'
 import { useThrowToBoundary } from '@/lib/client/util'
 import { type Config, useConfigCtx } from '@/lib/contexts'
+import { ensureDevUser } from '@/lib/server/actions'
 
 import ErrorBox from './components/ErrorBox'
 
@@ -26,6 +28,37 @@ function errorParamToMsg(e: string, cfg: Config): string {
     // An unrecognized search parameter should not be shown directly to the user (phishing risk)
     return 'Unexpected sign-in failure. Please try again; contact your administrator if this error continues.'
   }
+}
+
+/** Signs in as the dev user `dev{n}`, with `n` chosen via a numeric input.
+ * The account is created on demand. */
+function DevSignIn() {
+  const [numStr, setNumStr] = useState('0')
+  const { throwToBoundary } = useThrowToBoundary()
+
+  return (
+    <span className='dev-login'>
+      <button
+        className='login-link'
+        disabled={!/^\d{1,3}$/.test(numStr)}
+        onClick={() => {
+          ensureDevUser(parseInt(numStr, 10))
+            .then(credentials => authClient.signIn.email(credentials))
+            .catch(throwToBoundary)
+        }}
+      >
+        [DEV]
+      </button>
+      <input
+        type='number'
+        aria-label='Dev user number'
+        min={0}
+        max={999}
+        value={numStr}
+        onChange={e => setNumStr(e.target.value)}
+      />
+    </span>
+  )
 }
 
 export default function Root() {
@@ -60,18 +93,7 @@ export default function Root() {
           >
             GitHub
           </button>
-          {cfg.isDevMode && (
-            <button
-              className='login-link'
-              onClick={async () => {
-                const email = 'dev@dev.localhost'
-                const password = 'dev'
-                authClient.signIn.email({ email, password }).catch(throwToBoundary)
-              }}
-            >
-              [DEV]
-            </button>
-          )}
+          {cfg.isDevMode && <DevSignIn />}
         </>
       )}
     </>
