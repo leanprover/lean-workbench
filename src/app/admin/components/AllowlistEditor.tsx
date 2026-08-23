@@ -5,25 +5,18 @@ import { startTransition, useRef } from 'react'
 
 import { addAllowedUser, removeAllowedUser } from '@/app/admin/actions'
 import { useServerAction } from '@/lib/client/util'
-import { formString } from '@/lib/util'
 
 export function AllowlistEditor({ users }: { users: string[] }) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const [addError, addAction, addPending] = useServerAction(
-    (formData: FormData) => addAllowedUser({ userName: formString(formData, 'username') }),
-    () => {
-      if (inputRef.current) inputRef.current.value = ''
-      inputRef.current?.focus()
-      router.refresh()
-    },
-  )
+  const [addError, addAction, addPending] = useServerAction(addAllowedUser, () => {
+    if (inputRef.current) inputRef.current.value = ''
+    inputRef.current?.focus()
+    router.refresh()
+  })
 
-  const [removeError, removeAction, removePending] = useServerAction(
-    (userName: string) => removeAllowedUser({ userName }),
-    () => router.refresh(),
-  )
+  const [removeError, removeAction, removePending] = useServerAction(removeAllowedUser, () => router.refresh())
 
   const error = addError ?? removeError
 
@@ -40,7 +33,7 @@ export function AllowlistEditor({ users }: { users: string[] }) {
                 <button
                   className='delete'
                   disabled={removePending}
-                  onClick={() => startTransition(() => removeAction(u))}
+                  onClick={() => startTransition(() => removeAction({ userName: u }))}
                 >
                   Remove
                 </button>
@@ -53,7 +46,7 @@ export function AllowlistEditor({ users }: { users: string[] }) {
         <input
           ref={inputRef}
           type='text'
-          name='username'
+          name='userName'
           placeholder='GitHub username'
           style={{ flex: 1 }}
           disabled={addPending}

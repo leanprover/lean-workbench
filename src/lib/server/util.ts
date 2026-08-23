@@ -2,6 +2,7 @@ import 'server-only'
 
 import fs from 'node:fs/promises'
 
+import { parseWithZod } from '@conform-to/zod/v4'
 import type z from 'zod'
 
 import type { ActionResponse } from '@/lib/util'
@@ -20,6 +21,28 @@ export function serverAction<S extends z.ZodType, T = void>(
     const parsed = schema.safeParse(raw)
     if (!parsed.success) return { error: parsed.error.issues[0]!.message }
     return handler(parsed.data)
+  }
+}
+
+/** Wrap a server action so that it can directly accept `FormData`
+ * while its handler will receive only schema-validated input.
+ *
+ * The [Conform](https://conform.guide/api/zod/parseWithZod) library
+ * is used to adapt between `FormData` and the Zod schema.
+ */
+export function submitAction<S extends z.ZodType, T = void>(
+  schema: S,
+  handler: (input: z.infer<S>) => Promise<ActionResponse<T>>,
+): (formData: FormData) => Promise<ActionResponse<T>> {
+  return async formData => {
+    const submission = parseWithZod(formData, {
+      schema,
+      formatError: (issues: z.core.$ZodIssue[]) => issues[0]!.message,
+    })
+    if (submission.status !== 'success') {
+      return { error: Object.values(submission.error ?? {})[0] ?? `Error validating form submission` }
+    }
+    return handler(submission.value)
   }
 }
 

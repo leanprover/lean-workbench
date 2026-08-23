@@ -3,7 +3,12 @@ import useSWR, { type Key, type SWRConfiguration } from 'swr'
 
 import { type ActionResponse, unknownAsError } from '@/lib/util'
 
-/** Returns `[error, dispatchAction, pending]`. */
+/**
+ * Adapts a server function that returns an `ActionResponse`
+ * into a React Action form that tracks pending status and error status.
+ *
+ * Returns `[error, dispatchAction, pending]`.
+ */
 export function useServerAction<Payload = void, T = void>(
   fn: (payload: Payload) => Promise<ActionResponse<T>>,
   onSuccess?: (_: T) => void,

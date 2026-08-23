@@ -17,13 +17,10 @@ export function RegistrationModeControl({ initialMode }: { initialMode: Registra
   const [mode, setMode] = useState(initialMode)
   const [savedMode, setSavedMode] = useState(initialMode)
 
-  const [error, saveAction, pending] = useServerAction(
-    () => setRegistrationMode(mode),
-    () => {
-      setSavedMode(mode)
-      router.refresh()
-    },
-  )
+  const [error, saveAction, pending] = useServerAction(setRegistrationMode, () => {
+    setSavedMode(mode)
+    router.refresh()
+  })
 
   return (
     <>
@@ -42,7 +39,7 @@ export function RegistrationModeControl({ initialMode }: { initialMode: Registra
         ))}
       </div>
       {mode !== savedMode && (
-        <button onClick={() => startTransition(saveAction)} disabled={pending}>
+        <button onClick={() => startTransition(() => saveAction({ mode }))} disabled={pending}>
           {pending ? 'Saving...' : 'Save'}
         </button>
       )}

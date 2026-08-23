@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation'
 import { startTransition, useState } from 'react'
 
 import { useServerAction } from '@/lib/client/util'
-import { formString } from '@/lib/util'
 
 import { deleteProject, type ProjectInfo, renameProject, toggleVisibility } from './actions'
 
@@ -14,32 +13,22 @@ export function ProjectRow({ project, username }: { project: ProjectInfo; userna
   const router = useRouter()
   const [renaming, setRenaming] = useState(false)
 
-  const [renameError, renameAction, renamePending] = useServerAction(
-    async (formData: FormData) => {
-      const name = formString(formData, 'name').trim()
-      if (!name) return { error: 'Name is required' }
-      return renameProject({ projectId: project.id, name })
-    },
-    () => {
-      setRenaming(false)
-      router.refresh()
-    },
-  )
+  const [renameError, renameAction, renamePending] = useServerAction(renameProject, () => {
+    setRenaming(false)
+    router.refresh()
+  })
 
-  const [deleteError, deleteAction, deletePending] = useServerAction(
-    () => deleteProject({ projectId: project.id }),
-    () => router.refresh(),
-  )
+  const [deleteError, deleteAction, deletePending] = useServerAction(deleteProject, () => router.refresh())
 
-  const [visibilityError, visibilityAction, visibilityPending] = useServerAction(
-    () => toggleVisibility({ projectId: project.id, isPublic: !project.isPublic }),
-    () => router.refresh(),
+  const [visibilityError, visibilityAction, visibilityPending] = useServerAction(toggleVisibility, () =>
+    router.refresh(),
   )
 
   if (renaming) {
     return (
       <>
         <form action={renameAction} style={{ display: 'contents' }}>
+          <input type='hidden' name='projectId' value={project.id} />
           <div className='info' style={{ flex: 1 }}>
             <input
               name='name'
@@ -79,7 +68,7 @@ export function ProjectRow({ project, username }: { project: ProjectInfo; userna
       <div className='actions'>
         <button
           onClick={() => {
-            startTransition(visibilityAction)
+            startTransition(() => visibilityAction({ projectId: project.id, isPublic: !project.isPublic }))
           }}
           disabled={actionPending}
         >
@@ -92,7 +81,7 @@ export function ProjectRow({ project, username }: { project: ProjectInfo; userna
           className='delete'
           onClick={() => {
             if (!confirm(`Delete project "${project.name}"? Project files will be kept.`)) return
-            startTransition(deleteAction)
+            startTransition(() => deleteAction({ projectId: project.id }))
           }}
           disabled={actionPending}
         >

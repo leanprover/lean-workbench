@@ -4,21 +4,15 @@ import { requireAdmin } from '@/app/admin/actions'
 import { initAuth } from '@/lib/server/auth'
 import { getConfig, hasGithubAuth, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
 import { getSeedState, startSeed as doStartSeed } from '@/lib/server/seed'
+import { submitAction } from '@/lib/server/util'
 import type { ActionResponse } from '@/lib/util'
 
-export async function saveSetupConfig(formData: FormData): Promise<ActionResponse<boolean>> {
+export const saveSetupConfig = submitAction(zGithubAuthConfig, async githubAuth => {
   await requireAdmin()
 
   const cfg = getConfig()
   if (cfg.isSetupComplete) return { error: 'Setup already completed' }
 
-  const parsed = zGithubAuthConfig.safeParse({
-    clientId: formData.get('clientId'),
-    clientSecret: formData.get('clientSecret'),
-  })
-  if (!parsed.success) return { error: parsed.error.issues[0]!.message }
-
-  const githubAuth = parsed.data
   cfg.githubAuth = githubAuth
   await saveConfig()
 
@@ -26,7 +20,7 @@ export async function saveSetupConfig(formData: FormData): Promise<ActionRespons
   await initAuth()
 
   return { ok: true }
-}
+})
 
 export async function startSeed(leanVersion: string | undefined): Promise<ActionResponse<boolean>> {
   await requireAdmin()

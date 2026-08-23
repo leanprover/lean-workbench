@@ -4,24 +4,16 @@ import { useState } from 'react'
 
 import { fetchOAuthConfig, updateOAuthConfig } from '@/app/admin/actions'
 import { useServerAction, useThrowingSWR } from '@/lib/client/util'
-import { formString } from '@/lib/util'
 
 export function OAuthConfig() {
   const { data, mutate } = useThrowingSWR('adminOAuthConfig', () => fetchOAuthConfig())
 
   const [editing, setEditing] = useState(false)
 
-  const [error, action, pending] = useServerAction(
-    (formData: FormData) =>
-      updateOAuthConfig({
-        clientId: formString(formData, 'clientId'),
-        clientSecret: formString(formData, 'clientSecret') || undefined,
-      }),
-    () => {
-      setEditing(false)
-      void mutate()
-    },
-  )
+  const [error, action, pending] = useServerAction(updateOAuthConfig, () => {
+    setEditing(false)
+    void mutate()
+  })
 
   return (
     <section>

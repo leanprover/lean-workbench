@@ -10,10 +10,7 @@ import type { EditorSessionInfo } from '@/lib/server/editorSessions'
 
 export function SessionRow({ info }: { info: EditorSessionInfo }) {
   const router = useRouter()
-  const [killError, killAction, killPending] = useServerAction(
-    () => killEditorSession({ projectId: info.projectId, sessionId: info.sessionId }),
-    () => router.refresh(),
-  )
+  const [killError, killAction, killPending] = useServerAction(killEditorSession, () => router.refresh())
 
   return (
     <li>
@@ -24,7 +21,11 @@ export function SessionRow({ info }: { info: EditorSessionInfo }) {
       </div>
       <div className='actions'>
         <span style={{ fontSize: '0.8rem', color: '#90a4ae' }}>UUID {info.sessionId}</span>
-        <button className='delete' disabled={killPending} onClick={() => startTransition(killAction)}>
+        <button
+          className='delete'
+          disabled={killPending}
+          onClick={() => startTransition(() => killAction({ projectId: info.projectId, sessionId: info.sessionId }))}
+        >
           Kill
         </button>
       </div>

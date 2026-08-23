@@ -16,9 +16,8 @@ export function HealthMonitor() {
     refreshInterval: 30_000,
   })
   const [workspacesSize, setWorkspacesSize] = useState<string | null>(null)
-  const [duError, duAction, duPending] = useServerAction(
-    () => fetchDiskUsage(),
-    ({ workspaces }) => setWorkspacesSize(workspaces),
+  const [duError, duAction, duPending] = useServerAction(fetchDiskUsage, ({ workspaces }) =>
+    setWorkspacesSize(workspaces),
   )
 
   if (healthError) {

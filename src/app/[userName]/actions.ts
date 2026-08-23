@@ -4,14 +4,14 @@ import crypto from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { zProjectId, zProjectName, zTemplateId } from '@leanprover/workbench-shared'
+import { zProjectId, zTemplateId, zValidateProjectName } from '@leanprover/workbench-shared'
 import { existsAsync, getPackageSetsDir, getTemplatesDir, getWorkspacesDir } from '@leanprover/workbench-shared/node'
 import { forbidden } from 'next/navigation'
 import z from 'zod'
 
 import { requireAuth } from '@/lib/server/auth'
 import { getDb } from '@/lib/server/db'
-import { serverAction } from '@/lib/server/util'
+import { serverAction, submitAction } from '@/lib/server/util'
 import { type ActionResponse } from '@/lib/util'
 import { type Project } from '@/prisma/generated/client'
 
@@ -77,11 +77,11 @@ export async function listTemplates(): Promise<TemplateInfo[]> {
 // --- Mutations ---
 
 const zCreateProject = z.object({
-  name: zProjectName,
+  name: zValidateProjectName,
   template: zTemplateId.default('blank'),
 })
 
-export const createProject = serverAction(
+export const createProject = submitAction(
   zCreateProject,
   async ({ name, template }): Promise<ActionResponse<ProjectInfo>> => {
     const session = await requireAuth()
@@ -155,10 +155,10 @@ async function requireProjectOwner(projectId: string): Promise<ActionResponse<Pr
 
 const zUpdateProject = z.object({
   projectId: zProjectId,
-  name: zProjectName,
+  name: zValidateProjectName,
 })
 
-export const renameProject = serverAction(zUpdateProject, async ({ projectId, name }) => {
+export const renameProject = submitAction(zUpdateProject, async ({ projectId, name }) => {
   const owned = await requireProjectOwner(projectId)
   if ('error' in owned) return owned
   const project = owned.ok
