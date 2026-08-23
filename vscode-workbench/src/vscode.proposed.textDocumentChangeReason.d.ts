@@ -65,4 +65,11 @@ declare module 'vscode' {
       tag?: string,
     ): Thenable<boolean>
   }
+
+  export namespace workspace {
+    /**
+     * Whether this build of VS Code includes `code-server-patches/001-tagTextDocumentChange.diff`.
+     * `undefined` on builds without the patch. */
+    export const hasTagTextDocumentChangePatch: boolean | undefined
+  }
 }

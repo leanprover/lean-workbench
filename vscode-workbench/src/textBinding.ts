@@ -23,6 +23,10 @@ export class YTextBindingManager implements vs.Disposable {
     )
     // Bind already-open buffers
     for (const doc of vs.workspace.textDocuments) this.onDidOpenTextDocument(doc)
+
+    if (!vs.workspace.hasTagTextDocumentChangePatch) {
+      log.warn('[YTextBindingManager] VS Code built without 001-tagTextDocumentChange.diff.')
+    }
   }
 
   private onDidOpenTextDocument(doc: vs.TextDocument) {
@@ -86,7 +90,7 @@ const EDIT_TAG = 'vscode-workbench'
  * To compute the correct edit w.r.t. the current document contents,
  * we diff the `remoteYtext` that contains remote changes
  * against our `localYtext` that matches the VSCode-managed `doc`.
- * 
+ *
  * The synchronization flow of a single change is:
  * ```mermaid
  * flowchart TB
@@ -150,13 +154,14 @@ export class YTextBinding implements vs.Disposable {
     readonly doc: vs.TextDocument,
     collabSock: HocuspocusProviderWebsocket,
     log_: Logger,
-    /** Whether `code-server-patches/001-tagTextDocumentChange.diff` has been applied. */
-    private readonly hasTagTextDocumentChangePatch: boolean = true,
+    /** Whether to rely on text document change tags for loopback prevention.
+     * Needs `code-server-patches/001-tagTextDocumentChange.diff` to be applied. */
+    private readonly useTagTextDocumentChangePatch: boolean = !!vs.workspace.hasTagTextDocumentChangePatch,
     /** The timeout period for {@link scheduleEnsureSync} in milliseconds,
      * disabling {@link scheduleEnsureSync} if zero.
      * Expected to be non-zero except in tests. */
     private readonly ensureSyncTimeoutMs: number = 3_000,
-    /** Name of this document in {@link collabSock}.
+    /** Yjs name of this document (accessed via {@link collabSock}).
      * Expected to be the file path except in tests. */
     docName: string = doc.uri.fsPath,
   ) {
@@ -214,7 +219,7 @@ export class YTextBinding implements vs.Disposable {
       for (const e of vs.window.visibleTextEditors) {
         if (e.document === this.doc) {
           hasEditor = true
-          const success = await (this.hasTagTextDocumentChangePatch ? e.edit(fn, undefined, EDIT_TAG) : e.edit(fn))
+          const success = await (this.useTagTextDocumentChangePatch ? e.edit(fn, undefined, EDIT_TAG) : e.edit(fn))
           if (success) {
             this.log.trace('[makeLocalEdit] used TextEditor.edit')
             return true
@@ -235,7 +240,7 @@ export class YTextBinding implements vs.Disposable {
         delete: r => edit.delete(this.doc.uri, r),
         replace: (r, t) => edit.replace(this.doc.uri, r, t),
       })
-      const success = await (this.hasTagTextDocumentChangePatch
+      const success = await (this.useTagTextDocumentChangePatch
         ? vs.workspace.applyEdit(edit, { tag: EDIT_TAG })
         : vs.workspace.applyEdit(edit))
       if (success) {
@@ -310,7 +315,7 @@ export class YTextBinding implements vs.Disposable {
     }
     /** Prevent loopback by checking for our tag if possible,
      * otherwise checking for the two methods of editing used in {@link makeLocalEdit}. */
-    if (this.hasTagTextDocumentChangePatch) {
+    if (this.useTagTextDocumentChangePatch) {
       if (e.detailedReason.source === 'extension' && e.detailedReason.metadata.tag === EDIT_TAG) return
     } else {
       if (

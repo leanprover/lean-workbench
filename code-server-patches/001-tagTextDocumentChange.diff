@@ -88,10 +88,10 @@ index 7da3b5b2..5d2b9b16 100644
  }
  
  export interface MainThreadTextEditorsShape extends IDisposable {
-diff --git a/lib/vscode/vs/workbench/api/common/extHostBulkEdits.ts b/lib/vscode/vs/workbench/api/common/extHostBulkEdits.ts
+diff --git a/lib/vscode/src/vs/workbench/api/common/extHostBulkEdits.ts b/lib/vscode/src/vs/workbench/api/common/extHostBulkEdits.ts
 index a1284739..3d04aeaf 100644
---- a/lib/vscode/vs/workbench/api/common/extHostBulkEdits.ts
-+++ b/lib/vscode/vs/workbench/api/common/extHostBulkEdits.ts
+--- a/lib/vscode/src/vs/workbench/api/common/extHostBulkEdits.ts
++++ b/lib/vscode/src/vs/workbench/api/common/extHostBulkEdits.ts
 @@ -30,6 +30,6 @@ export class ExtHostBulkEdits {
  
  	applyWorkspaceEdit(edit: vscode.WorkspaceEdit, extension: IExtensionDescription, metadata: vscode.WorkspaceEditMetadata | undefined): Promise<boolean> {
@@ -139,11 +139,26 @@ index b523bf14..eed0cad1 100644
  		});
  	}
  	private _runOnProxy(callback: () => Promise<any>): Promise<ExtHostTextEditor | undefined | null> {
+diff --git a/lib/vscode/src/vs/workbench/api/common/extHost.api.impl.ts b/lib/vscode/src/vs/workbench/api/common/extHost.api.impl.ts
+index bf42962..a404fe2 100644
+--- a/lib/vscode/src/vs/workbench/api/common/extHost.api.impl.ts
++++ b/lib/vscode/src/vs/workbench/api/common/extHost.api.impl.ts
+@@ -1253,6 +1253,10 @@ export function createApiFactoryAndRegisterActors(accessor: ServicesAccessor): I
+ 			applyEdit(edit: vscode.WorkspaceEdit, metadata?: vscode.WorkspaceEditMetadata): Thenable<boolean> {
+ 				return extHostBulkEdits.applyWorkspaceEdit(edit, extension, metadata);
+ 			},
++			get hasTagTextDocumentChangePatch() {
++				checkProposedApiEnabled(extension, 'textDocumentChangeReason');
++				return true;
++			},
+ 			createFileSystemWatcher: (pattern, optionsOrIgnoreCreate, ignoreChange?, ignoreDelete?): vscode.FileSystemWatcher => {
+ 				const options: FileSystemWatcherCreateOptions = {
+ 					ignoreCreateEvents: Boolean(optionsOrIgnoreCreate),
 diff --git a/lib/vscode/src/vscode-dts/vscode.proposed.textDocumentChangeReason.d.ts b/lib/vscode/src/vscode-dts/vscode.proposed.textDocumentChangeReason.d.ts
-index f656c304..a0f04a10 100644
+index f656c30..10d66b3 100644
 --- a/lib/vscode/src/vscode-dts/vscode.proposed.textDocumentChangeReason.d.ts
 +++ b/lib/vscode/src/vscode-dts/vscode.proposed.textDocumentChangeReason.d.ts
-@@ -27,4 +27,43 @@ declare module 'vscode' {
+@@ -27,4 +27,50 @@ declare module 'vscode' {
  		 */
  		readonly detailedReason: TextDocumentDetailedChangeReason | undefined;
  	}
@@ -185,5 +200,12 @@ index f656c304..a0f04a10 100644
 +			},
 +			tag?: string,
 +		): Thenable<boolean>;
++	}
++
++	export namespace workspace {
++		/**
++		 * Whether this build of VS Code includes `code-server-patches/001-tagTextDocumentChange.diff`.
++		 * `undefined` on builds without the patch. */
++		export const hasTagTextDocumentChangePatch: boolean | undefined;
 +	}
  }

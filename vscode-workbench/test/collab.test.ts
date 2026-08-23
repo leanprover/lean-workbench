@@ -110,7 +110,17 @@ function diffMessage(label: string, a: string, b: string): string {
 }
 
 const DOC_NAME = '/test/shared.txt'
-const COLUMNS: vs.ViewColumn[] = [vs.ViewColumn.One, vs.ViewColumn.Two]
+const COLUMNS: vs.ViewColumn[] = [
+  vs.ViewColumn.One,
+  vs.ViewColumn.Two,
+  vs.ViewColumn.Three,
+  vs.ViewColumn.Four,
+  vs.ViewColumn.Five,
+  vs.ViewColumn.Six,
+  vs.ViewColumn.Seven,
+  vs.ViewColumn.Eight,
+  vs.ViewColumn.Nine,
+]
 
 suite('Collaborative editing', () => {
   interface TestHandles {
@@ -119,20 +129,28 @@ suite('Collaborative editing', () => {
     dispose: () => Promise<void>
   }
 
-  const mkHandles = async (ensureSyncTimeoutMs: number = 0): Promise<TestHandles> => {
+  suiteSetup(() => {
+    assert.ok(vs.workspace.hasTagTextDocumentChangePatch, 'VS Code built without 001-tagTextDocumentChange.diff.')
+  })
+
+  const mkHandles = async (
+    count: number = 2,
+    ensureSyncTimeoutMs: number = 0,
+    useTagTextDocumentChangePatch: boolean = true,
+  ): Promise<TestHandles> => {
     // In-memory Hocuspocus server on an ephemeral port; no persistence, no signal handlers.
     const server = new Server({ stopOnSignals: false, quiet: true })
     await new Promise<void>(resolve => server.httpServer.listen(0, '127.0.0.1', resolve))
     const url = `ws://127.0.0.1:${server.address.port}`
 
     const mkClient = () => new HocuspocusProviderWebsocket({ url })
-    const clients = [mkClient(), mkClient()]
-    const docs = await Promise.all([
-      vs.workspace.openTextDocument({ content: '', language: 'plaintext' }),
-      vs.workspace.openTextDocument({ content: '', language: 'plaintext' }),
-    ])
+    const clients = Array.from({ length: count }, mkClient)
+    const docs = await Promise.all(
+      Array.from({ length: count }, () => vs.workspace.openTextDocument({ content: '', language: 'plaintext' })),
+    )
     const bindings = docs.map(
-      (doc, i) => new YTextBinding(doc, clients[i]!, consoleLog, true, ensureSyncTimeoutMs, DOC_NAME),
+      (doc, i) =>
+        new YTextBinding(doc, clients[i]!, consoleLog, useTagTextDocumentChangePatch, ensureSyncTimeoutMs, DOC_NAME),
     )
 
     // Route document changes to the matching binding
@@ -161,18 +179,39 @@ suite('Collaborative editing', () => {
     await handles.dispose()
   })
 
-  test('Single edit propagates correctly', async function () {
+  const testSingleEdit = async (useTextEditorEdit: boolean) => {
     const handles = await mkHandles()
     await waitForInitialSync(handles.bindings, 1_000)
 
-    // Type on doc0 and confirm the change reaches doc1.
+    if (useTextEditorEdit) {
+      // Open editor so that remote change is synced via `TextEditor.edit`;
+      // otherwise `workspace.applyEdit` is used.
+      await vs.window.showTextDocument(handles.docs[1]!, { viewColumn: COLUMNS[1], preview: false })
+    }
+
+    // Type on doc0
     const ed0 = await vs.window.showTextDocument(handles.docs[0]!, { viewColumn: COLUMNS[0], preview: false })
     ed0.selection = new vs.Selection(0, 0, 0, 0)
     const text = 'PROBE\n'
     await vs.commands.executeCommand('default:type', { text })
+    // Sanity checks
+    assert.strictEqual(handles.docs[0]!.getText(), text)
+    assert.strictEqual(handles.bindings[0]!.remoteYtext.toString(), text)
+
+    // Confirm the changes reach doc1
     await waitForQuiescence(handles.bindings, 1_000)
     assert.strictEqual(handles.docs[1]!.getText(), text)
+    assert.strictEqual(handles.bindings[1]!.remoteYtext.toString(), text)
+
     await handles.dispose()
+  }
+
+  test('Single edit propagates correctly (TextEditor.edit)', async function () {
+    await testSingleEdit(true)
+  })
+
+  test('Single edit propagates correctly (workspace.applyEdit)', async function () {
+    await testSingleEdit(false)
   })
 
   /** Drive a batch of edits, alternating between the two documents.
@@ -181,44 +220,74 @@ suite('Collaborative editing', () => {
     const rng = mulberry32(0xc0ffee)
     const NUM_EDITS = 100
     for (let i = 0; i < NUM_EDITS; i++) {
-      await randomEditOn(handles.docs[i % 2]!, COLUMNS[i % 2]!, rng)
+      const docIdx = i % handles.docs.length
+      await randomEditOn(handles.docs[docIdx]!, COLUMNS[docIdx]!, rng)
     }
   }
 
   const assertEqualStates = (handles: TestHandles) => {
-    const [d0, d1] = handles.docs.map(d => d.getText())
-    const [y0, y1] = handles.bindings.map(b => b.remoteYtext.toString())
+    const localTexts = handles.docs.map(d => d.getText())
+    const remoteTexts = handles.bindings.map(b => b.remoteYtext.toString())
 
     // Sanity check - YJs CRDT replicas converge.
-    assert.strictEqual(y0, y1, diffMessage('Y.Text replicas (client0 vs client1)', y0!, y1!))
+    for (let i = 1; i < remoteTexts.length; i++) {
+      const r0 = remoteTexts[i - 1]
+      const r1 = remoteTexts[i]
+      assert.strictEqual(r0, r1, diffMessage(`Y.Text replicas (#${i - 1} vs #${i})`, r0!, r1!))
+    }
+
     // Whether docs correctly track CRDT replicas.
-    assert.strictEqual(d0, y0, diffMessage('doc0 vs its Y.Text', d0!, y0!))
-    assert.strictEqual(d1, y1, diffMessage('doc1 vs its Y.Text', d1!, y1!))
+    for (let i = 0; i < localTexts.length; i++) {
+      const l = localTexts[i]
+      const r = remoteTexts[i]
+      assert.strictEqual(l, r, diffMessage(`doc #${i} vs its Y.Text`, l!, r!))
+    }
+  }
+
+  const testConcurrentEdits = async (
+    numClients: number,
+    ensureSync: boolean,
+    useTagTextDocumentChangePatch: boolean,
+  ) => {
+    const ensureSyncTimeoutMs = ensureSync ? 1_000 : 0
+    const handles = await mkHandles(numClients, ensureSyncTimeoutMs, useTagTextDocumentChangePatch)
+    await waitForInitialSync(handles.bindings, 1_000)
+    if (!ensureSync) {
+      // Ensure all documents are visible:
+      // only `TextEditor.edit`s are expected to converge without ensureSync.
+      for (let i = 0; i < handles.docs.length; i++) {
+        await vs.window.showTextDocument(handles.docs[i]!, { viewColumn: COLUMNS[i], preview: false })
+      }
+    }
+    await makeConcurrentEdits(handles)
+    if (ensureSync) {
+      // Wait for ensureSync
+      await delay(ensureSyncTimeoutMs + 1_000)
+    } else {
+      await waitForQuiescence(handles.bindings, 3_000)
+    }
+    assertEqualStates(handles)
+    await handles.dispose()
   }
 
   test('Concurrent edits settle on equal states', async function () {
     this.timeout(20_000)
-    const ensureSyncTimeoutMs = 1_000
-    const handles = await mkHandles(ensureSyncTimeoutMs)
-    await waitForInitialSync(handles.bindings, 1_000)
-    await makeConcurrentEdits(handles)
-    // Wait for ensureSync
-    await delay(ensureSyncTimeoutMs + 1_000)
-    assertEqualStates(handles)
-    await handles.dispose()
+    await testConcurrentEdits(2, true, true)
   })
 
   test('Concurrent edits settle on equal states (no ensureSync)', async function () {
     this.timeout(20_000)
-    const handles = await mkHandles(0)
-    await waitForInitialSync(handles.bindings, 1_000)
-    // Ensure both documents are visible:
-    // only `TextEditor.edit`s are expected to converge without ensureSync.
-    await vs.window.showTextDocument(handles.docs[0]!, { viewColumn: COLUMNS[0], preview: false })
-    await vs.window.showTextDocument(handles.docs[1]!, { viewColumn: COLUMNS[1], preview: false })
-    await makeConcurrentEdits(handles)
-    await waitForQuiescence(handles.bindings, 3_000)
-    assertEqualStates(handles)
-    await handles.dispose()
+    await testConcurrentEdits(2, false, true)
+  })
+
+  test('Concurrent edits settle on equal states (five clients)', async function () {
+    this.timeout(20_000)
+    await testConcurrentEdits(5, true, true)
+  })
+
+  // It would be acceptable for this to start failing, as we rely on the patch anyway.
+  test('Concurrent edits settle on equal states (no tag patch)', async function () {
+    this.timeout(20_000)
+    await testConcurrentEdits(2, true, false)
   })
 })

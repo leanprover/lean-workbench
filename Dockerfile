@@ -44,7 +44,7 @@ RUN JOBS=max npm_config_foreground_scripts=true npm install
 # so that we can patch both code-server and the vscode submodule.
 COPY code-server-patches/ /code-server-patches
 RUN for p in /code-server-patches/*.diff; do \
-      [ -e "$p" ] || continue; echo "Applying $p"; patch -p1 < "$p"; \
+      [ -e "$p" ] || continue; echo "Applying $p"; patch -p1 < "$p" || exit 1; \
     done
 
 # Build code-server (and not yet VS Code).
