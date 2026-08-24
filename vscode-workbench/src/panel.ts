@@ -24,7 +24,13 @@ const COMMAND_COLLAB_FOLLOW_CURSOR = 'leanprover-workbench.internal.collab.follo
 const COMMAND_COLLAB_UNFOLLOW_CURSOR = 'leanprover-workbench.collab.unfollowCursor'
 
 // Copied from vscode-lean4
-/** With `preserveFocus`, set the selection and scroll it into view, but leave the current panel focused. */
+/** 
+ * Ensures that a buffer is open to view `fsPath`.
+ *
+ * If `selection` is provided, sets the selection and scrolls it into view.
+ *
+ * Unless `preserveFocus` is truthy, the relevant buffer will also be switched into focus.
+ */
 async function revealEditorSelection(fsPath: string, selection?: vs.Selection, preserveFocus = false) {
   let editor = vs.window.visibleTextEditors.find(v => v.document.uri.fsPath === fsPath)
   if (editor === undefined) {
