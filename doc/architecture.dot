@@ -8,27 +8,31 @@ digraph Workbench {
     style = filled;
     color = transparent;
     peripheries = 0;
-    
+
     subgraph cluster_COMPUTER_A {
         label = "Computer A";
-        fillcolor = "#5790FC33";
+        fillcolor = "#dde9fe";
+
         C1 [label = "VSC Client\nUser A\nProject A/foo";];
         C2 [label = "VSC Client\nUser A\nProject B/bar";];
     }
-    
+
     subgraph cluster_COMPUTER_B {
         label = "Computer B";
-        fillcolor = "#5790FC33";
+        fillcolor = "#dde9fe";
+
         C3 [label = "VSC Client\nUser B\nProject B/bar";];
     }
-    
+
     subgraph cluster_LEGEND {
         label = "Legend";
         fillcolor = "#EEEEEE";
-        
-        LegendMachine [label = "Machine"; fillcolor = "#5790FC33"; color = transparent;];
-        LegendBubblewrap [label = "Bubblewrap"; fillcolor = "#E4253633"; color = transparent;];
-        
+
+        LegendContainer [label = "Container";fillcolor = "#edf4dd";color = transparent;];
+        LegendMachine [label = "Machine";fillcolor = "#dde9fe";color = transparent;];
+        LegendDiskStorage [label = "Disk Storage";fillcolor = "#fcd87d";color = transparent;];
+        LegendBubblewrap [label = "Bubblewrap";fillcolor = "#fad3d7";];
+
         subgraph cluster_LegendProcess {
             label = "Process";
             fillcolor = white;
@@ -37,87 +41,136 @@ digraph Workbench {
             LegendSubprocess [label = "Subprocess";];
         }
     }
-    
-    subgraph cluster_WORKBENCH {
-        label = "Workbench Server > Docker Container";
+
+    subgraph cluster_BOX1 {
+        label = "Server 1";
         fillcolor = "#5790FC33";
-        
-        
-        subgraph {
-            rank = same;
-            Nginx;
-            NextJS;
+
+        subgraph cluster_BOX1_MGR {
+            label = "Manager Container";
+            fillcolor = "#edf4dd";
+            subgraph {
+                rank = same;
+                Nginx;
+                NextJS;
+            }
+            Nginx [label = "Nginx\nlocalhost:3000";];
+            NextJS [label = "Next.js\nlocalhost:3002";];
+
+            Db [label = "Database";fillcolor = "#fcd87d";color = transparent;];
+            Templates1 [label = "Templates (authoritative)";fillcolor = "#fcd87d";color = transparent;];
+            Backups [label = "Project Backups";fillcolor = "#fcd87d";color = transparent;];
         }
-        Nginx [label = "Nginx\nlocalhost:3000";];
-        NextJS [label = "Next.js\nlocalhost:3002";];
-        
-        subgraph cluster_BW_VSC1 {
-            label = "Editor Session 1";
-            fillcolor = "#E4253633";
-            subgraph cluster_S1 {
-                label = "VSC Server\nUser A\nProject A/foo";
+
+        subgraph cluster_BOX1_SHARD {
+            label = "Shard Container";
+            fillcolor = "#edf4dd";
+
+            ProjDirA [label = "Project A";fillcolor = "#fcd87d";color = transparent;];
+            Templates1S [label = "Templates (shard)";fillcolor = "#fcd87d";color = transparent;];
+
+            subgraph cluster_BOX1_PM {
+                label = "Project Manager (express.js?)";
                 fillcolor = white;
                 color = "#333333";
                 peripheries = 1;
-                subgraph cluster_EH1 {
-                    label = "VSC Extension Host";
-                    LSP1 [label = "Lean LSP";];
+
+                subgraph cluster_BW_VSC1 {
+                    label = "Editor Session 1";
+                    fillcolor = "#fad3d7";
+
+                    subgraph cluster_S1 {
+                        label = "VSC Server\nUser A\nProject A/foo";
+                        fillcolor = white;
+                        color = "#333333";
+
+                        subgraph cluster_EH1 {
+                            label = "VSC Extension Host";
+                            LSP1 [label = "Lean LSP";];
+                        }
+                    }
+                }
+
+                subgraph cluster_BW_CSFoo {
+                    label = "";
+                    fillcolor = "#fad3d7";
+
+                    CollabFoo [label = "Collab Server\nProject A/foo";];
                 }
             }
-        }
-        
-        subgraph cluster_BW_VSC2 {
-            label = "Editor Session 2";
-            fillcolor = "#E4253633";
-            subgraph cluster_S2 {
-                label = "VSC Server\nUser A\nProject B/bar";
-                fillcolor = white;
-                color = "#333333";
-                peripheries = 1;
-                subgraph cluster_EH2 {
-                    label = "VSC Extension Host";
-                    LSP2 [label = "Lean LSP";];
-                }
-            }
-        }
-        
-        subgraph cluster_BW_VSC3 {
-            label = "Editor Session 3";
-            fillcolor = "#E4253633";
-            subgraph cluster_S3 {
-                label = "VSC Server\nUser B\nProject B/bar";
-                fillcolor = white;
-                color = "#333333";
-                peripheries = 1;
-                EH3 [label = "VSC Extension Host";];
-            }
-        }
-        
-        
-        subgraph cluster_BW_CSFoo {
-            label = "";
-            fillcolor = "#E4253633";
-            CollabFoo [label = "Collab Server\nProject A/foo";];
-        }
-        
-        subgraph cluster_BW_CSBar {
-            label = "";
-            fillcolor = "#E4253633";
-            CollabBar [label = "Collab Server\nProject B/bar";];
         }
     }
-    
-    C1 -> Nginx [label = "HTTP/WebSocket over inet";];
+
+    subgraph cluster_BOX2 {
+        label = "Server 2";
+        fillcolor = "#dde9fe";
+
+        subgraph cluster_BOX2_SHARD {
+            label = "Shard Container";
+            fillcolor = "#edf4dd";
+
+            ProjDirB [label = "Project B";fillcolor = "#fcd87d";color = transparent;];
+            Templates2S [label = "Templates (shard)";fillcolor = "#fcd87d";color = transparent;];
+
+            subgraph cluster_BOX2_PM {
+                label = "Project Manager (express.js?)";
+                fillcolor = white;
+                color = "#333333";
+                peripheries = 1;
+
+                subgraph cluster_BW_VSC2 {
+                    label = "Editor Session 2";
+                    fillcolor = "#fad3d7";
+
+                    subgraph cluster_S2 {
+                        label = "VSC Server\nUser A\nProject B/bar";
+                        fillcolor = white;
+                        color = "#333333";
+
+                        subgraph cluster_EH2 {
+                            label = "VSC Extension Host";
+                            LSP2 [label = "Lean LSP";];
+                        }
+                    }
+                }
+
+                subgraph cluster_BW_VSC3 {
+                    label = "Editor Session 3";
+                    fillcolor = "#fad3d7";
+
+                    subgraph cluster_S3 {
+                        label = "VSC Server\nUser B\nProject B/bar";
+                        fillcolor = white;
+                        color = "#333333";
+
+                        EH3 [label = "VSC Extension Host";];
+                    }
+                }
+
+                subgraph cluster_BW_CSBar {
+                    label = "";
+                    fillcolor = "#fad3d7";
+
+                    CollabBar [label = "Collab Server\nProject B/bar";];
+                }
+            }
+        }
+    }
+
+    C1 -> Nginx;
     C2 -> Nginx;
-    C3 -> Nginx;
-    
-    Nginx -> NextJS [label = "Other routes\nHTTP over local inet";];
-    
+    C3 -> Nginx [label = "HTTP/WebSocket over inet";];
+
+    Nginx -> NextJS [label = "Other routes\nHTTP over local inet\n(trusted)";];
+
     // Edges to clusters: point at an inner node, clip at the cluster with lhead
-    Nginx -> LSP1 [lhead = cluster_S1; label = "/_vs/* routes\nHTTP/WebSocket over UDS\n(VSC Servers don't open ports)";];
+    NextJS -> LSP1 [lhead = cluster_BOX1_PM; label = "API calls\nHTTP over inet\n(authenticated)"];
+    NextJS -> LSP2 [lhead = cluster_BOX2_PM;];
+
+    Nginx -> LSP1 [lhead = cluster_S1;];
     Nginx -> LSP2 [lhead = cluster_S2;];
-    Nginx -> EH3 [lhead = cluster_S3;];
-    
+    Nginx -> EH3 [lhead = cluster_S3; label = "/_vs/* routes\nHTTP/WebSocket over inet\n(authenticated)";];
+
     LSP1 -> CollabFoo [dir = both; ltail = cluster_EH1; label = "WebSocket over UDS";];
     LSP2 -> CollabBar [dir = both; ltail = cluster_EH2;];
     EH3 -> CollabBar [dir = both;];

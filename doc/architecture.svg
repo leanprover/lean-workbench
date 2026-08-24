@@ -1,244 +1,344 @@
 <?xml version="1.0" standalone="no"?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="773pt" height="599pt" viewBox="0.00 0.00 773.00 598.80">
-<g id="graph0" class="graph" transform="translate(4,594.7999877929688) scale(1)" data-name="Workbench">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1435pt" height="746pt" viewBox="0.00 0.00 1435.00 746.00">
+<g id="graph0" class="graph" transform="translate(4,742) scale(1)" data-name="Workbench">
 
-<polygon fill="white" stroke="none" points="-4,4 -4,-594.8 769,-594.8 769,4 -4,4" style=""/>
+<polygon fill="white" stroke="none" points="-4,4 -4,-742 1431,-742 1431,4 -4,4" style=""/>
 <g id="clust1" class="cluster" data-name="cluster_COMPUTER_A">
 
-<polygon fill="#5790fc" fill-opacity="0.200000" stroke="none" points="94,-462 94,-561.2 321,-561.2 321,-462 94,-462" style=""/>
-<text text-anchor="middle" x="207.5" y="-544.6" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Computer A</text>
+<polygon fill="#dde9fe" stroke="none" points="324,-609.2 324,-708.4 551,-708.4 551,-609.2 324,-609.2" style=""/>
+<text text-anchor="middle" x="437.5" y="-691.8" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Computer A</text>
 </g>
 <g id="clust2" class="cluster" data-name="cluster_COMPUTER_B">
 
-<polygon fill="#5790fc" fill-opacity="0.200000" stroke="none" points="329,-462 329,-561.2 441,-561.2 441,-462 329,-462" style=""/>
-<text text-anchor="middle" x="385" y="-544.6" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Computer B</text>
+<polygon fill="#dde9fe" stroke="none" points="559,-609.2 559,-708.4 671,-708.4 671,-609.2 559,-609.2" style=""/>
+<text text-anchor="middle" x="615" y="-691.8" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Computer B</text>
 </g>
 <g id="clust3" class="cluster" data-name="cluster_LEGEND">
 
-<polygon fill="#eeeeee" stroke="none" points="449,-465.2 449,-582.8 757,-582.8 757,-465.2 449,-465.2" style=""/>
-<text text-anchor="middle" x="603" y="-566.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Legend</text>
+<polygon fill="#eeeeee" stroke="none" points="790,-612.4 790,-730 1308,-730 1308,-612.4 790,-612.4" style=""/>
+<text text-anchor="middle" x="1049" y="-713.4" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Legend</text>
 </g>
 <g id="clust4" class="cluster" data-name="cluster_LegendProcess">
 
-<polygon fill="white" stroke="#333333" points="643,-473.2 643,-550 749,-550 749,-473.2 643,-473.2" style=""/>
-<text text-anchor="middle" x="696" y="-533.4" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Process</text>
+<polygon fill="white" stroke="#333333" points="1194,-620.4 1194,-697.2 1300,-697.2 1300,-620.4 1194,-620.4" style=""/>
+<text text-anchor="middle" x="1247" y="-680.6" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Process</text>
 </g>
-<g id="clust5" class="cluster" data-name="cluster_WORKBENCH">
+<g id="clust5" class="cluster" data-name="cluster_BOX1">
 
-<polygon fill="#5790fc" fill-opacity="0.200000" stroke="none" points="8,-8 8,-432 562,-432 562,-8 8,-8" style=""/>
-<text text-anchor="middle" x="285" y="-415.4" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Workbench Server &gt; Docker Container</text>
+<polygon fill="#5790fc" fill-opacity="0.200000" stroke="none" points="8,-8 8,-579.2 779,-579.2 779,-8 8,-8" style=""/>
+<text text-anchor="middle" x="393.5" y="-562.6" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Server 1</text>
 </g>
-<g id="clust7" class="cluster" data-name="cluster_BW_VSC1">
+<g id="clust6" class="cluster" data-name="cluster_BOX1_MGR">
 
-<polygon fill="#e42536" fill-opacity="0.200000" stroke="none" points="16,-103.6 16,-295.6 190,-295.6 190,-103.6 16,-103.6" style=""/>
-<text text-anchor="middle" x="103" y="-279" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Editor Session 1</text>
+<polygon fill="#edf4dd" stroke="none" points="16,-464 16,-546.4 771,-546.4 771,-464 16,-464" style=""/>
+<text text-anchor="middle" x="393.5" y="-529.8" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Manager Container</text>
 </g>
-<g id="clust8" class="cluster" data-name="cluster_S1">
+<g id="clust8" class="cluster" data-name="cluster_BOX1_SHARD">
 
-<polygon fill="white" stroke="#333333" points="24,-111.6 24,-262.8 182,-262.8 182,-111.6 24,-111.6" style=""/>
-<text text-anchor="middle" x="103" y="-246.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">VSC Server</text>
-<text text-anchor="middle" x="103" y="-229.4" font-family="Helvetica,sans-Serif" font-size="14.00" style="">User A</text>
-<text text-anchor="middle" x="103" y="-212.6" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Project A/foo</text>
+<polygon fill="#edf4dd" stroke="none" points="241,-16 241,-377.2 687,-377.2 687,-16 241,-16" style=""/>
+<text text-anchor="middle" x="464" y="-360.6" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Shard Container</text>
 </g>
-<g id="clust9" class="cluster" data-name="cluster_EH1">
+<g id="clust9" class="cluster" data-name="cluster_BOX1_PM">
 
-<polygon fill="white" stroke="#333333" points="32,-119.6 32,-196.4 174,-196.4 174,-119.6 32,-119.6" style=""/>
-<text text-anchor="middle" x="103" y="-179.8" font-family="Helvetica,sans-Serif" font-size="14.00" style="">VSC Extension Host</text>
+<polygon fill="white" stroke="#333333" points="477,-24 477,-344.4 679,-344.4 679,-24 477,-24" style=""/>
+<text text-anchor="middle" x="578" y="-327.8" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Project Manager (express.js?)</text>
 </g>
-<g id="clust10" class="cluster" data-name="cluster_BW_VSC2">
+<g id="clust10" class="cluster" data-name="cluster_BW_VSC1">
 
-<polygon fill="#e42536" fill-opacity="0.200000" stroke="none" points="198,-103.6 198,-295.6 372,-295.6 372,-103.6 198,-103.6" style=""/>
-<text text-anchor="middle" x="285" y="-279" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Editor Session 2</text>
+<polygon fill="#fad3d7" stroke="#333333" points="491,-119.6 491,-311.6 665,-311.6 665,-119.6 491,-119.6" style=""/>
+<text text-anchor="middle" x="578" y="-295" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Editor Session 1</text>
 </g>
-<g id="clust11" class="cluster" data-name="cluster_S2">
+<g id="clust11" class="cluster" data-name="cluster_S1">
 
-<polygon fill="white" stroke="#333333" points="206,-111.6 206,-262.8 364,-262.8 364,-111.6 206,-111.6" style=""/>
-<text text-anchor="middle" x="285" y="-246.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">VSC Server</text>
-<text text-anchor="middle" x="285" y="-229.4" font-family="Helvetica,sans-Serif" font-size="14.00" style="">User A</text>
-<text text-anchor="middle" x="285" y="-212.6" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Project B/bar</text>
+<polygon fill="white" stroke="#333333" points="499,-127.6 499,-278.8 657,-278.8 657,-127.6 499,-127.6" style=""/>
+<text text-anchor="middle" x="578" y="-262.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">VSC Server</text>
+<text text-anchor="middle" x="578" y="-245.4" font-family="Helvetica,sans-Serif" font-size="14.00" style="">User A</text>
+<text text-anchor="middle" x="578" y="-228.6" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Project A/foo</text>
 </g>
-<g id="clust12" class="cluster" data-name="cluster_EH2">
+<g id="clust12" class="cluster" data-name="cluster_EH1">
 
-<polygon fill="white" stroke="#333333" points="214,-119.6 214,-196.4 356,-196.4 356,-119.6 214,-119.6" style=""/>
-<text text-anchor="middle" x="285" y="-179.8" font-family="Helvetica,sans-Serif" font-size="14.00" style="">VSC Extension Host</text>
+<polygon fill="white" stroke="#333333" points="507,-135.6 507,-212.4 649,-212.4 649,-135.6 507,-135.6" style=""/>
+<text text-anchor="middle" x="578" y="-195.8" font-family="Helvetica,sans-Serif" font-size="14.00" style="">VSC Extension Host</text>
 </g>
-<g id="clust13" class="cluster" data-name="cluster_BW_VSC3">
+<g id="clust13" class="cluster" data-name="cluster_BW_CSFoo">
 
-<polygon fill="#e42536" fill-opacity="0.200000" stroke="none" points="380,-111.6 380,-262.8 554,-262.8 554,-111.6 380,-111.6" style=""/>
-<text text-anchor="middle" x="467" y="-246.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Editor Session 3</text>
+<polygon fill="#fad3d7" stroke="#333333" points="506,-32 506,-89.6 622,-89.6 622,-32 506,-32" style=""/>
 </g>
-<g id="clust14" class="cluster" data-name="cluster_S3">
+<g id="clust14" class="cluster" data-name="cluster_BOX2">
 
-<polygon fill="white" stroke="#333333" points="388,-119.6 388,-230 546,-230 546,-119.6 388,-119.6" style=""/>
-<text text-anchor="middle" x="467" y="-213.4" font-family="Helvetica,sans-Serif" font-size="14.00" style="">VSC Server</text>
-<text text-anchor="middle" x="467" y="-196.6" font-family="Helvetica,sans-Serif" font-size="14.00" style="">User B</text>
-<text text-anchor="middle" x="467" y="-179.8" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Project B/bar</text>
+<polygon fill="#dde9fe" stroke="none" points="787,-8 787,-410 1419,-410 1419,-8 787,-8" style=""/>
+<text text-anchor="middle" x="1103" y="-393.4" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Server 2</text>
 </g>
-<g id="clust15" class="cluster" data-name="cluster_BW_CSFoo">
+<g id="clust15" class="cluster" data-name="cluster_BOX2_SHARD">
 
-<polygon fill="#e42536" fill-opacity="0.200000" stroke="none" points="69,-16 69,-73.6 185,-73.6 185,-16 69,-16" style=""/>
+<polygon fill="#edf4dd" stroke="none" points="795,-16 795,-377.2 1411,-377.2 1411,-16 795,-16" style=""/>
+<text text-anchor="middle" x="1103" y="-360.6" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Shard Container</text>
 </g>
-<g id="clust16" class="cluster" data-name="cluster_BW_CSBar">
+<g id="clust16" class="cluster" data-name="cluster_BOX2_PM">
 
-<polygon fill="#e42536" fill-opacity="0.200000" stroke="none" points="327,-16 327,-73.6 443,-73.6 443,-16 327,-16" style=""/>
+<polygon fill="white" stroke="#333333" points="1031,-24 1031,-344.4 1403,-344.4 1403,-24 1031,-24" style=""/>
+<text text-anchor="middle" x="1217" y="-327.8" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Project Manager (express.js?)</text>
+</g>
+<g id="clust17" class="cluster" data-name="cluster_BW_VSC2">
+
+<polygon fill="#fad3d7" stroke="#333333" points="1221,-119.6 1221,-311.6 1395,-311.6 1395,-119.6 1221,-119.6" style=""/>
+<text text-anchor="middle" x="1308" y="-295" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Editor Session 2</text>
+</g>
+<g id="clust18" class="cluster" data-name="cluster_S2">
+
+<polygon fill="white" stroke="#333333" points="1229,-127.6 1229,-278.8 1387,-278.8 1387,-127.6 1229,-127.6" style=""/>
+<text text-anchor="middle" x="1308" y="-262.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">VSC Server</text>
+<text text-anchor="middle" x="1308" y="-245.4" font-family="Helvetica,sans-Serif" font-size="14.00" style="">User A</text>
+<text text-anchor="middle" x="1308" y="-228.6" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Project B/bar</text>
+</g>
+<g id="clust19" class="cluster" data-name="cluster_EH2">
+
+<polygon fill="white" stroke="#333333" points="1237,-135.6 1237,-212.4 1379,-212.4 1379,-135.6 1237,-135.6" style=""/>
+<text text-anchor="middle" x="1308" y="-195.8" font-family="Helvetica,sans-Serif" font-size="14.00" style="">VSC Extension Host</text>
+</g>
+<g id="clust20" class="cluster" data-name="cluster_BW_VSC3">
+
+<polygon fill="#fad3d7" stroke="#333333" points="1039,-127.6 1039,-278.8 1213,-278.8 1213,-127.6 1039,-127.6" style=""/>
+<text text-anchor="middle" x="1126" y="-262.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Editor Session 3</text>
+</g>
+<g id="clust21" class="cluster" data-name="cluster_S3">
+
+<polygon fill="white" stroke="#333333" points="1047,-135.6 1047,-246 1205,-246 1205,-135.6 1047,-135.6" style=""/>
+<text text-anchor="middle" x="1126" y="-229.4" font-family="Helvetica,sans-Serif" font-size="14.00" style="">VSC Server</text>
+<text text-anchor="middle" x="1126" y="-212.6" font-family="Helvetica,sans-Serif" font-size="14.00" style="">User B</text>
+<text text-anchor="middle" x="1126" y="-195.8" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Project B/bar</text>
+</g>
+<g id="clust22" class="cluster" data-name="cluster_BW_CSBar">
+
+<polygon fill="#fad3d7" stroke="#333333" points="1147,-32 1147,-89.6 1263,-89.6 1263,-32 1147,-32" style=""/>
 </g>
 <!-- C1 -->
 <g id="node1" class="node" pointer-events="visible" data-name="C1">
 
-<polygon fill="white" stroke="black" points="198.15,-528.6 101.85,-528.6 101.85,-469.8 198.15,-469.8 198.15,-528.6" style=""/>
-<text text-anchor="middle" x="150" y="-511.8" font-family="Helvetica,sans-Serif" font-size="14.00" style="">VSC Client</text>
-<text text-anchor="middle" x="150" y="-495" font-family="Helvetica,sans-Serif" font-size="14.00" style="">User A</text>
-<text text-anchor="middle" x="150" y="-478.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Project A/foo</text>
+<polygon fill="white" stroke="black" points="428.15,-675.8 331.85,-675.8 331.85,-617 428.15,-617 428.15,-675.8" style=""/>
+<text text-anchor="middle" x="380" y="-659" font-family="Helvetica,sans-Serif" font-size="14.00" style="">VSC Client</text>
+<text text-anchor="middle" x="380" y="-642.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">User A</text>
+<text text-anchor="middle" x="380" y="-625.4" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Project A/foo</text>
 </g>
 <!-- Nginx -->
-<g id="node7" class="node" pointer-events="visible" data-name="Nginx">
+<g id="node9" class="node" pointer-events="visible" data-name="Nginx">
 
-<polygon fill="white" stroke="black" points="339.29,-399 232.71,-399 232.71,-357.8 339.29,-357.8 339.29,-399" style=""/>
-<text text-anchor="middle" x="286" y="-382.6" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Nginx</text>
-<text text-anchor="middle" x="286" y="-365.8" font-family="Helvetica,sans-Serif" font-size="14.00" style="">localhost:3000</text>
+<polygon fill="white" stroke="black" points="548.29,-513.4 441.71,-513.4 441.71,-472.2 548.29,-472.2 548.29,-513.4" style=""/>
+<text text-anchor="middle" x="495" y="-497" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Nginx</text>
+<text text-anchor="middle" x="495" y="-480.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">localhost:3000</text>
 </g>
 <!-- C1&#45;&gt;Nginx -->
 <g id="edge1" class="edge" data-name="C1-&gt;Nginx">
 
-<path fill="none" stroke="black" d="M142.45,-469.43C141.42,-459.41 142.26,-448.55 147.85,-440 164.35,-414.74 193.98,-399.94 221.58,-391.31" style=""/>
-<polygon fill="black" stroke="black" points="222.33,-394.73 230.97,-388.6 220.39,-388 222.33,-394.73" style=""/>
-<text text-anchor="middle" x="208.58" y="-443" font-family="Helvetica,sans-Serif" font-size="10.00" style="">HTTP/WebSocket over inet</text>
+<path fill="none" stroke="black" d="M403.52,-616.63C412.82,-605.09 423.54,-591.61 433,-579.2 447.12,-560.69 462.49,-539.51 474.4,-522.88" style=""/>
+<polygon fill="black" stroke="black" points="477.14,-525.07 480.1,-514.9 471.44,-521.01 477.14,-525.07" style=""/>
 </g>
 <!-- C2 -->
 <g id="node2" class="node" pointer-events="visible" data-name="C2">
 
-<polygon fill="white" stroke="black" points="313.42,-528.6 216.58,-528.6 216.58,-469.8 313.42,-469.8 313.42,-528.6" style=""/>
-<text text-anchor="middle" x="265" y="-511.8" font-family="Helvetica,sans-Serif" font-size="14.00" style="">VSC Client</text>
-<text text-anchor="middle" x="265" y="-495" font-family="Helvetica,sans-Serif" font-size="14.00" style="">User A</text>
-<text text-anchor="middle" x="265" y="-478.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Project B/bar</text>
+<polygon fill="white" stroke="black" points="543.42,-675.8 446.58,-675.8 446.58,-617 543.42,-617 543.42,-675.8" style=""/>
+<text text-anchor="middle" x="495" y="-659" font-family="Helvetica,sans-Serif" font-size="14.00" style="">VSC Client</text>
+<text text-anchor="middle" x="495" y="-642.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">User A</text>
+<text text-anchor="middle" x="495" y="-625.4" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Project B/bar</text>
 </g>
 <!-- C2&#45;&gt;Nginx -->
 <g id="edge2" class="edge" data-name="C2-&gt;Nginx">
 
-<path fill="none" stroke="black" d="M270.08,-469.44C273.23,-451.64 277.27,-428.78 280.49,-410.56" style=""/>
-<polygon fill="black" stroke="black" points="283.92,-411.29 282.21,-400.83 277.02,-410.07 283.92,-411.29" style=""/>
+<path fill="none" stroke="black" d="M495,-616.53C495,-590.45 495,-552.16 495,-525.31" style=""/>
+<polygon fill="black" stroke="black" points="498.5,-525.37 495,-515.37 491.5,-525.37 498.5,-525.37" style=""/>
 </g>
 <!-- C3 -->
 <g id="node3" class="node" pointer-events="visible" data-name="C3">
 
-<polygon fill="white" stroke="black" points="433.42,-528.6 336.58,-528.6 336.58,-469.8 433.42,-469.8 433.42,-528.6" style=""/>
-<text text-anchor="middle" x="385" y="-511.8" font-family="Helvetica,sans-Serif" font-size="14.00" style="">VSC Client</text>
-<text text-anchor="middle" x="385" y="-495" font-family="Helvetica,sans-Serif" font-size="14.00" style="">User B</text>
-<text text-anchor="middle" x="385" y="-478.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Project B/bar</text>
+<polygon fill="white" stroke="black" points="663.42,-675.8 566.58,-675.8 566.58,-617 663.42,-617 663.42,-675.8" style=""/>
+<text text-anchor="middle" x="615" y="-659" font-family="Helvetica,sans-Serif" font-size="14.00" style="">VSC Client</text>
+<text text-anchor="middle" x="615" y="-642.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">User B</text>
+<text text-anchor="middle" x="615" y="-625.4" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Project B/bar</text>
 </g>
 <!-- C3&#45;&gt;Nginx -->
 <g id="edge3" class="edge" data-name="C3-&gt;Nginx">
 
-<path fill="none" stroke="black" d="M361.03,-469.44C345.49,-450.79 325.33,-426.6 309.82,-407.98" style=""/>
-<polygon fill="black" stroke="black" points="312.68,-405.95 303.59,-400.51 307.3,-410.43 312.68,-405.95" style=""/>
+<path fill="none" stroke="black" d="M592.15,-616.53C570.86,-589.63 539.28,-549.74 517.95,-522.8" style=""/>
+<polygon fill="black" stroke="black" points="520.76,-520.71 511.81,-515.04 515.28,-525.05 520.76,-520.71" style=""/>
+<text text-anchor="middle" x="636.58" y="-590.2" font-family="Helvetica,sans-Serif" font-size="10.00" style="">HTTP/WebSocket over inet</text>
+</g>
+<!-- LegendContainer -->
+<g id="node4" class="node" pointer-events="visible" data-name="LegendContainer">
+
+<polygon fill="#edf4dd" stroke="none" points="1184.2,-664.4 1107.8,-664.4 1107.8,-628.4 1184.2,-628.4 1184.2,-664.4" style=""/>
+<text text-anchor="middle" x="1146" y="-642.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Container</text>
 </g>
 <!-- LegendMachine -->
-<g id="node4" class="node" pointer-events="visible" data-name="LegendMachine">
+<g id="node5" class="node" pointer-events="visible" data-name="LegendMachine">
 
-<polygon fill="#5790fc" fill-opacity="0.200000" stroke="none" points="633.42,-517.2 564.58,-517.2 564.58,-481.2 633.42,-481.2 633.42,-517.2" style=""/>
-<text text-anchor="middle" x="599" y="-495" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Machine</text>
+<polygon fill="#dde9fe" stroke="none" points="1089.42,-664.4 1020.58,-664.4 1020.58,-628.4 1089.42,-628.4 1089.42,-664.4" style=""/>
+<text text-anchor="middle" x="1055" y="-642.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Machine</text>
+</g>
+<!-- LegendDiskStorage -->
+<g id="node6" class="node" pointer-events="visible" data-name="LegendDiskStorage">
+
+<polygon fill="#fcd87d" stroke="none" points="1002.14,-664.4 905.86,-664.4 905.86,-628.4 1002.14,-628.4 1002.14,-664.4" style=""/>
+<text text-anchor="middle" x="954" y="-642.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Disk Storage</text>
 </g>
 <!-- LegendBubblewrap -->
-<g id="node5" class="node" pointer-events="visible" data-name="LegendBubblewrap">
+<g id="node7" class="node" pointer-events="visible" data-name="LegendBubblewrap">
 
-<polygon fill="#e42536" fill-opacity="0.200000" stroke="none" points="546.94,-517.2 457.06,-517.2 457.06,-481.2 546.94,-481.2 546.94,-517.2" style=""/>
-<text text-anchor="middle" x="502" y="-495" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Bubblewrap</text>
+<polygon fill="#fad3d7" stroke="black" points="887.94,-664.4 798.06,-664.4 798.06,-628.4 887.94,-628.4 887.94,-664.4" style=""/>
+<text text-anchor="middle" x="843" y="-642.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Bubblewrap</text>
 </g>
 <!-- LegendSubprocess -->
-<g id="node6" class="node" pointer-events="visible" data-name="LegendSubprocess">
+<g id="node8" class="node" pointer-events="visible" data-name="LegendSubprocess">
 
-<polygon fill="white" stroke="black" points="740.93,-517.2 651.07,-517.2 651.07,-481.2 740.93,-481.2 740.93,-517.2" style=""/>
-<text text-anchor="middle" x="696" y="-495" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Subprocess</text>
+<polygon fill="white" stroke="black" points="1291.93,-664.4 1202.07,-664.4 1202.07,-628.4 1291.93,-628.4 1291.93,-664.4" style=""/>
+<text text-anchor="middle" x="1247" y="-642.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Subprocess</text>
 </g>
 <!-- NextJS -->
-<g id="node8" class="node" pointer-events="visible" data-name="NextJS">
+<g id="node10" class="node" pointer-events="visible" data-name="NextJS">
 
-<polygon fill="white" stroke="black" points="554.29,-399 447.71,-399 447.71,-357.8 554.29,-357.8 554.29,-399" style=""/>
-<text text-anchor="middle" x="501" y="-382.6" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Next.js</text>
-<text text-anchor="middle" x="501" y="-365.8" font-family="Helvetica,sans-Serif" font-size="14.00" style="">localhost:3002</text>
+<polygon fill="white" stroke="black" points="763.29,-513.4 656.71,-513.4 656.71,-472.2 763.29,-472.2 763.29,-513.4" style=""/>
+<text text-anchor="middle" x="710" y="-497" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Next.js</text>
+<text text-anchor="middle" x="710" y="-480.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">localhost:3002</text>
 </g>
 <!-- Nginx&#45;&gt;NextJS -->
 <g id="edge4" class="edge" data-name="Nginx-&gt;NextJS">
 
-<path fill="none" stroke="black" d="M339.7,-378.4C368.82,-378.4 405.03,-378.4 435.76,-378.4" style=""/>
-<polygon fill="black" stroke="black" points="435.73,-381.9 445.73,-378.4 435.73,-374.9 435.73,-381.9" style=""/>
-<text text-anchor="middle" x="393.5" y="-396.4" font-family="Helvetica,sans-Serif" font-size="10.00" style="">Other routes</text>
-<text text-anchor="middle" x="393.5" y="-384.4" font-family="Helvetica,sans-Serif" font-size="10.00" style="">HTTP over local inet</text>
+<path fill="none" stroke="black" d="M548.7,-492.8C577.82,-492.8 614.03,-492.8 644.76,-492.8" style=""/>
+<polygon fill="black" stroke="black" points="644.73,-496.3 654.73,-492.8 644.73,-489.3 644.73,-496.3" style=""/>
+<text text-anchor="middle" x="602.5" y="-522.8" font-family="Helvetica,sans-Serif" font-size="10.00" style="">Other routes</text>
+<text text-anchor="middle" x="602.5" y="-510.8" font-family="Helvetica,sans-Serif" font-size="10.00" style="">HTTP over local inet</text>
+<text text-anchor="middle" x="602.5" y="-498.8" font-family="Helvetica,sans-Serif" font-size="10.00" style="">(trusted)</text>
 </g>
 <!-- LSP1 -->
-<g id="node9" class="node" pointer-events="visible" data-name="LSP1">
+<g id="node16" class="node" pointer-events="visible" data-name="LSP1">
 
-<polygon fill="white" stroke="black" points="166,-163.6 88,-163.6 88,-127.6 166,-127.6 166,-163.6" style=""/>
-<text text-anchor="middle" x="127" y="-141.4" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Lean LSP</text>
+<polygon fill="white" stroke="black" points="603,-179.6 525,-179.6 525,-143.6 603,-143.6 603,-179.6" style=""/>
+<text text-anchor="middle" x="564" y="-157.4" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Lean LSP</text>
 </g>
 <!-- Nginx&#45;&gt;LSP1 -->
-<g id="edge5" class="edge" data-name="Nginx-&gt;LSP1">
+<g id="edge7" class="edge" data-name="Nginx-&gt;LSP1">
 
-<path fill="none" stroke="black" d="M232.58,-369.48C197.77,-363.16 156.78,-353.12 145.36,-339.6 129.82,-321.21 121.53,-298.03 117.66,-274.17" style=""/>
-<polygon fill="black" stroke="black" points="121.13,-273.75 116.34,-264.3 114.19,-274.67 121.13,-273.75" style=""/>
-<text text-anchor="middle" x="215.32" y="-330.6" font-family="Helvetica,sans-Serif" font-size="10.00" style="">/_vs/* routes</text>
-<text text-anchor="middle" x="215.32" y="-318.6" font-family="Helvetica,sans-Serif" font-size="10.00" style="">HTTP/WebSocket over UDS</text>
-<text text-anchor="middle" x="215.32" y="-306.6" font-family="Helvetica,sans-Serif" font-size="10.00" style="">(VSC Servers don't open ports)</text>
+<path fill="none" stroke="black" d="M502.18,-471.85C507.89,-455.42 515.76,-431.42 521,-410 530.45,-371.37 538.62,-328.87 545.23,-290.15" style=""/>
+<polygon fill="black" stroke="black" points="548.68,-290.73 546.89,-280.29 541.78,-289.57 548.68,-290.73" style=""/>
 </g>
 <!-- LSP2 -->
-<g id="node10" class="node" pointer-events="visible" data-name="LSP2">
+<g id="node20" class="node" pointer-events="visible" data-name="LSP2">
 
-<polygon fill="white" stroke="black" points="342,-163.6 264,-163.6 264,-127.6 342,-127.6 342,-163.6" style=""/>
-<text text-anchor="middle" x="303" y="-141.4" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Lean LSP</text>
+<polygon fill="white" stroke="black" points="1323,-179.6 1245,-179.6 1245,-143.6 1323,-143.6 1323,-179.6" style=""/>
+<text text-anchor="middle" x="1284" y="-157.4" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Lean LSP</text>
 </g>
 <!-- Nginx&#45;&gt;LSP2 -->
-<g id="edge6" class="edge" data-name="Nginx-&gt;LSP2">
+<g id="edge8" class="edge" data-name="Nginx-&gt;LSP2">
 
-<path fill="none" stroke="black" d="M287.48,-357.32C288.91,-337.84 291.22,-306.5 293.62,-273.89" style=""/>
-<polygon fill="black" stroke="black" points="297.09,-274.54 294.33,-264.31 290.1,-274.02 297.09,-274.54" style=""/>
+<path fill="none" stroke="black" d="M548.52,-479.91C577.75,-473.96 614.69,-467.33 648,-464 676.14,-461.19 1131.51,-466.25 1157,-454 1175.77,-444.98 1169.96,-429.97 1187,-418 1195.51,-412.02 1201.85,-417.55 1209,-410 1239.88,-377.39 1258.08,-332.48 1268.79,-289.86" style=""/>
+<polygon fill="black" stroke="black" points="1272.16,-290.81 1271.07,-280.27 1265.35,-289.19 1272.16,-290.81" style=""/>
 </g>
 <!-- EH3 -->
-<g id="node11" class="node" pointer-events="visible" data-name="EH3">
+<g id="node21" class="node" pointer-events="visible" data-name="EH3">
 
-<polygon fill="white" stroke="black" points="538.33,-163.6 395.67,-163.6 395.67,-127.6 538.33,-127.6 538.33,-163.6" style=""/>
-<text text-anchor="middle" x="467" y="-141.4" font-family="Helvetica,sans-Serif" font-size="14.00" style="">VSC Extension Host</text>
+<polygon fill="white" stroke="black" points="1197.33,-179.6 1054.67,-179.6 1054.67,-143.6 1197.33,-143.6 1197.33,-179.6" style=""/>
+<text text-anchor="middle" x="1126" y="-157.4" font-family="Helvetica,sans-Serif" font-size="14.00" style="">VSC Extension Host</text>
 </g>
 <!-- Nginx&#45;&gt;EH3 -->
-<g id="edge7" class="edge" data-name="Nginx-&gt;EH3">
+<g id="edge9" class="edge" data-name="Nginx-&gt;EH3">
 
-<path fill="none" stroke="black" d="M305.21,-357.45C320.54,-341.23 342.32,-317.51 360,-295.6 374.4,-277.76 389.16,-258.17 402.94,-239.23" style=""/>
-<polygon fill="black" stroke="black" points="405.71,-241.38 408.73,-231.22 400.04,-237.27 405.71,-241.38" style=""/>
+<path fill="none" stroke="black" d="M548.62,-480.81C577.89,-475.12 614.82,-468.46 648,-464 692.78,-457.98 1016.85,-439.58 1051,-410 1094.62,-372.22 1113.34,-310 1121.17,-257.4" style=""/>
+<polygon fill="black" stroke="black" points="1124.64,-257.88 1122.52,-247.5 1117.7,-256.93 1124.64,-257.88" style=""/>
+<text text-anchor="middle" x="1092.58" y="-445" font-family="Helvetica,sans-Serif" font-size="10.00" style="">/_vs/* routes</text>
+<text text-anchor="middle" x="1092.58" y="-433" font-family="Helvetica,sans-Serif" font-size="10.00" style="">HTTP/WebSocket over inet</text>
+<text text-anchor="middle" x="1092.58" y="-421" font-family="Helvetica,sans-Serif" font-size="10.00" style="">(authenticated)</text>
+</g>
+<!-- NextJS&#45;&gt;LSP1 -->
+<g id="edge5" class="edge" data-name="NextJS-&gt;LSP1">
+
+<path fill="none" stroke="black" d="M701.3,-472.19C690.39,-447.59 670.51,-402.75 649.19,-354.7" style=""/>
+<polygon fill="black" stroke="black" points="652.5,-353.51 645.24,-345.78 646.1,-356.34 652.5,-353.51" style=""/>
+<text text-anchor="middle" x="724.62" y="-445" font-family="Helvetica,sans-Serif" font-size="10.00" style="">API calls</text>
+<text text-anchor="middle" x="724.62" y="-433" font-family="Helvetica,sans-Serif" font-size="10.00" style="">HTTP over inet</text>
+<text text-anchor="middle" x="724.62" y="-421" font-family="Helvetica,sans-Serif" font-size="10.00" style="">(authenticated)</text>
+</g>
+<!-- NextJS&#45;&gt;LSP2 -->
+<g id="edge6" class="edge" data-name="NextJS-&gt;LSP2">
+
+<path fill="none" stroke="black" d="M763.55,-490.5C880.79,-487.23 1152.56,-477.22 1187,-454 1221.6,-430.68 1244.11,-394.39 1258.69,-355.23" style=""/>
+<polygon fill="black" stroke="black" points="1261.98,-356.42 1262,-345.83 1255.38,-354.1 1261.98,-356.42" style=""/>
+</g>
+<!-- Db -->
+<g id="node11" class="node" pointer-events="visible" data-name="Db">
+
+<polygon fill="#fcd87d" stroke="none" points="423.93,-510.8 348.07,-510.8 348.07,-474.8 423.93,-474.8 423.93,-510.8" style=""/>
+<text text-anchor="middle" x="386" y="-488.6" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Database</text>
+</g>
+<!-- Templates1 -->
+<g id="node12" class="node" pointer-events="visible" data-name="Templates1">
+
+<polygon fill="#fcd87d" stroke="none" points="330.34,-510.8 159.66,-510.8 159.66,-474.8 330.34,-474.8 330.34,-510.8" style=""/>
+<text text-anchor="middle" x="245" y="-488.6" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Templates (authoritative)</text>
+</g>
+<!-- Backups -->
+<g id="node13" class="node" pointer-events="visible" data-name="Backups">
+
+<polygon fill="#fcd87d" stroke="none" points="141.66,-510.8 24.34,-510.8 24.34,-474.8 141.66,-474.8 141.66,-510.8" style=""/>
+<text text-anchor="middle" x="83" y="-488.6" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Project Backups</text>
+</g>
+<!-- ProjDirA -->
+<g id="node14" class="node" pointer-events="visible" data-name="ProjDirA">
+
+<polygon fill="#fcd87d" stroke="none" points="469.3,-179.6 396.7,-179.6 396.7,-143.6 469.3,-143.6 469.3,-179.6" style=""/>
+<text text-anchor="middle" x="433" y="-157.4" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Project A</text>
+</g>
+<!-- Templates1S -->
+<g id="node15" class="node" pointer-events="visible" data-name="Templates1S">
+
+<polygon fill="#fcd87d" stroke="none" points="378.59,-179.6 249.41,-179.6 249.41,-143.6 378.59,-143.6 378.59,-179.6" style=""/>
+<text text-anchor="middle" x="314" y="-157.4" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Templates (shard)</text>
 </g>
 <!-- CollabFoo -->
-<g id="node12" class="node" pointer-events="visible" data-name="CollabFoo">
+<g id="node17" class="node" pointer-events="visible" data-name="CollabFoo">
 
-<polygon fill="white" stroke="black" points="177.31,-65.4 76.69,-65.4 76.69,-24.2 177.31,-24.2 177.31,-65.4" style=""/>
-<text text-anchor="middle" x="127" y="-49" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Collab Server</text>
-<text text-anchor="middle" x="127" y="-32.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Project A/foo</text>
+<polygon fill="white" stroke="black" points="614.31,-81.4 513.69,-81.4 513.69,-40.2 614.31,-40.2 614.31,-81.4" style=""/>
+<text text-anchor="middle" x="564" y="-65" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Collab Server</text>
+<text text-anchor="middle" x="564" y="-48.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Project A/foo</text>
 </g>
 <!-- LSP1&#45;&gt;CollabFoo -->
-<g id="edge8" class="edge" data-name="LSP1-&gt;CollabFoo">
+<g id="edge10" class="edge" data-name="LSP1-&gt;CollabFoo">
 
-<path fill="none" stroke="black" d="M127,-115.96C127,-103.8 127,-89.58 127,-77.14" style=""/>
-<polygon fill="black" stroke="black" points="123.5,-108.09 127,-118.09 130.5,-108.09 123.5,-108.09" style=""/>
-<polygon fill="black" stroke="black" points="130.5,-77.39 127,-67.39 123.5,-77.39 130.5,-77.39" style=""/>
-<text text-anchor="middle" x="175.63" y="-86.6" font-family="Helvetica,sans-Serif" font-size="10.00" style="">WebSocket over UDS</text>
+<path fill="none" stroke="black" d="M564,-131.96C564,-119.8 564,-105.58 564,-93.14" style=""/>
+<polygon fill="black" stroke="black" points="560.5,-124.09 564,-134.09 567.5,-124.09 560.5,-124.09" style=""/>
+<polygon fill="black" stroke="black" points="567.5,-93.39 564,-83.39 560.5,-93.39 567.5,-93.39" style=""/>
+<text text-anchor="middle" x="612.63" y="-102.6" font-family="Helvetica,sans-Serif" font-size="10.00" style="">WebSocket over UDS</text>
+</g>
+<!-- ProjDirB -->
+<g id="node18" class="node" pointer-events="visible" data-name="ProjDirB">
+
+<polygon fill="#fcd87d" stroke="none" points="1023.3,-179.6 950.7,-179.6 950.7,-143.6 1023.3,-143.6 1023.3,-179.6" style=""/>
+<text text-anchor="middle" x="987" y="-157.4" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Project B</text>
+</g>
+<!-- Templates2S -->
+<g id="node19" class="node" pointer-events="visible" data-name="Templates2S">
+
+<polygon fill="#fcd87d" stroke="none" points="932.59,-179.6 803.41,-179.6 803.41,-143.6 932.59,-143.6 932.59,-179.6" style=""/>
+<text text-anchor="middle" x="868" y="-157.4" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Templates (shard)</text>
 </g>
 <!-- CollabBar -->
-<g id="node13" class="node" pointer-events="visible" data-name="CollabBar">
+<g id="node22" class="node" pointer-events="visible" data-name="CollabBar">
 
-<polygon fill="white" stroke="black" points="435.31,-65.4 334.69,-65.4 334.69,-24.2 435.31,-24.2 435.31,-65.4" style=""/>
-<text text-anchor="middle" x="385" y="-49" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Collab Server</text>
-<text text-anchor="middle" x="385" y="-32.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Project B/bar</text>
+<polygon fill="white" stroke="black" points="1255.31,-81.4 1154.69,-81.4 1154.69,-40.2 1255.31,-40.2 1255.31,-81.4" style=""/>
+<text text-anchor="middle" x="1205" y="-65" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Collab Server</text>
+<text text-anchor="middle" x="1205" y="-48.2" font-family="Helvetica,sans-Serif" font-size="14.00" style="">Project B/bar</text>
 </g>
 <!-- LSP2&#45;&gt;CollabBar -->
-<g id="edge9" class="edge" data-name="LSP2-&gt;CollabBar">
+<g id="edge11" class="edge" data-name="LSP2-&gt;CollabBar">
 
-<path fill="none" stroke="black" d="M324.45,-118.75C335.7,-105.2 349.5,-88.57 361.09,-74.61" style=""/>
-<polygon fill="black" stroke="black" points="330.55,-110.01 324.51,-118.71 334.66,-115.67 330.55,-110.01" style=""/>
-<polygon fill="black" stroke="black" points="363.68,-76.97 367.37,-67.04 358.29,-72.5 363.68,-76.97" style=""/>
+<path fill="none" stroke="black" d="M1263.33,-134.75C1252.5,-121.2 1239.2,-104.57 1228.03,-90.61" style=""/>
+<polygon fill="black" stroke="black" points="1253.44,-130.29 1263.13,-134.57 1258.22,-125.18 1253.44,-130.29" style=""/>
+<polygon fill="black" stroke="black" points="1230.98,-88.68 1222,-83.06 1225.51,-93.05 1230.98,-88.68" style=""/>
 </g>
 <!-- EH3&#45;&gt;CollabBar -->
-<g id="edge10" class="edge" data-name="EH3-&gt;CollabBar">
+<g id="edge12" class="edge" data-name="EH3-&gt;CollabBar">
 
-<path fill="none" stroke="black" d="M445.55,-118.75C434.3,-105.2 420.5,-88.57 408.91,-74.61" style=""/>
-<polygon fill="black" stroke="black" points="442.67,-120.77 451.75,-126.23 448.06,-116.3 442.67,-120.77" style=""/>
-<polygon fill="black" stroke="black" points="411.71,-72.5 402.63,-67.04 406.32,-76.97 411.71,-72.5" style=""/>
+<path fill="none" stroke="black" d="M1146.67,-134.75C1157.5,-121.2 1170.8,-104.57 1181.97,-90.61" style=""/>
+<polygon fill="black" stroke="black" points="1144.22,-132.21 1140.71,-142.21 1149.68,-136.58 1144.22,-132.21" style=""/>
+<polygon fill="black" stroke="black" points="1184.49,-93.05 1188,-83.06 1179.02,-88.68 1184.49,-93.05" style=""/>
 </g>
 </g>
 </svg>
