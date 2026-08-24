@@ -1,6 +1,6 @@
 import { type WorkspaceMetadata } from '@leanprover/workbench-shared'
 import { minimatch } from 'minimatch'
-import type vs from 'vscode'
+import vs from 'vscode'
 
 /** Subset of {@link vs.LogOutputChannel} used for our purposes. */
 export type Logger = Pick<vs.LogOutputChannel, 'logLevel' | 'trace' | 'debug' | 'info' | 'warn' | 'error'>
@@ -74,7 +74,34 @@ export const AWARENESS_SELECTION_KEY = 'selection'
 /** Colors for remote collaborator cursors. */
 export const AWARENESS_CURSOR_COLORS = ['#5790FC', '#F89C20', '#E42536', '#964A8B', '#9C9CA1', '#7A21DD']
 
-export interface AwarenessSelection {
+export interface AwarenessSelections {
   filePath: string
   selections: Selection[]
+}
+
+// Copied (with changes) from vscode-lean4
+/**
+ * Ensures that a buffer is open to view `fsPath`.
+ *
+ * If `selection` is provided, sets the selection and scrolls it into view.
+ *
+ * Unless `preserveFocus` is truthy, the relevant buffer will also be switched into focus.
+ */
+export async function revealEditorSelection(fsPath: string, selection?: vs.Selection, preserveFocus = false) {
+  // Look for an already-visible text editor, preferring one that is also already in focus
+  const editors = vs.window.visibleTextEditors.filter(v => v.document.uri.fsPath === fsPath)
+  let editor = editors.find(v => v === vs.window.activeTextEditor) ?? editors[0]
+  if (editor === undefined) {
+    editor = await vs.window.showTextDocument(vs.Uri.file(fsPath), {
+      viewColumn: vs.window.activeTextEditor?.viewColumn ?? vs.ViewColumn.One,
+      preserveFocus,
+    })
+  }
+  if (selection !== undefined) {
+    editor.revealRange(selection, vs.TextEditorRevealType.InCenterIfOutsideViewport)
+    editor.selection = selection
+    if (preserveFocus) return
+    // ensure the text document has the keyboard focus.
+    await vs.window.showTextDocument(editor.document, { viewColumn: editor.viewColumn, preserveFocus: false })
+  }
 }

@@ -5,39 +5,34 @@ import { type Awareness } from 'y-protocols/awareness'
 import {
   AWARENESS_SELECTION_KEY,
   AWARENESS_USER_KEY,
-  type AwarenessSelection,
+  type AwarenessSelections,
   type AwarenessUser,
   equalAwarenessUsers,
   equalMaps,
   type Logger,
   logWithPrefix,
+  revealEditorSelection,
 } from './util'
 
 type PanelItem = { kind: 'onlineUsersRoot' } | { kind: 'onlineUser'; user: AwarenessUser }
+type AwarenessSelection = { filePath: string; selection?: vs.Selection }
 
-const COMMAND_GOTO_AWARENESS_USER = 'leanprover.workbench.internal.goToAwarenessUser'
-
-// Copied from vscode-lean4
-async function revealEditorSelection(fsPath: string, selection?: vs.Selection) {
-  let editor = vs.window.visibleTextEditors.find(v => v.document.uri.fsPath === fsPath)
-  if (editor === undefined) {
-    editor = await vs.window.showTextDocument(vs.Uri.file(fsPath), {
-      viewColumn: vs.window.activeTextEditor?.viewColumn ?? vs.ViewColumn.One,
-      preserveFocus: false,
-    })
-  }
-  if (selection !== undefined) {
-    editor.revealRange(selection, vs.TextEditorRevealType.InCenterIfOutsideViewport)
-    editor.selection = selection
-    // ensure the text document has the keyboard focus.
-    await vs.window.showTextDocument(editor.document, { viewColumn: editor.viewColumn, preserveFocus: false })
-  }
-}
+const CONTEXT_COLLAB_IS_FOLLOWING_CURSOR = 'leanprover-workbench.collab.isFollowingCursor'
+const COMMAND_COLLAB_GO_TO_CURSOR = 'leanprover-workbench.internal.collab.goToCursor'
+// These two appear in the tree item context menu (and 'unfollow' in the command palette),
+// so they must match `contributes.commands` in package.json.
+const COMMAND_COLLAB_FOLLOW_CURSOR = 'leanprover-workbench.internal.collab.followCursor'
+const COMMAND_COLLAB_UNFOLLOW_CURSOR = 'leanprover-workbench.collab.unfollowCursor'
 
 // https://code.visualstudio.com/api/extension-guides/tree-view
 export class WorkbenchPanelProvider implements vs.TreeDataProvider<PanelItem>, vs.Disposable {
   /** username ↦ client data */
   private onlineUsers = new Map<string, AwarenessUser>()
+
+  /** Username whose cursor we reveal whenever it moves,
+   * if a user is currently being followed; otherwise `undefined`. */
+  private followedUserName: string | undefined = undefined
+  private lastRevealedFollowedPosition: string | undefined = undefined
 
   private readonly onDidChangeTreeDataEmitter = new vs.EventEmitter<void>()
   readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event
@@ -57,32 +52,65 @@ export class WorkbenchPanelProvider implements vs.TreeDataProvider<PanelItem>, v
     awareness.on('change', onAwarenessChange)
     this.disposables.push(
       { dispose: () => awareness.off('change', onAwarenessChange) },
-      vs.commands.registerCommand(COMMAND_GOTO_AWARENESS_USER, async (userName: string) => {
-        let filePath: string | undefined = undefined
-        let sel: vs.Selection | undefined = undefined
-        // One user can have multiple active sessions.
-        // We arbitrarily choose the first remote session with a non-empty selection.
-        for (const [clientId, state] of awareness.getStates()) {
-          if (this.awareness.clientID === clientId) continue
-          const user = state[AWARENESS_USER_KEY] as AwarenessUser | undefined
-          if (!user || user.name !== userName) continue
-          const sels = state[AWARENESS_SELECTION_KEY] as AwarenessSelection | undefined
-          if (!sels) continue
-          filePath = sels.filePath
-          if (0 < sels.selections.length) {
-            const active = sels.selections[0]!.active
-            const pos = new vs.Position(active.line, active.character)
-            sel = new vs.Selection(pos, pos)
-            break
-          }
-        }
-        if (filePath) await revealEditorSelection(filePath, sel)
+      vs.commands.registerCommand(COMMAND_COLLAB_GO_TO_CURSOR, async (userName: string) => {
+        const cursor = this.findUserCursor(userName)
+        if (cursor) await revealEditorSelection(cursor.filePath, cursor.selection)
+      }),
+      vs.commands.registerCommand(COMMAND_COLLAB_FOLLOW_CURSOR, (item: PanelItem) => {
+        if (item.kind !== 'onlineUser') return
+        this.followedUserName = item.user.name
+        this.lastRevealedFollowedPosition = undefined
+        this.onDidChangeTreeDataEmitter.fire()
+        void this.revealFollowedCursor()
+        vs.commands.executeCommand('setContext', CONTEXT_COLLAB_IS_FOLLOWING_CURSOR, true)
+        this.log.debug(`followed user ${item.user.name}`)
+      }),
+      vs.commands.registerCommand(COMMAND_COLLAB_UNFOLLOW_CURSOR, () => {
+        this.followedUserName = undefined
+        this.onDidChangeTreeDataEmitter.fire()
+        vs.commands.executeCommand('setContext', CONTEXT_COLLAB_IS_FOLLOWING_CURSOR, false)
+        this.log.debug(`unfollowed user ${this.followedUserName}`)
       }),
     )
     this.onAwarenessChange()
   }
 
+  /** Find the current cursor position of `userName`.
+   * One user can have multiple active sessions (and client IDs).
+   * We choose the first remote session with a non-empty selection. */
+  private findUserCursor(userName: string): AwarenessSelection | undefined {
+    let cursor: AwarenessSelection | undefined
+    for (const [_, state] of this.awareness.getStates()) {
+      const user = state[AWARENESS_USER_KEY] as AwarenessUser | undefined
+      const sels = state[AWARENESS_SELECTION_KEY] as AwarenessSelections | undefined
+      if (!user || user.name !== userName || !sels) continue
+      cursor = { filePath: sels.filePath }
+      if (0 < sels.selections.length) {
+        const active = sels.selections[0]!.active
+        const pos = new vs.Position(active.line, active.character)
+        cursor.selection = new vs.Selection(pos, pos)
+        break
+      }
+    }
+    return cursor
+  }
+
+  /** When following a user who is online, reveal their cursor position
+   * unless that same position has already been revealed. */
+  private async revealFollowedCursor() {
+    if (this.followedUserName === undefined) return
+    const cursor = this.findUserCursor(this.followedUserName)
+    if (!cursor) return
+
+    const serialized = JSON.stringify([cursor.filePath, cursor.selection])
+    if (serialized === this.lastRevealedFollowedPosition) return
+    this.lastRevealedFollowedPosition = serialized
+
+    await revealEditorSelection(cursor.filePath, cursor.selection, /* preserveFocus */ true)
+  }
+
   onAwarenessChange() {
+    void this.revealFollowedCursor()
     const newUsers = new Map<string, AwarenessUser>()
     for (const [, state] of this.awareness.getStates()) {
       const user = state[AWARENESS_USER_KEY] as AwarenessUser | undefined
@@ -101,9 +129,15 @@ export class WorkbenchPanelProvider implements vs.TreeDataProvider<PanelItem>, v
       case 'onlineUsersRoot':
         return new vs.TreeItem('Online users', vs.TreeItemCollapsibleState.Expanded)
       case 'onlineUser': {
-        let displayName = item.user.name
-        if (item.user.name === this.mdata.viewer.name) displayName += ' (You)'
-        const ti = new vs.TreeItem(displayName, vs.TreeItemCollapsibleState.None)
+        const isSelf = item.user.name === this.mdata.viewer.name
+        const isFollowed = item.user.name === this.followedUserName
+        const ti = new vs.TreeItem(item.user.name, vs.TreeItemCollapsibleState.None)
+
+        let description: string | undefined
+        if (isSelf) description = 'You'
+        if (isFollowed) description = 'Following'
+        ti.description = description
+
         let iconUri: vs.Uri | undefined = undefined
         try {
           if (item.user.image) iconUri = vs.Uri.parse(item.user.image, true)
@@ -111,7 +145,13 @@ export class WorkbenchPanelProvider implements vs.TreeDataProvider<PanelItem>, v
           this.log.debug(`ignoring unparsable avatar URL for ${item.user.name}`)
         }
         ti.iconPath = iconUri ? iconUri : new vs.ThemeIcon('account')
-        ti.command = { command: COMMAND_GOTO_AWARENESS_USER, title: 'Jump to cursor', arguments: [item.user.name] }
+
+        if (!isSelf) {
+          ti.command = { command: COMMAND_COLLAB_GO_TO_CURSOR, title: 'Jump to Cursor', arguments: [item.user.name] }
+          // `viewItem` values in `contributes.menus.view/item/context` in package.json must match these.
+          ti.contextValue = isFollowed ? 'followedOnlineUser' : 'followableOnlineUser'
+        }
+
         return ti
       }
     }
