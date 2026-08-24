@@ -11,6 +11,7 @@ import {
   equalMaps,
   type Logger,
   logWithPrefix,
+  revealEditorSelection,
 } from './util'
 
 type PanelItem = { kind: 'onlineUsersRoot' } | { kind: 'onlineUser'; user: AwarenessUser }
@@ -22,31 +23,6 @@ const COMMAND_COLLAB_GO_TO_CURSOR = 'leanprover-workbench.internal.collab.goToCu
 // so they must match `contributes.commands` in package.json.
 const COMMAND_COLLAB_FOLLOW_CURSOR = 'leanprover-workbench.internal.collab.followCursor'
 const COMMAND_COLLAB_UNFOLLOW_CURSOR = 'leanprover-workbench.collab.unfollowCursor'
-
-// Copied from vscode-lean4
-/** 
- * Ensures that a buffer is open to view `fsPath`.
- *
- * If `selection` is provided, sets the selection and scrolls it into view.
- *
- * Unless `preserveFocus` is truthy, the relevant buffer will also be switched into focus.
- */
-async function revealEditorSelection(fsPath: string, selection?: vs.Selection, preserveFocus = false) {
-  let editor = vs.window.visibleTextEditors.find(v => v.document.uri.fsPath === fsPath)
-  if (editor === undefined) {
-    editor = await vs.window.showTextDocument(vs.Uri.file(fsPath), {
-      viewColumn: vs.window.activeTextEditor?.viewColumn ?? vs.ViewColumn.One,
-      preserveFocus,
-    })
-  }
-  if (selection !== undefined) {
-    editor.revealRange(selection, vs.TextEditorRevealType.InCenterIfOutsideViewport)
-    editor.selection = selection
-    if (preserveFocus) return
-    // ensure the text document has the keyboard focus.
-    await vs.window.showTextDocument(editor.document, { viewColumn: editor.viewColumn, preserveFocus: false })
-  }
-}
 
 // https://code.visualstudio.com/api/extension-guides/tree-view
 export class WorkbenchPanelProvider implements vs.TreeDataProvider<PanelItem>, vs.Disposable {
