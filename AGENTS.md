@@ -27,6 +27,17 @@ over manually storing response/error state with `useState`.
 - To call Server Functions on mount (e.g. to fetch data), use SWR.
 - RSCs must call `await io()` before accessing server state (`getConfig`, `getAuth`, etc),
   unless they have already used a request-time API (`cookies`, `params`, etc).
+- We've set Next.js [cacheComponents](https://nextjs.org/docs/app/api-reference/config/next-config-js/cacheComponents) to `true`
+  in order to *turn off* caching of SSR responses.
+  Without `cacheComponents`, caching is the opt-out default.
+  We are not currently using the opt-in caching (`"use cache"`).
+- [Non-instant navigations](https://nextjs.org/docs/app/guides/instant-navigation) (e.g. ones that read server state and thus `await io()`)
+  trigger the [uncached data insight](https://nextjs.org/docs/messages/blocking-prerender-dynamic) in Next.js.
+  This is expected - opt segments out with `export const instant = false`,
+  or add a `loading.tsx` page if it surfaces useful information (rather than just 'Loading..').
+  Never silence this insight by dropping `await io()`.
+  - Client-side navigations only re-render below the shared layout,
+    so a `Suspense` boundary in the layout does not make such navigations instant.
 
 # Error handling
 
