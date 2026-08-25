@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { zUserName } from '@leanprover/workbench-shared'
+import { adminEmail, devModePassword, zUserName } from '@leanprover/workbench-shared'
 import { betterAuth, type SocialProviders } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { hashPassword } from 'better-auth/crypto'
@@ -13,6 +13,25 @@ import { forbidden, unauthorized } from 'next/navigation'
 import { getConfig, hasGithubAuth, isDevMode, saveConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { provisionUserHome } from '@/lib/server/user'
+
+async function ensureAdminUserExists() {
+  const config = getConfig()
+
+  if (config.initAdminPassword) {
+    const adminAdded = await addEmailPasswordUser('admin', adminEmail, config.initAdminPassword, true)
+    if (adminAdded) {
+      console.log(`Created admin user with the config file's initAdminPassword`)
+      delete config.initAdminPassword
+      await saveConfig()
+    } else {
+      console.warn('The config still contains initAdminPassword, but the admin user exists')
+    }
+  } else if (isDevMode()) {
+    if (await addEmailPasswordUser('admin', adminEmail, devModePassword, true)) {
+      console.log('Created admin user with dev mode password')
+    }
+  }
+}
 
 async function createAuth() {
   const config = getConfig()
@@ -113,12 +132,7 @@ async function createAuth() {
  *
  * Relies on implementation details of better-auth.
  * Needed because better-auth exposes no authentication-free way to modify accounts. */
-export async function addEmailPasswordUser(
-  name: string,
-  email: string,
-  password: string,
-  isAdmin: boolean,
-): Promise<boolean> {
+export async function addEmailPasswordUser(name: string, email: string, password: string, isAdmin: boolean) {
   const db = getDb()
   const hashedPassword = await hashPassword(password)
   return db.$transaction(async tx => {
@@ -155,6 +169,7 @@ const g = globalThis as typeof globalThis & {
 
 /** (Re)initialize the authentication state. */
 export async function initAuth(): Promise<void> {
+  await ensureAdminUserExists()
   g.__auth = await createAuth()
 }
 

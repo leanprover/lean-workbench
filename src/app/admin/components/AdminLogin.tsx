@@ -1,50 +1,41 @@
 'use client'
 
-import { adminEmail } from '@leanprover/workbench-shared'
-import { useState } from 'react'
-import z from 'zod'
+import { adminEmail, MIN_ADMIN_PASSWORD_LENGTH } from '@leanprover/workbench-shared'
+import { useActionState } from 'react'
 
-import authClient from '@/lib/client/auth'
+import auth from '@/lib/client/auth'
+
+async function loginAction(_: string | null, formData: FormData) {
+  const password = String(formData.get('password') ?? '')
+  try {
+    await auth.signIn.email({ email: adminEmail, password })
+  } catch {
+    return 'Incorrect password'
+  }
+
+  window.location.reload()
+  return null
+}
 
 export default function AdminLogin() {
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState<null | string>(null)
-
-  async function login() {
-    try {
-      await authClient.signIn.email({ email: adminEmail, password })
-      window.location.reload()
-    } catch (e) {
-      if (z.object({ error: z.object({ code: z.literal('INVALID_EMAIL_OR_PASSWORD') }) }).safeParse(e).success) {
-        setError('Incorrect password')
-      } else {
-        const betterAuthMessage = z.object({ error: z.object({ message: z.string() }) }).safeParse(e)
-        setError(
-          betterAuthMessage.success ? betterAuthMessage.data.error.message : e instanceof Error ? e.message : String(e),
-        )
-      }
-    }
-  }
+  const [error, action, isPending] = useActionState(loginAction, null)
 
   return (
     <div>
       <h1>Workbench admin login</h1>
       <div style={{ display: 'grid', gap: 8 }}>
-        <form action={login} style={{ display: 'grid', gap: 4 }}>
+        <form action={action} style={{ display: 'grid', gap: 4 }}>
           <label htmlFor='password'>
             Password for admin user
             <input
               id='password'
               type='password'
-              onChange={e => {
-                setPassword(e.target.value)
-                setError(null)
-              }}
               required
               style={{ width: '100%', marginTop: 4 }}
-            ></input>
+              minLength={MIN_ADMIN_PASSWORD_LENGTH}
+            />
           </label>
-          <button type='submit' disabled={password.trim() === ''}>
+          <button type='submit' disabled={isPending}>
             Log in
           </button>
           {error && <p style={{ color: '#F00' }}>{error}</p>}

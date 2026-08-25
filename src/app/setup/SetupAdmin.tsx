@@ -1,18 +1,37 @@
 'use client'
 
-import { useState } from 'react'
+import { adminEmail, MIN_ADMIN_PASSWORD_LENGTH } from '@leanprover/workbench-shared'
+import { useActionState, useState } from 'react'
 
-import { useServerAction } from '@/lib/client/util'
+import auth from '@/lib/client/auth'
 
-import { initialLogin } from './actions'
+async function firstLoginAction(_: string | null, formData: FormData) {
+  const currentPassword = String(formData.get('currentPassword') ?? '')
+  const newPassword = String(formData.get('newPassword') ?? '')
+  try {
+    await auth.signIn.email({ email: adminEmail, password: currentPassword })
+  } catch (e) {
+    return 'Incorrect password'
+  }
 
-export default function CreateAdmin() {
+  try {
+    // Technically a write-after-read race condition (currentPassword could have changed!). It's fine.
+    await auth.changePassword({ currentPassword, newPassword, revokeOtherSessions: true })
+  } catch (e) {
+    await auth.signOut()
+    return 'New password is not valid'
+  }
+
+  window.location.reload()
+  return null
+}
+
+export default function SetupAdmin() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmNewPassword, setConfirmNewPassword] = useState('')
   const newPasswordsMatch =
     newPassword.trim() === '' || confirmNewPassword.trim() === '' || newPassword === confirmNewPassword
-
-  const [error, action, pending] = useServerAction(initialLogin, async () => window.location.reload())
+  const [error, action, isPending] = useActionState(firstLoginAction, null)
 
   return (
     <div>
@@ -24,10 +43,10 @@ export default function CreateAdmin() {
           installer and then set a new one.
         </p>
         <form action={action} style={{ display: 'grid', gap: 4 }}>
-          <label htmlFor='initAdminPassword'>Initial password</label>
+          <label htmlFor='currentPassword'>Initial password</label>
           <input
-            id='initAdminPassword'
-            name='initAdminPassword'
+            id='currentPassword'
+            name='currentPassword'
             autoComplete='off'
             type='password'
             required
@@ -35,33 +54,32 @@ export default function CreateAdmin() {
           />
           <label htmlFor='newAdminPassword'>New password</label>
           <input
-            id='newAdminPassword'
-            name='newAdminPassword'
+            id='newPassword'
+            name='newPassword'
             autoComplete='new-password'
             type='password'
-            minLength={8}
+            minLength={MIN_ADMIN_PASSWORD_LENGTH}
             value={newPassword}
-            onChange={e => {
-              setNewPassword(e.target.value)
-            }}
+            onChange={e => setNewPassword(e.target.value)}
             required
             style={{ width: '100%', marginTop: 4 }}
-          ></input>
+          />
           <label htmlFor='confirm-new-password'>Confirm new password</label>
           <input
             id='confirm-new-password'
             autoComplete='new-password'
             type='password'
-            minLength={8}
+            minLength={MIN_ADMIN_PASSWORD_LENGTH}
             value={confirmNewPassword}
-            onChange={e => {
-              setConfirmNewPassword(e.target.value)
-            }}
+            onChange={e => setConfirmNewPassword(e.target.value)}
             required
             style={{ width: '100%', marginTop: 4 }}
-          ></input>
+          />
           {!newPasswordsMatch && <p style={{ color: '#F00' }}>New passwords don&apos;t match</p>}
-          <button type='submit' disabled={pending || newPassword.trim() === '' || !newPasswordsMatch}>
+          <button
+            type='submit'
+            disabled={isPending || newPassword.trim() === '' || confirmNewPassword.trim() === '' || !newPasswordsMatch}
+          >
             Log in
           </button>
           {error && <p style={{ color: '#F00' }}>{error}</p>}

@@ -89,6 +89,9 @@ export const BWRAP_COLLAB_SOCK_PATH = `${BWRAP_COLLAB_SERVER_DIR}/${COLLAB_SOCKE
 /** Pseudo-email for the admin user */
 export const adminEmail = 'admin@admin.localhost'
 
+/** Minimum password length for admin user */
+export const MIN_ADMIN_PASSWORD_LENGTH = 8
+
 /** Pseudo-email for the dev user */
 export const devModeEmail = 'dev@dev.localhost'
 
