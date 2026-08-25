@@ -19,8 +19,14 @@ export const TEMPLATE_ID_RE = /^[a-zA-Z0-9_-]+$/
 
 export const zUserId = z.string().regex(UUID_V4_RE, 'Invalid user ID')
 export const zUserName = z.string().regex(ALPHANUM_NAME_RE, 'Invalid user name')
+export const zValidateUserName = z.string('User name required').trim().regex(ALPHANUM_NAME_RE, 'Invalid user name')
+
 export const zProjectId = z.string().regex(UUID_V4_RE, 'Invalid project ID')
 export const zProjectName = z.string().regex(ALPHANUM_NAME_RE, 'Invalid project name')
+export const zValidateProjectName = z
+  .string('Project name required')
+  .trim()
+  .regex(ALPHANUM_NAME_RE, 'Invalid project name')
 export const zTemplateId = z.string().regex(TEMPLATE_ID_RE, 'Invalid template ID')
 
 export const LEAN_VERSION_RE = /^v4\.\d+\.\d+(-rc\d+)?$/

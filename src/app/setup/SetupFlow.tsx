@@ -44,10 +44,7 @@ export default function SetupFlow({ baseUrl }: SetupFlowProps) {
   const { data: leanVersions } = useThrowingSWR('leanVersions', fetchLeanVersions)
   const logRef = useRef<HTMLDivElement>(null)
 
-  const [configError, saveConfigAction, savingConfig] = useServerAction(
-    (formData: FormData) => saveSetupConfig(formData),
-    () => setConfigSaved(true),
-  )
+  const [configError, saveConfigAction, savingConfig] = useServerAction(saveSetupConfig, () => setConfigSaved(true))
 
   // Sync with server state on mount (handles page reload during seeding).
   const { throwToBoundary } = useThrowToBoundary()

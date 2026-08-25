@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 import { useServerAction, useThrowingSWR } from '@/lib/client/util'
-import { formString } from '@/lib/util'
 
 import { createProject, listTemplates } from './actions'
 
@@ -15,17 +14,10 @@ export function NewProjectForm() {
 
   const [chosenTemplate, setChosenTemplate] = useState<string>('blank')
 
-  const [createError, createAction, createPending] = useServerAction(
-    async (formData: FormData) => {
-      const name = formString(formData, 'name').trim()
-      if (!name) return { error: 'Name is required' }
-      return createProject({ name, template: chosenTemplate })
-    },
-    () => {
-      setOpen(false)
-      router.refresh()
-    },
-  )
+  const [createError, createAction, createPending] = useServerAction(createProject, () => {
+    setOpen(false)
+    router.refresh()
+  })
 
   if (!open) {
     return (
@@ -39,6 +31,7 @@ export function NewProjectForm() {
 
   return (
     <form action={createAction} className='new-project' style={{ marginTop: 16 }}>
+      <input type='hidden' name='template' value={chosenTemplate} />
       <input
         name='name'
         type='text'

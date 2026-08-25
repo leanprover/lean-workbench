@@ -17,8 +17,8 @@ const zRegistrationMode = z.enum(['open', 'restricted'])
 export type RegistrationMode = z.infer<typeof zRegistrationMode>
 
 export const zGithubAuthConfig = z.object({
-  clientId: z.string().trim().min(1, 'Client ID is required'),
-  clientSecret: z.string().trim().min(1, 'Client secret is required'),
+  clientId: z.string('Client ID is required').trim().min(1, 'Client ID is required'),
+  clientSecret: z.string('Client secret is required').trim().min(1, 'Client secret is required'),
 })
 
 export type GithubAuthConfig = z.infer<typeof zGithubAuthConfig>

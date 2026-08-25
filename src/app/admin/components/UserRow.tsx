@@ -12,14 +12,8 @@ export function UserRow({ user, isSelf }: { user: User; isSelf: boolean }) {
   const router = useRouter()
   const [expanded, setExpanded] = useState(false)
 
-  const [toggleError, toggleAction, togglePending] = useServerAction(
-    () => toggleAdmin({ userId: user.id, isAdmin: !user.isAdmin }),
-    () => router.refresh(),
-  )
-  const [deleteError, deleteAction, deletePending] = useServerAction(
-    () => deleteUser({ userId: user.id }),
-    () => router.refresh(),
-  )
+  const [toggleError, toggleAction, togglePending] = useServerAction(toggleAdmin, () => router.refresh())
+  const [deleteError, deleteAction, deletePending] = useServerAction(deleteUser, () => router.refresh())
 
   const pending = togglePending || deletePending
   const error = toggleError ?? deleteError
@@ -29,12 +23,12 @@ export function UserRow({ user, isSelf }: { user: User; isSelf: boolean }) {
       ? `Remove admin privileges from ${user.name}?`
       : `Make ${user.name} an administrator? They will be able to manage all users and settings.`
     if (!confirm(msg)) return
-    startTransition(toggleAction)
+    startTransition(() => toggleAction({ userId: user.id, isAdmin: !user.isAdmin }))
   }
 
   function handleDelete() {
     if (!confirm(`Permanently delete ${user.name} and all their projects? This cannot be undone.`)) return
-    startTransition(deleteAction)
+    startTransition(() => deleteAction({ userId: user.id }))
   }
 
   return (

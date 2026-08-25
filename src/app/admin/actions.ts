@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { zProjectId, zUserId, zUserName } from '@leanprover/workbench-shared'
+import { zProjectId, zUserId, zUserName, zValidateUserName } from '@leanprover/workbench-shared'
 import { getDataDir, getWorkspacesDir } from '@leanprover/workbench-shared/node'
 import { forbidden } from 'next/navigation'
 import z from 'zod'
@@ -13,7 +13,7 @@ import { initAuth, requireAuth } from '@/lib/server/auth'
 import { getConfig, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
-import { serverAction } from '@/lib/server/util'
+import { serverAction, submitAction } from '@/lib/server/util'
 import { type ActionResponse } from '@/lib/util'
 
 export async function requireAdmin() {
@@ -88,7 +88,7 @@ const zUpdateOAuth = z.object({
 })
 
 // FIXME: dedup with saveSetupConfig action somehow?
-export const updateOAuthConfig = serverAction(zUpdateOAuth, async ({ clientId, clientSecret }) => {
+export const updateOAuthConfig = submitAction(zUpdateOAuth, async ({ clientId, clientSecret }) => {
   await requireAdmin()
   const config = getConfig()
 
@@ -205,9 +205,9 @@ export async function fetchDiskUsage(): Promise<ActionResponse<{ workspaces: str
 
 // --- Registration mode ---
 
-const zRegistrationMode = z.enum(['open', 'restricted'])
+const zRegistrationMode = z.object({ mode: z.enum(['open', 'restricted']) })
 
-export const setRegistrationMode = serverAction(zRegistrationMode, async mode => {
+export const setRegistrationMode = serverAction(zRegistrationMode, async ({ mode }) => {
   await requireAdmin()
   const config = getConfig()
   config.registrationMode = mode
@@ -219,10 +219,10 @@ export const setRegistrationMode = serverAction(zRegistrationMode, async mode =>
 // --- Allowed users ---
 
 const zAddAllowedUser = z.object({
-  userName: zUserName,
+  userName: zValidateUserName,
 })
 
-export const addAllowedUser = serverAction(zAddAllowedUser, async ({ userName }) => {
+export const addAllowedUser = submitAction(zAddAllowedUser, async ({ userName }) => {
   await requireAdmin()
   await getDb().allowedGithubUser.upsert({
     where: { githubUsername: userName },
