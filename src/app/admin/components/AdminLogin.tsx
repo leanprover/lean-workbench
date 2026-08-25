@@ -2,6 +2,7 @@
 
 import { adminEmail, MIN_ADMIN_PASSWORD_LENGTH } from '@leanprover/workbench-shared'
 import { useActionState } from 'react'
+import z from 'zod'
 
 import auth from '@/lib/client/auth'
 
@@ -9,8 +10,11 @@ async function loginAction(_: string | null, formData: FormData) {
   const password = String(formData.get('password') ?? '')
   try {
     await auth.signIn.email({ email: adminEmail, password })
-  } catch {
-    return 'Incorrect password'
+  } catch (e) {
+    if (z.object({ error: z.object({ code: z.literal('INVALID_EMAIL_OR_PASSWORD') }) }).safeParse(e).success) {
+      return 'Incorrect password'
+    }
+    throw e
   }
 
   window.location.reload()
@@ -29,6 +33,7 @@ export default function AdminLogin() {
             Password for admin user
             <input
               id='password'
+              name='password'
               type='password'
               required
               style={{ width: '100%', marginTop: 4 }}

@@ -19,7 +19,7 @@ async function firstLoginAction(_: string | null, formData: FormData) {
     await auth.changePassword({ currentPassword, newPassword, revokeOtherSessions: true })
   } catch (e) {
     await auth.signOut()
-    return 'New password is not valid'
+    throw e
   }
 
   window.location.reload()

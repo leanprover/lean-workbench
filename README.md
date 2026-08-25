@@ -174,8 +174,7 @@ It will then download the Docker container image
 and generate a `docker-compose.yml` file reflecting your network configuration.
 
 The installer will print an **initial administrator password**.
-Save it for Step 2.
-(You can also find it in `data/config.json` in the data directory.)
+**Save it for Step 2.**
 
 Finally, the installer will offer to start the container for you.
 You can either say "yes", or you can start it yourself:
