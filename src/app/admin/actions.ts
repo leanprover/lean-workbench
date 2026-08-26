@@ -261,6 +261,8 @@ const zEditTemplateMetadataRequest = z.object({
 export const editTemplateMetadata = submitAction(
   zEditTemplateMetadataRequest,
   async ({ id, name, description }): Promise<ActionResponse<TemplateMetadata>> => {
+    await requireAdmin()
+
     try {
       if (id === 'blank') throw new Error('cannot modify blank template')
       const config = await readTemplateMetadata(id)
