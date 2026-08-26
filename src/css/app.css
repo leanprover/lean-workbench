@@ -263,6 +263,25 @@ button.danger:hover {
 .login-link:hover {
   background: #1d4ed8;
 }
+form.num-button {
+  display: inline-block;
+}
+form.num-button .login-link {
+  margin-right: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border: 0px;
+}
+form.num-button input {
+  border-radius: 0.5rem;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  padding: 10px;
+  font-size: 14px;
+  border: 1px solid #386ee0;
+  width: 4rem;
+  outline: none;
+}
 .welcome {
   margin: 20px 0;
 }
