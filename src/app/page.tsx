@@ -68,7 +68,7 @@ export default function Root() {
                 <button className='login-link' type='submit'>
                   [DEV]
                 </button>
-                <input type='number' name='n' defaultValue={1} min={1} />
+                <input type='number' name='n' defaultValue={1} min={1} max={10000} required />
               </div>
             </form>
           )}

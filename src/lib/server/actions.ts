@@ -35,13 +35,11 @@ export const loginDevUser = submitAction(
   z.object({ n: z.int().gte(1) }),
   async ({ n }) => {
     if (!isDevMode()) forbidden()
-    console.log('A')
 
     const email = devModeEmail(n)
     await addEmailPasswordUser('dev' + n, email, devModePassword, false)
     const auth = await getAuth()
     await auth.api.signInEmail({ body: { email, password: devModePassword } })
-    console.log('z')
     return { ok: null }
   },
   { throwIfInvalid: true },
