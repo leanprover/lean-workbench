@@ -1,14 +1,42 @@
 import 'server-only'
 
 import fs from 'node:fs/promises'
+import path from 'node:path'
 
 import { parseWithZod } from '@conform-to/zod/v4'
-import type z from 'zod'
+import { getTemplatesDir } from '@leanprover/workbench-shared/node'
+import z from 'zod'
 
 import type { ActionResponse } from '@/lib/util'
 import type { Project } from '@/prisma/generated/client'
 
 import type { User } from './auth'
+
+export const zTemplateMetadata = z.object({
+  name: z.string(),
+  description: z.string().optional(),
+  packageSet: z.string().optional(),
+})
+
+export type TemplateMetadata = z.infer<typeof zTemplateMetadata>
+
+/**
+ * Read metadata for a specified template,
+ * raising an exception if the file is missing or un-parseable.
+ */
+export async function readTemplateMetadata(templateId: string): Promise<TemplateMetadata> {
+  const metaPath = path.join(getTemplatesDir(), templateId, 'metadata.json')
+  const raw = await fs.readFile(metaPath, 'utf-8')
+  return zTemplateMetadata.parse(JSON.parse(raw))
+}
+
+/**
+ * Store metadata for a specified template,
+ */
+export async function saveTemplateMetadata(templateId: string, config: TemplateMetadata) {
+  const metaPath = path.join(getTemplatesDir(), templateId, 'metadata.json')
+  await fs.writeFile(metaPath, JSON.stringify(/* Defensive re-validation */ zTemplateMetadata.parse(config)))
+}
 
 /** Wrap a server action so that its handler receives only schema-validated input.
  * The raw argument is parsed by {@link schema};
