@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { zProjectId, zUserId, zUserName, zValidateUserName } from '@leanprover/workbench-shared'
+import { zProjectId, zTemplateId, zUserId, zUserName, zValidateUserName } from '@leanprover/workbench-shared'
 import { getDataDir, getWorkspacesDir } from '@leanprover/workbench-shared/node'
 import { forbidden } from 'next/navigation'
 import z from 'zod'
@@ -13,7 +13,13 @@ import { initAuth, requireAuth } from '@/lib/server/auth'
 import { getConfig, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
-import { serverAction, submitAction } from '@/lib/server/util'
+import {
+  readTemplateMetadata,
+  saveTemplateMetadata,
+  serverAction,
+  submitAction,
+  type TemplateMetadata,
+} from '@/lib/server/util'
 import { type ActionResponse } from '@/lib/util'
 
 export async function requireAdmin() {
@@ -243,3 +249,33 @@ export const removeAllowedUser = serverAction(zRemoveAllowedUser, async ({ userN
   })
   return { ok: undefined }
 })
+
+// -- Templates
+
+const zEditTemplateMetadataRequest = z.object({
+  id: zTemplateId,
+  name: z.string().optional(),
+  description: z.string().optional(),
+})
+
+export const editTemplateMetadata = submitAction(
+  zEditTemplateMetadataRequest,
+  async ({ id, name, description }): Promise<ActionResponse<TemplateMetadata>> => {
+    await requireAdmin()
+
+    try {
+      if (id === 'blank') throw new Error('cannot modify blank template')
+      const config = await readTemplateMetadata(id)
+      if (name) config.name = name
+      if (!description) {
+        delete config.description
+      } else {
+        config.description = description
+      }
+      await saveTemplateMetadata(id, config)
+      return { ok: config }
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : String(e) }
+    }
+  },
+)

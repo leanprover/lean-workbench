@@ -11,27 +11,9 @@ import z from 'zod'
 
 import { requireAuth } from '@/lib/server/auth'
 import { getDb } from '@/lib/server/db'
-import { serverAction, submitAction } from '@/lib/server/util'
+import { readTemplateMetadata, serverAction, submitAction, type TemplateMetadata } from '@/lib/server/util'
 import { type ActionResponse } from '@/lib/util'
 import { type Project } from '@/prisma/generated/client'
-
-const zTemplateMetadata = z.object({
-  name: z.string(),
-  description: z.string().optional(),
-  packageSet: z.string().optional(),
-})
-
-type TemplateMetadata = z.infer<typeof zTemplateMetadata>
-
-/**
- * Read `metadata.json` from `templateDir`,
- * raising an exception if the file is missing or unparseable.
- */
-async function readTemplateMetadata(templateDir: string): Promise<TemplateMetadata> {
-  const metaPath = path.join(templateDir, 'metadata.json')
-  const raw = await fs.readFile(metaPath, 'utf-8')
-  return zTemplateMetadata.parse(JSON.parse(raw))
-}
 
 export interface ProjectInfo {
   id: string
@@ -59,7 +41,7 @@ export async function listTemplates(): Promise<TemplateInfo[]> {
     if (!entry.isDirectory()) continue
     let meta: TemplateMetadata
     try {
-      meta = await readTemplateMetadata(path.join(entry.parentPath, entry.name))
+      meta = await readTemplateMetadata(entry.name)
     } catch (err) {
       console.error(`Skipping template '${entry.name}' due to metadata error`, err)
       continue
@@ -91,8 +73,7 @@ export const createProject = submitAction(
 
     // Validate template exists
     if (template !== 'blank') {
-      const templateDir = path.join(getTemplatesDir(), template)
-      const meta = await readTemplateMetadata(templateDir)
+      const meta = await readTemplateMetadata(template)
       if (meta.packageSet) {
         const packagesFile = path.join(getPackageSetsDir(), meta.packageSet, 'packages.txt')
         if (!(await existsAsync(packagesFile))) {
@@ -119,7 +100,7 @@ export const createProject = submitAction(
       await fs.cp(templateDir, workspace, { recursive: true })
       await fs.rm(path.join(workspace, 'metadata.json'), { force: true })
 
-      const meta = await readTemplateMetadata(templateDir)
+      const meta = await readTemplateMetadata(template)
       packageSet = meta.packageSet
     }
 
