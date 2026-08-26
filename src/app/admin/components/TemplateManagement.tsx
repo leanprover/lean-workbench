@@ -60,7 +60,7 @@ function TemplateRow(props: TemplateInfo) {
           hidden={!showForm}
           disabled={editPending}
           type='text'
-          id={`templateName-{id}`}
+          id={`templateName-${id}`}
           name='name'
           placeholder={name}
         />
@@ -73,7 +73,7 @@ function TemplateRow(props: TemplateInfo) {
           hidden={!showForm}
           disabled={editPending}
           type='text'
-          id={`templateDesc-{id}`}
+          id={`templateDesc-${id}`}
           name='description'
           defaultValue={description}
           min={1}
