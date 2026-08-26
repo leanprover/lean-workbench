@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 
 import AvatarIcon from '@/app/components/AvatarIcon'
 import authClient from '@/lib/client/auth'
@@ -14,8 +14,7 @@ export default function AvatarMenu() {
   const cfg = useConfigCtx()
   const router = useRouter()
   const { throwToBoundary } = useThrowToBoundary()
-
-  if (!cfg.isSetupComplete) return null
+  const isInSetup = usePathname().startsWith('/setup')
 
   if (session.data) {
     const user = session.data.user
@@ -24,36 +23,38 @@ export default function AvatarMenu() {
         {user.isAdmin && <span className='admin-badge'>admin</span>}
         <div className='avatar-menu'>
           <AvatarIcon user={user} />
-          <div className='avatar-dropdown'>
-            <div className='avatar-dropdown-user'>{user.name}</div>
-            {user.isAdmin && <Link href='/admin'>Admin interface</Link>}
-            {cfg.isDevMode && (
+          {!isInSetup && (
+            <div className='avatar-dropdown'>
+              <div className='avatar-dropdown-user'>{user.name}</div>
+              {user.isAdmin && <Link href='/admin'>Admin interface</Link>}
+              {cfg.isDevMode && (
+                <button
+                  onClick={() => {
+                    setIsAdmin(!user.isAdmin)
+                      .then(() => session.refetch())
+                      .catch(throwToBoundary)
+                  }}
+                >
+                  {user.isAdmin ? '[DEV] Become non-admin' : '[DEV] Become admin'}
+                </button>
+              )}
               <button
                 onClick={() => {
-                  setIsAdmin(!user.isAdmin)
-                    .then(() => session.refetch())
+                  authClient
+                    .signOut({
+                      fetchOptions: {
+                        onSuccess: () => {
+                          router.push('/')
+                        },
+                      },
+                    })
                     .catch(throwToBoundary)
                 }}
               >
-                {user.isAdmin ? '[DEV] Become non-admin' : '[DEV] Become admin'}
+                Sign out
               </button>
-            )}
-            <button
-              onClick={() => {
-                authClient
-                  .signOut({
-                    fetchOptions: {
-                      onSuccess: () => {
-                        router.push('/')
-                      },
-                    },
-                  })
-                  .catch(throwToBoundary)
-              }}
-            >
-              Sign out
-            </button>
-          </div>
+            </div>
+          )}
         </div>
       </>
     )
