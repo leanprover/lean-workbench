@@ -1,5 +1,5 @@
-import { listTemplates } from '@/app/[userName]/actions'
 import { requireAdmin } from '@/lib/server/auth'
+import { listTemplates } from '@/lib/server/util'
 
 import { AccessControl } from './components/AccessControl'
 import { HealthMonitor } from './components/HealthMonitor'
@@ -11,7 +11,7 @@ import { UserManagement } from './components/UserManagement'
 export const instant = false
 export default async function AdminPage() {
   await requireAdmin()
-  const templates = await listTemplates()
+  const templates = listTemplates()
 
   return (
     <div className='admin-page'>

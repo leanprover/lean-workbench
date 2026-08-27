@@ -196,3 +196,34 @@ export function sseStreamResponse(onCancel?: () => void): [Response, (msg: objec
 
   return [response, send, close]
 }
+
+export interface TemplateInfo {
+  id: string
+  name: string
+  description: string
+}
+
+export async function listTemplates(): Promise<TemplateInfo[]> {
+  const templatesDir = getTemplatesDir()
+
+  const result: TemplateInfo[] = [{ id: 'blank', name: 'Blank', description: 'Empty workspace' }]
+  const entries = await fs.readdir(templatesDir, { withFileTypes: true })
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue
+    let meta: TemplateMetadata
+    try {
+      meta = await readTemplateMetadata(entry.name)
+    } catch (err) {
+      console.error(`Skipping template '${entry.name}' due to metadata error`, err)
+      continue
+    }
+    result.push({
+      id: entry.name,
+      name: meta.name,
+      description: meta.description ?? '',
+    })
+  }
+
+  return result
+}

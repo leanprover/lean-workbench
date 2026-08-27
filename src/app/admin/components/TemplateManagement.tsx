@@ -1,25 +1,34 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, use, useState } from 'react'
 
-import { type TemplateInfo } from '@/app/[userName]/actions'
 import { editTemplateMetadata } from '@/app/admin/actions'
 import { useServerAction } from '@/lib/client/util'
+import { type TemplateInfo } from '@/lib/server/util'
 
 interface TemplateManagementProps {
-  templates: TemplateInfo[]
+  templates: Promise<TemplateInfo[]>
 }
 
-export function TemplateManagement({ templates }: TemplateManagementProps) {
+export function TemplateManagement(props: TemplateManagementProps) {
   return (
     <section>
       <h2>Project Templates</h2>
-      <ul className='project-list'>
-        {templates.map(template => (
-          <TemplateRow key={template.id} {...template} />
-        ))}
-      </ul>
+      <Suspense fallback='Loading...'>
+        <TemplateManagementList {...props} />
+      </Suspense>
     </section>
+  )
+}
+
+function TemplateManagementList(props: TemplateManagementProps) {
+  const templates = use(props.templates)
+  return (
+    <ul className='project-list'>
+      {templates.map(template => (
+        <TemplateRow key={template.id} {...template} />
+      ))}
+    </ul>
   )
 }
 
