@@ -1,7 +1,7 @@
 import 'client-only'
 
 import { useActionState, useState } from 'react'
-import useSWR, { type Key, type SWRConfiguration } from 'swr'
+import useSWR, { type Key, type SWRConfiguration, type SWRResponse } from 'swr'
 
 import { type ActionResponse, unknownAsError } from '@/lib/util'
 
@@ -35,6 +35,18 @@ export function useThrowToBoundary(): { throwToBoundary: (error: unknown) => voi
   }
   return { throwToBoundary: setError }
 }
+
+export function useThrowingSWR<T>(
+  key: Key,
+  fetcher: () => Promise<T>,
+  config: SWRConfiguration<T, unknown> & { fallbackData: T | Promise<T> },
+): SWRResponse<T, unknown> & { data: T }
+
+export function useThrowingSWR<T>(
+  key: Key,
+  fetcher: () => Promise<T>,
+  config?: SWRConfiguration<T, unknown>,
+): SWRResponse<T, unknown>
 
 /**
  * Wraps useSWR hook to ensure that any error thrown in the handler will be thrown
