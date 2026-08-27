@@ -1,20 +1,19 @@
 import { io } from 'next/cache'
 
-import { requireAdmin } from '@/app/admin/actions'
+import { requireAdmin } from '@/lib/server/auth'
 import { getDb } from '@/lib/server/db'
 
 import { UserRow } from './UserRow'
 
 export async function UserManagement() {
   await io()
+  const session = await requireAdmin()
+
   const db = getDb()
-  const [users, session] = await Promise.all([
-    db.user.findMany({
-      select: { id: true, name: true, isAdmin: true },
-      orderBy: { createdAt: 'asc' },
-    }),
-    requireAdmin(),
-  ])
+  const users = await db.user.findMany({
+    select: { id: true, name: true, isAdmin: true },
+    orderBy: { createdAt: 'asc' },
+  })
   return (
     <section>
       <h2>Registered users</h2>

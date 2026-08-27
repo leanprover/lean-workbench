@@ -1,7 +1,6 @@
 'use server'
 
-import { requireAdmin } from '@/app/admin/actions'
-import { initAuth } from '@/lib/server/auth'
+import { initAuth, requireAdmin } from '@/lib/server/auth'
 import { getConfig, hasGithubAuth, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
 import { getSeedState, startSeed as doStartSeed } from '@/lib/server/seed'
 import { submitAction } from '@/lib/server/util'

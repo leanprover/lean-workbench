@@ -1,4 +1,4 @@
-import { requireAdmin } from '@/app/admin/actions'
+import { requireAdmin } from '@/lib/server/auth'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
 
 import { SessionRow } from './SessionRow'
