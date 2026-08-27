@@ -8,7 +8,7 @@ import { nextCookies } from 'better-auth/next-js'
 import crypto, { randomUUID } from 'crypto'
 import { io } from 'next/cache'
 import { headers } from 'next/headers'
-import { unauthorized } from 'next/navigation'
+import { forbidden, unauthorized } from 'next/navigation'
 
 import { getConfig, hasGithubAuth, isDevMode, saveConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
@@ -201,5 +201,12 @@ export async function requireAuth(): Promise<SessionAndUser> {
   const auth = await getAuth()
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) unauthorized()
+  return session
+}
+
+/** Require an admin user. Throws `unauthorized()` if not logged in, `forbidden()` if not auth. */
+export async function requireAdmin() {
+  const session = await requireAuth()
+  if (!session.user.isAdmin) forbidden()
   return session
 }

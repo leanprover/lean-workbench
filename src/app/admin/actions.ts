@@ -6,10 +6,9 @@ import path from 'node:path'
 
 import { zProjectId, zTemplateId, zUserId, zUserName, zValidateUserName } from '@leanprover/workbench-shared'
 import { getDataDir, getWorkspacesDir } from '@leanprover/workbench-shared/node'
-import { forbidden } from 'next/navigation'
 import z from 'zod'
 
-import { initAuth, requireAuth } from '@/lib/server/auth'
+import { initAuth, requireAdmin } from '@/lib/server/auth'
 import { getConfig, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
@@ -21,12 +20,6 @@ import {
   type TemplateMetadata,
 } from '@/lib/server/util'
 import { type ActionResponse } from '@/lib/util'
-
-export async function requireAdmin() {
-  const session = await requireAuth()
-  if (!session.user.isAdmin) forbidden()
-  return session
-}
 
 // --- User management ---
 

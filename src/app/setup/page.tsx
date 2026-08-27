@@ -1,6 +1,6 @@
 import { headers } from 'next/headers'
 
-import { requireAdmin } from '@/app/admin/actions'
+import { requireAdmin } from '@/lib/server/auth'
 import { getConfig, isDevMode } from '@/lib/server/config'
 
 import SetupFlow from './SetupFlow'

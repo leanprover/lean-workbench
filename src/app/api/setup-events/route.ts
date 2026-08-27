@@ -1,4 +1,4 @@
-import { requireAdmin } from '@/app/admin/actions'
+import { requireAdmin } from '@/lib/server/auth'
 import { getSeedState } from '@/lib/server/seed'
 import { sseStreamResponse } from '@/lib/server/util'
 

@@ -1,6 +1,6 @@
 import { listTemplates } from '@/app/[userName]/actions'
+import { requireAdmin } from '@/lib/server/auth'
 
-import { requireAdmin } from './actions'
 import { AccessControl } from './components/AccessControl'
 import { HealthMonitor } from './components/HealthMonitor'
 import { OAuthConfig } from './components/OAuthConfig'
