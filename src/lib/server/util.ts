@@ -61,6 +61,7 @@ export function serverAction<S extends z.ZodType, T = void>(
 export function submitAction<S extends z.ZodType, T = void>(
   schema: S,
   handler: (input: z.infer<S>) => Promise<ActionResponse<T>>,
+  options: { throwIfInvalid?: boolean } = {},
 ): (formData: FormData) => Promise<ActionResponse<T>> {
   return async formData => {
     const submission = parseWithZod(formData, {
@@ -68,7 +69,9 @@ export function submitAction<S extends z.ZodType, T = void>(
       formatError: (issues: z.core.$ZodIssue[]) => issues[0]!.message,
     })
     if (submission.status !== 'success') {
-      return { error: Object.values(submission.error ?? {})[0] ?? `Error validating form submission` }
+      const msg = Object.values(submission.error ?? {})[0] ?? `Error validating form submission`
+      if (options.throwIfInvalid) throw new Error(msg)
+      return { error: msg }
     }
     return handler(submission.value)
   }

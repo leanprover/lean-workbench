@@ -8,11 +8,13 @@
 
 import { devModeEmail, devModePassword } from '@leanprover/workbench-shared'
 import { forbidden } from 'next/navigation'
+import z from 'zod'
 
-import { addEmailPasswordUser, requireAuth } from '@/lib/server/auth'
+import { addEmailPasswordUser, getAuth, requireAuth } from '@/lib/server/auth'
 import { getDb } from '@/lib/server/db'
 
 import { isDevMode } from './config'
+import { submitAction } from './util'
 
 /** Set `isAdmin` on the requesting user. Dev mode only. */
 export async function setIsAdmin(isAdmin: boolean) {
@@ -29,10 +31,16 @@ export async function setIsAdmin(isAdmin: boolean) {
   })
 }
 
-export async function ensureDevUser() {
-  if (!isDevMode()) {
-    forbidden()
-  }
+export const loginDevUser = submitAction(
+  z.object({ n: z.int().gte(1) }),
+  async ({ n }) => {
+    if (!isDevMode()) forbidden()
 
-  await addEmailPasswordUser('dev', devModeEmail, devModePassword, false)
-}
+    const email = devModeEmail(n)
+    await addEmailPasswordUser('dev' + n, email, devModePassword, false)
+    const auth = await getAuth()
+    await auth.api.signInEmail({ body: { email, password: devModePassword } })
+    return { ok: null }
+  },
+  { throwIfInvalid: true },
+)

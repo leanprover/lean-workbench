@@ -92,8 +92,8 @@ export const adminEmail = 'admin@admin.localhost'
 /** Minimum password length for admin user */
 export const MIN_ADMIN_PASSWORD_LENGTH = 8
 
-/** Pseudo-email for the dev user */
-export const devModeEmail = 'dev@dev.localhost'
+/** Pseudo-email for dev user number `n`. */
+export const devModeEmail = (n: number) => `dev${String(n)}@dev.localhost`
 
 /**
  * Dev password, used both as the password for the dev user,

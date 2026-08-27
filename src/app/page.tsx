@@ -1,14 +1,13 @@
 'use client'
 
-import { devModeEmail, devModePassword } from '@leanprover/workbench-shared'
 import { type Route } from 'next'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
 import authClient from '@/lib/client/auth'
-import { useThrowToBoundary } from '@/lib/client/util'
+import { useServerAction, useThrowToBoundary } from '@/lib/client/util'
 import { type Config, useConfigCtx } from '@/lib/contexts'
-import { ensureDevUser } from '@/lib/server/actions'
+import { loginDevUser } from '@/lib/server/actions'
 
 import ErrorBox from './components/ErrorBox'
 
@@ -35,6 +34,7 @@ export default function Root() {
   const session = authClient.useSession()
   const error = useSearchParams().get('error')
   const { throwToBoundary } = useThrowToBoundary()
+  const [_, devLoginAction] = useServerAction(loginDevUser, () => session.refetch())
 
   return (
     <>
@@ -63,19 +63,14 @@ export default function Root() {
             GitHub
           </button>
           {cfg.isDevMode && (
-            <button
-              className='login-link'
-              onClick={async () => {
-                try {
-                  await ensureDevUser()
-                  await authClient.signIn.email({ email: devModeEmail, password: devModePassword })
-                } catch (e) {
-                  throwToBoundary(e)
-                }
-              }}
-            >
-              [DEV]
-            </button>
+            <form action={devLoginAction} className='num-button'>
+              <div style={{ display: 'grid', gridTemplateColumns: 'auto min-content' }}>
+                <button className='login-link' type='submit'>
+                  [DEV]
+                </button>
+                <input type='number' name='n' defaultValue={1} min={1} max={10000} required />
+              </div>
+            </form>
           )}
         </>
       )}
