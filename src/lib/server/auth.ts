@@ -204,7 +204,7 @@ export async function requireAuth(): Promise<SessionAndUser> {
   return session
 }
 
-/** Require an admin user. Throws `unauthorized()` if not logged in, `forbidden()` if not auth. */
+/** Require an admin user. Throws `unauthorized()` if not logged in, `forbidden()` if not admin. */
 export async function requireAdmin() {
   const session = await requireAuth()
   if (!session.user.isAdmin) forbidden()
