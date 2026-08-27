@@ -2,7 +2,8 @@
 
 import { initAuth, requireAdmin } from '@/lib/server/auth'
 import { getConfig, hasGithubAuth, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
-import { getSeedState, startSeed as doStartSeed } from '@/lib/server/seed'
+import { startSeed as doStartSeed } from '@/lib/server/seed'
+import { getStreamingCommandState } from '@/lib/server/stream'
 import { submitAction } from '@/lib/server/util'
 import type { ActionResponse } from '@/lib/util'
 
@@ -31,10 +32,10 @@ export async function fetchSetupStatus() {
   await requireAdmin()
 
   const cfg = getConfig()
-  const st = getSeedState()
+  const st = getStreamingCommandState('seed')
   return {
     configSaved: hasGithubAuth(cfg),
-    seeding: st.inProgress,
+    seeding: st?.status === 'running',
     seeded: cfg.isSetupComplete,
   }
 }

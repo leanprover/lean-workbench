@@ -8,10 +8,11 @@ import z from 'zod'
 
 import { useServerAction, useThrowingSWR, useThrowToBoundary } from '@/lib/client/util'
 import { useConfigCtx } from '@/lib/contexts'
-import { type SeedEvent, zSeedEvent } from '@/lib/util'
+import { type StreamedLogEvent, zStreamedLogEvent } from '@/lib/util'
 
 import { fetchSetupStatus, saveSetupConfig, startSeed } from './actions'
 
+const PROGRESS_RE = /^\[progress (\d+)\/(\d+) (.+)\]$/
 type Phase = 'config' | 'seeding' | 'done' | 'error'
 
 /** Fetch mathlib4 v4.* tags, newest-first, paginating until exhausted. */
@@ -66,27 +67,31 @@ export default function SetupFlow({ baseUrl }: SetupFlowProps) {
   // Stream seed events whenever we're in the seeding phase.
   useEffect(() => {
     if (phase !== 'seeding') return
-    const source = new EventSource('/api/setup-events')
+    const source = new EventSource('/api/admin/stream/seed')
     source.onmessage = event => {
-      let data: SeedEvent
+      let data: StreamedLogEvent
       try {
-        data = zSeedEvent.parse(JSON.parse(event.data as string /* EventSources ensure this in practice */))
+        data = zStreamedLogEvent.parse(JSON.parse(event.data as string /* EventSources ensure this in practice */))
       } catch (err) {
         source.close()
-        console.error('Error parsing a response from EventSource setup-events: ', err)
+        console.error('Error parsing a response from seeding task: ', err)
         setSeedError('Unexpected response from server')
         setPhase('error')
         return
       }
 
       switch (data.type) {
-        case 'progress': {
-          const pct = Math.round((data.step / data.total) * 100)
-          setProgress({ pct, label: `${data.label} (${data.step}/${data.total})` })
-          break
-        }
         case 'log': {
-          setLogs(prev => [...prev, data.line])
+          const m = PROGRESS_RE.exec(data.line)
+          if (m) {
+            const step = parseInt(m[1]!)
+            const total = parseInt(m[2]!)
+            const label = m[3]!
+            const pct = Math.round((step / total) * 100)
+            setProgress({ pct, label: `${label} (${step}/${total})` })
+          } else {
+            setLogs(prev => [...prev, data.line])
+          }
           break
         }
         case 'done': {
@@ -123,16 +128,17 @@ export default function SetupFlow({ baseUrl }: SetupFlowProps) {
     return () => source.close()
   }, [phase])
 
-  async function handleStartSeed() {
+  function handleStartSeed() {
     setSeedError('')
     setLogs([])
     setProgress({ pct: 0, label: 'Starting...' })
     setPhase('seeding')
-    const result = await startSeed(leanVersion)
-    if ('error' in result) {
-      setSeedError(result.error)
-      setPhase('error')
-    }
+    startSeed(leanVersion).then(result => {
+      if ('error' in result) {
+        setSeedError(result.error)
+        setPhase('error')
+      }
+    }, throwToBoundary)
   }
 
   return (
