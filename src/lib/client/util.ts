@@ -1,3 +1,5 @@
+import 'client-only'
+
 import { useActionState, useState } from 'react'
 import useSWR, { type Key, type SWRConfiguration } from 'swr'
 

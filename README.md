@@ -174,8 +174,7 @@ It will then download the Docker container image
 and generate a `docker-compose.yml` file reflecting your network configuration.
 
 The installer will print an **initial administrator password**.
-Save it for Step 2.
-(You can also find it in `data/config.json` in the data directory.)
+**Save it for Step 2.**
 
 Finally, the installer will offer to start the container for you.
 You can either say "yes", or you can start it yourself:
@@ -216,6 +215,11 @@ You'll see the setup page, which has three steps:
 
 Setup is now complete.
 Click *Continue to Lean Workbench* or refresh to see the landing page.
+
+## Administration
+
+Workbench setup creates a built-in password-protected admin user.
+To log in as this user, go to `/admin` while not logged in as another user.
 
 ## Updating
 
