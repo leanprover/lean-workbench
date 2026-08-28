@@ -36,22 +36,35 @@ export function useThrowToBoundary(): { throwToBoundary: (error: unknown) => voi
   return { throwToBoundary: setError }
 }
 
+/**
+ * Wrap useSWR hook to ensure that any error thrown in the handler will be thrown to the closest error boundary.
+ * Providing `fallbackData` ensures you don't have to deal with undefined `data`.
+ */
 export function useThrowingSWR<T>(
   key: Key,
   fetcher: () => Promise<T>,
   config: SWRConfiguration<T, unknown> & { fallbackData: T | Promise<T> },
 ): SWRResponse<T, unknown> & { data: T }
 
+/**
+ * Wrap useSWR hook to ensure that any error thrown in the handler will be thrown to the closest error boundary.
+ * Suspending until data is available ensures you don't have to deal with undefined `data`.
+ */
+export function useThrowingSWR<T>(
+  key: Key,
+  fetcher: () => Promise<T>,
+  config: SWRConfiguration<T, unknown> & { suspense: true },
+): SWRResponse<T, unknown> & { data: T }
+
+/**
+ * Wrap useSWR hook to ensure that any error thrown in the handler will be thrown to the closest error boundary.
+ */
 export function useThrowingSWR<T>(
   key: Key,
   fetcher: () => Promise<T>,
   config?: SWRConfiguration<T, unknown>,
 ): SWRResponse<T, unknown>
 
-/**
- * Wraps useSWR hook to ensure that any error thrown in the handler will be thrown
- * to the closest error boundary.
- */
 export function useThrowingSWR<T>(key: Key, fetcher: () => Promise<T>, config?: SWRConfiguration<T, unknown>) {
   const result = useSWR<T, unknown>(key, () => fetcher(), config)
   // On a background revalidation (like when the window refocuses), result.data will be defined
