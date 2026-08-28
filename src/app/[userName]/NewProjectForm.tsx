@@ -1,8 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Suspense, use, useState } from 'react'
+import { use, useState } from 'react'
 
+import CatchySuspense from '@/app/components/CatchySuspense'
 import { useServerAction } from '@/lib/client/util'
 import { type TemplateInfo } from '@/lib/server/util'
 
@@ -45,9 +46,9 @@ export function NewProjectForm(props: NewProjectProps) {
         autoFocus
       />
       <div className='template-selector'>
-        <Suspense fallback={<p>Loading templates&hellip;</p>}>
+        <CatchySuspense loading={<p>Loading templates&hellip;</p>}>
           <NewProjectSelection {...props} createPending={createPending} />
-        </Suspense>
+        </CatchySuspense>
       </div>
       {createError && <div style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{createError}</div>}
       <div>

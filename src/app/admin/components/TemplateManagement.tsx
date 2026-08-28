@@ -1,8 +1,9 @@
 'use client'
 
-import { Suspense, use, useState } from 'react'
+import { use, useState } from 'react'
 
 import { editTemplateMetadata } from '@/app/admin/actions'
+import CatchySuspense from '@/app/components/CatchySuspense'
 import { useServerAction } from '@/lib/client/util'
 import { type TemplateInfo } from '@/lib/server/util'
 
@@ -14,9 +15,9 @@ export function TemplateManagement(props: TemplateManagementProps) {
   return (
     <section>
       <h2>Project Templates</h2>
-      <Suspense fallback='Loading...'>
+      <CatchySuspense loading='Loading...'>
         <TemplateManagementList {...props} />
-      </Suspense>
+      </CatchySuspense>
     </section>
   )
 }

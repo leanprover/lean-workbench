@@ -1,6 +1,7 @@
 import { requireAdmin } from '@/lib/server/auth'
 import { listTemplates } from '@/lib/server/util'
 
+import { fetchHealth } from './actions'
 import { AccessControl } from './components/AccessControl'
 import { HealthMonitor } from './components/HealthMonitor'
 import { OAuthConfig } from './components/OAuthConfig'
@@ -12,6 +13,7 @@ export const instant = false
 export default async function AdminPage() {
   await requireAdmin()
   const templates = listTemplates()
+  const systemHealth = fetchHealth()
 
   return (
     <div className='admin-page'>
@@ -20,7 +22,7 @@ export default async function AdminPage() {
       <OAuthConfig />
       <SessionViewer />
       <AccessControl />
-      <HealthMonitor />
+      <HealthMonitor systemHealth={systemHealth} />
       <TemplateManagement templates={templates} />
     </div>
   )
