@@ -6,6 +6,7 @@ import z from 'zod'
 
 import { requireAuth } from '@/lib/server/auth'
 import { getDb } from '@/lib/server/db'
+import { listTemplates } from '@/lib/server/util'
 
 import { NewProjectForm } from './NewProjectForm'
 import { ProjectRow } from './ProjectRow'
@@ -36,6 +37,7 @@ export default async function ProfileBody({ params: params_ }: { params: Promise
     select: { id: true, name: true, isPublic: true },
     orderBy: { createdAt: 'asc' },
   })
+  const templates = isOwner ? listTemplates() : Promise.resolve([])
 
   return (
     <>
@@ -57,7 +59,7 @@ export default async function ProfileBody({ params: params_ }: { params: Promise
           ))}
         </ul>
       )}
-      {isOwner && <NewProjectForm />}
+      {isOwner && <NewProjectForm templates={templates} />}
     </>
   )
 }

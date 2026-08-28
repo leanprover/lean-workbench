@@ -11,7 +11,7 @@ import z from 'zod'
 
 import { requireAuth } from '@/lib/server/auth'
 import { getDb } from '@/lib/server/db'
-import { readTemplateMetadata, serverAction, submitAction, type TemplateMetadata } from '@/lib/server/util'
+import { readTemplateMetadata, serverAction, submitAction } from '@/lib/server/util'
 import { type ActionResponse } from '@/lib/util'
 import { type Project } from '@/prisma/generated/client'
 
@@ -19,41 +19,6 @@ export interface ProjectInfo {
   id: string
   name: string
   isPublic: boolean
-}
-
-export interface TemplateInfo {
-  id: string
-  name: string
-  description: string
-}
-
-// --- Queries ---
-
-export async function listTemplates(): Promise<TemplateInfo[]> {
-  await requireAuth()
-
-  const templatesDir = getTemplatesDir()
-
-  const result: TemplateInfo[] = [{ id: 'blank', name: 'Blank', description: 'Empty workspace' }]
-  const entries = await fs.readdir(templatesDir, { withFileTypes: true })
-
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue
-    let meta: TemplateMetadata
-    try {
-      meta = await readTemplateMetadata(entry.name)
-    } catch (err) {
-      console.error(`Skipping template '${entry.name}' due to metadata error`, err)
-      continue
-    }
-    result.push({
-      id: entry.name,
-      name: meta.name,
-      description: meta.description ?? '',
-    })
-  }
-
-  return result
 }
 
 // --- Mutations ---
