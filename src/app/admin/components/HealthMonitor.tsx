@@ -19,7 +19,7 @@ export function HealthMonitor(props: HealthMonitorProps) {
   return (
     <section>
       <h2>System health</h2>
-      <CatchySuspense loading={<p>Loading&hellip;</p>} error={<p style={{ color: '#dc2626' }}>Failed to load</p>}>
+      <CatchySuspense loading={<p>Loading&hellip;</p>}>
         <HealthMonitorData {...props} />
       </CatchySuspense>
     </section>
