@@ -1,6 +1,6 @@
 'use client'
 
-import { startTransition, use, useState } from 'react'
+import { startTransition, useState } from 'react'
 
 import { fetchDiskUsage, fetchHealth, type SystemHealth } from '@/app/admin/actions'
 import CatchySuspense from '@/app/components/CatchySuspense'
@@ -27,9 +27,8 @@ export function HealthMonitor(props: HealthMonitorProps) {
 }
 
 function HealthMonitorData(props: HealthMonitorProps) {
-  const systemHealth = use(props.systemHealth)
   const { data: health } = useThrowingSWR<SystemHealth>('adminHealth', () => fetchHealth(), {
-    fallbackData: systemHealth,
+    fallbackData: props.systemHealth,
     revalidateOnMount: false,
     refreshInterval: 30_000,
   })
