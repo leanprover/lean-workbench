@@ -1,16 +1,21 @@
 import 'server-only'
 
+import { execFile } from 'node:child_process'
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { EventEmitter } from 'node:stream'
+import { promisify } from 'node:util'
 
 import { parseWithZod } from '@conform-to/zod/v4'
-import { getTemplatesDir } from '@leanprover/workbench-shared/node'
+import { getElanDir, getTemplatesDir } from '@leanprover/workbench-shared/node'
+import * as pty from 'node-pty'
 import z from 'zod'
 
 import type { ActionResponse } from '@/lib/util'
 import type { Project } from '@/prisma/generated/client'
 
-import type { User } from './auth'
+import { type User } from './auth'
+import { type CommandEvents } from './stream'
 
 export const zTemplateMetadata = z.object({
   name: z.string(),
@@ -178,4 +183,74 @@ export async function listTemplates(): Promise<TemplateInfo[]> {
   }
 
   return result
+}
+
+const exec = promisify(execFile)
+export async function listInstalledToolchains(): Promise<string[]> {
+  const elanDir = getElanDir()
+  const { stderr, stdout } = await exec(path.join(elanDir, 'bin', 'elan'), ['toolchain', 'list'], {
+    env: { ...process.env, ELAN_HOME: elanDir },
+  })
+
+  if (stderr.trim().length !== 0) {
+    throw new Error(stderr)
+  }
+
+  return stdout
+    .split('\n')
+    .map(tc => tc.trim())
+    .filter(tc => tc.length > 0)
+}
+
+export async function elanUninstall(leanVersion: string) {
+  const elanDir = getElanDir()
+  const { stderr, stdout } = await exec(path.join(elanDir, 'bin', 'elan'), ['toolchain', 'uninstall', leanVersion], {
+    env: { ...process.env, ELAN_HOME: elanDir },
+  })
+
+  if (stdout.trim().length !== 0) {
+    throw new Error(stdout)
+  }
+
+  return stderr
+    .split('\n')
+    .map(tc => tc.trim())
+    .filter(tc => tc.length > 0)
+}
+
+export function spawnElanInstall(leanVersion: string) {
+  const elanDir = getElanDir()
+
+  const ptyProcess = pty.spawn(path.join(elanDir, 'bin', 'elan'), ['toolchain', 'install', leanVersion], {
+    name: 'dumb',
+    env: { ...process.env, ELAN_HOME: elanDir },
+  })
+
+  const emitter = new EventEmitter<CommandEvents>()
+  ptyProcess.onData(data => emitter.emit('log', data))
+  ptyProcess.onExit(({ exitCode, signal }) => {
+    if (signal) emitter.emit('error', `elan was killed by signal ${signal}`)
+    else if (exitCode) emitter.emit('error', `elan exited with code ${exitCode}`)
+    else emitter.emit('done')
+  })
+
+  return emitter
+}
+
+export function spawnCreateMathlib(workDir: string, projectId: string, leanVersion: string) {
+  const scriptsDir = path.join(process.cwd(), 'scripts')
+
+  const ptyProcess = pty.spawn(path.join(scriptsDir, 'create-mathlib.sh'), [workDir, projectId, leanVersion], {
+    name: 'dumb',
+  })
+
+  const emitter = new EventEmitter<CommandEvents>()
+  ptyProcess.onData(data => emitter.emit('log', data))
+  ptyProcess.onExit(({ exitCode, signal }) => {
+    if (signal) emitter.emit('error', `script was killed by signal ${signal}`)
+    else if (exitCode) emitter.emit('error', `script exited with code ${exitCode}`)
+    else emitter.emit('done')
+  })
+
+  return emitter
 }

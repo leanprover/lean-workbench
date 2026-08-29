@@ -1,14 +1,17 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { use, useState } from 'react'
 
-import { editTemplateMetadata } from '@/app/admin/actions'
+import { createMathlibTemplate, editTemplateMetadata } from '@/app/admin/actions'
 import CatchySuspense from '@/app/components/CatchySuspense'
+import DumbTTY from '@/app/components/DumbTTY'
 import { useServerAction } from '@/lib/client/util'
 import { type TemplateInfo } from '@/lib/server/util'
 
 interface TemplateManagementProps {
   templates: Promise<TemplateInfo[]>
+  toolchains: Promise<string[]>
 }
 
 export function TemplateManagement(props: TemplateManagementProps) {
@@ -17,6 +20,9 @@ export function TemplateManagement(props: TemplateManagementProps) {
       <h2>Project Templates</h2>
       <CatchySuspense loading='Loading...'>
         <TemplateManagementList {...props} />
+      </CatchySuspense>
+      <CatchySuspense loading='Loading...'>
+        <NewTemplate toolchains={props.toolchains} />
       </CatchySuspense>
     </section>
   )
@@ -47,15 +53,7 @@ function TemplateRow(props: TemplateInfo) {
 
   return (
     <li>
-      <form
-        action={async data => editAction(data)}
-        style={{
-          display: 'grid',
-          width: '100%',
-          gridTemplateAreas: `"name actions" "desc desc" "error error"`,
-          gridTemplateColumns: '1fr auto',
-        }}
-      >
+      <form className='simple-action-form' action={editAction}>
         <input type='hidden' name='id' value={id} />
         {/* name */}
         <div hidden={showForm} style={{ gridArea: 'name' }}>
@@ -112,5 +110,93 @@ function TemplateRow(props: TemplateInfo) {
         <div style={{ gridArea: 'error', color: '#f00' }}>{editError}</div>
       </form>
     </li>
+  )
+}
+
+type State = 'closed' | 'form' | 'divert' | 'terminal'
+
+function NewTemplate(_props: { toolchains: Promise<string[]> }) {
+  const router = useRouter()
+  const [state, setState] = useState<State>('closed')
+  const [createError, createAction, createPending] = useServerAction(createMathlibTemplate, procState => {
+    setState(procState === 'new-emitter' ? 'terminal' : 'divert')
+  })
+
+  if (state === 'closed') {
+    return (
+      <div style={{ marginTop: 16 }}>
+        <button className='primary' onClick={() => setState('form')}>
+          + New template
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <form
+      action={createAction}
+      className='new-project'
+      style={{ fontSize: 14, marginTop: 16, display: 'grid', gap: '0.5rem' }}
+    >
+      <div style={{ paddingBottom: '5px', marginBottom: '5px', borderBottom: '1px solid #e4ebf3' }}>+ New template</div>
+      {state === 'divert' && (
+        <>
+          <div>Workbench cannot perform this request, because is already a process of this type running</div>
+          <div>
+            <button
+              onClick={e => {
+                e.preventDefault()
+                setState('terminal')
+              }}
+            >
+              View running process
+            </button>
+          </div>
+        </>
+      )}
+      {state === 'form' && (
+        <>
+          <CatchySuspense loading={<p>Loading toolchains&hellip;</p>}>
+            <NewTemplateSelection />
+          </CatchySuspense>
+          {createError && <div style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{createError}</div>}
+          <div>
+            <button type='submit' disabled={createPending}>
+              Create
+            </button>
+            <button type='button' onClick={() => setState('closed')} disabled={createPending} style={{ marginLeft: 8 }}>
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
+      {state === 'terminal' && (
+        <>
+          <DumbTTY streamingCommandKey='create-template' />
+          <div style={{ paddingBottom: 11 }}>
+            <button
+              onClick={e => {
+                e.preventDefault()
+                setState('closed')
+                router.refresh()
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </>
+      )}
+    </form>
+  )
+}
+
+function NewTemplateSelection() {
+  return (
+    <>
+      <input type='hidden' name='toolchain' value='leanprover/lean4:v4.33.1' />
+      <input type='hidden' name='id' value='horrday' />
+      <input type='hidden' name='name' value='the name' />
+      <input type='hidden' name='description' value='the desc' />
+    </>
   )
 }

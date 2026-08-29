@@ -1,7 +1,7 @@
 'use server'
 
 import { execFileSync } from 'node:child_process'
-import fs from 'node:fs'
+import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { zProjectId, zTemplateId, zUserId, zUserName, zValidateUserName } from '@leanprover/workbench-shared'
@@ -12,10 +12,14 @@ import { initAuth, requireAdmin } from '@/lib/server/auth'
 import { getConfig, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
+import { startStreamingCommand } from '@/lib/server/stream'
 import {
+  elanUninstall,
   readTemplateMetadata,
   saveTemplateMetadata,
   serverAction,
+  spawnCreateMathlib,
+  spawnElanInstall,
   submitAction,
   type TemplateMetadata,
 } from '@/lib/server/util'
@@ -64,7 +68,7 @@ export const deleteUser = serverAction(zDeleteUser, async ({ userId }) => {
 
   // Remove workspace directory
   const userWorkspaceDir = path.join(getWorkspacesDir(), target.name)
-  fs.rmSync(userWorkspaceDir, { recursive: true, force: true })
+  await fs.rm(userWorkspaceDir, { recursive: true, force: true })
 
   // Delete from database (cascades to projects via schema)
   await db.user.delete({ where: { id: userId } })
@@ -122,9 +126,9 @@ export const killEditorSession = serverAction(zEditorSession, async ({ projectId
 
 // --- System health ---
 
-function parseMeminfo(): Record<string, number> {
+async function parseMeminfo(): Promise<Record<string, number>> {
   try {
-    const text = fs.readFileSync('/proc/meminfo', 'utf8')
+    const text = await fs.readFile('/proc/meminfo', 'utf8')
     const result: Record<string, number> = {}
     for (const line of text.split('\n')) {
       const m = line.match(/^(\w+):\s+(\d+)/)
@@ -164,12 +168,12 @@ export async function fetchHealth(): Promise<SystemHealth> {
   }
 
   // Memory from /proc/meminfo
-  const meminfo = parseMeminfo()
+  const meminfo = await parseMeminfo()
 
   // Load average from /proc/loadavg
   let loadAvg: number[]
   try {
-    const text = fs.readFileSync('/proc/loadavg', 'utf8')
+    const text = await fs.readFile('/proc/loadavg', 'utf8')
     const parts = text.split(' ')
     loadAvg = [parseFloat(parts[0]!), parseFloat(parts[1]!), parseFloat(parts[2]!)]
   } catch {
@@ -267,6 +271,61 @@ export const editTemplateMetadata = submitAction(
       }
       await saveTemplateMetadata(id, config)
       return { ok: config }
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : String(e) }
+    }
+  },
+)
+
+// -- Toolchain management
+
+const zToolchainInstallRequest = z.object({
+  selectedToolchain: z.union([
+    z.string().regex(/^stable v4\.[0-9]+\.[0-9]+$/),
+    z.string().regex(/^beta v4\.[0-9]+\.[0-9]+-rc[0-9]+$/),
+    z.string().regex(/^nightly nightly-[0-9-]+$/),
+  ]),
+})
+
+const zPermissiveLeanToolchain = z.string().regex(/^[a-z0-9/]+:[a-z0-9.-/]+$/)
+
+export const installToolchainVersion = submitAction(zToolchainInstallRequest, async ({ selectedToolchain }) => {
+  await requireAdmin()
+
+  // We're on the Zod validator to ensure `toolchain` is a safe argument to `elan`
+  const [_type, toolchain] = selectedToolchain.split(' ')
+  const emitter = startStreamingCommand('elan', () => spawnElanInstall(toolchain!))
+  if (!emitter) return { error: 'An `elan` process was already running' }
+  return { ok: null }
+})
+
+export const uninstallToolchainVersion = submitAction(
+  z.object({ toolchain: zPermissiveLeanToolchain }),
+  async ({ toolchain }) => {
+    const stdout = await elanUninstall(toolchain)
+    const [_all, _info, info] = stdout[stdout.length - 1]!.match(/^(info: )?(.*)$/)!
+    return { ok: info }
+  },
+)
+
+// -- Template management
+
+const zCreateTemplateRequest = z.object({
+  toolchain: zPermissiveLeanToolchain,
+  id: zTemplateId,
+  name: z.string(),
+  description: z.string(),
+})
+
+export const createMathlibTemplate = submitAction(
+  zCreateTemplateRequest,
+  async ({ toolchain, id, name, description }) => {
+    try {
+      const workDir = await fs.mkdtemp('/tmp/template-create')
+      await fs.writeFile(path.join(workDir, 'metadata.json'), JSON.stringify({ name, description, packageSet: id }))
+      const [_domain, toolchainVersion] = toolchain.split(':')
+      const emitter = startStreamingCommand('create-template', () => spawnCreateMathlib(workDir, id, toolchainVersion!))
+      return { ok: emitter ? ('new-emitter' as const) : ('existing-emitter' as const) }
     } catch (e) {
       return { error: e instanceof Error ? e.message : String(e) }
     }

@@ -70,6 +70,7 @@ else
 fi
 TOOLCHAIN="leanprover/lean4:$LEAN_VERSION"
 echo "[seed-volume] Installing mathlib tag: $MATHLIB_REV (Lean $LEAN_VERSION)"
+git config --global advice.detachedHead false
 
 # --- Step 3: Install elan ---
 echo "[progress 3/$TOTAL Installing elan]"

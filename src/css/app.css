@@ -298,7 +298,7 @@ form.num-button input {
 /* === Projects Page === */
 .new-project {
   margin: 20px 0;
-  padding: 16px;
+  padding: 5px 16px;
   background: #f5f7fa;
   border: 1px solid #e4ebf3;
   border-radius: 0.5rem;
@@ -532,6 +532,23 @@ form.num-button input {
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
+
+.check-seq {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.check-seq input {
+  margin: 0;
+}
+
+.check-seq > label {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  align-items: center;
+  gap: 0.375rem;
+}
+
 .visually-hidden {
   border: 0;
   clip-path: inset(50%);
@@ -541,4 +558,11 @@ form.num-button input {
   position: absolute;
   white-space: nowrap;
   width: 1px;
+}
+
+form.simple-action-form {
+  display: grid;
+  grid-template-areas: 'name actions' 'error error' 'desc desc';
+  grid-template-columns: 1fr auto;
+  width: 100%;
 }
