@@ -1,63 +1,78 @@
 import 'server-only'
 
-import { type EventEmitter } from 'node:stream'
+import { EventEmitter } from 'node:stream'
 
-export interface CommandEvents {
-  done: []
-  error: [message: string]
-  log: [line: string]
+import * as pty from 'node-pty'
+
+export type Exit = { type: 'success' } | { type: 'killed'; signal: number } | { type: 'error'; exitCode: number }
+
+export interface TrackedCommandEvents {
+  data: [line: string]
+  exit: [exit: Exit]
 }
 
-export type StreamingCommandStatus =
-  { status: 'done'; error: string | null } | { status: 'running'; emitter: EventEmitter<CommandEvents> }
+export type TrackedCommandStatus =
+  { status: 'done'; exit: Exit } | { status: 'running'; emitter: EventEmitter<TrackedCommandEvents> }
 
-export type StreamingCommandState = StreamingCommandStatus & {
+export type TrackedCommandState = TrackedCommandStatus & {
   started: Date
   lastEvent: Date
-  log: string[]
+  output: string[]
 }
 
-const g = globalThis as typeof globalThis & { __streamingCommandState?: Map<string, StreamingCommandState> }
-if (!g.__streamingCommandState) g.__streamingCommandState = new Map()
-const streamingCommandState = g.__streamingCommandState
+const g = globalThis as typeof globalThis & { __trackedCommandState?: Map<string, TrackedCommandState> }
+if (!g.__trackedCommandState) g.__trackedCommandState = new Map()
+const trackedCommandState = g.__trackedCommandState
 
 /**
- * A running streaming command contains an eventemitter for streaming future command events.
- * A completed streaming command retains the log and terminal error (if any).
+ * A running tracked command contains an eventemitter for tracking future output from the command.
+ * A completed tracked command retains the log and terminal error (if any).
  */
-export function getStreamingCommandState(key: string): Readonly<StreamingCommandState> | undefined {
-  return streamingCommandState.get(key)
+export function getTrackedCommandState(trackingKey: string): Readonly<TrackedCommandState> | undefined {
+  return trackedCommandState.get(trackingKey)
 }
 
 /**
- * Starting a streaming command connects:
- *  - an EventEmitter that is capturing the console output from child process
- *  - a key that allows the output to be streamed from /api/admin/stream/[key]
- * There can only be one task for a given key at a time.
+ * Starting a tracked command connects:
+ *  - a child process that produces output
+ *  - a key that allows the output to be streamed from /api/admin/tracked-command/[key]
+ * There can only be one tracked command for a given key at a time;
+ * startTrackedCommand will return null if the tracking key is associated with a running command.
  *
- * The start() function returns an EventEmitter that emits log messages.
- * A `done` or `error` message MUST NOT be followed by another `log` message.
+ * The output from completed tracked commands is retained until a new command with the same tracking key is started.
  */
-export function startStreamingCommand(key: string, start: () => EventEmitter<CommandEvents>) {
+export function startTrackedCommand(
+  trackingKey: string,
+  file: string,
+  args: string[],
+  options?: pty.IPtyForkOptions,
+): EventEmitter<TrackedCommandEvents> | null {
   // Only one streaming command for a given key at a time
-  if ((streamingCommandState.get(key)?.status ?? 'done') !== 'done') return null
+  if ((trackedCommandState.get(trackingKey)?.status ?? 'done') !== 'done') return null
 
-  const emitter = start()
   const started = new Date()
-  const log: string[] = [] // Single log for this job, imperatively updated
-  streamingCommandState.set(key, { status: 'running', started, lastEvent: started, log, emitter })
+  const output: string[] = [] // Single log for this job, imperatively updated
+  const emitter = new EventEmitter<TrackedCommandEvents>()
+  const ptyProcess = pty.spawn(file, args, { name: 'dumb', ...(options ?? {}) })
+  trackedCommandState.set(trackingKey, { status: 'running', emitter, started, lastEvent: started, output })
 
-  emitter.on('log', line => {
-    log.push(line)
-    streamingCommandState.set(key, { status: 'running', emitter, started, lastEvent: new Date(), log })
+  ptyProcess.onData(data => {
+    output.push(data)
+    trackedCommandState.set(trackingKey, { status: 'running', emitter, started, lastEvent: new Date(), output })
+    emitter.emit('data', data)
   })
+  ptyProcess.onExit(({ exitCode, signal }) => {
+    let exit: Exit
+    if (signal) {
+      exit = { type: 'killed', signal }
+    } else if (exitCode) {
+      exit = { type: 'error', exitCode }
+    } else {
+      exit = { type: 'success' }
+    }
 
-  emitter.on('done', () => {
-    streamingCommandState.set(key, { status: 'done', error: null, started, lastEvent: new Date(), log })
-  })
-
-  emitter.on('error', error => {
-    streamingCommandState.set(key, { status: 'done', error, started, lastEvent: new Date(), log })
+    trackedCommandState.set(trackingKey, { status: 'done', started, lastEvent: new Date(), output, exit })
+    emitter.emit('exit', exit)
   })
 
   return emitter

@@ -1,11 +1,12 @@
 'use server'
 
+import z from 'zod'
+
 import { initAuth, requireAdmin } from '@/lib/server/auth'
 import { getConfig, hasGithubAuth, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
 import { startSeed as doStartSeed } from '@/lib/server/seed'
-import { getStreamingCommandState } from '@/lib/server/stream'
+import { getTrackedCommandState } from '@/lib/server/stream'
 import { submitAction } from '@/lib/server/util'
-import type { ActionResponse } from '@/lib/util'
 
 export const saveSetupConfig = submitAction(zGithubAuthConfig, async githubAuth => {
   await requireAdmin()
@@ -22,20 +23,24 @@ export const saveSetupConfig = submitAction(zGithubAuthConfig, async githubAuth 
   return { ok: true }
 })
 
-export async function startSeed(leanVersion: string | undefined): Promise<ActionResponse<boolean>> {
+export const doSeed = submitAction(z.object({ leanVersion: z.string() }), async ({ leanVersion }) => {
   await requireAdmin()
-
-  return doStartSeed(leanVersion)
-}
+  return doStartSeed(leanVersion === 'Latest' ? undefined : leanVersion)
+})
 
 export async function fetchSetupStatus() {
   await requireAdmin()
 
   const cfg = getConfig()
-  const st = getStreamingCommandState('seed')
+  const st = getTrackedCommandState('seed')
   return {
     configSaved: hasGithubAuth(cfg),
     seeding: st?.status === 'running',
     seeded: cfg.isSetupComplete,
   }
+}
+
+export async function isTrackedCommandRunning(key: string) {
+  console.log({ st: getTrackedCommandState(key) })
+  return getTrackedCommandState(key)?.status === 'running'
 }

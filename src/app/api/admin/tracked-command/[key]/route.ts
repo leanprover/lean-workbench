@@ -1,11 +1,11 @@
 import { requireAdmin } from '@/lib/server/auth'
-import { getStreamingCommandState } from '@/lib/server/stream'
-import { type StreamedLogEvent } from '@/lib/util'
+import { getTrackedCommandState } from '@/lib/server/stream'
+import { type TrackedCommandEvent, type TrackedCommandExit } from '@/lib/util'
 
 /**
  * Return server-sent events for a streaming command
  */
-export async function GET(request: Request, context: RouteContext<'/api/admin/stream/[key]'>) {
+export async function GET(request: Request, context: RouteContext<'/api/admin/tracked-command/[key]'>) {
   await requireAdmin()
   const { key } = await context.params
   const encoder = new TextEncoder()
@@ -13,28 +13,28 @@ export async function GET(request: Request, context: RouteContext<'/api/admin/st
   return new Response(
     new ReadableStream({
       start(controller) {
-        const send = (msg: StreamedLogEvent) => {
+        const send = (msg: TrackedCommandEvent) => {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(msg)}\n\n`))
         }
 
-        const state = getStreamingCommandState(key)
+        const state = getTrackedCommandState(key)
         if (!state) {
-          send({ type: 'error', message: `No '${key}' process active or finished` })
+          send({ type: 'no-stream' })
           controller.close()
           return
         }
 
         // Replay previous progress
-        for (const line of state.log) send({ type: 'log', line })
+        for (const data of state.output) send({ type: 'data', data })
 
-        // Option 1: synchronously exit
+        // Option 1 of 2: synchronously exit
         if (state.status === 'done') {
-          send(state.error !== null ? { type: 'error', message: state.error } : { type: 'done' })
+          send({ type: 'exit', exit: state.exit })
           controller.close()
           return
         }
 
-        // Option 2: stream the rest of the output as it happens
+        // Option 2 of 2: stream the rest of the output as it happens
         const emitter = state.emitter
 
         // nginx will close connections that don't send some message in 60s
@@ -42,28 +42,21 @@ export async function GET(request: Request, context: RouteContext<'/api/admin/st
           controller.enqueue(encoder.encode(':\n'))
         }, 10_000)
 
-        const onLog = (line: string) => {
-          send({ type: 'log', line })
+        const onData = (data: string) => {
+          send({ type: 'data', data })
         }
-        emitter.on('log', onLog)
+        emitter.on('data', onData)
 
-        const onDone = () => {
-          send({ type: 'done' })
+        const onExit = (exit: TrackedCommandExit) => {
+          send({ type: 'exit', exit })
           cleanup()
         }
-        emitter.on('done', onDone)
-
-        const onError = (message: string) => {
-          send({ type: 'error', message })
-          cleanup()
-        }
-        emitter.on('error', onError)
+        emitter.on('exit', onExit)
 
         const cleanup = () => {
           clearInterval(keepAliveTimeout)
-          emitter.off('done', onDone)
-          emitter.off('error', onError)
-          emitter.off('log', onLog)
+          emitter.off('data', onData)
+          emitter.off('exit', onExit)
           request.signal.removeEventListener('abort', cleanup) // avoids double-calling cleanup
           controller.close()
         }

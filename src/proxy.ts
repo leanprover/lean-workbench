@@ -6,7 +6,7 @@ export function proxy(request: NextRequest) {
   const cfg = getConfig()
   if (!cfg.isSetupComplete) {
     const path = request.nextUrl.pathname
-    const allowedPrefixes = ['/setup', '/api/admin/stream/seed', '/api/auth', '/favicon.ico']
+    const allowedPrefixes = ['/setup', '/api/admin/tracked-command/seed', '/api/auth', '/favicon.ico']
     if (allowedPrefixes.some(p => path.startsWith(p))) return NextResponse.next()
     if (path.startsWith('/api/')) return NextResponse.json({ error: 'Setup not complete' }, { status: 503 })
     // https://nextjs.org/docs/messages/proxy-relative-urls#possible-ways-to-fix-it

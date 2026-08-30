@@ -295,6 +295,25 @@ form.num-button input {
   text-decoration: underline;
 }
 
+/* === Tracked Command Forms === */
+.command-setup-form {
+  margin: 20px 0;
+  padding: 5px 16px;
+  background: #f5f7fa;
+  border: 1px solid #e4ebf3;
+  border-radius: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.command-setup-form .actions {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  justify-content: right;
+  padding-bottom: 11px;
+}
+
 /* === Projects Page === */
 .new-project {
   margin: 20px 0;
@@ -532,6 +551,7 @@ form.num-button input {
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
+
 .visually-hidden {
   border: 0;
   clip-path: inset(50%);

@@ -56,6 +56,7 @@ echo "[progress 1/$TOTAL Creating directories]"
 mkdir -p "$ROOT"/{workspaces,db,package-sets,templates}
 
 # --- Step 2: Resolve mathlib version ---
+git config --global advice.detachedHead false
 echo "[progress 2/$TOTAL Resolving mathlib version]"
 if [ -z "$LEAN_VERSION" ]; then
   # Mathlib tags lag behind Lean releases, so let the latest mathlib tag
@@ -114,11 +115,11 @@ EOF
 cd "$WORK_DIR"
 mkdir -p .lake/packages
 git clone --depth 1 --branch "$MATHLIB_REV" --progress https://github.com/leanprover-community/mathlib4 .lake/packages/mathlib
-lake update
+lake --no-ansi update
 
 # --- Step 5: Download pre-compiled oleans ---
 echo "[progress 5/$TOTAL Downloading pre-compiled oleans]"
-lake exe cache get
+lake --no-ansi exe cache get
 
 # --- Step 6: Install package set ---
 echo "[progress 6/$TOTAL Installing package set]"
