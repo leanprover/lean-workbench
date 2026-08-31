@@ -1,12 +1,10 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import { type CSSProperties, type ReactNode, use, useState } from 'react'
+import { type CSSProperties, type ReactNode, useState } from 'react'
 
-import CatchySuspense from '@/app/components/CatchySuspense'
 import ErrorBox from '@/app/components/ErrorBox'
 import SimpleTTY from '@/app/components/SimpleTTY'
-import { useServerAction } from '@/lib/client/util'
+import { useServerAction, useThrowToBoundary } from '@/lib/client/util'
 import { type ActionResponse, type TrackedCommandExit } from '@/lib/util'
 
 import { isTrackedCommandRunning } from './actions'
@@ -18,14 +16,16 @@ interface TrackedCommandFormProps {
   children: ReactNode
   disabled?: boolean
   successButtonText?: string
-  successButtonAction?: () => void
+  successButtonAction?: (props: { close: () => void }) => void
   trackedCommandAction: (formData: FormData) => Promise<ActionResponse<boolean>>
 }
 
-/** When we open a form, we issue a check whether that form has a running command */
-type FormOpenState = { type: 'closed' } | { type: 'open'; isRunningWhenOpenedPromise: Promise<boolean> }
-
-type FormRunState = 'none' | 'conflict' | 'watching'
+type FormState =
+  | { type: 'closed' }
+  | { type: 'opening' /* In the process of checking if there's already a command running */ }
+  | { type: 'editing' }
+  | { type: 'watching'; exit?: TrackedCommandExit }
+  | { type: 'conflict' /* Submission blocked because a separate command-run started */ }
 
 export default function TrackedCommandForm({
   streamCommandKey,
@@ -37,156 +37,103 @@ export default function TrackedCommandForm({
   successButtonText,
   trackedCommandAction,
 }: TrackedCommandFormProps) {
-  const router = useRouter()
-  const [state, setState] = useState<FormOpenState>({ type: 'closed' })
-  const [formRunState, setFormRunState] = useState<FormRunState>('none')
-  const [attempt, setAttempt] = useState(0)
+  const [state, setState] = useState<FormState>({ type: 'closed' })
   const [submitError, submitAction, submitPending] = useServerAction(
     trackedCommandAction,
-    wasCommandCreationSuccessful => setFormRunState(wasCommandCreationSuccessful ? 'watching' : 'conflict'),
+    wasCommandCreationSuccessful =>
+      setState(wasCommandCreationSuccessful ? { type: 'watching' } : { type: 'conflict' }),
   )
+
+  const { throwToBoundary } = useThrowToBoundary()
+  const setStateOpening = () => {
+    setState({ type: 'opening' })
+    isTrackedCommandRunning(streamCommandKey)
+      .then(isAlreadyRunning => setState(isAlreadyRunning ? { type: 'watching' } : { type: 'editing' }))
+      .catch(throwToBoundary)
+  }
 
   if (state.type === 'closed' || disabled) {
     return (
       <div style={style}>
-        <button
-          disabled={disabled}
-          className='primary'
-          onClick={() =>
-            setState({ type: 'open', isRunningWhenOpenedPromise: isTrackedCommandRunning(streamCommandKey) })
-          }
-        >
+        <button disabled={disabled} className='primary' onClick={setStateOpening}>
           {title}
         </button>
       </div>
     )
   }
 
-  return (
-    <form action={submitAction} className='command-setup-form'>
-      <div style={{ paddingBottom: '5px', marginBottom: '5px', borderBottom: '1px solid #e4ebf3' }}>{title}</div>
-      <CatchySuspense loading={null}>
-        <TrackedCommandFormContents
-          key={attempt}
-          formRunState={formRunState}
-          submitPending={submitPending}
-          isRunningWhenOpenedPromise={state.isRunningWhenOpenedPromise}
-          streamCommandKey={streamCommandKey}
-          close={() => {
-            setState({ type: 'closed' })
-            setFormRunState('none')
-            router.refresh()
-          }}
-          watch={() => setFormRunState('watching')}
-          unwatch={() => {
-            setFormRunState('none')
-            setAttempt(attempt => attempt + 1) // Heavy-handed re-mount of TrackedCommandFormContents
-          }}
-          successButtonText={successButtonText}
-          successButtonAction={successButtonAction}
-          submitError={submitError}
-        >
-          {children}
-        </TrackedCommandFormContents>
-      </CatchySuspense>
-    </form>
+  const titleNode = (
+    <div style={{ paddingBottom: '5px', marginBottom: '5px', borderBottom: '1px solid #e4ebf3' }}>{title}</div>
   )
-}
+  if (state.type === 'opening') {
+    return <div className='command-setup-form'>{titleNode}</div>
+  }
 
-function TrackedCommandFormContents(props: {
-  submitPending: boolean
-  streamCommandKey: string
-  isRunningWhenOpenedPromise: Promise<boolean>
-  formRunState: FormRunState
-  close: () => void
-  watch: () => void
-  unwatch: () => void
-  successButtonText?: string
-  successButtonAction?: () => void
-  submitError: string | null
-  children: ReactNode
-}) {
-  const isRunningWhenOpened = use(props.isRunningWhenOpenedPromise)
-  const [exit, setExit] = useState<null | TrackedCommandExit>(null)
-
-  if (isRunningWhenOpened || props.formRunState === 'watching') {
+  if (state.type === 'watching') {
     return (
-      <>
-        <SimpleTTY streamingCommandKey={props.streamCommandKey} onExit={setExit} />
+      <div className='command-setup-form'>
+        {titleNode}
+        <SimpleTTY streamingCommandKey={streamCommandKey} onExit={exit => setState({ type: 'watching', exit })} />
         <div className='actions'>
-          {(exit?.type === 'killed' || exit?.type === 'error') && (
-            <button
-              className='primary'
-              disabled={props.submitPending}
-              onClick={e => {
-                e.preventDefault()
-                props.unwatch()
-              }}
-            >
+          {(state.exit?.type === 'killed' || state.exit?.type === 'error') && (
+            <button className='primary' disabled={submitPending} onClick={setStateOpening}>
               Back
             </button>
           )}
-          {exit?.type === 'success' && props.successButtonText && props.successButtonAction && (
+          {state.exit?.type === 'success' && successButtonText && successButtonAction && (
             <button
-              disabled={props.submitPending}
+              disabled={submitPending}
               className='primary'
-              onClick={e => {
-                e.preventDefault()
-                props.close()
-                props.successButtonAction?.()
-              }}
+              onClick={() => successButtonAction({ close: () => setState({ type: 'closed' }) })}
             >
-              {props.successButtonText}
+              {successButtonText}
             </button>
           )}
-          <button
-            disabled={props.submitPending}
-            onClick={e => {
-              e.preventDefault()
-              props.close()
-            }}
-          >
-            Close
-          </button>
+          {(state.exit?.type !== 'success' || !successButtonText || !successButtonAction) && (
+            <button disabled={submitPending} onClick={() => setState({ type: 'closed' })}>
+              Close
+            </button>
+          )}
         </div>
-      </>
+      </div>
     )
   }
 
   return (
-    <>
-      {props.children}
-      <div style={{ gridArea: 'error', color: '#f00' }}>{props.submitError}</div>
-      {props.formRunState === 'conflict' && (
+    <form action={submitAction} className='command-setup-form'>
+      {titleNode}
+      {children}
+      <div style={{ gridArea: 'error', color: '#f00' }}>{submitError}</div>
+      {state.type === 'conflict' && (
         <ErrorBox>
           Cannot start this command because another command of the same type is already running. You can wait and try
           again once the running command finishes, or you can view the command run in progress.
         </ErrorBox>
       )}
       <div className='actions'>
-        {props.formRunState === 'conflict' && (
+        {state.type === 'conflict' && (
           <button
             onClick={e => {
               e.preventDefault()
-              props.watch()
+              setState({ type: 'watching' })
             }}
           >
             View command in progress
           </button>
         )}
         <button
-          disabled={props.submitPending}
+          disabled={submitPending}
           onClick={e => {
             e.preventDefault()
-            props.close()
+            setState({ type: 'closed' })
           }}
         >
           Cancel
         </button>
-        <button disabled={props.submitPending} className='primary' type='submit'>
+        <button disabled={submitPending} className='primary' type='submit'>
           Run Command
         </button>
       </div>
-    </>
+    </form>
   )
 }

@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { EventEmitter } from 'node:stream'
+import { EventEmitter } from 'node:events'
 
 import * as pty from 'node-pty'
 
@@ -49,6 +49,7 @@ export function startTrackedCommand(
 ): EventEmitter<TrackedCommandEvents> | null {
   // Only one streaming command for a given key at a time
   if ((trackedCommandState.get(trackingKey)?.status ?? 'done') !== 'done') return null
+  if (!trackingKey.match(/^[a-zA-Z0-9-]+$/)) throw new Error(`Tracking key ${trackingKey} not URL-safe`)
 
   const started = new Date()
   const output: string[] = [] // Single log for this job, imperatively updated

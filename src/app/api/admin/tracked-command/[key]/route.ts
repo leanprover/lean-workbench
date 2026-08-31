@@ -1,5 +1,5 @@
 import { requireAdmin } from '@/lib/server/auth'
-import { getTrackedCommandState } from '@/lib/server/stream'
+import { getTrackedCommandState } from '@/lib/server/trackedCommand'
 import { type TrackedCommandEvent, type TrackedCommandExit } from '@/lib/util'
 
 /**

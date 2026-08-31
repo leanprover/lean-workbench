@@ -8,7 +8,7 @@ import { getDataDir } from '@leanprover/workbench-shared/node'
 import { type ActionResponse } from '@/lib/util'
 
 import { getConfig, saveConfig } from './config'
-import { startTrackedCommand } from './stream'
+import { startTrackedCommand } from './trackedCommand'
 
 export function startSeed(leanVersion: string | undefined): ActionResponse<boolean> {
   const cfg = getConfig()
@@ -22,6 +22,8 @@ export function startSeed(leanVersion: string | undefined): ActionResponse<boole
   const emitter = startTrackedCommand('seed', 'bash', scriptsArgs)
 
   emitter?.on('exit', async exit => {
+    // Note: success has already been reported to the client component;
+    // if the saveConfig() fails, the config state will be out of sync
     if (exit.type === 'success') {
       getConfig().isSetupComplete = true
       await saveConfig()
