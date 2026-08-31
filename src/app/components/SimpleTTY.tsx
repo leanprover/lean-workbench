@@ -2,7 +2,7 @@
 
 import '@/css/simpletty.css'
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import { type TrackedCommandEvent, type TrackedCommandExit, zTrackedCommandEvent } from '@/lib/util'
 
@@ -37,13 +37,14 @@ export default function SimpleTTY(props: SimpleTTYProps) {
   return <SimpleTTYSession key={attempt} reload={() => setAttempt(attempt => attempt + 1)} {...props} />
 }
 
+type Progress = null | { currentStep: number; numSteps: number; name: string }
 type SimpleTTYState = (
-  | { type: 'loading'; buffer: never[] }
-  | { type: 'no-stream'; buffer: never[] }
+  | { type: 'loading'; buffer: never[]; progress: null }
+  | { type: 'no-stream'; buffer: never[]; progress: null }
   | { type: 'running'; tail: string[]; cursor: number /* 0 <= cursor <= tail.length */ }
   | { type: 'disconnected' }
   | { type: 'done'; buffer: string[]; exit: TrackedCommandExit }
-) & { buffer: string[]; unexpectedError: boolean }
+) & { buffer: string[]; unexpectedError: boolean; progress: Progress }
 
 /**
  * Custom hook: establish and maintain a connection to the streaming command source for a given
@@ -56,6 +57,7 @@ function useTerminalConnection(streamingCommandKey: string, onExit?: (exit: Trac
     type: 'loading',
     buffer: [],
     unexpectedError: false,
+    progress: null,
   })
 
   // Hand-rolled useEffectEvent
@@ -71,6 +73,7 @@ function useTerminalConnection(streamingCommandKey: string, onExit?: (exit: Trac
     setState((oldState: SimpleTTYState): SimpleTTYState => {
       let unexpectedError = oldState.unexpectedError
       let termBuffer: string[], termTail: string[], termCursor: number
+      let termProgress: Progress = oldState.progress
       if (oldState.type === 'running') {
         termBuffer = oldState.buffer
         termTail = [...oldState.tail]
@@ -94,11 +97,6 @@ function useTerminalConnection(streamingCommandKey: string, onExit?: (exit: Trac
         }
       }
 
-      const newline = () => {
-        termBuffer = appendToBuffer(termTail.join(''))
-        termTail = Array<string>(termCursor).fill(' ')
-      }
-
       const finalize = (index: number) => {
         if (index !== messages.length - 1) {
           console.error(`SimpleTTY received more messages after the supposedly-final message`, messages.slice(index))
@@ -111,7 +109,7 @@ function useTerminalConnection(streamingCommandKey: string, onExit?: (exit: Trac
         switch (message.type) {
           case 'no-stream':
             if (oldState.type === 'loading') {
-              return { type: 'no-stream', buffer: oldState.buffer, unexpectedError }
+              return { type: 'no-stream', buffer: oldState.buffer, unexpectedError, progress: oldState.progress }
             } else {
               console.error(`no-stream received after another message`)
               unexpectedError = true
@@ -119,12 +117,20 @@ function useTerminalConnection(streamingCommandKey: string, onExit?: (exit: Trac
             break
           case 'exit': {
             const buffer = finalize(index)
-            return { type: 'done', buffer, exit: message.exit, unexpectedError }
+            return { type: 'done', buffer, exit: message.exit, unexpectedError, progress: termProgress }
           }
           case 'data': {
             for (const ch of message.data) {
               if (ch === '\n') {
-                newline()
+                const newTail = termTail.join('')
+                const progressMatch = newTail.match(/^\[\[ progress ([0-9]+)\/([0-9]+) (.*) \]\]$/)
+                if (progressMatch) {
+                  const [_all, currentStep, numSteps, name] = progressMatch
+                  termProgress = { currentStep: Number(currentStep), numSteps: Number(numSteps), name: name! }
+                } else {
+                  termBuffer = appendToBuffer(newTail)
+                }
+                termTail = Array<string>(termCursor).fill(' ')
               } else if (ch === '\r') {
                 // Heuristic check for `['\x1b', '[', '2', 'K', '\r']` sequence ("blank out the line")
                 if (termCursor >= 4 && termTail.slice(termCursor - 4, termCursor).join('') === '\x1b[2K') {
@@ -138,7 +144,14 @@ function useTerminalConnection(streamingCommandKey: string, onExit?: (exit: Trac
           }
         }
       }
-      return { type: 'running', buffer: termBuffer, tail: termTail, cursor: termCursor, unexpectedError }
+      return {
+        type: 'running',
+        buffer: termBuffer,
+        tail: termTail,
+        cursor: termCursor,
+        unexpectedError,
+        progress: termProgress,
+      }
     })
 
     // Trigger exit handler when the last message is an exit
@@ -179,7 +192,7 @@ function useTerminalConnection(streamingCommandKey: string, onExit?: (exit: Trac
       setState(oldState => {
         let buffer = oldState.buffer
         if (oldState.type === 'running') buffer = [...oldState.buffer, oldState.tail.join('')]
-        return { type: 'disconnected', buffer, unexpectedError: oldState.unexpectedError }
+        return { type: 'disconnected', buffer, unexpectedError: oldState.unexpectedError, progress: oldState.progress }
       })
       source.close()
     }
@@ -190,7 +203,7 @@ function useTerminalConnection(streamingCommandKey: string, onExit?: (exit: Trac
 
       // Resetting the state *should* only matters for HMR, when the effect gets rerun
       incomingEventMessages.current = []
-      setState({ type: 'loading', buffer: [], unexpectedError: false })
+      setState({ type: 'loading', buffer: [], unexpectedError: false, progress: null })
     }
   }, [streamingCommandKey, updater])
 
@@ -220,19 +233,7 @@ function SimpleTTYSession({ streamingCommandKey, reload, onExit }: SimpleTTYProp
 
   return (
     <div className={`tty${className}`}>
-      {(state.type === 'loading' || state.type === 'running') && (
-        <div>
-          <span className='setup-spinner' /> Command in progress&hellip;
-        </div>
-      )}
-      {state.type === 'done' && state.exit.type === 'success' && <div>✅ Command finished successfully</div>}
-      {state.type === 'done' && state.exit.type === 'killed' && (
-        <div>❌ Command killed by signal {state.exit.signal}</div>
-      )}
-      {state.type === 'done' && state.exit.type === 'error' && (
-        <div>❌ Command exited with non-zero exit code {state.exit.exitCode}</div>
-      )}
-      {state.type === 'disconnected' && <div>⛓️‍💥 Terminal log disconnected</div>}
+      <TTYStatusMessage state={state} />
       {state.unexpectedError && <div>There was an unexpected error! See log for details.</div>}
       {
         <div ref={divRef} style={{ maxHeight: '200px', overflowY: 'scroll' }}>
@@ -265,5 +266,93 @@ function SimpleTTYSession({ streamingCommandKey, reload, onExit }: SimpleTTYProp
         </div>
       )}
     </div>
+  )
+}
+
+function TTYStatusMessage({ state }: { state: SimpleTTYState }) {
+  let icon: ReactNode
+  switch (state.type) {
+    case 'loading':
+    case 'running':
+      icon = <span className='command-spinner' />
+      break
+    case 'no-stream':
+    case 'disconnected':
+      icon = '⛓️‍💥'
+      break
+    case 'done':
+      icon = state.exit.type === 'success' ? '✅' : '❌'
+  }
+
+  const failureMessage =
+    state.type === 'done' && state.exit.type !== 'success'
+      ? state.exit.type === 'killed'
+        ? `Command killed by signal ${state.exit.signal}`
+        : `Command exited with non-zero exit code ${state.exit.exitCode}`
+      : null
+
+  let message: string
+  if (state.progress) {
+    const progressMessage = `Step ${state.progress.currentStep} of ${state.progress.numSteps}: ${state.progress.name}`
+    switch (state.type) {
+      case 'running':
+        message = progressMessage
+        break
+      case 'disconnected':
+        message = `${progressMessage} (Disconnected)`
+        break
+      case 'done':
+        message = failureMessage ? `${progressMessage} (${failureMessage})` : 'Command finished successfully'
+        break
+    }
+  } else {
+    switch (state.type) {
+      case 'loading':
+      case 'running':
+        message = `Command in progress…`
+        break
+      case 'no-stream':
+        message = `Terminal could not connect`
+        break
+      case 'disconnected':
+        message = `Terminal log disconnected`
+        break
+      case 'done':
+        message = failureMessage ?? 'Command finished successfully'
+        break
+    }
+  }
+
+  let progressAmount = state.progress
+    ? Math.min(Math.max(0, state.progress.currentStep - 0.5), state.progress.numSteps)
+    : 0
+  let progressBar: ReactNode = null
+  if (state.progress) {
+    if (state.type === 'done' && state.exit.type === 'success') progressAmount = state.progress.numSteps
+    progressBar = (
+      <div
+        className='command-progress-outer'
+        role='progressbar'
+        aria-valuemin={0}
+        aria-valuemax={state.progress.numSteps}
+        aria-valuenow={progressAmount}
+        style={{
+          gridTemplateColumns: `${progressAmount}fr ${state.progress.numSteps - progressAmount}fr`,
+        }}
+      >
+        <div className='command-progress-inner' />
+        <div />
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <div className='command-progress-label'>
+        {icon}
+        <span>{message}</span>
+      </div>
+      {progressBar}
+    </>
   )
 }

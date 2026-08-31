@@ -11,7 +11,7 @@
 #   3. Seeds the "hello" template into templates/
 #
 # Progress markers:
-#   Lines matching [progress STEP/TOTAL LABEL] are parsed by the setup UI
+#   Lines matching [[ progress STEP/TOTAL LABEL ]] are parsed by the setup UI
 #   to drive a progress bar.
 #
 set -euo pipefail
@@ -52,11 +52,11 @@ echo ""
 TOTAL=7
 
 # --- Step 1: Create directory structure ---
-echo "[progress 1/$TOTAL Creating directories]"
+echo "[[ progress 1/$TOTAL Creating directories ]]"
 mkdir -p "$ROOT"/{workspaces,db,package-sets,templates}
 
 # --- Step 2: Resolve mathlib version ---
-echo "[progress 2/$TOTAL Resolving mathlib version]"
+echo "[[ progress 2/$TOTAL Resolving mathlib version ]]"
 if [ -z "$LEAN_VERSION" ]; then
   # Mathlib tags lag behind Lean releases, so let the latest mathlib tag
   # drive the Lean toolchain version rather than the other way around.
@@ -72,7 +72,7 @@ TOOLCHAIN="leanprover/lean4:$LEAN_VERSION"
 echo "[seed-volume] Installing mathlib tag: $MATHLIB_REV (Lean $LEAN_VERSION)"
 
 # --- Step 3: Install elan ---
-echo "[progress 3/$TOTAL Installing elan]"
+echo "[[ progress 3/$TOTAL Installing elan ]]"
 ELAN_HOME="$ROOT/elan"
 if [ ! -x "$ELAN_HOME/bin/elan" ]; then
   echo "[seed-volume] Downloading elan + Lean toolchain..."
@@ -91,7 +91,7 @@ fi
 echo "[seed-volume] Using Lean $LEAN_VERSION"
 
 # --- Step 4: Fetch mathlib source ---
-echo "[progress 4/$TOTAL Fetching mathlib source]"
+echo "[[ progress 4/$TOTAL Fetching mathlib source ]]"
 WORK_DIR=$(mktemp -d)
 trap 'rm -rf "$WORK_DIR"' EXIT
 
@@ -117,11 +117,11 @@ git clone --depth 1 --branch "$MATHLIB_REV" --progress https://github.com/leanpr
 lake --no-ansi update
 
 # --- Step 5: Download pre-compiled oleans ---
-echo "[progress 5/$TOTAL Downloading pre-compiled oleans]"
+echo "[[ progress 5/$TOTAL Downloading pre-compiled oleans ]]"
 lake --no-ansi exe cache get
 
 # --- Step 6: Install package set ---
-echo "[progress 6/$TOTAL Installing package set]"
+echo "[[ progress 6/$TOTAL Installing package set ]]"
 PACKAGE_SET_DIR="$ROOT/package-sets/mathlib-$LEAN_VERSION"
 # The dir basename is also the template ID, so must satisfy TEMPLATE_ID_RE (no dots).
 TEMPLATE_DIR="$ROOT/templates/mathlib-${LEAN_VERSION//./-}"
@@ -153,7 +153,7 @@ cat > "$TEMPLATE_DIR/metadata.json" <<EOF
 EOF
 
 # --- Step 7: Seed hello template ---
-echo "[progress 7/$TOTAL Installing templates]"
+echo "[[ progress 7/$TOTAL Installing templates ]]"
 HELLO_DIR="$ROOT/templates/hello"
 if [ -d "$HELLO_DIR" ]; then
   echo "[seed-volume] hello template already exists, skipping."
