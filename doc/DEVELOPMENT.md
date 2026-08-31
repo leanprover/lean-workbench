@@ -52,11 +52,14 @@ sbx run --name workbench
 Before running the usual dev setup, you'll need to run the following commands *inside* the sandbox.
 The `WORKBENCH_PUBLISH_IP` setting is necessary to access workbench outside the sandbox,
 and the `DOCKER_CACHE_DIR` ensures that the docker cache doesn't have to cross the an inefficient VM boundary.
+The last two commands ensure the latest node version is in place inside the development container, and that node-pty can be built.
 
 ```
 echo 'export WORKBENCH_PUBLISH_IP=0.0.0.0' >> ~/.bashrc
 echo 'export DOCKER_CACHE_DIR=lean-workbench-cache' >> ~/.bashrc
 source ~/.bashrc
+sudo apt-get update && sudo apt-get install -y build-essential
+curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash - && sudo apt-get install -y nodejs
 ```
 
 To access the sandboxed website from your computer,

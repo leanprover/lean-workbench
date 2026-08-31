@@ -59,7 +59,7 @@ dev: container-dev
 # Ports bound on localhost by the container:
 # 3000: Nginx
 # 9229: Node.js debugger
-	npx concurrently --names host,docker \
+	npx concurrently --names host,docker --kill-others-on-fail \
 		'npm run watch' \
 		'$(DOCKER_RUN) -p $(WORKBENCH_PUBLISH_IP):3000:3000 \
 			-p 127.0.0.1:9229:9229 \

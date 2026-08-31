@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "prepare": "husky && next typegen && prisma generate",
-    "watch": "concurrently --names collab-server,vscode-workbench 'npm run watch:collab-server' 'npm run watch:vscode-workbench'",
+    "watch": "concurrently --names collab-server,vscode-workbench --kill-others-on-fail 'npm run watch:collab-server' 'npm run watch:vscode-workbench'",
     "watch:collab-server": "npm --workspace collab-server run watch",
     "watch:vscode-workbench": "npm --workspace vscode-workbench run watch",
     "tsc": "concurrently --names next,packages 'npm run tsc:workbench-app' 'npm run tsc --workspaces'",
@@ -18,7 +18,8 @@
     "lint": "eslint && prettier --check .",
     "lint:fix": "eslint . --fix && prettier --write .",
     "prettier": "prettier --check .",
-    "prettier:fix": "prettier --write ."
+    "prettier:fix": "prettier --write .",
+    "nudge": "node scripts/hmr-nudge.mjs"
   },
   "dependencies": {
     "@conform-to/zod": "^1.21.1",
