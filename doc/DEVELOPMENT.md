@@ -52,7 +52,7 @@ sbx run --name workbench
 Before running the usual dev setup, you'll need to run the following commands *inside* the sandbox.
 The `WORKBENCH_PUBLISH_IP` setting is necessary to access workbench outside the sandbox,
 and the `DOCKER_CACHE_DIR` ensures that the docker cache doesn't have to cross the an inefficient VM boundary.
-The last two commands ensure the latest node version is in place inside the development container, and that node-pty can be built.
+The last two commands ensure the both the C++ toolchain needed for node-pty and the appropriate node version are in place.
 
 ```
 echo 'export WORKBENCH_PUBLISH_IP=0.0.0.0' >> ~/.bashrc
@@ -73,7 +73,7 @@ After running the makefile targets insidethe sandbox (i.e. `make dev`),
 the sandboxed server will be available on the host machine at <http://localhost:43000>
 
 Hot module reloading won't work correctly if you're making edits outside of the VM.
-Run `node scripts/hmr-nudge.mjs` in a separate `sbx` session
+Run `npm run nudge` in a separate `sbx` session
 in order to get hot module reloading working correctly.
 
 ## Makefile targets
