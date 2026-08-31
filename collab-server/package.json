@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "watch": "concurrently --names esbuild,tsc 'npm run watch:esbuild' 'npm run watch:tsc'",
+    "watch": "concurrently --names esbuild,tsc --kill-others-on-fail 'npm run watch:esbuild' 'npm run watch:tsc'",
     "watch:esbuild": "node esbuild.mjs --watch",
     "watch:tsc": "tsc --watch --preserveWatchOutput",
     "tsc": "tsc",
