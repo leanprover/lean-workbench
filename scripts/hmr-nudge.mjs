@@ -8,7 +8,7 @@ import { readFile, utimes } from 'node:fs/promises'
 
 import chokidar from 'chokidar'
 
-const paths = process.argv.length < 3 ? ['src'] : process.argv.slice(2)
+const paths = process.argv.length < 3 ? ['.'] : process.argv.slice(2)
 const hashes = new Map()
 const nudge = async file => {
   const hash = createHash('sha256')
@@ -26,7 +26,7 @@ chokidar
     usePolling: true,
     interval: 400,
     ignoreInitial: true,
-    ignored: /node_modules|lean-workbench-data|(^|\/)\./,
+    ignored: /(^|\/)\.(git|jj)/,
   })
   .on('all', (event, file) => {
     if (event === 'unlink' || event === 'unlinkDir' || event === 'addDir') return
