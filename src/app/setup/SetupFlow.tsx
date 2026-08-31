@@ -2,13 +2,14 @@
 
 import { LEAN_VERSION_RE } from '@leanprover/workbench-shared'
 import { redirect, useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import z from 'zod'
 
-import { useServerAction, useThrowingSWR, useThrowToBoundary } from '@/lib/client/util'
+import { useServerAction, useThrowingSWR } from '@/lib/client/util'
 import { useConfigCtx } from '@/lib/contexts'
+import { type SetupStatus } from '@/lib/server/seed'
 
-import { doSeed, fetchSetupStatus, saveSetupConfig } from './actions'
+import { doSeed, saveSetupConfig } from './actions'
 import TrackedCommandForm from './TrackedCommandForm'
 
 /** Fetch mathlib4 v4.* tags, newest-first, paginating until exhausted. */
@@ -24,35 +25,28 @@ async function fetchLeanVersions(): Promise<string[]> {
 
 interface SetupFlowProps {
   baseUrl: string
+  statusOnMount: SetupStatus
 }
 
-export default function SetupFlow({ baseUrl }: SetupFlowProps) {
+export default function SetupFlow({ baseUrl, statusOnMount }: SetupFlowProps) {
   const router = useRouter()
   const cfg = useConfigCtx()
   const [wasCompleteOnMount] = useState(cfg.isSetupComplete)
   // Redirect to index on new visits, but keep the page open during actual setup
   if (wasCompleteOnMount) redirect('/')
 
-  const [configSaved, setConfigSaved] = useState(false)
+  const [setupStatus, setSetupStatus] = useState(statusOnMount)
   const { data: leanVersions } = useThrowingSWR('leanVersions', fetchLeanVersions)
 
-  const [configError, saveConfigAction, savingConfig] = useServerAction(saveSetupConfig, () => setConfigSaved(true))
-
-  // Sync with server state on mount (handles page reload during seeding).
-  const { throwToBoundary } = useThrowToBoundary()
-  useEffect(() => {
-    fetchSetupStatus().then(status => {
-      if (status.configSaved) setConfigSaved(true)
-    }, throwToBoundary)
-  }, [throwToBoundary])
+  const [configError, saveConfigAction, savingConfig] = useServerAction(saveSetupConfig, () =>
+    setSetupStatus('configured'),
+  )
 
   return (
     <>
       <h1>Setup</h1>
       <h2>Configuration</h2>
-      {configSaved ? (
-        <div className='setup-done-msg'>Configuration saved.</div>
-      ) : (
+      {setupStatus === 'not-configured' ? (
         <form action={saveConfigAction} className='setup-form'>
           <h3>GitHub Authentication</h3>
           <p style={{ color: '#607D8B', fontSize: '13px' }}>
@@ -78,6 +72,8 @@ export default function SetupFlow({ baseUrl }: SetupFlowProps) {
             {savingConfig ? 'Saving...' : 'Save Configuration'}
           </button>
         </form>
+      ) : (
+        <div className='setup-done-msg'>Configuration saved.</div>
       )}
 
       {configError && <div className='setup-error-msg'>{configError}</div>}
@@ -91,7 +87,8 @@ export default function SetupFlow({ baseUrl }: SetupFlowProps) {
 
       <TrackedCommandForm
         streamCommandKey='seed'
-        disabled={!configSaved}
+        disabled={setupStatus === 'not-configured'}
+        initiallyWatchingTTY={setupStatus === 'show-tty' || setupStatus === 'seeded'}
         title='Start Setup'
         trackedCommandAction={doSeed}
         successButtonText='Continue to Lean Workbench'

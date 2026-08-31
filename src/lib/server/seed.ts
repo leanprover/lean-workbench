@@ -7,8 +7,8 @@ import { getDataDir } from '@leanprover/workbench-shared/node'
 
 import { type ActionResponse } from '@/lib/util'
 
-import { getConfig, saveConfig } from './config'
-import { startTrackedCommand } from './trackedCommand'
+import { getConfig, hasGithubAuth, saveConfig } from './config'
+import { getTrackedCommandState, startTrackedCommand } from './trackedCommand'
 
 export function startSeed(leanVersion: string | undefined): ActionResponse<boolean> {
   const cfg = getConfig()
@@ -31,4 +31,15 @@ export function startSeed(leanVersion: string | undefined): ActionResponse<boole
   })
 
   return { ok: !!emitter }
+}
+
+export type SetupStatus = 'not-configured' | 'configured' | 'show-tty' | 'seeded'
+
+export async function fetchSetupStatus(): Promise<SetupStatus> {
+  const cfg = getConfig()
+  if (cfg.isSetupComplete) return 'seeded'
+  if (!hasGithubAuth(cfg)) return 'not-configured'
+  const st = getTrackedCommandState('seed')
+  if (!st) return 'configured'
+  return 'show-tty'
 }

@@ -15,6 +15,7 @@ interface TrackedCommandFormProps {
   title: string
   children: ReactNode
   disabled?: boolean
+  initiallyWatchingTTY: boolean
   successButtonText?: string
   successButtonAction?: (props: { close: () => void }) => void
   trackedCommandAction: (formData: FormData) => Promise<ActionResponse<boolean>>
@@ -33,11 +34,12 @@ export default function TrackedCommandForm({
   title,
   children,
   disabled,
+  initiallyWatchingTTY,
   successButtonAction,
   successButtonText,
   trackedCommandAction,
 }: TrackedCommandFormProps) {
-  const [state, setState] = useState<FormState>({ type: 'closed' })
+  const [state, setState] = useState<FormState>(initiallyWatchingTTY ? { type: 'watching' } : { type: 'closed' })
   const [submitError, submitAction, submitPending] = useServerAction(
     trackedCommandAction,
     wasCommandCreationSuccessful =>

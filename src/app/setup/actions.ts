@@ -3,7 +3,7 @@
 import z from 'zod'
 
 import { initAuth, requireAdmin } from '@/lib/server/auth'
-import { getConfig, hasGithubAuth, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
+import { getConfig, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
 import { startSeed as doStartSeed } from '@/lib/server/seed'
 import { getTrackedCommandState } from '@/lib/server/trackedCommand'
 import { submitAction } from '@/lib/server/util'
@@ -28,19 +28,7 @@ export const doSeed = submitAction(z.object({ leanVersion: z.string().optional()
   return doStartSeed(!leanVersion || leanVersion === 'Latest' ? undefined : leanVersion)
 })
 
-export async function fetchSetupStatus() {
-  await requireAdmin()
-  const cfg = getConfig()
-  const st = getTrackedCommandState('seed')
-  return {
-    configSaved: hasGithubAuth(cfg),
-    seeding: st?.status === 'running',
-    seeded: cfg.isSetupComplete,
-  }
-}
-
 export async function isTrackedCommandRunning(key: string) {
   await requireAdmin()
-  console.log({ st: getTrackedCommandState(key) })
   return getTrackedCommandState(key)?.status === 'running'
 }
