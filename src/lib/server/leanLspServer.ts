@@ -21,7 +21,23 @@ const LSP_SOCKET_FILENAME = 'lsp.sock'
  * this translates between the two framings. */
 function bridge(ws: WebSocket, proc: ChildProcess): () => void {
   let stdoutBuf = Buffer.alloc(0)
+  let failed = false
+
+  /** Give up on this connection.
+   * A stdio stream we cannot frame is unrecoverable:
+   * skipping ahead to the next parsable header would silently drop whole messages,
+   * including ones already buffered behind the offending bytes.
+   * Closing the socket runs the caller's teardown, which kills the process. */
+  const fail = (why: string) => {
+    failed = true
+    const head = JSON.stringify(stdoutBuf.subarray(0, 200).toString('utf-8'))
+    console.error(`[LeanLspHandle] ${why}; closing connection. Buffer began with ${head}`)
+    stdoutBuf = Buffer.alloc(0)
+    ws.close(1011, 'LSP stream desynchronized')
+  }
+
   const onStdout = (chunk: Buffer) => {
+    if (failed) return
     stdoutBuf = Buffer.concat([stdoutBuf, chunk])
     // Emit as many complete Content-Length frames as are buffered.
     for (;;) {
@@ -30,9 +46,8 @@ function bridge(ws: WebSocket, proc: ChildProcess): () => void {
       const header = stdoutBuf.subarray(0, headerEnd).toString('ascii')
       const lengthMatch = header.match(/Content-Length:\s*(\d+)/i)
       if (!lengthMatch) {
-        // Unframeable output; drop the buffer to resynchronize.
-        stdoutBuf = Buffer.alloc(0)
-        break
+        fail('read a header carrying no Content-Length')
+        return
       }
       const bodyStart = headerEnd + 4
       const bodyLength = Number(lengthMatch[1])
