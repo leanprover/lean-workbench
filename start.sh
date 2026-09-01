@@ -19,6 +19,9 @@ NGINX_ACCESS_LOG_PATH="${NGINX_LOG_DIR}/access.log"
 # Ensure data subdirs exist
 mkdir -p "${LEAN_WORKBENCH_DATA_DIR}/workspaces" "${LEAN_WORKBENCH_DATA_DIR}/db" "${LEAN_WORKBENCH_DATA_DIR}/package-sets" "${LEAN_WORKBENCH_DATA_DIR}/templates"
 
+# Without this, `lake` invocations will loudly complain
+git config --global advice.detachedHead false
+
 # Start the Next.js app in the background
 export LEAN_WORKBENCH_DATA_DIR VSCODE_SERVER_DIR NGINX_CONF_DIR NGINX_LOG_DIR
 if [ "${NODE_ENV}" = "production" ]; then
@@ -43,7 +46,8 @@ else
     done
 
     # Rebuild native SQLite bindings before starting in case Docker and host are different platforms
-    cd "${SCRIPT_DIR}" && npm rebuild better-sqlite3 && node_modules/.bin/next dev --port 3002 &
+    # Build node-pty because its binaries aren't shipped for Linux systems
+    cd "${SCRIPT_DIR}" && npm rebuild better-sqlite3 node-pty && node_modules/.bin/next dev --port 3002 &
 fi
 APP_PID=$!
 trap 'kill $APP_PID 2>/dev/null' EXIT

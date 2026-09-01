@@ -149,54 +149,6 @@ export function canAccessProject(user: User, project: Project) {
   return isOwner || project.isPublic
 }
 
-/** Returns `[response, send, close]`.
- * See https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events */
-export function sseStreamResponse(onCancel?: () => void): [Response, (msg: object) => void, () => void] {
-  let send: (msg: object) => void = () => {}
-  let close: () => void = () => {}
-  let closed = false
-  const encoder = new TextEncoder()
-  let keepAliveTimeout: ReturnType<typeof setInterval> | undefined = undefined
-
-  const stream = new ReadableStream({
-    start(controller) {
-      send = msg => {
-        if (closed) return
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(msg)}\n\n`))
-      }
-      close = () => {
-        if (closed) return
-        closed = true
-        clearInterval(keepAliveTimeout)
-        keepAliveTimeout = undefined
-        controller.close()
-      }
-      // nginx will close connections that don't send some message in 60s
-      keepAliveTimeout = setInterval(() => {
-        if (closed) return
-        controller.enqueue(encoder.encode(`:\n`))
-      }, 10_000)
-    },
-    cancel() {
-      closed = true
-      clearInterval(keepAliveTimeout)
-      keepAliveTimeout = undefined
-      if (onCancel) onCancel()
-    },
-  })
-
-  const response = new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-      'X-Accel-Buffering': 'no',
-    },
-  })
-
-  return [response, send, close]
-}
-
 export interface TemplateInfo {
   id: string
   name: string

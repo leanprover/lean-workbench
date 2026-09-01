@@ -1,0 +1,43 @@
+/*
+  Adapted from Harmonizer: https://harmonizer.evilmartians.com/#nZAxT8MwEIX_y2M1KCRiqNciJpjKhhiuzsWxcH2R7WSJ8t-RS2lTBiQY_d19fs-eMXFMTgL0vYLniX2CfpsR6MDQMOJvPRSMhBwpZehNpWD6KAeCru6quv4-bmk4kUWd_cDjb_61-8Nr_-GVvu2f-74r9CNfPZxjlAgFCtYzdL0O8UKtC_Yy3aynaTSGU1q5D1VJSJyzCzZBz-d6L9KyhwYNhqDQusgmOwmFQ2NvX-Wp5Hw1PlGeOEBhb7fiJT4722do3HRdd6GPFD8KbJrmCI9bu0wxQ5cfKDu7gUy5b2iwLJ8
+*/
+:root {
+  --neutral-l: oklch(0.96 0 20);
+  --neutral-d: oklch(0.46 0 20);
+  --error-l: oklch(0.96 0.02 20);
+  --error-d: oklch(0.46 0.02 20);
+  --loading-l: oklch(0.96 0.02 90);
+  --loading-d: oklch(0.46 0.02 90);
+  --success-l: oklch(0.96 0.02 250);
+  --success-d: oklch(0.46 0.02 250);
+}
+
+div.tty {
+  color: #333;
+  background: var(--neutral-l);
+  border-radius: 0.375rem;
+  font-size: 0.7rem;
+  border: 1px solid #555;
+  padding: 0.375rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+div.tty.tty-loading {
+  background: var(--loading-l);
+}
+
+div.tty.tty-error {
+  background: var(--error-l);
+}
+
+div.tty.tty-success {
+  background: var(--success-l);
+}
+
+div.tty .followup {
+  border-top: 1px solid #555;
+  padding-top: 0.375rem;
+  font-size: 14px;
+}

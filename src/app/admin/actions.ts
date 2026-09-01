@@ -12,6 +12,7 @@ import { initAuth, requireAdmin } from '@/lib/server/auth'
 import { getConfig, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
+import { getTrackedCommandState } from '@/lib/server/trackedCommand'
 import {
   readTemplateMetadata,
   saveTemplateMetadata,
@@ -272,3 +273,13 @@ export const editTemplateMetadata = submitAction(
     }
   },
 )
+
+export async function isTrackedCommandRunning(key: string) {
+  await requireAdmin()
+  return getTrackedCommandState(key)?.status === 'running'
+}
+
+export async function isTrackedCommandAvailable(key: string) {
+  await requireAdmin()
+  return !!getTrackedCommandState(key)
+}
