@@ -55,7 +55,7 @@ export default function TrackedCommandForm({
 
   if (state.type === 'closed' || disabled) {
     return (
-      <div className="command-setup-button" style={style}>
+      <div className='command-setup-button' style={style}>
         <button disabled={disabled} className='primary' onClick={setStateOpening}>
           {title}
         </button>
