@@ -95,14 +95,6 @@ function hoverText(contents: unknown): string {
   return ''
 }
 
-const delay = (ms: number) => new Promise(r => setTimeout(r, ms))
-
-/** Lean's `$/lean/fileProgress` payload; an empty `processing` list means the worker is idle. */
-interface FileProgressParams {
-  textDocument?: { uri?: string }
-  processing?: unknown[]
-}
-
 /** A Lean LSP session for one project view, reused across identifier lookups.
  *
  * It keeps the project's file open as context, so {@link lookup} resolves identifiers the
@@ -119,8 +111,6 @@ export class LeanLspSession {
   private version = 0
   private baseText = ''
   private readonly uri: string
-  /** Resolvers waiting for the file worker to finish elaborating the latest text. */
-  private idleWaiters: (() => void)[] = []
 
   constructor(
     private readonly path: string,
@@ -133,16 +123,7 @@ export class LeanLspSession {
   }
 
   private async open(): Promise<JsonRpcWebSocket> {
-    const [client, baseText] = await Promise.all([
-      JsonRpcWebSocket.connect(this.path, (method, params) => {
-        if (method !== '$/lean/fileProgress') return
-        const p = params as FileProgressParams
-        if (p.textDocument?.uri === this.uri && (p.processing?.length ?? 0) === 0) {
-          this.idleWaiters.splice(0).forEach(resolve => resolve())
-        }
-      }),
-      this.loadContext(),
-    ])
+    const [client, baseText] = await Promise.all([JsonRpcWebSocket.connect(this.path), this.loadContext()])
     this.baseText = baseText
     const rootUri = `file://${this.projectDir.replace(/\/$/, '')}`
     await client.request('initialize', {
@@ -154,7 +135,6 @@ export class LeanLspSession {
     client.notify('initialized', {})
     this.client = client
     this.opened = false
-    this.idleWaiters = []
     return client
   }
 
@@ -174,8 +154,6 @@ export class LeanLspSession {
     const text = `${base}#check ${identifier.replace(/\s+/g, ' ').trim()}\n`
     const version = ++this.version
 
-    // Register the idle waiter before sending, so a fast worker can't finish before we listen.
-    const idle = new Promise<void>(resolve => this.idleWaiters.push(resolve))
     if (this.opened) {
       client.notify('textDocument/didChange', {
         textDocument: { uri: this.uri, version },
@@ -188,22 +166,18 @@ export class LeanLspSession {
       this.opened = true
     }
 
+    // Answers once every diagnostic for `version` or later has been emitted,
+    // so the hover below reads a fully elaborated document.
+    // Note the bare `uri`: these params are not a `TextDocumentIdentifier`.
+    await client.request('textDocument/waitForDiagnostics', { uri: this.uri, version })
+
     // `#check <id>` places the identifier at character 7, just past "#check ", on the last line.
-    const position = { line: checkLine, character: 7 }
-    const worker = { idle: false }
-    void idle.then(() => (worker.idle = true))
-    const deadline = Date.now() + 30_000
-    for (;;) {
-      const hover = await client.request<{ contents: unknown } | null>('textDocument/hover', {
-        textDocument: { uri: this.uri },
-        position,
-      })
-      const info = hover && hoverText(hover.contents).trim()
-      if (info) return info
-      // Elaboration done and still no hover ⇒ the identifier is unknown here.
-      if (worker.idle || Date.now() > deadline) return null
-      await delay(300)
-    }
+    const hover = await client.request<{ contents: unknown } | null>('textDocument/hover', {
+      textDocument: { uri: this.uri },
+      position: { line: checkLine, character: 7 },
+    })
+    const info = hover ? hoverText(hover.contents).trim() : ''
+    return info === '' ? null : info
   }
 
   close(): void {
