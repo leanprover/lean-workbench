@@ -2,12 +2,14 @@ import 'server-only'
 
 import fs from 'node:fs/promises'
 
+import { notFound } from 'next/navigation'
 import type z from 'zod'
 
 import type { ActionResponse } from '@/lib/util'
 import type { Project } from '@/prisma/generated/client'
 
-import type { User } from './auth'
+import { requireAuth, type User } from './auth'
+import { getDb } from './db'
 
 /** Wrap a server action so that its handler receives only schema-validated input.
  * The raw argument is parsed by {@link schema};
@@ -93,6 +95,24 @@ export function bwrapHomeDir(userName: string) {
 export function canAccessProject(user: User, project: Project) {
   const isOwner = user.id === project.userId
   return isOwner || project.isPublic
+}
+
+/** The current viewer, the user named `userName`, and that user's project named `projectName`.
+ * Interrupts with 404 if either does not exist, or the viewer may not access the project:
+ * 403 would leak the existence of inaccessible projects. */
+export async function requireProjectAccess(
+  userName: string,
+  projectName: string,
+): Promise<{ viewer: User; owner: User; project: Project }> {
+  const viewer = (await requireAuth()).user
+  const db = getDb()
+  const owner = await db.user.findUnique({ where: { name: userName } })
+  if (!owner) notFound()
+  const project = await db.project.findUnique({
+    where: { userId_name: { userId: owner.id, name: projectName } },
+  })
+  if (!project || !canAccessProject(viewer, project)) notFound()
+  return { viewer, owner, project }
 }
 
 /** Returns `[response, send, close]`.

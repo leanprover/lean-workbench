@@ -1,13 +1,11 @@
 import { zProjectName, zUserName } from '@leanprover/workbench-shared'
 import { getProjectDir } from '@leanprover/workbench-shared/node'
 import type { Route } from 'next'
-import { notFound, redirect } from 'next/navigation'
+import { redirect } from 'next/navigation'
 import z from 'zod'
 
-import { requireAuth } from '@/lib/server/auth'
-import { getDb } from '@/lib/server/db'
 import { mintSignedDirToken, signedDirFileUrl } from '@/lib/server/dirToken'
-import { canAccessProject } from '@/lib/server/util'
+import { requireProjectAccess } from '@/lib/server/util'
 
 const zParams = z.object({
   userName: zUserName,
@@ -27,16 +25,7 @@ export async function GET(_req: Request, { params }: { params: Promise<Params> }
   if (!parsed.success) return new Response(parsed.error.issues[0]!.message, { status: 400 })
   const { userName, projectName, relPath: relPathSegs } = parsed.data
 
-  const session = await requireAuth()
-
-  const db = getDb()
-  const owner = await db.user.findUnique({ where: { name: userName } })
-  if (!owner) notFound()
-  const project = await db.project.findUnique({
-    where: { userId_name: { userId: owner.id, name: projectName } },
-  })
-  // 404 rather than 403 to avoid leaking the existence of inaccessible projects.
-  if (!project || !canAccessProject(session.user, project)) notFound()
+  const { owner, project } = await requireProjectAccess(userName, projectName)
 
   // Mint a token with the the project folder as root dir:
   // viewer can already read these same files through the editor.

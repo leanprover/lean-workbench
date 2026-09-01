@@ -3,10 +3,8 @@ import { notFound } from 'next/navigation'
 import { connection } from 'next/server'
 import z from 'zod'
 
-import { requireAuth } from '@/lib/server/auth'
-import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
-import { canAccessProject } from '@/lib/server/util'
+import { requireProjectAccess } from '@/lib/server/util'
 
 const zParams = z.object({
   userName: zUserName,
@@ -23,21 +21,7 @@ export default async function EditorSession({ params: params_ }: { params: Promi
   const parsed = zParams.safeParse(await params_)
   // 400 would be better, but RSCs can't return a Response and there is no 400 helper in Next.js.
   if (!parsed.success) notFound()
-  const params = parsed.data
-
-  const session = await requireAuth()
-  const viewer = session.user
-
-  const db = getDb()
-  const owner = await db.user.findUnique({
-    where: { name: params.userName },
-  })
-  if (!owner) notFound()
-
-  const project = await db.project.findUnique({
-    where: { userId_name: { userId: owner.id, name: params.projectName } },
-  })
-  if (!project || !canAccessProject(viewer, project)) notFound()
+  const { viewer, owner, project } = await requireProjectAccess(parsed.data.userName, parsed.data.projectName)
 
   const manager = getEditorSessionManager()
   // may throw to error boundary (e.g. if the project folder isn't accessible)
