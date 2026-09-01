@@ -2,6 +2,19 @@ import { requireAdmin } from '@/lib/server/auth'
 import { getTrackedCommandState } from '@/lib/server/trackedCommand'
 import { type TrackedCommandEvent, type TrackedCommandExit } from '@/lib/util'
 
+const STREAMING_HEADERS = {
+  'Content-Type': 'text/event-stream',
+  'Cache-Control': 'no-cache',
+  Connection: 'keep-alive',
+  'X-Accel-Buffering': 'no',
+} as const
+
+// Separately handle HEAD without creating a response stream
+export async function HEAD() {
+  await requireAdmin()
+  return new Response(null, { headers: STREAMING_HEADERS })
+}
+
 /**
  * Return server-sent events for a streaming command
  */
@@ -64,13 +77,6 @@ export async function GET(request: Request, context: RouteContext<'/api/admin/tr
         if (request.signal.aborted) cleanup() // oops, the connection was closed when the function started
       },
     }),
-    {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
-        'X-Accel-Buffering': 'no',
-      },
-    },
+    { headers: STREAMING_HEADERS },
   )
 }

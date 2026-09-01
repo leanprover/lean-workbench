@@ -117,22 +117,11 @@ export default function TrackedCommandForm({
       )}
       <div className='actions'>
         {state.type === 'conflict' && (
-          <button
-            onClick={e => {
-              e.preventDefault()
-              setState({ type: 'watching' })
-            }}
-          >
+          <button type='button' onClick={() => setState({ type: 'watching' })}>
             View command in progress
           </button>
         )}
-        <button
-          disabled={submitPending}
-          onClick={e => {
-            e.preventDefault()
-            setState({ type: 'closed' })
-          }}
-        >
+        <button type='button' disabled={submitPending} onClick={() => setState({ type: 'closed' })}>
           Cancel
         </button>
         <button disabled={submitPending} className='primary' type='submit'>

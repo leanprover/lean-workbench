@@ -14,8 +14,7 @@ interface SimpleTTYProps {
 /*
  * This state representation only allows the simplest of terminal operations:
  * recognition of `\r` and `\n`, and a bit of special-cased functionality like
- * noticing `\x1b[2K\r` by walking backwards from `\r` and treating it as a
- * newline.
+ * noticing `\x1b[2K` at the end of a line when we see a newline.
  *
  * If we want to recognize other control sequences, we need to deal with the
  * fact that any byte sequence can get interrupted, and maintain the
@@ -255,12 +254,7 @@ function SimpleTTYSession({ streamingCommandKey, reload, onExit }: SimpleTTYProp
       }
       {state.type === 'disconnected' && (
         <div className='followup'>
-          <button
-            onClick={e => {
-              e.preventDefault()
-              reload()
-            }}
-          >
+          <button type='button' onClick={reload}>
             Reconnect
           </button>
         </div>
