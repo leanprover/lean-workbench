@@ -91,10 +91,13 @@ export default function SetupFlow({ baseUrl, statusOnMount }: SetupFlowProps) {
         initiallyWatchingTTY={setupStatus === 'show-tty' || setupStatus === 'seeded'}
         title='Start Setup'
         trackedCommandAction={doSeed}
-        successButtonText='Continue to Lean Workbench'
-        successButtonAction={() => {
-          router.refresh()
-          router.push('/')
+        style={{ margin: '20px 0' }}
+        successButton={{
+          text: 'Continue to Lean Workbench',
+          action: () => {
+            router.refresh()
+            router.push('/')
+          },
         }}
       >
         <label>

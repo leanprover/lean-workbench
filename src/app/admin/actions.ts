@@ -278,3 +278,8 @@ export async function isTrackedCommandRunning(key: string) {
   await requireAdmin()
   return getTrackedCommandState(key)?.status === 'running'
 }
+
+export async function isTrackedCommandAvailable(key: string) {
+  await requireAdmin()
+  return !!getTrackedCommandState(key)
+}

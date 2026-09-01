@@ -1,8 +1,8 @@
 'use client'
 
-import { type CSSProperties, type ReactNode, useState } from 'react'
+import { type CSSProperties, type ReactNode, useEffect, useState } from 'react'
 
-import { isTrackedCommandRunning } from '@/app/admin/actions'
+import { isTrackedCommandAvailable, isTrackedCommandRunning } from '@/app/admin/actions'
 import ErrorBox from '@/app/components/ErrorBox'
 import SimpleTTY from '@/app/components/SimpleTTY'
 import { useServerAction, useThrowToBoundary } from '@/lib/client/util'
@@ -14,9 +14,9 @@ interface TrackedCommandFormProps {
   title: string
   children: ReactNode
   disabled?: boolean
-  initiallyWatchingTTY: boolean
-  successButtonText?: string
-  successButtonAction?: (props: { close: () => void }) => void
+  initiallyWatchingTTY?: boolean
+  successAction?: () => void
+  successButton?: { allowClose?: boolean; text: string; action: (props: { close: () => void }) => void }
   trackedCommandAction: (formData: FormData) => Promise<ActionResponse<boolean>>
 }
 
@@ -27,6 +27,26 @@ type FormState =
   | { type: 'watching'; exit?: TrackedCommandExit }
   | { type: 'conflict' /* Submission blocked because a separate command-run started */ }
 
+/**
+ * Present the admin user with a button labeled with the `title` prop.
+ * That button can be expanded to present the body of a <form> (the element's children),
+ * that gets submitted to the serverAction `trackedCommandAction`.
+ *
+ * The expectation is that this server action runs `startTrackedCommand(streamCommandKey, ...)` and
+ * returns `true` iff `startTrackedCommand` successfully returns an emitter. The form will then
+ * be replaced with the TTY output from the `streamCommandKey`.
+ *
+ * Optional configuration props:
+ *  - `disabled`: forces the form closed, disables the button
+ *  - `style`: styles applied to the TrackedCommandForm
+ *  - `initiallyWatchingTTY`: begin in an open state, try to open the TTY view first, and
+ *    fall back on the form view only if no prior TTY session is available.
+ *  - `successAction`: runs immediately if an successful-exit is detected (whether via replay
+ *    or via a new streaming event)
+ *  - `successButton`: if provided, then when the TTY is showing a successful exit state, the
+ *    "Close" button will be replaced (or augmented, if `successButton.allowClose` is true) with
+ *    a button that contains `successButton.text` and performs `successButton.action` on click.
+ */
 export default function TrackedCommandForm({
   streamCommandKey,
   style,
@@ -34,11 +54,11 @@ export default function TrackedCommandForm({
   children,
   disabled,
   initiallyWatchingTTY,
-  successButtonAction,
-  successButtonText,
+  successAction,
+  successButton,
   trackedCommandAction,
 }: TrackedCommandFormProps) {
-  const [state, setState] = useState<FormState>(initiallyWatchingTTY ? { type: 'watching' } : { type: 'closed' })
+  const [state, setState] = useState<FormState>(initiallyWatchingTTY ? { type: 'opening' } : { type: 'closed' })
   const [submitError, submitAction, submitPending] = useServerAction(
     trackedCommandAction,
     wasCommandCreationSuccessful =>
@@ -46,6 +66,12 @@ export default function TrackedCommandForm({
   )
 
   const { throwToBoundary } = useThrowToBoundary()
+  useEffect(() => {
+    if (disabled || !initiallyWatchingTTY) return
+    isTrackedCommandAvailable(streamCommandKey)
+      .then(isTTYAvailable => setState(isTTYAvailable ? { type: 'watching' } : { type: 'editing' }))
+      .catch(throwToBoundary)
+  }, [disabled, initiallyWatchingTTY, streamCommandKey, throwToBoundary])
   const setStateOpening = () => {
     setState({ type: 'opening' })
     isTrackedCommandRunning(streamCommandKey)
@@ -78,23 +104,29 @@ export default function TrackedCommandForm({
     return (
       <div className='command-setup-form' style={style}>
         {titleNode}
-        <SimpleTTY streamingCommandKey={streamCommandKey} onExit={exit => setState({ type: 'watching', exit })} />
+        <SimpleTTY
+          streamingCommandKey={streamCommandKey}
+          onExit={exit => {
+            if (exit.type === 'success') successAction?.()
+            setState({ type: 'watching', exit })
+          }}
+        />
         <div className='actions'>
           {(state.exit?.type === 'killed' || state.exit?.type === 'error') && (
             <button className='primary' disabled={submitPending} onClick={setStateOpening}>
               Back
             </button>
           )}
-          {state.exit?.type === 'success' && successButtonText && successButtonAction && (
+          {state.exit?.type === 'success' && successButton && (
             <button
               disabled={submitPending}
               className='primary'
-              onClick={() => successButtonAction({ close: () => setState({ type: 'closed' }) })}
+              onClick={() => successButton.action({ close: () => setState({ type: 'closed' }) })}
             >
-              {successButtonText}
+              {successButton.text}
             </button>
           )}
-          {(state.exit?.type !== 'success' || !successButtonText || !successButtonAction) && (
+          {(state.exit?.type !== 'success' || !successButton || successButton.allowClose) && (
             <button disabled={submitPending} onClick={() => setState({ type: 'closed' })}>
               Close
             </button>

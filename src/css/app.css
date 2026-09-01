@@ -296,12 +296,8 @@ form.num-button input {
 }
 
 /* === Tracked Command Forms === */
-.command-setup-button {
-  margin: 20px 0;
-}
 .command-setup-form {
   font-size: 14px;
-  margin: 20px 0;
   padding: 5px 16px;
   background: #f5f7fa;
   border: 1px solid #e4ebf3;
