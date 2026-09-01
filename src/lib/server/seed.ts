@@ -24,6 +24,7 @@ export function startSeed(leanVersion: string | undefined): ActionResponse<boole
   emitter?.on('exit', async exit => {
     // Note: success has already been reported to the client component;
     // if the saveConfig() fails, the config state will be out of sync
+    // (We're basically pretending saveConfig() will never fail here.)
     if (exit.type === 'success') {
       getConfig().isSetupComplete = true
       await saveConfig()

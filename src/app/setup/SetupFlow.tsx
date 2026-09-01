@@ -5,12 +5,12 @@ import { redirect, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import z from 'zod'
 
+import TrackedCommandForm from '@/app/components/TrackedCommandForm'
 import { useServerAction, useThrowingSWR } from '@/lib/client/util'
 import { useConfigCtx } from '@/lib/contexts'
 import { type SetupStatus } from '@/lib/server/seed'
 
 import { doSeed, saveSetupConfig } from './actions'
-import TrackedCommandForm from './TrackedCommandForm'
 
 /** Fetch mathlib4 v4.* tags, newest-first, paginating until exhausted. */
 async function fetchLeanVersions(): Promise<string[]> {
@@ -100,7 +100,7 @@ export default function SetupFlow({ baseUrl, statusOnMount }: SetupFlowProps) {
         <label>
           Lean version:{' '}
           <select name='leanVersion' disabled={!leanVersions}>
-            <option>{leanVersions ? 'Latest' : 'Loading…'}</option>
+            <option value=''>{leanVersions ? 'Latest' : 'Loading…'}</option>
             {leanVersions?.map(v => (
               <option key={v} value={v}>
                 {v}

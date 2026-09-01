@@ -56,7 +56,6 @@ echo "[progress 1/$TOTAL Creating directories]"
 mkdir -p "$ROOT"/{workspaces,db,package-sets,templates}
 
 # --- Step 2: Resolve mathlib version ---
-git config --global advice.detachedHead false
 echo "[progress 2/$TOTAL Resolving mathlib version]"
 if [ -z "$LEAN_VERSION" ]; then
   # Mathlib tags lag behind Lean releases, so let the latest mathlib tag

@@ -38,7 +38,7 @@ export async function GET(request: Request, context: RouteContext<'/api/admin/tr
         const emitter = state.emitter
 
         // nginx will close connections that don't send some message in 60s
-        const keepAliveTimeout = setInterval(() => {
+        const keepAliveInterval = setInterval(() => {
           controller.enqueue(encoder.encode(':\n'))
         }, 10_000)
 
@@ -54,7 +54,7 @@ export async function GET(request: Request, context: RouteContext<'/api/admin/tr
         emitter.on('exit', onExit)
 
         const cleanup = () => {
-          clearInterval(keepAliveTimeout)
+          clearInterval(keepAliveInterval)
           emitter.off('data', onData)
           emitter.off('exit', onExit)
           request.signal.removeEventListener('abort', cleanup) // avoids double-calling cleanup

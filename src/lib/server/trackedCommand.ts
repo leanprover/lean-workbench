@@ -4,15 +4,15 @@ import { EventEmitter } from 'node:events'
 
 import * as pty from 'node-pty'
 
-export type Exit = { type: 'success' } | { type: 'killed'; signal: number } | { type: 'error'; exitCode: number }
+import { type TrackedCommandExit } from '@/lib/util'
 
 export interface TrackedCommandEvents {
-  data: [line: string]
-  exit: [exit: Exit]
+  data: [data: string]
+  exit: [exit: TrackedCommandExit]
 }
 
 export type TrackedCommandStatus =
-  { status: 'done'; exit: Exit } | { status: 'running'; emitter: EventEmitter<TrackedCommandEvents> }
+  { status: 'done'; exit: TrackedCommandExit } | { status: 'running'; emitter: EventEmitter<TrackedCommandEvents> }
 
 export type TrackedCommandState = TrackedCommandStatus & {
   started: Date
@@ -63,7 +63,7 @@ export function startTrackedCommand(
     emitter.emit('data', data)
   })
   ptyProcess.onExit(({ exitCode, signal }) => {
-    let exit: Exit
+    let exit: TrackedCommandExit
     if (signal) {
       exit = { type: 'killed', signal }
     } else if (exitCode) {

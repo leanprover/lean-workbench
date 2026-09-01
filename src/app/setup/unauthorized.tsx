@@ -19,11 +19,7 @@ export default async function Unauthorized() {
   // before going to `/setup`, meaning they'd never see this page. We
   // recommend that system administrators do not do this.
   if (!config.isSetupComplete) {
-    return (
-      <>
-        <SetupAdmin />
-      </>
-    )
+    return <SetupAdmin />
   } else {
     return <AdminLogin />
   }

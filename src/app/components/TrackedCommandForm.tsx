@@ -2,12 +2,11 @@
 
 import { type CSSProperties, type ReactNode, useState } from 'react'
 
+import { isTrackedCommandRunning } from '@/app/admin/actions'
 import ErrorBox from '@/app/components/ErrorBox'
 import SimpleTTY from '@/app/components/SimpleTTY'
 import { useServerAction, useThrowToBoundary } from '@/lib/client/util'
 import { type ActionResponse, type TrackedCommandExit } from '@/lib/util'
-
-import { isTrackedCommandRunning } from './actions'
 
 interface TrackedCommandFormProps {
   streamCommandKey: string
@@ -68,12 +67,16 @@ export default function TrackedCommandForm({
     <div style={{ paddingBottom: '5px', marginBottom: '5px', borderBottom: '1px solid #e4ebf3' }}>{title}</div>
   )
   if (state.type === 'opening') {
-    return <div className='command-setup-form'>{titleNode}</div>
+    return (
+      <div className='command-setup-form' style={style}>
+        {titleNode}
+      </div>
+    )
   }
 
   if (state.type === 'watching') {
     return (
-      <div className='command-setup-form'>
+      <div className='command-setup-form' style={style}>
         {titleNode}
         <SimpleTTY streamingCommandKey={streamCommandKey} onExit={exit => setState({ type: 'watching', exit })} />
         <div className='actions'>
@@ -102,10 +105,10 @@ export default function TrackedCommandForm({
   }
 
   return (
-    <form action={submitAction} className='command-setup-form'>
+    <form action={submitAction} className='command-setup-form' style={style}>
       {titleNode}
       {children}
-      <div style={{ gridArea: 'error', color: '#f00' }}>{submitError}</div>
+      <div style={{ color: '#f00' }}>{submitError}</div>
       {state.type === 'conflict' && (
         <ErrorBox>
           Cannot start this command because another command of the same type is already running. You can wait and try

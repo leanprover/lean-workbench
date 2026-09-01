@@ -34,30 +34,29 @@ interface SimpleTTYProps {
  */
 export default function SimpleTTY(props: SimpleTTYProps) {
   const [attempt, setAttempt] = useState(0)
-  return <SimpleTTYSession key={attempt} reload={() => setAttempt(attempt + 1)} {...props} />
+  return <SimpleTTYSession key={attempt} reload={() => setAttempt(attempt => attempt + 1)} {...props} />
 }
 
-type SimpleTTYState =
+type SimpleTTYState = (
   | { type: 'loading'; buffer: never[] }
   | { type: 'no-stream'; buffer: never[] }
-  | {
-      type: 'running'
-      buffer: string[]
-      tail: string[]
-      cursor: number /* 0 <= cursor <= tail.length */
-    }
-  | { type: 'disconnected'; buffer: string[] }
+  | { type: 'running'; tail: string[]; cursor: number /* 0 <= cursor <= tail.length */ }
+  | { type: 'disconnected' }
   | { type: 'done'; buffer: string[]; exit: TrackedCommandExit }
+) & { buffer: string[]; unexpectedError: boolean }
 
 /**
  * Custom hook: establish and maintain a connection to the streaming command source for a given
  * key, and return a SimpleTTYState and bonus unexpectedError signal
  */
 function useTerminalConnection(streamingCommandKey: string, onExit?: (exit: TrackedCommandExit) => void) {
-  const [unexpectedError, setUnexpectedError] = useState(false)
   const incomingEventMessages = useRef<TrackedCommandEvent[]>([])
   const animationRequest = useRef<ReturnType<typeof requestAnimationFrame> | undefined>(undefined)
-  const [state, setState] = useState<SimpleTTYState>({ type: 'loading', buffer: [] })
+  const [state, setState] = useState<SimpleTTYState>({
+    type: 'loading',
+    buffer: [],
+    unexpectedError: false,
+  })
 
   // Hand-rolled useEffectEvent
   const handleExit = useRef<undefined | ((exit: TrackedCommandExit) => void)>(onExit)
@@ -69,7 +68,8 @@ function useTerminalConnection(streamingCommandKey: string, onExit?: (exit: Trac
     animationRequest.current = undefined
     const messages = incomingEventMessages.current
     incomingEventMessages.current = []
-    setState((oldState: SimpleTTYState) => {
+    setState((oldState: SimpleTTYState): SimpleTTYState => {
+      let unexpectedError = oldState.unexpectedError
       let termBuffer: string[], termTail: string[], termCursor: number
       if (oldState.type === 'running') {
         termBuffer = oldState.buffer
@@ -81,7 +81,7 @@ function useTerminalConnection(streamingCommandKey: string, onExit?: (exit: Trac
         termCursor = 0
       } else {
         console.error('SimpleTTY animation frame called while in a finished state', oldState, messages.slice(0))
-        return oldState
+        return { ...oldState, unexpectedError: true }
       }
 
       /* Perform copy-on-write to make memoization better */
@@ -102,7 +102,7 @@ function useTerminalConnection(streamingCommandKey: string, onExit?: (exit: Trac
       const finalize = (index: number) => {
         if (index !== messages.length - 1) {
           console.error(`SimpleTTY received more messages after the supposedly-final message`, messages.slice(index))
-          setUnexpectedError(true)
+          unexpectedError = true
         }
         return appendToBuffer(termTail.join(''))
       }
@@ -111,14 +111,16 @@ function useTerminalConnection(streamingCommandKey: string, onExit?: (exit: Trac
         switch (message.type) {
           case 'no-stream':
             if (oldState.type === 'loading') {
-              return { type: 'no-stream', buffer: oldState.buffer }
+              return { type: 'no-stream', buffer: oldState.buffer, unexpectedError }
             } else {
               console.error(`no-stream received after another message`)
-              setUnexpectedError(true)
+              unexpectedError = true
             }
             break
-          case 'exit':
-            return { type: 'done', buffer: finalize(index), exit: message.exit }
+          case 'exit': {
+            const buffer = finalize(index)
+            return { type: 'done', buffer, exit: message.exit, unexpectedError }
+          }
           case 'data': {
             for (const ch of message.data) {
               if (ch === '\n') {
@@ -136,7 +138,7 @@ function useTerminalConnection(streamingCommandKey: string, onExit?: (exit: Trac
           }
         }
       }
-      return { type: 'running', buffer: termBuffer, tail: termTail, cursor: termCursor }
+      return { type: 'running', buffer: termBuffer, tail: termTail, cursor: termCursor, unexpectedError }
     })
 
     // Trigger exit handler when the last message is an exit
@@ -147,20 +149,19 @@ function useTerminalConnection(streamingCommandKey: string, onExit?: (exit: Trac
   useEffect(() => {
     const source = new EventSource(`/api/admin/tracked-command/${streamingCommandKey}`)
     source.onmessage = event => {
-      if (animationRequest.current === undefined) {
-        animationRequest.current = requestAnimationFrame(updater)
-      }
-
       try {
         const data = zTrackedCommandEvent.parse(
           JSON.parse(event.data as string /* EventSources ensure this in practice */),
         )
         incomingEventMessages.current.push(data)
+        if (animationRequest.current === undefined) {
+          animationRequest.current = requestAnimationFrame(updater)
+        }
         if (data.type !== 'data') source.close()
       } catch (err) {
         source.close()
         console.error(`SimpleTTY got an unexpected server response`, err)
-        setUnexpectedError(true)
+        setState(state => ({ ...state, unexpectedError: true }))
       }
     }
     source.onerror = event => {
@@ -171,10 +172,14 @@ function useTerminalConnection(streamingCommandKey: string, onExit?: (exit: Trac
       } else {
         console.error('Unexpected EventSource error while in the OPEN state', event)
       }
-      setState(state => {
-        let buffer = state.buffer
-        if (state.type === 'running') buffer = [...buffer, state.tail.join('')]
-        return { type: 'disconnected', buffer }
+      if (animationRequest.current !== undefined) {
+        cancelAnimationFrame(animationRequest.current)
+        updater() // Clear out any messages that were received before the error
+      }
+      setState(oldState => {
+        let buffer = oldState.buffer
+        if (oldState.type === 'running') buffer = [...oldState.buffer, oldState.tail.join('')]
+        return { type: 'disconnected', buffer, unexpectedError: oldState.unexpectedError }
       })
       source.close()
     }
@@ -185,16 +190,16 @@ function useTerminalConnection(streamingCommandKey: string, onExit?: (exit: Trac
 
       // Resetting the state *should* only matters for HMR, when the effect gets rerun
       incomingEventMessages.current = []
-      setState({ type: 'loading', buffer: [] })
+      setState({ type: 'loading', buffer: [], unexpectedError: false })
     }
   }, [streamingCommandKey, updater])
 
-  return { state, unexpectedError }
+  return state
 }
 
 function SimpleTTYSession({ streamingCommandKey, reload, onExit }: SimpleTTYProps & { reload: () => void }) {
   const divRef = useRef<HTMLDivElement>(null)
-  const { state, unexpectedError } = useTerminalConnection(streamingCommandKey, onExit)
+  const state = useTerminalConnection(streamingCommandKey, onExit)
   const backscroll = useMemo(() => state.buffer.join('\n'), [state.buffer])
 
   // Auto-scroller for terminal
@@ -203,7 +208,7 @@ function SimpleTTYSession({ streamingCommandKey, reload, onExit }: SimpleTTYProp
     if (el) el.scrollTop = el.scrollHeight
   })
 
-  const className = unexpectedError
+  const className = state.unexpectedError
     ? ' tty-error'
     : state.type === 'loading' || state.type === 'disconnected'
       ? ' tty-loading'
@@ -228,7 +233,7 @@ function SimpleTTYSession({ streamingCommandKey, reload, onExit }: SimpleTTYProp
         <div>❌ Command exited with non-zero exit code {state.exit.exitCode}</div>
       )}
       {state.type === 'disconnected' && <div>⛓️‍💥 Terminal log disconnected</div>}
-      {unexpectedError && <div>There was an unexpected error! See log for details.</div>}
+      {state.unexpectedError && <div>There was an unexpected error! See log for details.</div>}
       {
         <div ref={divRef} style={{ maxHeight: '200px', overflowY: 'scroll' }}>
           <pre
