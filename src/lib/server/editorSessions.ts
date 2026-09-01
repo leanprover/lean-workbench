@@ -25,7 +25,7 @@ class ProjectMountHandle implements AsyncDisposable {
     /** Host overlayfs mount backing {@link bindArgs}, torn down on disposal;
      * absent when the project has no package sets. */
     private readonly overlay?: { mergedDir: string; workDir: string },
-  ) { }
+  ) {}
 
   async [Symbol.asyncDispose]() {
     if (!this.overlay) return
@@ -196,9 +196,8 @@ export class EditorSessionManager {
    *
    * The backend shares the editor's ref-counted {@link ProjectMountHandle},
    * so a view and the editor run against a single mount.
-   * `hello` needs only a Lean LSP server (no collab, no VS Code). */
-  async ensureView(viewer: User, owner: User, project: Project, viewKind: 'hello'): Promise<string> {
-    void viewKind // only 'hello' exists today
+   * A view needs only a Lean LSP server (no collab, no VS Code). */
+  async ensureView(viewer: User, owner: User, project: Project): Promise<string> {
     const existing = (this.lspServers.get(project.id) ?? []).find(s => s.viewer.id === viewer.id)
     if (existing) {
       await existing.started
@@ -299,6 +298,10 @@ export async function initEditorSessions() {
     for (const servers of m['vscServers'].values()) {
       for (const s of servers) Object.setPrototypeOf(s, VscodeServerHandle.prototype)
     }
+    // A manager carried across HMR from before `lspServers` existed lacks the field,
+    // which the declared type cannot express.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    m['lspServers'] ??= new Map()
     for (const servers of m['lspServers'].values()) {
       for (const s of servers) Object.setPrototypeOf(s, LeanLspHandle.prototype)
     }

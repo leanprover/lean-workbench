@@ -16,8 +16,8 @@ const zArgs = z.object({ userName: zUserName, projectName: zProjectName })
 /** Current contents of the project's context file, read live from the mount.
  *
  * The view fetches this on each LSP (re)connect rather than trusting a server-rendered
- * snapshot, so edits made in the editor (or while the page sat in the back/forward cache)
- * are reflected without a full reload. Absent file yields empty context. */
+ * snapshot, so a reconnect picks up edits made in the editor since the page loaded.
+ * Absent file yields empty context. */
 export async function getProbeContext(userName: string, projectName: string): Promise<string> {
   const args = zArgs.parse({ userName, projectName })
   const { owner, project } = await requireProjectAccess(args.userName, args.projectName)

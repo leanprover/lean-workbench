@@ -30,12 +30,14 @@ export default function HelloClient({
   useEffect(() => () => sessionRef.current?.close(), [])
 
   const [input, setInput] = useState('main')
-  const [query, setQuery] = useState<string | null>(null)
+  /** The submitted identifier, tagged with a submission count so that
+   * resubmitting the same one runs a fresh lookup instead of reading SWR's cache. */
+  const [query, setQuery] = useState<{ n: number; identifier: string } | null>(null)
 
   // The LSP round-trip is diagnostic, so surface failures here rather than to an error boundary.
   const { data, error, isLoading } = useSWR<string | null, unknown>(
-    query === null ? null : ['lean-lookup', query],
-    () => sessionRef.current!.lookup(query!),
+    query && ['lean-lookup', query.n, query.identifier],
+    () => sessionRef.current!.lookup(query!.identifier),
     { revalidateOnFocus: false, shouldRetryOnError: false },
   )
 
@@ -49,7 +51,8 @@ export default function HelloClient({
       <form
         onSubmit={e => {
           e.preventDefault()
-          setQuery(input.trim() || null)
+          const identifier = input.trim()
+          setQuery(prev => (identifier ? { n: (prev?.n ?? 0) + 1, identifier } : null))
         }}
       >
         <input
@@ -63,14 +66,14 @@ export default function HelloClient({
         </button>
       </form>
       {query === null ? null : isLoading ? (
-        <p>Looking up {query}…</p>
+        <p>Looking up {query.identifier}…</p>
       ) : error ? (
         <pre style={{ color: 'crimson' }}>{String(error instanceof Error ? error.message : error)}</pre>
       ) : data ? (
         <pre style={{ whiteSpace: 'pre-wrap' }}>{data}</pre>
       ) : (
         <p>
-          No information for <code>{query}</code>.
+          No information for <code>{query.identifier}</code>.
         </p>
       )}
     </main>

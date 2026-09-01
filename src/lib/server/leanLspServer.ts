@@ -63,7 +63,7 @@ function bridge(ws: WebSocket, proc: ChildProcess): () => void {
  * Each browser WebSocket connection gets its own `lake serve`, bridged to its
  * stdio and killed when the socket closes, so every connection starts from a
  * clean LSP `initialize` handshake. The handle owns only the long-lived bridge
- * socket and its nginx route, which persist across reloads. */
+ * socket, which persists across reloads. */
 export class LeanLspHandle implements AsyncDisposable {
   /** Unique ID of this LSP endpoint; also the nginx route segment. */
   readonly uuid = crypto.randomUUID()
