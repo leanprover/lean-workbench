@@ -27,7 +27,7 @@ export default async function AdminPage() {
       <AccessControl />
       <HealthMonitor systemHealth={systemHealth} />
       <ToolchainManagement installedToolchainsPromise={installedToolchains} />
-      <TemplateManagement templates={templates} />
+      <TemplateManagement installedToolchainsPromise={installedToolchains} templates={templates} />
     </div>
   )
 }

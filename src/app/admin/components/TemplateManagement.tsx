@@ -1,23 +1,40 @@
 'use client'
 
+import { STANDARD_TOOLCHAIN_ID_RE } from '@leanprover/workbench-shared'
+import { useRouter } from 'next/navigation'
 import { use, useState } from 'react'
 
-import { editTemplateMetadata } from '@/app/admin/actions'
+import { availableTemplateSchemas, doTemplateCreation, editTemplateMetadata } from '@/app/admin/actions'
 import CatchySuspense from '@/app/components/CatchySuspense'
-import { useServerAction } from '@/lib/client/util'
+import TrackedCommandForm from '@/app/components/TrackedCommandForm'
+import { useServerAction, useThrowingSWR } from '@/lib/client/util'
 import { type TemplateInfo } from '@/lib/server/projectTemplate'
 
 interface TemplateManagementProps {
   templates: Promise<TemplateInfo[]>
+  installedToolchainsPromise: Promise<string[]>
 }
 
 export function TemplateManagement(props: TemplateManagementProps) {
+  const router = useRouter()
+
   return (
     <section>
       <h2>Project Templates</h2>
       <CatchySuspense loading='Loading…'>
         <TemplateManagementList {...props} />
       </CatchySuspense>
+      <TrackedCommandForm
+        style={{ marginBottom: '200px' }}
+        streamCommandKey='create-template'
+        trackedCommandAction={doTemplateCreation}
+        title='+ Create template'
+        successAction={() => router.refresh()}
+      >
+        <CatchySuspense loading={<p>Loading available toolchains&hellip;</p>}>
+          <TemplateCreationForm installedToolchainsPromise={props.installedToolchainsPromise} />
+        </CatchySuspense>
+      </TrackedCommandForm>
     </section>
   )
 }
@@ -104,5 +121,61 @@ function TemplateRow(props: TemplateInfo) {
         <div style={{ gridArea: 'error', color: '#f00' }}>{editError}</div>
       </form>
     </li>
+  )
+}
+
+export function TemplateCreationForm(props: { installedToolchainsPromise: Promise<string[]> }) {
+  const installedToolchains = use(props.installedToolchainsPromise).filter(tc => STANDARD_TOOLCHAIN_ID_RE.test(tc))
+  const [toolchain, setToolchain] = useState(installedToolchains[0]!)
+  const [_toolchain, namespace, tag] = toolchain.match(STANDARD_TOOLCHAIN_ID_RE)!
+  console.log({ namespace, tag })
+  const { data: schemas } = useThrowingSWR(
+    `toolchain-schema-${namespace}-${tag}`,
+    async () => {
+      const schemaIds = await availableTemplateSchemas(toolchain)
+      return schemaIds.map(key => {
+        switch (key) {
+          case 'basic':
+            return { key, name: 'Basic Lean template' }
+          case 'mathlib':
+            return { key, name: 'Mathlib template' }
+          case 'cslib':
+            return { key, name: 'CSLib template' }
+        }
+      })
+    },
+    {
+      fallbackData: [{ key: 'basic', name: 'Loading…' } as const],
+      revalidateIfStale: false,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+    },
+  )
+
+  return (
+    <>
+      <label>
+        Installed toolchain:{' '}
+        <select name='toolchain' value={toolchain} onChange={e => setToolchain(e.target.value)}>
+          {installedToolchains
+            .map(tc => tc.match(STANDARD_TOOLCHAIN_ID_RE)!)
+            .map(([all, _type, tag]) => (
+              <option key={all} value={all}>
+                {tag}
+              </option>
+            ))}
+        </select>
+      </label>
+      <label>
+        Template schema:{' '}
+        <select name='schema'>
+          {schemas.map(({ key, name }) => (
+            <option value={key} key={key}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </label>
+    </>
   )
 }

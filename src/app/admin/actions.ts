@@ -8,6 +8,7 @@ import {
   LEAN_BETA_VERSION_RE,
   LEAN_NIGHTLY_VERSION_RE,
   LEAN_STABLE_VERSION_RE,
+  STANDARD_TOOLCHAIN_ID_RE,
   zProjectId,
   zTemplateId,
   zUserId,
@@ -22,7 +23,13 @@ import { getConfig, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
 import { elanUninstall, startElanInstall } from '@/lib/server/elan'
-import { readTemplateMetadata, saveTemplateMetadata, type TemplateMetadata } from '@/lib/server/projectTemplate'
+import {
+  getAvailableTemplateSchemas,
+  readTemplateMetadata,
+  saveTemplateMetadata,
+  startSchemaTemplate,
+  type TemplateMetadata,
+} from '@/lib/server/projectTemplate'
 import { getTrackedCommandState } from '@/lib/server/trackedCommand'
 import { serverAction, submitAction } from '@/lib/server/util'
 import { type ActionResponse } from '@/lib/util'
@@ -278,6 +285,32 @@ export const editTemplateMetadata = submitAction(
     }
   },
 )
+
+export async function availableTemplateSchemas(toolchain: string) {
+  await requireAdmin()
+  return getAvailableTemplateSchemas(toolchain)
+}
+
+const zTemplateCreation = z.object({
+  toolchain: z.string().regex(STANDARD_TOOLCHAIN_ID_RE),
+  schema: z.enum(['basic', 'mathlib', 'cslib']),
+})
+
+export const doTemplateCreation = submitAction(
+  zTemplateCreation,
+  async ({ toolchain, schema }): Promise<ActionResponse<boolean>> => {
+    await requireAdmin()
+
+    try {
+      const emitter = await startSchemaTemplate(toolchain, schema)
+      return { ok: !!emitter }
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : String(e) }
+    }
+  },
+)
+
+// -- Tracked command infrastructure
 
 export async function isTrackedCommandRunning(key: string) {
   await requireAdmin()
