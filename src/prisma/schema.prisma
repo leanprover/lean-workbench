@@ -72,7 +72,7 @@ model Account {
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId                String
   /// Better-auth convention is that accountId=userId when providerId='credential'.
-  /// When providerId='github', accountId is a GitHub-account-identifying numeric id.
+  /// When providerId='github', accountId is a numeric ID assigned to the account by GitHub
   accountId             String
   providerId            String
   accessToken           String?
