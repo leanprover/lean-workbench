@@ -42,6 +42,15 @@ export const zTemplateId = z.string().regex(TEMPLATE_ID_RE, 'Invalid template ID
  */
 export const EXPECTED_TOOLCHAIN_ID_RE = /^[a-z][a-z0-9:/_.-]*$/
 
+/**
+ * Expected form of a standard installed stable/beta/nightly toolchain.
+ *  - If `match[1] === 'lean'`,
+ *    then `match[2]` is a candidate for a tag of <https://github.com/leanprover-community/mathlib4>.
+ *  - If `match[1] === 'lean4-nightly'`,
+ *    then `match[2]` is a candidate for a tag of <https://github.com/leanprover-community/mathlib4-nightly-testing/>
+ */
+export const STANDARD_TOOLCHAIN_ID_RE = /^leanprover\/(lean4|lean4-nightly):([a-z0-9.-]+)$/
+
 export const LEAN_STABLE_VERSION_RE = /^v4\.[0-9]+\.[0-9]+$/
 export const LEAN_BETA_VERSION_RE = /^v4\.[0-9]+\.[0-9]+-rc[0-9]+$/
 export const LEAN_NIGHTLY_VERSION_RE = /^nightly-[0-9-]+$/

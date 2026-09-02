@@ -1,8 +1,12 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
+import { STANDARD_TOOLCHAIN_ID_RE } from '@leanprover/workbench-shared'
 import { getTemplatesDir } from '@leanprover/workbench-shared/node'
 import z from 'zod'
+
+import { startTrackedCommand } from './trackedCommand'
+import { githubAPI } from './util'
 
 export const zTemplateMetadata = z.object({
   name: z.string(),
@@ -23,7 +27,7 @@ export async function readTemplateMetadata(templateId: string): Promise<Template
 }
 
 /**
- * Store metadata for a specified template,
+ * Store metadata for a specified template.
  */
 export async function saveTemplateMetadata(templateId: string, config: TemplateMetadata) {
   const metaPath = path.join(getTemplatesDir(), templateId, 'metadata.json')
@@ -59,4 +63,84 @@ export async function listTemplates(): Promise<TemplateInfo[]> {
   }
 
   return result
+}
+
+// --- Template Schemas ---
+
+export const TEMPLATE_SCHEMA_IDS = ['basic', 'mathlib', 'cslib'] as const
+export type TemplateSchemaId = (typeof TEMPLATE_SCHEMA_IDS)[number]
+
+export const TEMPLATE_METADATA_FROM_SCHEMA: Record<TemplateSchemaId, (tag: string) => TemplateMetadata> = {
+  basic: tag => ({ name: `Lean ${tag}`, description: 'Minimal Lean project' }),
+  mathlib: tag => ({
+    name: `Lean ${tag} + Mathlib`,
+    description: 'Pre-built Mathlib dependency',
+    packageSet: `mathlib-${tag.replaceAll('.', '-')}`,
+  }),
+  cslib: tag => ({
+    name: `Lean ${tag} + CSLib`,
+    description: 'Pre-built CSLib dependency',
+    packageSet: `cslib-${tag.replaceAll('.', '-')}`,
+  }),
+}
+
+/**
+ * Get the (always non-empty) list of templates that can be created
+ * from a fully qualified toolchain (e.g. `leanprover/lean4:v4.32.0`).
+ */
+export async function getAvailableTemplateSchemas(toolchain: string): Promise<TemplateSchemaId[]> {
+  const match = toolchain.match(STANDARD_TOOLCHAIN_ID_RE)
+  if (!match) return ['basic'] as const
+  const [_lean, type, tag] = match
+
+  if (type !== 'lean4') return ['basic'] as const
+
+  const isMathlibTag = (await githubAPI(`/repos/leanprover-community/mathlib4/git/ref/tags/${tag}`)).ok
+  const isCSLibTag = (await githubAPI(`/repos/leanprover/cslib/git/ref/tags/${tag}`)).ok
+
+  return [['basic'] as const, isMathlibTag ? (['mathlib'] as const) : [], isCSLibTag ? (['cslib'] as const) : []].flat()
+}
+
+const MATHLIB_MAIN_LEAN = `import Mathlib
+
+#check Nat.add_comm
+`
+
+const CSLIB_MAIN_LEAN = `import Cslib
+
+#check Nat.add_comm
+`
+
+/**
+ * Given a toolchain of the form `<namespace>:<tag>`,
+ * where `<tag>` exists as a Mathlib version,
+ * spawn a tracked command for a basic Mathlib template (key 'create-template')
+ */
+export async function startSchemaTemplate(toolchain: string, schema: TemplateSchemaId) {
+  const scriptsDir = path.join(process.cwd(), 'scripts') // scripts/ is a sibling directory
+  const [_all, _namespace, tag] = toolchain.match(STANDARD_TOOLCHAIN_ID_RE)!
+  const workDir = await fs.mkdtemp('/tmp/template-create-')
+  const metadata = TEMPLATE_METADATA_FROM_SCHEMA[schema](tag!)
+  await fs.writeFile(path.join(workDir, 'metadata.json'), JSON.stringify(metadata))
+
+  let script: string
+  let args: string[]
+  switch (schema) {
+    case 'basic':
+      script = 'create-basic.sh'
+      args = [workDir, `basic-${tag!.replaceAll('.', '-')}`, toolchain]
+      break
+    case 'mathlib':
+      await fs.writeFile(path.join(workDir, 'Main.lean'), MATHLIB_MAIN_LEAN)
+      script = 'create-tagged-lib.sh'
+      args = [workDir, `mathlib-${tag!.replaceAll('.', '-')}`, 'leanprover-community/mathlib4', 'mathlib', tag!]
+      break
+    case 'cslib':
+      await fs.writeFile(path.join(workDir, 'Main.lean'), CSLIB_MAIN_LEAN)
+      script = 'create-tagged-lib.sh'
+      args = [workDir, `cslib-${tag!.replaceAll('.', '-')}`, 'leanprover/cslib', 'cslib', tag!]
+      break
+  }
+
+  return startTrackedCommand('create-template', path.join(scriptsDir, script), args)
 }
