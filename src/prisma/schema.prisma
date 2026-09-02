@@ -11,7 +11,7 @@ datasource db {
 // See https://better-auth.com/docs/concepts/database#core-schema
 
 model User {
-  /// Better-auth identifier (matches BETTERAUTH_ID)
+  /// Better-auth identifier (matches BETTERAUTH_ID_RE)
   id            String    @id
   /// Better-auth does not require uniqueness but we do.
   /// These names serve two distinct purposes that require uniqueness.
@@ -52,7 +52,7 @@ model User {
 }
 
 model Session {
-  /// Better-auth identifier (matches BETTERAUTH_ID)
+  /// Better-auth identifier (matches BETTERAUTH_ID_RE)
   id        String   @id
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
@@ -67,7 +67,7 @@ model Session {
 }
 
 model Account {
-  /// Better-auth identifier (matches BETTERAUTH_ID)
+  /// Better-auth identifier (matches BETTERAUTH_ID_RE)
   id                    String    @id
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId                String
@@ -91,7 +91,7 @@ model Account {
 }
 
 model Verification {
-  /// Better-auth identifier (matches BETTERAUTH_ID)
+  /// Better-auth identifier (matches BETTERAUTH_ID_RE)
   id         String   @id
   identifier String
   value      String

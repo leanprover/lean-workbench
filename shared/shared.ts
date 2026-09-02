@@ -19,12 +19,12 @@ export const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{
  * 32-character case-sensitive alphanumeric identifiers,
  * created internally by Better-auth or via Better-auth's generateId(32).
  */
-export const BETTERAUTH_ID = /^[a-zA-Z0-9]{32}$/
+export const BETTERAUTH_ID_RE = /^[a-zA-Z0-9]{32}$/
 
 export const ALPHANUM_NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,99}$/
 export const TEMPLATE_ID_RE = /^[a-zA-Z0-9_-]+$/
 
-export const zUserId = z.string().regex(BETTERAUTH_ID, 'Invalid user ID')
+export const zUserId = z.string().regex(BETTERAUTH_ID_RE, 'Invalid user ID')
 export const zUserName = z.string().regex(ALPHANUM_NAME_RE, 'Invalid user name')
 export const zValidateUserName = z.string('User name required').trim().regex(ALPHANUM_NAME_RE, 'Invalid user name')
 
