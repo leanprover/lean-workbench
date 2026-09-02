@@ -152,6 +152,8 @@ and `~/.lean-workbench/data/` (directory on host system) for `install.sh` deploy
 
 ```
 /data/
+  config.json                   Server configuration (see `src/lib/server/config.ts`)
+
   db/
     lean-workbench.db           SQLite database (users, projects, auth config)
 
@@ -162,33 +164,48 @@ and `~/.lean-workbench/data/` (directory on host system) for `install.sh` deploy
 
   package-sets/                 Pre-built shared dependencies (admin-managed)
     mathlib-v4.X.Y/
-      mathlib/                  Source + compiled .oleans
+      mathlib/
+        .lake/packages/mathlib/   Source + compiled .oleans
       batteries/
+        .lake/packages/batteries/
       packages.txt              List of included packages
 
   templates/                    Project templates (discovered at runtime)
     hello/
-      metadata.json             { "name": "Hello World", ... }
+      metadata.json             { "name": "hello", ... }
+                                (see `zTemplateMetadata` in `src/lib/server/util.ts`)
       lean-toolchain
       lakefile.toml
       Main.lean
-    mathlib-v4.X.Y/
-      metadata.json             { "name": "Lean + Mathlib", "packageSet": "mathlib-v4.X.Y" }
+    mathlib-v4-X-Y/             (see `TEMPLATE_ID_RE` in `shared/shared.ts`)
+      metadata.json             { "name": "...", "packageSet": "mathlib-v4.X.Y" }
       lean-toolchain
       lakefile.toml
       lake-manifest.json
       Main.lean
 
-  workspaces/                   Per-user project files
+  workspaces/                   Per-user state
     alice/
-      vscode-remote/            VSCode server state and configuration
-      <project-uuid>/
+      home/                     `$HOME` in the user's sandboxes:
+        .local/share/code-server/  VS Code settings and extensions
+        .config/git/config         Git identity seeded from the user's profile
+      overlay-work/<project-uuid>/    overlayfs work directory
+      overlay-merged/<project-uuid>/  overlayfs mount point, bound into the sandbox
+                                      (see `buildProjectMount` in `editorSessions.ts`)
+      <project-uuid>/           Project files, and the overlayfs upper layer
         lean-toolchain
         lakefile.toml
         Main.lean
-        .lake/packages/         Overlaid from shared package-sets
         .lake/build/            User's own build artifacts
 ```
+
+Dependencies are not stored in the project directory. A project's
+package sets are the lower layers of an overlayfs mount whose upper
+layer is the project directory itself, so reads of `.lake/packages/`
+come from `package-sets/` and writes to it land in the project
+directory. Each package is stored under the package set at the
+`.lake/packages/<pkg>` path it occupies in a project, so that mounting
+the package directory at the project root puts it in the right place.
 
 ---
 
@@ -202,12 +219,14 @@ Each user session runs in a `bwrap` sandbox with:
   `--unshare-uts`, `--unshare-cgroup`). UID/GID are remapped to
   1000 inside the sandbox.
 - **Read-only system mounts** (`/usr`, `/lib`, `/bin`, `/etc`).
-- **Read-only Lean toolchain** (elan mounted at `/workspace/.elan`).
-- **Copy-on-write overlays** for shared packages (`--tmp-overlay`).
-  Reads come from admin-managed package-set directories; writes go to
-  an ephemeral tmpfs layer. Package-set files are root-owned on the
-  host for overlayfs copy-up to work correctly inside the user
-  namespace.
+- **Read-only Lean toolchain** (elan read-only bound at its own path, with
+  `ELAN_HOME` and `PATH` pointing there).
+- **Copy-on-write overlays** for shared packages. Reads come from
+  admin-managed package-set directories; writes go to the user's own
+  project directory, which is the overlay's upper layer. The overlay is
+  mounted outside the sandbox and bound into it. Package-set files are
+  root-owned on the host for overlayfs copy-up to work correctly inside
+  the user namespace.
 - **Writable workspace** for the user's project files.
 - Network is **not** currently isolated (`code-server` needs internet access)
 
