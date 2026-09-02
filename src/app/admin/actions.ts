@@ -3,7 +3,17 @@
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs/promises'
 
-import { zProjectId, zTemplateId, zUserId, zUserName, zValidateUserName } from '@leanprover/workbench-shared'
+import {
+  EXPECTED_TOOLCHAIN_ID_RE,
+  LEAN_BETA_VERSION_RE,
+  LEAN_NIGHTLY_VERSION_RE,
+  LEAN_STABLE_VERSION_RE,
+  zProjectId,
+  zTemplateId,
+  zUserId,
+  zUserName,
+  zValidateUserName,
+} from '@leanprover/workbench-shared'
 import { getDataDir, getUserRootDir, getWorkspacesDir } from '@leanprover/workbench-shared/node'
 import z from 'zod'
 
@@ -11,6 +21,7 @@ import { initAuth, requireAdmin } from '@/lib/server/auth'
 import { getConfig, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
+import { elanUninstall, startElanInstall } from '@/lib/server/elan'
 import { readTemplateMetadata, saveTemplateMetadata, type TemplateMetadata } from '@/lib/server/projectTemplate'
 import { getTrackedCommandState } from '@/lib/server/trackedCommand'
 import { serverAction, submitAction } from '@/lib/server/util'
@@ -277,3 +288,40 @@ export async function isTrackedCommandAvailable(key: string) {
   await requireAdmin()
   return !!getTrackedCommandState(key)
 }
+
+// -- Toolchain management
+
+export const uninstallToolchainVersion = submitAction(
+  z.object({ toolchain: z.string().regex(EXPECTED_TOOLCHAIN_ID_RE) }),
+  async ({ toolchain }) => {
+    await requireAdmin()
+    try {
+      const output = await elanUninstall(toolchain)
+      if (output.length === 0) return { ok: 'elan succeeded with no output' }
+      const [_all, _info, info] = output[output.length - 1]!.match(/^(info: )?(.*)$/)!
+      return { ok: info }
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : String(e) }
+    }
+  },
+)
+
+const zChannel = (channel: string, regex: RegExp) =>
+  z
+    .string()
+    .startsWith(`${channel} `)
+    .transform(s => s.slice(channel.length + 1))
+    .pipe(z.string().regex(regex))
+
+const zToolchainInstallRequest = z.object({
+  selectedToolchain: z.union([
+    zChannel('stable', LEAN_STABLE_VERSION_RE),
+    zChannel('beta', LEAN_BETA_VERSION_RE),
+    zChannel('nightly', LEAN_NIGHTLY_VERSION_RE),
+  ]),
+})
+
+export const doElanInstall = submitAction(zToolchainInstallRequest, async ({ selectedToolchain }) => {
+  await requireAdmin()
+  return { ok: !!startElanInstall(selectedToolchain) }
+})
