@@ -1,11 +1,11 @@
 import 'server-only'
 
 import { adminEmail, devModePassword, zUserName } from '@leanprover/workbench-shared'
-import { betterAuth, type SocialProviders } from 'better-auth'
+import { betterAuth, generateId, type SocialProviders } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { hashPassword } from 'better-auth/crypto'
 import { nextCookies } from 'better-auth/next-js'
-import crypto, { randomUUID } from 'crypto'
+import crypto from 'crypto'
 import { io } from 'next/cache'
 import { headers } from 'next/headers'
 import { forbidden, unauthorized } from 'next/navigation'
@@ -142,9 +142,9 @@ export async function addEmailPasswordUser(name: string, email: string, password
     ])
     if (byName || byEmail) return false
 
-    const userId = randomUUID()
+    const userId = generateId(32)
     await tx.user.create({ data: { id: userId, name, email, isAdmin } })
-    const accountId = randomUUID()
+    const accountId = generateId(32)
     await tx.account.create({
       data: {
         id: accountId,

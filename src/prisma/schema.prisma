@@ -11,11 +11,21 @@ datasource db {
 // See https://better-auth.com/docs/concepts/database#core-schema
 
 model User {
+  /// Better-auth identifier (matches BETTERAUTH_ID_RE)
   id            String    @id
-  /// Better-auth does not require uniqueness but we do:
-  /// we use the username as a namespace for projects.
-  /// Names must match `ALPHANUM_NAME_RE`.
+  /// Better-auth does not require uniqueness but we do.
+  /// These names serve two distinct purposes that require uniqueness.
   ///
+  /// First, they are a user-controlled identifier that appears in a URL as to signify the project's owner
+  /// (e.g. https://example.com/my-user-name/my-first-project).
+  ///
+  /// Second, they are unique long-lasting filesystem identifiers used to group a user's project
+  /// data on the file system.
+  ///
+  /// (It's possible that in the future we will want to tease these apart,
+  /// and allow the URL-appearing identifier to be changed more freely by users.)
+  ///
+  /// Names must match `ALPHANUM_NAME_RE`.
   /// This column is `COLLATE NOCASE` in migration.sql
   /// (Prisma cannot express SQLite collation settings),
   /// so uniqueness and lookups are case-insensitive
@@ -33,7 +43,6 @@ model User {
 
   // Workbench-specific fields
   displayName String?
-  // FIXME: consider using https://better-auth.com/docs/plugins/admin.
   isAdmin     Boolean   @default(false)
   /// Projects owned by this user.
   /// TODO: The user may also have read/write access to other users' projects.
@@ -43,6 +52,7 @@ model User {
 }
 
 model Session {
+  /// Better-auth identifier (matches BETTERAUTH_ID_RE)
   id        String   @id
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
@@ -57,9 +67,12 @@ model Session {
 }
 
 model Account {
+  /// Better-auth identifier (matches BETTERAUTH_ID_RE)
   id                    String    @id
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId                String
+  /// Better-auth convention is that accountId=userId when providerId='credential'.
+  /// When providerId='github', accountId is a numeric ID assigned to the account by GitHub
   accountId             String
   providerId            String
   accessToken           String?
@@ -78,6 +91,7 @@ model Account {
 }
 
 model Verification {
+  /// Better-auth identifier (matches BETTERAUTH_ID_RE)
   id         String   @id
   identifier String
   value      String
