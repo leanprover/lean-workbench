@@ -96,6 +96,16 @@ This is because containers run in Linux VMs,
 where virtual filesystems such as virtiofs cause degraded disk IO performance
 and might not support overlayfs.
 
+## The database schema
+
+The database schema lives in `src/prisma/schema.prisma`.
+If it is changed, you'll need to use Prisma to create migrations using a temporary database.
+
+```sh
+DATABASE_URL="file:$PWD/.temp-for-migrations.db" npx prisma migrate dev
+rm ./.temp-for-migrations.db
+```
+
 ## Debugging
 
 In dev mode (`make dev`),
