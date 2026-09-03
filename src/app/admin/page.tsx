@@ -15,7 +15,7 @@ export const instant = false
 export default async function AdminPage() {
   await requireAdmin()
   const templates = listTemplates()
-  const installedToolchains = listInstalledToolchains()
+  const installedToolchains = listInstalledToolchains().then(tc => tc.toReversed())
   const systemHealth = fetchHealth()
 
   return (
