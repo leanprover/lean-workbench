@@ -55,7 +55,7 @@ export const createProject = submitAction(
 
     // Create workspace directory and seed template files
     const projectId = crypto.randomUUID()
-    const workspace = path.join(getWorkspacesDir(), user.name, projectId)
+    const workspace = path.join(getWorkspacesDir(), user.id, projectId)
     await fs.mkdir(workspace, { recursive: true })
 
     let packageSet: string | undefined

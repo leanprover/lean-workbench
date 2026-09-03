@@ -59,8 +59,8 @@ class ProjectMountHandle implements AsyncDisposable {
  * we prefer only mounting the project root directory
  * so that users can remove other directories (e.g. packages) freely. */
 async function buildProjectMount(owner: User, project: Project): Promise<ProjectMountHandle> {
-  const userDir = path.join(getWorkspacesDir(), owner.name)
-  const projectDir = getProjectDir(owner.name, project.id)
+  const userDir = path.join(getWorkspacesDir(), owner.id)
+  const projectDir = getProjectDir(owner.id, project.id)
   try {
     await fs.access(projectDir)
   } catch (err) {
