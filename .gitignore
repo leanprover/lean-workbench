@@ -18,6 +18,7 @@ node_modules/
 
 # prisma
 **/prisma/generated
+/.temp-for-migrations.db
 
 # production
 /build
