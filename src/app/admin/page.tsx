@@ -1,5 +1,7 @@
 import CatchySuspense from '@/app/components/CatchySuspense'
 import { requireAdmin } from '@/lib/server/auth'
+import { getOAuthConfig, requireAdmin } from '@/lib/server/auth'
+import { getConfig } from '@/lib/server/config'
 import { listInstalledToolchains } from '@/lib/server/elan'
 import { listTemplates } from '@/lib/server/projectTemplate'
 
@@ -15,7 +17,9 @@ import { UserManagement } from './components/UserManagement'
 export const instant = false
 export default async function AdminPage() {
   await requireAdmin()
+  const config = getConfig()
   const templates = listTemplates()
+  const oauthConfig = getOAuthConfig()
   const installedToolchains = listInstalledToolchains().then(tc => tc.toReversed())
   const systemHealth = fetchHealth()
 
@@ -23,7 +27,7 @@ export default async function AdminPage() {
     <div className='admin-page'>
       <h1>Admin</h1>
       <UserManagement />
-      <OAuthConfig />
+      <OAuthConfig oauthConfigPromise={oauthConfig} baseUrl={config.baseUrl} />
       <SessionViewer />
       <AccessControl />
       <HealthMonitor systemHealth={systemHealth} />
