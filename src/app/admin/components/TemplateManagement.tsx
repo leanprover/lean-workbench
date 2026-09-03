@@ -128,7 +128,6 @@ export function TemplateCreationForm(props: { installedToolchainsPromise: Promis
   const installedToolchains = use(props.installedToolchainsPromise).filter(tc => STANDARD_TOOLCHAIN_ID_RE.test(tc))
   const [toolchain, setToolchain] = useState(installedToolchains[0]!)
   const [_toolchain, namespace, tag] = toolchain.match(STANDARD_TOOLCHAIN_ID_RE)!
-  console.log({ namespace, tag })
   const { data: schemas } = useThrowingSWR(
     `toolchain-schema-${namespace}-${tag}`,
     async () => {
