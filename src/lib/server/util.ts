@@ -140,7 +140,6 @@ export async function githubAPI(path: string) {
     throw new Error('Github credentials not available')
   }
   const fullPath = 'https://api.github.com' + path
-  console.log(fullPath)
   const response = await fetch(fullPath, { headers })
 
   if (response.status === 200) return { ok: true, response: (await response.json()) as unknown }
@@ -150,6 +149,5 @@ export async function githubAPI(path: string) {
   }
   if (response.status === 401) throw new Error(`GitHub API reported invalid credentials (status 401)`)
   if (response.status === 403) throw new Error(`GitHub API access forbidden (status 403)`)
-  console.log(await response.text())
   return { ok: false, status: response.status }
 }
