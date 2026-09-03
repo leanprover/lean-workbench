@@ -15,7 +15,7 @@ export function TemplateManagement(props: TemplateManagementProps) {
   return (
     <section>
       <h2>Project Templates</h2>
-      <CatchySuspense loading='Loading...'>
+      <CatchySuspense loading='Loading…'>
         <TemplateManagementList {...props} />
       </CatchySuspense>
     </section>
@@ -47,15 +47,7 @@ function TemplateRow(props: TemplateInfo) {
 
   return (
     <li>
-      <form
-        action={async data => editAction(data)}
-        style={{
-          display: 'grid',
-          width: '100%',
-          gridTemplateAreas: `"name actions" "desc desc" "error error"`,
-          gridTemplateColumns: '1fr auto',
-        }}
-      >
+      <form className='simple-action-form' action={async data => editAction(data)}>
         <input type='hidden' name='id' value={id} />
         {/* name */}
         <div hidden={showForm} style={{ gridArea: 'name' }}>

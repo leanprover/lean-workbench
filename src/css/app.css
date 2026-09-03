@@ -547,6 +547,33 @@ form.num-button input {
   letter-spacing: 0.02em;
 }
 
+/* === List-like forms that come with actions === */
+
+form.simple-action-form {
+  display: grid;
+  grid-template-areas: 'name actions' 'desc desc' 'error error';
+  grid-template-columns: 1fr auto;
+  width: 100%;
+}
+
+.check-seq {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.check-seq input {
+  margin: 0;
+}
+
+.check-seq > label {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+/* === Accessibility === */
+
 .visually-hidden {
   border: 0;
   clip-path: inset(50%);

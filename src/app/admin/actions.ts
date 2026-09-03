@@ -1,7 +1,8 @@
 'use server'
 
 import { execFileSync } from 'node:child_process'
-import fs from 'node:fs'
+import fs from 'node:fs/promises'
+import path from 'node:path'
 
 import { zProjectId, zTemplateId, zUserId, zUserName, zValidateUserName } from '@leanprover/workbench-shared'
 import { getDataDir, getUserRootDir, getWorkspacesDir } from '@leanprover/workbench-shared/node'
@@ -65,6 +66,8 @@ export const deleteUser = serverAction(zDeleteUser, async ({ userId }) => {
   // Remove workspace directory
   const userRootDir = getUserRootDir(target)
   fs.rmSync(userRootDir, { recursive: true, force: true })
+   const userWorkspaceDir = path.join(getWorkspacesDir(), target.name)
+  await fs.rm(userWorkspaceDir, { recursive: true, force: true })
 
   // Delete from database (cascades to projects via schema)
   await db.user.delete({ where: { id: userId } })
@@ -122,9 +125,9 @@ export const killEditorSession = serverAction(zEditorSession, async ({ projectId
 
 // --- System health ---
 
-function parseMeminfo(): Record<string, number> {
+async function parseMeminfo(): Promise<Record<string, number>> {
   try {
-    const text = fs.readFileSync('/proc/meminfo', 'utf8')
+    const text = await fs.readFile('/proc/meminfo', 'utf8')
     const result: Record<string, number> = {}
     for (const line of text.split('\n')) {
       const m = line.match(/^(\w+):\s+(\d+)/)
@@ -164,12 +167,12 @@ export async function fetchHealth(): Promise<SystemHealth> {
   }
 
   // Memory from /proc/meminfo
-  const meminfo = parseMeminfo()
+  const meminfo = await parseMeminfo()
 
   // Load average from /proc/loadavg
   let loadAvg: number[]
   try {
-    const text = fs.readFileSync('/proc/loadavg', 'utf8')
+    const text = await fs.readFile('/proc/loadavg', 'utf8')
     const parts = text.split(' ')
     loadAvg = [parseFloat(parts[0]!), parseFloat(parts[1]!), parseFloat(parts[2]!)]
   } catch {

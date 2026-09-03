@@ -1,3 +1,3 @@
 export default function EditorSessionFallback() {
-  return 'Loading project...'
+  return 'Loading project…'
 }
