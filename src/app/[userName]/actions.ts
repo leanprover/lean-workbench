@@ -26,7 +26,7 @@ export interface ProjectInfo {
 
 const zCreateProject = z.object({
   name: zValidateProjectName,
-  template: zTemplateId.default('blank'),
+  template: zTemplateId,
 })
 
 export const createProject = submitAction(
@@ -38,13 +38,11 @@ export const createProject = submitAction(
     const user = session.user
 
     // Validate template exists
-    if (template !== 'blank') {
-      const meta = await readTemplateMetadata(template)
-      if (meta.packageSet) {
-        const packagesFile = path.join(getPackageSetsDir(), meta.packageSet, 'packages.txt')
-        if (!(await existsAsync(packagesFile))) {
-          throw new Error(`Package set "${meta.packageSet}" not found. Run seed-volume.sh first.`)
-        }
+    const { packageSet } = await readTemplateMetadata(template)
+    if (packageSet) {
+      const packagesFile = path.join(getPackageSetsDir(), packageSet, 'packages.txt')
+      if (!(await existsAsync(packagesFile))) {
+        throw new Error(`Package set "${packageSet}" not found. Run seed-volume.sh first.`)
       }
     }
 
@@ -59,16 +57,10 @@ export const createProject = submitAction(
     const workspace = getProjectDir(user, projectId)
     await fs.mkdir(workspace, { recursive: true })
 
-    let packageSet: string | undefined
-    if (template !== 'blank') {
-      const templateDir = path.join(getTemplatesDir(), template)
-      // Copy template directory except for metadata.json
-      await fs.cp(templateDir, workspace, { recursive: true })
-      await fs.rm(path.join(workspace, 'metadata.json'), { force: true })
-
-      const meta = await readTemplateMetadata(template)
-      packageSet = meta.packageSet
-    }
+    const templateDir = path.join(getTemplatesDir(), template)
+    // Copy template directory except for metadata.json
+    await fs.cp(templateDir, workspace, { recursive: true })
+    await fs.rm(path.join(workspace, 'metadata.json'), { force: true })
 
     // Store project in DB
     const project = await db.project.create({
