@@ -64,8 +64,12 @@ export function NewProjectForm(props: NewProjectProps) {
 }
 
 function NewProjectSelection(props: NewProjectProps & { createPending: boolean }) {
-  const [chosenTemplate, setChosenTemplate] = useState<string>('blank')
   const templates = use(props.templates)
+  const [chosenTemplate, setChosenTemplate] = useState<string | undefined>(templates[0]?.id)
+  if (!chosenTemplate) {
+    return <>No project templates are available</>
+  }
+
   return (
     <>
       <input type='hidden' name='template' value={chosenTemplate} />

@@ -105,17 +105,15 @@ function TemplateRow(props: TemplateInfo) {
           <button hidden={!showForm} type='submit' disabled={editPending}>
             {editPending ? 'Saving...' : 'Save'}
           </button>
-          {id !== 'blank' && (
-            <button
-              onClick={e => {
-                e.preventDefault()
-                setShowForm(v => !v)
-              }}
-              disabled={editPending}
-            >
-              {showForm ? 'Cancel' : 'Edit'}
-            </button>
-          )}
+          <button
+            onClick={e => {
+              e.preventDefault()
+              setShowForm(v => !v)
+            }}
+            disabled={editPending}
+          >
+            {showForm ? 'Cancel' : 'Edit'}
+          </button>
         </div>
         {/* Error message */}
         <div style={{ gridArea: 'error', color: '#f00' }}>{editError}</div>

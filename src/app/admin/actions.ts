@@ -99,7 +99,6 @@ const zUpdateOAuth = z.object({
   clientSecret: zGithubAuthConfig.shape.clientSecret.optional(),
 })
 
-// FIXME: dedup with saveSetupConfig action somehow?
 export const updateOAuthConfig = submitAction(zUpdateOAuth, async ({ clientId, clientSecret }) => {
   await requireAdmin()
   const config = getConfig()
@@ -270,7 +269,6 @@ export const editTemplateMetadata = submitAction(
     await requireAdmin()
 
     try {
-      if (id === 'blank') throw new Error('cannot modify blank template')
       const config = await readTemplateMetadata(id)
       if (name) config.name = name
       if (!description) {
