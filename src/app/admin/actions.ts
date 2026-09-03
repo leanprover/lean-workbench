@@ -86,14 +86,6 @@ export const deleteUser = serverAction(zDeleteUser, async ({ userId }) => {
 
 // --- OAuth configuration ---
 
-export async function fetchOAuthConfig() {
-  await requireAdmin()
-  const config = getConfig()
-  return {
-    clientId: config.githubAuth?.clientId ?? '',
-  }
-}
-
 const zUpdateOAuth = z.object({
   clientId: zGithubAuthConfig.shape.clientId,
   clientSecret: zGithubAuthConfig.shape.clientSecret.optional(),
