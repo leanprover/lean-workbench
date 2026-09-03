@@ -196,3 +196,11 @@ export async function requireAdmin() {
   if (!session.user.isAdmin) forbidden()
   return session
 }
+
+/** The oauth secret is sensitive, the oauth client ID can be shown directly in admin settings */
+export async function getOAuthConfig() {
+  const config = getConfig()
+  return {
+    clientId: config.githubAuth?.clientId ?? '',
+  }
+}
