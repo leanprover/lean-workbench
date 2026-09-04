@@ -3,7 +3,8 @@ import path from 'node:path'
 
 // --- Directories ---
 
-type User = { id: string; name: string }
+/** Not exported, must match the pattern of the inferred Prisma User type */
+type User = { id: string; name: string; displayName: string }
 
 export function getDataDir(): string {
   if (!process.env.LEAN_WORKBENCH_DATA_DIR) {

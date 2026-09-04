@@ -135,12 +135,12 @@ async function createAuth() {
 export async function addEmailPasswordUser(name: string, email: string, password: string, isAdmin: boolean) {
   const db = getDb()
   const hashedPassword = await hashPassword(password)
-  return db.$transaction(async tx => {
+  const createdUser = await db.$transaction(async tx => {
     const [byName, byEmail] = await Promise.all([
       tx.user.findUnique({ where: { name } }),
       tx.user.findUnique({ where: { email } }),
     ])
-    if (byName || byEmail) return false
+    if (byName || byEmail) return null
 
     const userId = generateId(32)
     const newUser = await tx.user.create({ data: { id: userId, name, email, isAdmin } })
@@ -154,9 +154,11 @@ export async function addEmailPasswordUser(name: string, email: string, password
         password: hashedPassword,
       },
     })
-    await provisionUserHome(newUser)
-    return true
+    return newUser
   })
+
+  if (createdUser) await provisionUserHome(createdUser)
+  return !!createdUser
 }
 
 export type AuthInstance = Awaited<ReturnType<typeof createAuth>>
