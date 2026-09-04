@@ -3,6 +3,8 @@ import path from 'node:path'
 
 // --- Directories ---
 
+type User = { id: string; name: string }
+
 export function getDataDir(): string {
   if (!process.env.LEAN_WORKBENCH_DATA_DIR) {
     throw new Error('Environment variable LEAN_WORKBENCH_DATA_DIR must be set.')
@@ -18,14 +20,18 @@ export function getWorkspacesDir(): string {
   return path.join(getDataDir(), 'workspaces')
 }
 
+export function getUserRootDir(user: User): string {
+  return path.join(getWorkspacesDir(), user.id)
+}
+
 /** The given user's persistent home directory, used as `$HOME` in their editor sandboxes. */
-export function getUserHomeDir(userName: string): string {
-  return path.join(getWorkspacesDir(), userName, 'home')
+export function getUserHomeDir(user: User): string {
+  return path.join(getWorkspacesDir(), user.id, 'home')
 }
 
 /** The given project's data directory.*/
-export function getProjectDir(userName: string, projectId: string): string {
-  return path.join(getWorkspacesDir(), userName, projectId)
+export function getProjectDir(user: User, projectId: string): string {
+  return path.join(getWorkspacesDir(), user.id, projectId)
 }
 
 export function getTemplatesDir(): string {

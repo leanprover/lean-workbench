@@ -143,7 +143,7 @@ export async function addEmailPasswordUser(name: string, email: string, password
     if (byName || byEmail) return false
 
     const userId = generateId(32)
-    await tx.user.create({ data: { id: userId, name, email, isAdmin } })
+    const newUser = await tx.user.create({ data: { id: userId, name, email, isAdmin } })
     const accountId = generateId(32)
     await tx.account.create({
       data: {
@@ -154,6 +154,7 @@ export async function addEmailPasswordUser(name: string, email: string, password
         password: hashedPassword,
       },
     })
+    await provisionUserHome(newUser)
     return true
   })
 }

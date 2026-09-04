@@ -185,7 +185,7 @@ and `~/.lean-workbench/data/` (directory on host system) for `install.sh` deploy
       Main.lean
 
   workspaces/                   Per-user state
-    <alice-user-id>/            Better-auth 32-digit alphanumeric identifier
+    <alice-user-id>/            Better-auth 32-character alphanumeric identifier
       home/                     `$HOME` in the user's sandboxes:
         .local/share/code-server/  VS Code settings and extensions
         .config/git/config         Git identity seeded from the user's profile
