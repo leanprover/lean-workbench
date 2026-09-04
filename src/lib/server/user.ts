@@ -10,7 +10,7 @@ import type { User } from '@/lib/server/auth'
 /** Create a persistent home directory for the given user,
  * seeding a global Git identity from their profile when available. */
 export async function provisionUserHome(user: User): Promise<void> {
-  const homeDir = getUserHomeDir(user.name)
+  const homeDir = getUserHomeDir(user)
   await fs.mkdir(homeDir, { recursive: true })
 
   // Git reads `$HOME/.config/git/config` as the global config.

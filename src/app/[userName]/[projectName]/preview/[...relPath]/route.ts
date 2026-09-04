@@ -40,6 +40,6 @@ export async function GET(_req: Request, { params }: { params: Promise<Params> }
 
   // Mint a token with the the project folder as root dir:
   // viewer can already read these same files through the editor.
-  const rootDir = getProjectDir(owner.name, project.id)
+  const rootDir = getProjectDir(owner, project.id)
   redirect(signedDirFileUrl(mintSignedDirToken(rootDir), relPathSegs.join('/')) as Route)
 }

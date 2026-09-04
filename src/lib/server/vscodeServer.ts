@@ -10,12 +10,14 @@ import {
   bwrapProjectDir,
   type WorkspaceMetadata,
 } from '@leanprover/workbench-shared'
-import { getElanDir, getOpenVscodeServerDir, getUserHomeDir } from '@leanprover/workbench-shared/node'
-import { type User } from 'better-auth'
+import { existsAsync, getElanDir, getOpenVscodeServerDir, getUserHomeDir } from '@leanprover/workbench-shared/node'
 
+import { type User } from '@/lib/server/auth'
 import { getConfig, isDevMode } from '@/lib/server/config'
 import { BWRAP_ARGS, bwrapHomeDir, readProcesses } from '@/lib/server/util'
 import { type Project } from '@/prisma/generated/client'
+
+import { provisionUserHome } from './user'
 
 /** Create a VSCode machine settings file if one doesn't exist. */
 async function ensureMachineSettings(serverDataDir: string): Promise<void> {
@@ -175,7 +177,14 @@ export class VscodeServerHandle implements AsyncDisposable {
 
       // The viewer's home directory persists their VS Code configuration and extensions:
       // `code-server` defaults `--user-data-dir` to `$HOME/.local/share/code-server`.
-      const homeDir = getUserHomeDir(this.viewer.name)
+      const homeDir = getUserHomeDir(this.viewer)
+      if (!(await existsAsync(homeDir))) {
+        console.log(
+          `Warning: home directory '${homeDir}' for ${this.viewer.id} does not exist; re-provisioning a default home.`,
+        )
+        await provisionUserHome(this.viewer)
+      }
+
       const vscUserDataDir = path.join(homeDir, '.local', 'share', 'code-server')
       await ensureMachineSettings(vscUserDataDir)
       await ensureUserSettings(vscUserDataDir)

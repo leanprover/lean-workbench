@@ -6,7 +6,7 @@ import path from 'node:path'
 import { promisify } from 'node:util'
 
 import { bwrapProjectDir } from '@leanprover/workbench-shared'
-import { getPackageSetsDir, getProjectDir, getWorkspacesDir } from '@leanprover/workbench-shared/node'
+import { getPackageSetsDir, getProjectDir, getUserRootDir, getWorkspacesDir } from '@leanprover/workbench-shared/node'
 
 import { RcMap } from '@/lib/rcMap'
 import type { User } from '@/lib/server/auth'
@@ -59,10 +59,18 @@ class ProjectMountHandle implements AsyncDisposable {
  * we prefer only mounting the project root directory
  * so that users can remove other directories (e.g. packages) freely. */
 async function buildProjectMount(owner: User, project: Project): Promise<ProjectMountHandle> {
-  const userDir = path.join(getWorkspacesDir(), owner.name)
-  const projectDir = getProjectDir(owner.name, project.id)
+  let userDir = getUserRootDir(owner)
+  let projectDir = getProjectDir(owner, project.id)
   try {
-    await fs.access(projectDir)
+    try {
+      await fs.access(projectDir)
+    } catch {
+      // Temporary fallback until we introduce `/data` migrations to handle existing projects:
+      // if the folder doesn't exist in `workspaces/<ownerId>/foo`, check `workspaces/<ownerName>/foo`.
+      userDir = path.join(getWorkspacesDir(), owner.name)
+      projectDir = path.join(getWorkspacesDir(), owner.name, project.id)
+      await fs.access(projectDir)
+    }
   } catch (err) {
     throw new Error(`Could not open project directory '${projectDir}': ${String(err)}`)
   }

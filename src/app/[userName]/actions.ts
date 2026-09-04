@@ -5,7 +5,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { zProjectId, zTemplateId, zValidateProjectName } from '@leanprover/workbench-shared'
-import { existsAsync, getPackageSetsDir, getTemplatesDir, getWorkspacesDir } from '@leanprover/workbench-shared/node'
+import { existsAsync, getPackageSetsDir, getProjectDir, getTemplatesDir } from '@leanprover/workbench-shared/node'
 import { forbidden } from 'next/navigation'
 import z from 'zod'
 
@@ -55,7 +55,7 @@ export const createProject = submitAction(
 
     // Create workspace directory and seed template files
     const projectId = crypto.randomUUID()
-    const workspace = path.join(getWorkspacesDir(), user.name, projectId)
+    const workspace = getProjectDir(user, projectId)
     await fs.mkdir(workspace, { recursive: true })
 
     let packageSet: string | undefined

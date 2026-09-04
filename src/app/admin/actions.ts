@@ -2,10 +2,9 @@
 
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
-import path from 'node:path'
 
 import { zProjectId, zTemplateId, zUserId, zUserName, zValidateUserName } from '@leanprover/workbench-shared'
-import { getDataDir, getWorkspacesDir } from '@leanprover/workbench-shared/node'
+import { getDataDir, getUserRootDir, getWorkspacesDir } from '@leanprover/workbench-shared/node'
 import z from 'zod'
 
 import { initAuth, requireAdmin } from '@/lib/server/auth'
@@ -64,8 +63,8 @@ export const deleteUser = serverAction(zDeleteUser, async ({ userId }) => {
   }
 
   // Remove workspace directory
-  const userWorkspaceDir = path.join(getWorkspacesDir(), target.name)
-  fs.rmSync(userWorkspaceDir, { recursive: true, force: true })
+  const userRootDir = getUserRootDir(target)
+  fs.rmSync(userRootDir, { recursive: true, force: true })
 
   // Delete from database (cascades to projects via schema)
   await db.user.delete({ where: { id: userId } })
