@@ -163,6 +163,7 @@ h2 {
 }
 .admin-page {
   max-width: 700px;
+  padding-block-end: 25rem;
 }
 .admin-page > section {
   margin-bottom: 32px;

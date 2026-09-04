@@ -1,5 +1,5 @@
 #!/bin/bash
-# Create a minimal Lean teamplate
+# Create a minimal Lean template
 
 set -euo pipefail
 

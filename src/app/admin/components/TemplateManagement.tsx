@@ -11,39 +11,39 @@ import { useServerAction, useThrowingSWR } from '@/lib/client/util'
 import { type TemplateInfo } from '@/lib/server/projectTemplate'
 
 interface TemplateManagementProps {
-  templates: Promise<TemplateInfo[]>
+  templatesPromise: Promise<TemplateInfo[]>
   installedToolchainsPromise: Promise<string[]>
 }
 
 export function TemplateManagement(props: TemplateManagementProps) {
   const router = useRouter()
+  const templates = use(props.templatesPromise)
+  const installeStandardToolchains = use(props.installedToolchainsPromise).filter(tc =>
+    STANDARD_TOOLCHAIN_ID_RE.test(tc),
+  )
 
   return (
-    <section>
-      <h2>Project Templates</h2>
-      <CatchySuspense loading='Loading…'>
-        <TemplateManagementList {...props} />
-      </CatchySuspense>
+    <>
+      <TemplateManagementList templates={templates} />
       <TrackedCommandForm
-        style={{ marginBottom: '200px' }}
+        disabled={installeStandardToolchains.length === 0}
         streamCommandKey='create-template'
         trackedCommandAction={doTemplateCreation}
         title='+ Create template'
         successAction={() => router.refresh()}
       >
         <CatchySuspense loading={<p>Loading available toolchains&hellip;</p>}>
-          <TemplateCreationForm installedToolchainsPromise={props.installedToolchainsPromise} />
+          <TemplateCreationForm installedToolchains={installeStandardToolchains} />
         </CatchySuspense>
       </TrackedCommandForm>
-    </section>
+    </>
   )
 }
 
-function TemplateManagementList(props: TemplateManagementProps) {
-  const templates = use(props.templates)
+function TemplateManagementList(props: { templates: TemplateInfo[] }) {
   return (
     <ul className='project-list'>
-      {templates.map(template => (
+      {props.templates.map(template => (
         <TemplateRow key={template.id} {...template} />
       ))}
     </ul>
@@ -124,9 +124,8 @@ function TemplateRow(props: TemplateInfo) {
   )
 }
 
-export function TemplateCreationForm(props: { installedToolchainsPromise: Promise<string[]> }) {
-  const installedToolchains = use(props.installedToolchainsPromise).filter(tc => STANDARD_TOOLCHAIN_ID_RE.test(tc))
-  const [toolchain, setToolchain] = useState(installedToolchains[0]!)
+export function TemplateCreationForm(props: { installedToolchains: string[] }) {
+  const [toolchain, setToolchain] = useState(props.installedToolchains[0]!)
   const [_toolchain, namespace, tag] = toolchain.match(STANDARD_TOOLCHAIN_ID_RE)!
   const { data: schemas } = useThrowingSWR(
     `toolchain-schema-${namespace}-${tag}`,
@@ -156,7 +155,7 @@ export function TemplateCreationForm(props: { installedToolchainsPromise: Promis
       <label>
         Installed toolchain:{' '}
         <select name='toolchain' value={toolchain} onChange={e => setToolchain(e.target.value)}>
-          {installedToolchains
+          {props.installedToolchains
             .map(tc => tc.match(STANDARD_TOOLCHAIN_ID_RE)!)
             .map(([all, _type, tag]) => (
               <option key={all} value={all}>
