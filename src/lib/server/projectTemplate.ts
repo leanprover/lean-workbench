@@ -5,8 +5,8 @@ import { STANDARD_TOOLCHAIN_ID_RE } from '@leanprover/workbench-shared'
 import { getTemplatesDir } from '@leanprover/workbench-shared/node'
 import z from 'zod'
 
+import { githubAPI } from './github'
 import { startTrackedCommand } from './trackedCommand'
-import { githubAPI } from './util'
 
 export const zTemplateMetadata = z.object({
   name: z.string(),
@@ -95,8 +95,10 @@ export async function getAvailableTemplateSchemas(toolchain: string): Promise<Te
 
   if (type !== 'lean4') return ['basic'] as const
 
-  const isMathlibTag = (await githubAPI(`/repos/leanprover-community/mathlib4/git/ref/tags/${tag}`)).ok
-  const isCSLibTag = (await githubAPI(`/repos/leanprover/cslib/git/ref/tags/${tag}`)).ok
+  const [isMathlibTag, isCSLibTag] = await Promise.all([
+    githubAPI(`/repos/leanprover-community/mathlib4/git/ref/tags/${tag}`).then(res => res.ok),
+    githubAPI(`/repos/leanprover/cslib/git/ref/tags/${tag}`).then(res => res.ok),
+  ])
 
   return [['basic'] as const, isMathlibTag ? (['mathlib'] as const) : [], isCSLibTag ? (['cslib'] as const) : []].flat()
 }

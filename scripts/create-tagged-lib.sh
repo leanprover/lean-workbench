@@ -87,7 +87,7 @@ TOTAL_SIZE=$(du -sh "$PACKAGE_SET_DIR" | cut -f1)
 PKG_COUNT=$(wc -l < "$PACKAGE_SET_DIR/packages.txt")
 
 echo ""
-echo "[seed-volume] Done."
+echo "[create-template] Done."
 echo "  Package set: $PACKAGE_SET_DIR"
 echo "  Template:    $TEMPLATE_DIR"
 echo "  Packages:    $PKG_COUNT"
