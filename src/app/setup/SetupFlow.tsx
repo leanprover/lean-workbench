@@ -1,7 +1,7 @@
 'use client'
 
 import { redirect, useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 
 import TrackedCommandForm from '@/app/components/TrackedCommandForm'
 import { useConfigCtx } from '@/lib/contexts'
@@ -16,6 +16,11 @@ export default function SetupFlow({ baseUrl }: SetupFlowProps) {
   const router = useRouter()
   const cfg = useConfigCtx()
   const [wasCompleteOnMount] = useState(cfg.isSetupComplete)
+  const observedBase = useSyncExternalStore(
+    () => () => {},
+    () => window.location.origin,
+    () => baseUrl,
+  )
   if (wasCompleteOnMount) redirect('/')
 
   return (
@@ -37,7 +42,7 @@ export default function SetupFlow({ baseUrl }: SetupFlowProps) {
         {' '}
         <input type='checkbox' name='installToolchain' defaultChecked /> Install latest stable toolchain?
       </label>
-      <input type='hidden' name='baseUrl' value={baseUrl} />
+      <input type='hidden' name='baseUrl' value={observedBase} />
     </TrackedCommandForm>
   )
 }
