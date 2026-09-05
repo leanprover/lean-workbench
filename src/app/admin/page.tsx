@@ -1,5 +1,4 @@
 import CatchySuspense from '@/app/components/CatchySuspense'
-import { requireAdmin } from '@/lib/server/auth'
 import { getOAuthConfig, requireAdmin } from '@/lib/server/auth'
 import { getConfig } from '@/lib/server/config'
 import { listInstalledToolchains } from '@/lib/server/elan'
