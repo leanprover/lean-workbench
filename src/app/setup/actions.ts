@@ -27,7 +27,7 @@ export const doSeed = submitAction(
     }
 
     const scriptsDir = path.join(process.cwd(), 'scripts') // scripts/ is a sibling directory
-    const scriptsArgs = ['--data-dir', getDataDir()]
+    const scriptsArgs = []
     if (installToolchain) scriptsArgs.push('--install-toolchain')
     const emitter = startTrackedCommand('seed', path.join(scriptsDir, 'seed-volume.sh'), scriptsArgs)
 
