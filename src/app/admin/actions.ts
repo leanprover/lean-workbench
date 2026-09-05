@@ -2,7 +2,6 @@
 
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs/promises'
-import path from 'node:path'
 
 import { zProjectId, zTemplateId, zUserId, zUserName, zValidateUserName } from '@leanprover/workbench-shared'
 import { getDataDir, getUserRootDir, getWorkspacesDir } from '@leanprover/workbench-shared/node'
@@ -66,8 +65,6 @@ export const deleteUser = serverAction(zDeleteUser, async ({ userId }) => {
   // Remove workspace directory
   const userRootDir = getUserRootDir(target)
   await fs.rm(userRootDir, { recursive: true, force: true })
-  const userWorkspaceDir = path.join(getWorkspacesDir(), target.name)
-  await fs.rm(userWorkspaceDir, { recursive: true, force: true })
 
   // Delete from database (cascades to projects via schema)
   await db.user.delete({ where: { id: userId } })
