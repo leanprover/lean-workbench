@@ -1,4 +1,5 @@
 import { requireAdmin } from '@/lib/server/auth'
+import { getConfig } from '@/lib/server/config'
 
 import SetupFlow from './SetupFlow'
 
@@ -12,7 +13,7 @@ export default async function Setup() {
       <p style={{ color: '#607D8B', fontSize: '13px' }}>
         Install elan and set up an initial project template. This may take several minutes.
       </p>
-      <SetupFlow />
+      <SetupFlow baseUrl={getConfig().baseUrl} />
     </>
   )
 }
