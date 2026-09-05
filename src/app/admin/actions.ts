@@ -65,8 +65,8 @@ export const deleteUser = serverAction(zDeleteUser, async ({ userId }) => {
 
   // Remove workspace directory
   const userRootDir = getUserRootDir(target)
-  fs.rmSync(userRootDir, { recursive: true, force: true })
-   const userWorkspaceDir = path.join(getWorkspacesDir(), target.name)
+  await fs.rm(userRootDir, { recursive: true, force: true })
+  const userWorkspaceDir = path.join(getWorkspacesDir(), target.name)
   await fs.rm(userWorkspaceDir, { recursive: true, force: true })
 
   // Delete from database (cascades to projects via schema)
