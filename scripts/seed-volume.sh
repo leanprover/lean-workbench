@@ -4,7 +4,6 @@
 set -euo pipefail
 
 ROOT="/data"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 INSTALL_TOOLCHAIN=0
 
 while [[ $# -gt 0 ]]; do
