@@ -1,6 +1,5 @@
 'use server'
 
-import { getDataDir } from '@leanprover/workbench-shared/node'
 import path from 'path'
 import z from 'zod'
 
