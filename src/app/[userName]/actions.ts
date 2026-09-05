@@ -25,13 +25,15 @@ export interface ProjectInfo {
 // --- Mutations ---
 
 const zCreateProject = z.object({
-  name: zValidateProjectName,
+  nameSuggestion: zValidateProjectName,
+  projectName: zValidateProjectName.optional(),
   template: zTemplateId,
 })
 
 export const createProject = submitAction(
   zCreateProject,
-  async ({ name, template }): Promise<ActionResponse<ProjectInfo>> => {
+  async ({ projectName, nameSuggestion, template }): Promise<ActionResponse<ProjectInfo>> => {
+    const name = projectName ?? nameSuggestion
     const session = await requireAuth()
 
     const db = getDb()

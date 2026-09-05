@@ -1,7 +1,8 @@
 'use client'
 
+import friendlyWords from 'friendly-words'
 import { useRouter } from 'next/navigation'
-import { use, useState } from 'react'
+import { use, useMemo, useState } from 'react'
 
 import CatchySuspense from '@/app/components/CatchySuspense'
 import { useServerAction } from '@/lib/client/util'
@@ -13,9 +14,16 @@ interface NewProjectProps {
   templates: Promise<TemplateInfo[]>
 }
 
+function generateSuggestion() {
+  const predicate = friendlyWords.predicates[Math.floor(Math.random() * friendlyWords.predicates.length)]!
+  const object = friendlyWords.objects[Math.floor(Math.random() * friendlyWords.objects.length)]
+  return `${predicate}-${object}`
+}
+
 export function NewProjectForm(props: NewProjectProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
+  const friendlySuggestion = useMemo(() => (open ? generateSuggestion() : ''), [open])
 
   const [createError, createAction, createPending] = useServerAction(createProject, () => {
     setOpen(false)
@@ -34,22 +42,23 @@ export function NewProjectForm(props: NewProjectProps) {
 
   return (
     <form action={createAction} className='new-project' style={{ marginTop: 16 }}>
-      <input
-        name='name'
-        type='text'
-        onKeyDown={e => {
-          if (e.key === 'Escape') setOpen(false)
-        }}
-        placeholder='Project name (letters, digits, hyphens, underscores)'
-        maxLength={100}
-        disabled={createPending}
-        autoFocus
-      />
       <div className='template-selector'>
         <CatchySuspense loading={<p>Loading templates&hellip;</p>}>
           <NewProjectSelection {...props} createPending={createPending} />
         </CatchySuspense>
       </div>
+      <input type='hidden' name='nameSuggestion' value={friendlySuggestion} />
+      <label style={{ fontSize: '14px' }}>
+        Project name (letters, digits, hyphens, underscores)
+        <input
+          name='projectName'
+          type='text'
+          placeholder={friendlySuggestion}
+          maxLength={100}
+          disabled={createPending}
+          autoFocus
+        />
+      </label>
       {createError && <div style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{createError}</div>}
       <div>
         <button type='submit' disabled={createPending}>
