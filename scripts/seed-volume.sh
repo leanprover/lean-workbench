@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-ROOT="/data"
+ROOT=${LEAN_WORKBENCH_DATA_DIR:?No data directory was specified}
 INSTALL_TOOLCHAIN=0
 
 while [[ $# -gt 0 ]]; do
