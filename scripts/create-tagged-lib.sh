@@ -2,7 +2,7 @@
 # Create a Mathlib or closely-related-to-Mathlib (e.g. CSLib) project
 
 set -euo pipefail
-ROOT="/data"
+ROOT=${LEAN_WORKBENCH_DATA_DIR:?No data directory was specified}
 export ELAN_HOME="$ROOT/elan"
 export PATH="$ELAN_HOME/bin:$PATH"
 
