@@ -67,7 +67,7 @@ for pkg_dir in "$WORK_DIR/.lake/packages"/*/; do
   echo "[package set] copying package: $pkg_name"
   pkg_dest="$PACKAGE_SET_DIR/$pkg_name/.lake/packages/$pkg_name"
   mkdir -p "$(dirname "$pkg_dest")"
-  mv --skip-trailing-slashes "$pkg_dir" "$pkg_dest"
+  mv --strip-trailing-slashes "$pkg_dir" "$pkg_dest"
 done
 
 ls -d "$PACKAGE_SET_DIR"/*/ | xargs -n1 basename > "$PACKAGE_SET_DIR/packages.txt"
