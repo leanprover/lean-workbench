@@ -43,7 +43,7 @@ export interface TemplateInfo {
 export async function listTemplates(): Promise<TemplateInfo[]> {
   const templatesDir = getTemplatesDir()
 
-  const result: TemplateInfo[] = [{ id: 'blank', name: 'Blank', description: 'Empty workspace' }]
+  const result: TemplateInfo[] = []
   const entries = await fs.readdir(templatesDir, { withFileTypes: true })
 
   for (const entry of entries) {

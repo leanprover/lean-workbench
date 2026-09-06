@@ -115,7 +115,7 @@ model Project {
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @default(now()) @updatedAt
   /// Which template the project was created from.
-  template    String              @default("blank")
+  template    String
   isPublic    Boolean             @default(false)
   packageSets ProjectPackageSet[]
 
