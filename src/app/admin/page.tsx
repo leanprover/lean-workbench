@@ -1,3 +1,4 @@
+import CatchySuspense from '@/app/components/CatchySuspense'
 import { requireAdmin } from '@/lib/server/auth'
 import { listInstalledToolchains } from '@/lib/server/elan'
 import { listTemplates } from '@/lib/server/projectTemplate'
@@ -27,7 +28,12 @@ export default async function AdminPage() {
       <AccessControl />
       <HealthMonitor systemHealth={systemHealth} />
       <ToolchainManagement installedToolchainsPromise={installedToolchains} />
-      <TemplateManagement templates={templates} />
+      <section>
+        <h2>Project Templates</h2>
+        <CatchySuspense loading={<p>Loading toolchains and templates&hellip;</p>}>
+          <TemplateManagement installedToolchainsPromise={installedToolchains} templatesPromise={templates} />
+        </CatchySuspense>
+      </section>
     </div>
   )
 }
