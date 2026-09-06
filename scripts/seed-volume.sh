@@ -1,5 +1,8 @@
 #!/bin/bash
 # Seed the lean-workbench data volume with everything needed to run.
+# Should be idempotent and safe to rerun.
+#
+# usage: seed-volume.sh [--install-toolchain]
 
 set -euo pipefail
 
