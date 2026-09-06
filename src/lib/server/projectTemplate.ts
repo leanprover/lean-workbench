@@ -103,12 +103,24 @@ export async function getAvailableTemplateSchemas(toolchain: string): Promise<Te
   return [['basic'] as const, isMathlibTag ? (['mathlib'] as const) : [], isCSLibTag ? (['cslib'] as const) : []].flat()
 }
 
-const MATHLIB_MAIN_LEAN = `import Mathlib
+const BASIC_MAIN_LEAN = `module
+
+#check Nat.add_comm
+
+#eval show IO Unit from
+  IO.println "Hello, world!"
+`
+
+const MATHLIB_MAIN_LEAN = `module
+
+import Mathlib
 
 #check Nat.add_comm
 `
 
-const CSLIB_MAIN_LEAN = `import Cslib
+const CSLIB_MAIN_LEAN = `module
+
+import Cslib
 
 #check Nat.add_comm
 `
@@ -122,23 +134,25 @@ export async function startSchemaTemplate(toolchain: string, schema: TemplateSch
   const scriptsDir = path.join(process.cwd(), 'scripts') // scripts/ is a sibling directory
   const [_all, _namespace, tag] = toolchain.match(STANDARD_TOOLCHAIN_ID_RE)!
   const workDir = await fs.mkdtemp('/tmp/template-create-')
+  await fs.mkdir(path.join(workDir, 'build'))
   const metadata = TEMPLATE_METADATA_FROM_SCHEMA[schema](tag!)
-  await fs.writeFile(path.join(workDir, 'metadata.json'), JSON.stringify(metadata))
+  await fs.writeFile(path.join(workDir, 'build', 'metadata.json'), JSON.stringify(metadata))
 
   let script: string
   let args: string[]
   switch (schema) {
     case 'basic':
+      await fs.writeFile(path.join(workDir, 'build', 'Main.lean'), BASIC_MAIN_LEAN)
       script = 'create-basic.sh'
       args = [workDir, `basic-${tag!.replaceAll('.', '-')}`, toolchain]
       break
     case 'mathlib':
-      await fs.writeFile(path.join(workDir, 'Main.lean'), MATHLIB_MAIN_LEAN)
+      await fs.writeFile(path.join(workDir, 'build', 'Main.lean'), MATHLIB_MAIN_LEAN)
       script = 'create-tagged-lib.sh'
       args = [workDir, `mathlib-${tag!.replaceAll('.', '-')}`, 'leanprover-community/mathlib4', 'mathlib', tag!]
       break
     case 'cslib':
-      await fs.writeFile(path.join(workDir, 'Main.lean'), CSLIB_MAIN_LEAN)
+      await fs.writeFile(path.join(workDir, 'build', 'Main.lean'), CSLIB_MAIN_LEAN)
       script = 'create-tagged-lib.sh'
       args = [workDir, `cslib-${tag!.replaceAll('.', '-')}`, 'leanprover/cslib', 'cslib', tag!]
       break
