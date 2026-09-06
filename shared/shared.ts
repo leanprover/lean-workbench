@@ -36,6 +36,17 @@ export const zValidateProjectName = z
   .regex(ALPHANUM_NAME_RE, 'Invalid project name')
 export const zTemplateId = z.string().regex(TEMPLATE_ID_RE, 'Invalid template ID')
 
+/**
+ * Expected form of a toolchain (not necessarily exhaustive, must be command-line-argument-safe)
+ * Examples: `lean4`, `leanprover/lean4:v4.32.1`, `leanprover/lean4-nightly:nightly-2026-08-27`
+ */
+export const EXPECTED_TOOLCHAIN_ID_RE = /^[a-z][a-z0-9:/_.-]*$/
+
+export const LEAN_STABLE_VERSION_RE = /^v4\.[0-9]+\.[0-9]+$/
+export const LEAN_BETA_VERSION_RE = /^v4\.[0-9]+\.[0-9]+-rc[0-9]+$/
+export const LEAN_NIGHTLY_VERSION_RE = /^nightly-[0-9-]+$/
+
+/** Matches stable or beta Lean versions (not nightly) */
 export const LEAN_VERSION_RE = /^v4\.\d+\.\d+(-rc\d+)?$/
 
 /** Metadata of a Lean Workbench project workspace. */
