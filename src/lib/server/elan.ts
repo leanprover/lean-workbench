@@ -21,6 +21,7 @@ export async function listInstalledToolchains(): Promise<string[]> {
   const { stderr, stdout } = await exec(getElanBin(), ['toolchain', 'list'], {
     env: { ...process.env, ELAN_HOME },
   })
+  // a successful `elan toolchain list` prints nothing on standard output
   if (stderr.trim().length !== 0) throw new Error(stderr)
   if (stdout.trim() === 'no installed toolchains') return []
   return stdout
@@ -34,6 +35,7 @@ export async function elanUninstall(leanVersion: string) {
   const { stderr, stdout } = await exec(getElanBin(), ['toolchain', 'uninstall', leanVersion], {
     env: { ...process.env, ELAN_HOME },
   })
+  // a successful `elan toolchain uninstall ...` produces nothing on standard error
   if (stdout.trim().length !== 0) throw new Error(stdout)
 
   return stderr
