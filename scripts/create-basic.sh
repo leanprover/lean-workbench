@@ -1,5 +1,11 @@
 #!/bin/bash
 # Create a minimal Lean template
+# usage: create-basic.sh WORK_DIR TEMPLATE_ID TOOLCHAIN
+#
+# example:
+# create-basic.sh /tmp/abcd new-template leanprover/lean4:v4.32.0
+#
+# expects $WORK_DIR/build/Main.lean must exist
 
 set -euo pipefail
 
@@ -10,17 +16,18 @@ export PATH="$ELAN_HOME/bin:$PATH"
 WORK_DIR="$1"; shift 1
 TEMPLATE_ID="$1"; shift 1
 TOOLCHAIN="$1"; shift 1
-TEMPLATE_DIR="$ROOT/templates/$TEMPLATE_ID"
 
 trap 'rm -rf "$WORK_DIR"' EXIT
 
-if [ -d "$TEMPLATE_DIR" ]; then
+if [ -d "$ROOT/templates/$TEMPLATE_ID" ]; then
   echo "ERROR: template '$TEMPLATE_ID' already exists"
   exit 1
 fi
 
-echo "[[ progress 1/3 Constructing project template ]]"
-cd "$WORK_DIR"
+echo "[[ progress 1/4 Constructing project ]]"
+BUILD_DIR="$WORK_DIR/build"
+cd "$BUILD_DIR"
+
 echo "$TOOLCHAIN" > lean-toolchain
 
 cat > lakefile.toml <<EOF
@@ -32,23 +39,21 @@ defaultTargets = ["Main"]
 name = "Main"
 EOF
 
-cat > Main.lean <<EOF
-#check Nat.add_comm
-
-#eval show IO Unit from
-  IO.println "Hello, world!"
-EOF
-
-echo "[[ progress 2/3 Building project ]]"
+echo "[[ progress 2/4 Building project ]]"
 lake --no-ansi --keep-toolchain build
 
-echo "[[ progress 3/3 Placing completed template ]]"
-TEMPLATE_DIR="$ROOT/templates/$TEMPLATE_ID"
+echo "[[ progress 3/4 Constructing template ]]"
+TEMPLATE_DIR="$WORK_DIR/template"
 mkdir "$TEMPLATE_DIR"
-mv "$WORK_DIR/metadata.json" "$TEMPLATE_DIR/"
-mv "$WORK_DIR/lean-toolchain" "$TEMPLATE_DIR/"
-mv "$WORK_DIR/lakefile.toml" "$TEMPLATE_DIR/"
-mv "$WORK_DIR/lake-manifest.json" "$TEMPLATE_DIR/"
-mv "$WORK_DIR/Main.lean" "$TEMPLATE_DIR/"
+
+mv "$BUILD_DIR/metadata.json" "$TEMPLATE_DIR/"
+mv "$BUILD_DIR/lean-toolchain" "$TEMPLATE_DIR/"
+mv "$BUILD_DIR/lakefile.toml" "$TEMPLATE_DIR/"
+mv "$BUILD_DIR/lake-manifest.json" "$TEMPLATE_DIR/"
+mv "$BUILD_DIR/Main.lean" "$TEMPLATE_DIR/"
+
+echo "[[ progress 4/4 Placing template ]]"
+TEMPLATE_PLACED="$ROOT/templates/$TEMPLATE_ID"
+mv "$TEMPLATE_DIR" "$TEMPLATE_PLACED"
 
 echo "Template $TEMPLATE_ID created successfully!"
