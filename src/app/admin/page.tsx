@@ -1,5 +1,5 @@
 import { requireAdmin } from '@/lib/server/auth'
-import { listTemplates } from '@/lib/server/util'
+import { listTemplates } from '@/lib/server/projectTemplate'
 
 import { fetchHealth } from './actions'
 import { AccessControl } from './components/AccessControl'

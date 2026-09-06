@@ -11,7 +11,8 @@ import z from 'zod'
 
 import { requireAuth } from '@/lib/server/auth'
 import { getDb } from '@/lib/server/db'
-import { readTemplateMetadata, serverAction, submitAction } from '@/lib/server/util'
+import { readTemplateMetadata } from '@/lib/server/projectTemplate'
+import { serverAction, submitAction } from '@/lib/server/util'
 import { type ActionResponse } from '@/lib/util'
 import { type Project } from '@/prisma/generated/client'
 

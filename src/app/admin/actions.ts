@@ -11,14 +11,9 @@ import { initAuth, requireAdmin } from '@/lib/server/auth'
 import { getConfig, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
+import { readTemplateMetadata, saveTemplateMetadata, type TemplateMetadata } from '@/lib/server/projectTemplate'
 import { getTrackedCommandState } from '@/lib/server/trackedCommand'
-import {
-  readTemplateMetadata,
-  saveTemplateMetadata,
-  serverAction,
-  submitAction,
-  type TemplateMetadata,
-} from '@/lib/server/util'
+import { serverAction, submitAction } from '@/lib/server/util'
 import { type ActionResponse } from '@/lib/util'
 
 // --- User management ---

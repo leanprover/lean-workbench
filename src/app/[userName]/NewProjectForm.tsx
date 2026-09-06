@@ -5,7 +5,7 @@ import { use, useState } from 'react'
 
 import CatchySuspense from '@/app/components/CatchySuspense'
 import { useServerAction } from '@/lib/client/util'
-import { type TemplateInfo } from '@/lib/server/util'
+import { type TemplateInfo } from '@/lib/server/projectTemplate'
 
 import { createProject } from './actions'
 
