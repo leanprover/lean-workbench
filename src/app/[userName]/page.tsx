@@ -6,7 +6,7 @@ import z from 'zod'
 
 import { requireAuth } from '@/lib/server/auth'
 import { getDb } from '@/lib/server/db'
-import { listTemplates } from '@/lib/server/util'
+import { listTemplates } from '@/lib/server/projectTemplate'
 
 import { NewProjectForm } from './NewProjectForm'
 import { ProjectRow } from './ProjectRow'

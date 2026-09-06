@@ -43,7 +43,7 @@ export function useThrowToBoundary(): { throwToBoundary: (error: unknown) => voi
 export function useThrowingSWR<T>(
   key: Key,
   fetcher: () => Promise<T>,
-  config: SWRConfiguration<T, unknown> & { fallbackData: T | Promise<T> },
+  config: Omit<SWRConfiguration<T, unknown>, 'fallbackData'> & { fallbackData: T },
 ): SWRResponse<T, unknown> & { data: T }
 
 /**
@@ -53,7 +53,7 @@ export function useThrowingSWR<T>(
 export function useThrowingSWR<T>(
   key: Key,
   fetcher: () => Promise<T>,
-  config: SWRConfiguration<T, unknown> & { suspense: true },
+  config: Omit<SWRConfiguration<T, unknown>, 'fallbackData'> & { suspense: true },
 ): SWRResponse<T, unknown> & { data: T }
 
 /**
@@ -62,11 +62,12 @@ export function useThrowingSWR<T>(
 export function useThrowingSWR<T>(
   key: Key,
   fetcher: () => Promise<T>,
-  config?: SWRConfiguration<T, unknown>,
+  config?: Omit<SWRConfiguration<T, unknown>, 'fallbackData'>,
 ): SWRResponse<T, unknown>
 
 export function useThrowingSWR<T>(key: Key, fetcher: () => Promise<T>, config?: SWRConfiguration<T, unknown>) {
-  const result = useSWR<T, unknown>(key, () => fetcher(), config)
+  const fallbackData = config?.fallbackData
+  const result = useSWR<T, unknown>(key, () => fetcher(), { ...config, fallbackData: undefined })
   // On a background revalidation (like when the window refocuses), result.data will be defined
   // Don't throw if such a background revalidation fails, just continue returning the (stale) data.
   if (result.error !== undefined) {
@@ -75,5 +76,6 @@ export function useThrowingSWR<T>(key: Key, fetcher: () => Promise<T>, config?: 
     }
     console.error(`Background revalidation failed for ${key}, reusing old value`, result.error)
   }
+  if (result.data === undefined) return { ...result, data: fallbackData }
   return result
 }
