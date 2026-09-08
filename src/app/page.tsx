@@ -37,7 +37,7 @@ export default function Root() {
   const { throwToBoundary } = useThrowToBoundary()
   const [_, devLoginAction] = useServerAction(loginDevUser, async () => {
     await session.refetch()
-    router.push('/profile')
+    router.replace('/profile')
   })
 
   return (
