@@ -18,9 +18,7 @@ interface TemplateManagementProps {
 export function TemplateManagement(props: TemplateManagementProps) {
   const router = useRouter()
   const templates = use(props.templatesPromise)
-  const installedStandardToolchains = use(props.installedToolchainsPromise).filter(tc =>
-    toolchainHasModules(tc),
-  )
+  const installedStandardToolchains = use(props.installedToolchainsPromise).filter(tc => toolchainHasModules(tc))
 
   return (
     <>
