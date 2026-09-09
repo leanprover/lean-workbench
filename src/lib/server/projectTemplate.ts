@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { STANDARD_TOOLCHAIN_ID_RE } from '@leanprover/workbench-shared'
-import { getTemplatesDir } from '@leanprover/workbench-shared/node'
+import { getDataDir, getTemplatesDir } from '@leanprover/workbench-shared/node'
 import z from 'zod'
 
 import { githubAPI } from './github'
@@ -133,7 +133,8 @@ import Cslib
 export async function startSchemaTemplate(toolchain: string, schema: TemplateSchemaId) {
   const scriptsDir = path.join(process.cwd(), 'scripts') // scripts/ is a sibling directory
   const [_all, _namespace, tag] = toolchain.match(STANDARD_TOOLCHAIN_ID_RE)!
-  const workDir = await fs.mkdtemp('/tmp/template-create-')
+  await fs.mkdir(path.join(getDataDir(), 'tmp-build'), { recursive: true })
+  const workDir = await fs.mkdtemp(path.join(getDataDir(), 'tmp-build', 'template-create-'))
   await fs.mkdir(path.join(workDir, 'build'))
   const metadata = TEMPLATE_METADATA_FROM_SCHEMA[schema](tag!)
   await fs.writeFile(path.join(workDir, 'build', 'metadata.json'), JSON.stringify(metadata))
