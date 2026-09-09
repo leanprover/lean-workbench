@@ -15,6 +15,8 @@ const getElanBin = () => path.join(getElanDir(), 'bin', 'elan')
  *
  * Results for normally-installed release or nightly toolchains are in long-form, e.g.
  * `leanprover/lean4-nightly:nightly-2026-08-27` or `leanprover/lean4:v4.32.2`.
+ * The `leanprover/lean4` part is the "origin" (see
+ * https://lean-lang.org/doc/reference/latest/Build-Tools-and-Distribution/Managing-Toolchains-with-Elan/)
  */
 export async function listInstalledToolchains(): Promise<string[]> {
   const ELAN_HOME = getElanDir()
