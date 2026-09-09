@@ -1,6 +1,6 @@
 'use client'
 
-import { STANDARD_TOOLCHAIN_ID_RE } from '@leanprover/workbench-shared'
+import { STANDARD_TOOLCHAIN_ID_RE, toolchainHasModules } from '@leanprover/workbench-shared'
 import { useRouter } from 'next/navigation'
 import { use, useState } from 'react'
 
@@ -19,7 +19,7 @@ export function TemplateManagement(props: TemplateManagementProps) {
   const router = useRouter()
   const templates = use(props.templatesPromise)
   const installedStandardToolchains = use(props.installedToolchainsPromise).filter(tc =>
-    STANDARD_TOOLCHAIN_ID_RE.test(tc),
+    toolchainHasModules(tc),
   )
 
   return (

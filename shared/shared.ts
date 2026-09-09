@@ -56,7 +56,45 @@ export const LEAN_BETA_VERSION_RE = /^v4\.[0-9]+\.[0-9]+-rc[0-9]+$/
 export const LEAN_NIGHTLY_VERSION_RE = /^nightly-[0-9-]+$/
 
 /** Matches stable or beta Lean versions (not nightly) */
-export const LEAN_VERSION_RE = /^v4\.\d+\.\d+(-rc\d+)?$/
+export const LEAN_VERSION_RE = /^v4\.(\d+)\.(\d+)(-rc(\d+))?$/
+
+/**
+ * Compares two lean versions matching `LEAN_VERSION_RE`.
+ *
+ * ```
+ * leanVersionCompare("v4.1.3", "v4.32.2") < 0
+ * leanVersionCompare("v4.30.4", "v4.31.0-rc1") < 0
+ * leanVersionCompare("v4.31.1-rc10", "v4.31.0-rc9") > 0
+ * ```
+ */
+export function leanVersionCompare(v1: string, v2: string) {
+  const m1 = v1.match(LEAN_VERSION_RE)
+  const m2 = v2.match(LEAN_VERSION_RE)
+  if (!m1 || !m2) throw new Error(`Either ${v1} and/or ${v2} are not valid Lean version numbers`)
+  const [primary1, primary2] = [Number(m1[1]), Number(m2[1])]
+  if (primary1 !== primary2) return primary1 - primary2
+  const [secondary1, secondary2] = [Number(m1[2]), Number(m2[2])]
+  if (secondary1 !== secondary2) return secondary1 - secondary2
+  if (!m1[4]) return m2[4] ? 1 : 0
+  if (!m2[4]) return -1
+  return Number(m1[4]) - Number(m2[4])
+}
+
+/**
+ * Does a toolchain match STANDARD_TOOLCHAIN_ID_RE and do Lean, Mathlib, and CSLib
+ * work with the lean module system at that version?
+ *
+ * For stable releases, returns true for v4.27.0 and beyond.
+ * For nighties, very conservatively returns true in February 2026 and beyond.
+ */
+export function toolchainHasModules(toolchain: string) {
+  const m = toolchain.match(STANDARD_TOOLCHAIN_ID_RE)
+  if (!m) return false
+  if (m[1] === 'lean4') {
+    return LEAN_VERSION_RE.test(m[2]!) && leanVersionCompare(m[2]!, 'v4.27.0') >= 0
+  }
+  return LEAN_NIGHTLY_VERSION_RE.test(m[2]!) && m[2]! >= 'nightly-2026-02-01'
+}
 
 /** Metadata of a Lean Workbench project workspace. */
 export type WorkspaceMetadata = z.infer<typeof zWorkspaceMetadata>
