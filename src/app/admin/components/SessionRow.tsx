@@ -6,9 +6,9 @@ import { startTransition } from 'react'
 import { killEditorSession } from '@/app/admin/actions'
 import ProjectLink from '@/app/components/ProjectLink'
 import { useServerAction } from '@/lib/client/util'
-import type { EditorSessionInfo } from '@/lib/server/editorSessions'
+import type { EditorSessionInfo, UnknownEditorSession } from '@/lib/server/editorSessions'
 
-export function SessionRow({ info }: { info: EditorSessionInfo }) {
+export function SessionRow({ info }: { info: EditorSessionInfo | UnknownEditorSession }) {
   const router = useRouter()
   const [killError, killAction, killPending] = useServerAction(killEditorSession, () => router.refresh())
 
@@ -17,7 +17,11 @@ export function SessionRow({ info }: { info: EditorSessionInfo }) {
       <div className='info'>
         <a href={`/${info.viewerUsername}`}>{info.viewerUsername}</a>
         <span style={{ color: '#90a4ae', margin: '0 0.25rem' }}>editing</span>
-        <ProjectLink ownerUsername={info.ownerUsername} projectName={info.projectName} />
+        {'ownerUsername' in info ? (
+          <ProjectLink ownerUsername={info.ownerUsername} projectName={info.projectName} />
+        ) : (
+          <div style={{ color: '#dc2626' }}>project {info.projectId} not listed in the database (deleted?)</div>
+        )}
       </div>
       <div className='actions'>
         <span style={{ fontSize: '0.8rem', color: '#90a4ae' }}>UUID {info.sessionId}</span>

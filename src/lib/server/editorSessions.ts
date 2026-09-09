@@ -114,6 +114,13 @@ async function buildProjectMount(owner: User, project: Project): Promise<Project
   return handle
 }
 
+export interface UnknownEditorSession {
+  sessionId: string
+  viewerId: string
+  viewerUsername: string
+  projectId: string
+}
+
 /** Admin-visible information about a running editor session. */
 export interface EditorSessionInfo {
   sessionId: string
@@ -216,23 +223,34 @@ export class EditorSessionManager {
     return undefined
   }
 
-  async listSessions(): Promise<EditorSessionInfo[]> {
-    const result: EditorSessionInfo[] = []
+  async listSessions(): Promise<(EditorSessionInfo | UnknownEditorSession)[]> {
+    const result: (EditorSessionInfo | UnknownEditorSession)[] = []
     for (const [projectId, servers] of this.vscServers) {
       const project = await getDb().project.findUnique({
         where: { id: projectId },
         select: { name: true, user: { select: { name: true } } },
       })
-      if (!project) throw new Error(`internal error: unknown project ID ${projectId}`)
+      if (!project) {
+        console.error(`internal error: no database record for project with ID ${projectId}`)
+      }
       for (const s of servers) {
-        result.push({
-          sessionId: s.uuid,
-          viewerId: s.viewer.id,
-          viewerUsername: s.viewer.name,
-          ownerUsername: project.user.name,
-          projectId,
-          projectName: project.name,
-        })
+        if (project) {
+          result.push({
+            sessionId: s.uuid,
+            viewerId: s.viewer.id,
+            viewerUsername: s.viewer.name,
+            ownerUsername: project.user.name,
+            projectId,
+            projectName: project.name,
+          })
+        } else {
+          result.push({
+            sessionId: s.uuid,
+            viewerId: s.viewer.id,
+            viewerUsername: s.viewer.name,
+            projectId,
+          })
+        }
       }
     }
     return result
