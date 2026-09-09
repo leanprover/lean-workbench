@@ -18,7 +18,7 @@ interface TemplateManagementProps {
 export function TemplateManagement(props: TemplateManagementProps) {
   const router = useRouter()
   const templates = use(props.templatesPromise)
-  const installeStandardToolchains = use(props.installedToolchainsPromise).filter(tc =>
+  const installedStandardToolchains = use(props.installedToolchainsPromise).filter(tc =>
     STANDARD_TOOLCHAIN_ID_RE.test(tc),
   )
 
@@ -26,14 +26,14 @@ export function TemplateManagement(props: TemplateManagementProps) {
     <>
       <TemplateManagementList templates={templates} />
       <TrackedCommandForm
-        disabled={installeStandardToolchains.length === 0}
+        disabled={installedStandardToolchains.length === 0}
         streamCommandKey='create-template'
         trackedCommandAction={doTemplateCreation}
         title='+ Create template'
         successAction={() => router.refresh()}
       >
         <CatchySuspense loading={<p>Loading available toolchains&hellip;</p>}>
-          <TemplateCreationForm installedToolchains={installeStandardToolchains} />
+          <TemplateCreationForm installedToolchains={installedStandardToolchains} />
         </CatchySuspense>
       </TrackedCommandForm>
     </>
