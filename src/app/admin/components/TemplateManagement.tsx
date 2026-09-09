@@ -154,7 +154,7 @@ export function TemplateCreationForm(props: { installedToolchains: string[] }) {
     <>
       <label>
         Installed toolchain:{' '}
-        <select name='toolchain' value={toolchain} onChange={e => setToolchain(e.target.value)}>
+        <select name='toolchain' value={toolchain} onChange={e => setToolchain(e.target.value)} className='roomy'>
           {props.installedToolchains
             .map(tc => tc.match(STANDARD_TOOLCHAIN_ID_RE)!)
             .map(([all, _type, tag]) => (
@@ -166,7 +166,7 @@ export function TemplateCreationForm(props: { installedToolchains: string[] }) {
       </label>
       <label>
         Template schema:{' '}
-        <select name='schema'>
+        <select name='schema' className='roomy'>
           {schemas.map(({ key, name }) => (
             <option value={key} key={key}>
               {name}

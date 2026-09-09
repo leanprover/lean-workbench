@@ -155,7 +155,7 @@ function NewToolchainForm() {
           Nightly
         </label>
       </div>
-      <select name='selectedToolchain' defaultValue={`stable ${toolchainsAvailable.stable[0]?.name}`}>
+      <select name='selectedToolchain' defaultValue={`stable ${toolchainsAvailable.stable[0]?.name}`} className='roomy'>
         {all.map(({ type, name }) => (
           <option key={`${type} ${name}`} value={`${type} ${name}`}>
             {name}

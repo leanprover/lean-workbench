@@ -386,6 +386,9 @@ form.num-button input {
 .template-option.selected strong {
   color: #386ee0;
 }
+select.roomy {
+  padding: 0.5em;
+}
 
 /* === Session Page === */
 .editor-session-iframe {
