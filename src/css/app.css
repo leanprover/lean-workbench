@@ -64,9 +64,6 @@ nav .spacer {
 }
 
 /* === Avatar menu === */
-.avatar-menu {
-  position: relative;
-}
 .avatar-btn {
   display: flex;
   align-items: center;
@@ -103,10 +100,6 @@ nav .spacer {
   line-height: 1;
 }
 .avatar-dropdown {
-  display: none;
-  position: absolute;
-  right: 0;
-  top: calc(100% + 4px);
   background: #fff;
   border: 1px solid #e4ebf3;
   border-radius: 0.5rem;
@@ -115,9 +108,6 @@ nav .spacer {
   z-index: 1001;
   overflow: hidden;
 }
-.avatar-menu:focus-within .avatar-dropdown {
-  display: block;
-}
 .avatar-dropdown-user {
   padding: 0.5rem 0.75rem;
   font-size: 0.8rem;
@@ -125,7 +115,7 @@ nav .spacer {
   color: #333;
   border-bottom: 1px solid #e4ebf3;
 }
-.avatar-dropdown :is(a, button) {
+.avatar-dropdown [role='menuitem'] {
   display: block;
   padding: 0.5rem 0.75rem;
   font-size: 0.8rem;
@@ -138,7 +128,7 @@ nav .spacer {
   text-align: left;
   border-radius: 0px;
 }
-.avatar-dropdown :is(a, button):hover {
+.avatar-dropdown [role='menuitem']:hover {
   background: rgba(56, 110, 224, 0.08);
   color: #386ee0;
 }

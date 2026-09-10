@@ -57,6 +57,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
     "prettier": "^3.8.2",
+    "radix-ui": "^1.6.7",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.66.0"
   },

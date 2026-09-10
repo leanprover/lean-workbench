@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { DropdownMenu } from 'radix-ui'
 
 import AvatarIcon from '@/app/components/AvatarIcon'
 import authClient from '@/lib/client/auth'
@@ -16,46 +17,44 @@ export default function AvatarMenu() {
   const { throwToBoundary } = useThrowToBoundary()
   const isInSetup = usePathname().startsWith('/setup')
 
-  if (session.data) {
+  if (session.data && !isInSetup) {
     const user = session.data.user
     return (
       <>
         {user.isAdmin && <span className='admin-badge'>admin</span>}
-        <div className='avatar-menu'>
-          <AvatarIcon user={user} />
-          {!isInSetup && (
-            <div className='avatar-dropdown'>
-              <div className='avatar-dropdown-user'>{user.name}</div>
-              {user.isAdmin && <Link href='/admin'>Admin interface</Link>}
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger className='avatar-btn' aria-label='Account menu'>
+            <AvatarIcon user={user} />
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content sideOffset={5} className='avatar-dropdown'>
+              <DropdownMenu.Label className='avatar-dropdown-user'>{user.name}</DropdownMenu.Label>
+              {user.isAdmin && (
+                <DropdownMenu.Item asChild>
+                  <Link href='/admin'>Admin interface</Link>
+                </DropdownMenu.Item>
+              )}
               {cfg.isDevMode && (
-                <button
-                  onClick={() => {
+                <DropdownMenu.Item
+                  onSelect={() => {
                     setIsAdmin(!user.isAdmin)
-                      .then(() => session.refetch())
+                      .then(() => window.location.reload())
                       .catch(throwToBoundary)
                   }}
                 >
                   {user.isAdmin ? '[DEV] Become non-admin' : '[DEV] Become admin'}
-                </button>
+                </DropdownMenu.Item>
               )}
-              <button
-                onClick={() => {
-                  authClient
-                    .signOut({
-                      fetchOptions: {
-                        onSuccess: () => {
-                          router.push('/')
-                        },
-                      },
-                    })
-                    .catch(throwToBoundary)
+              <DropdownMenu.Item
+                onSelect={() => {
+                  authClient.signOut({ fetchOptions: { onSuccess: () => router.push('/') } }).catch(throwToBoundary)
                 }}
               >
                 Sign out
-              </button>
-            </div>
-          )}
-        </div>
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
       </>
     )
   } else if (!session.isPending && cfg.hasGithubAuth) {
@@ -69,6 +68,6 @@ export default function AvatarMenu() {
       </button>
     )
   } else {
-    return <></>
+    return null
   }
 }
