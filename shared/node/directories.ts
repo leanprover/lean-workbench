@@ -59,6 +59,11 @@ export function getOpenVscodeServerDir(): string {
   return process.env.VSCODE_SERVER_DIR ?? '/app/vscode-server'
 }
 
+/** Scripts that the workbench runs, both on the host and inside sandboxes. */
+export function getScriptsDir(): string {
+  return path.join(process.cwd(), 'scripts')
+}
+
 export function getWorkbenchDir(): string {
   return '/app/workbench'
 }

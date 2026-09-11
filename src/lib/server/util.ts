@@ -3,12 +3,14 @@ import 'server-only'
 import fs from 'node:fs/promises'
 
 import { parseWithZod } from '@conform-to/zod/v4'
+import { notFound } from 'next/navigation'
 import type z from 'zod'
 
 import type { ActionResponse } from '@/lib/util'
 import type { Project } from '@/prisma/generated/client'
 
-import type { User } from './auth'
+import { requireAuth, type User } from './auth'
+import { getDb } from './db'
 
 /** Wrap a server action so that its handler receives only schema-validated input.
  * The raw argument is parsed by {@link schema};
@@ -119,4 +121,21 @@ export function bwrapHomeDir(userName: string) {
 export function canAccessProject(user: User, project: Project) {
   const isOwner = user.id === project.userId
   return isOwner || project.isPublic
+}
+
+/** Resolve `<userName>/<projectName>` for an owner-only route,
+ * where the requesting user must be the project's owner.
+ *
+ * Anything the requester may not act on is reported as 404 rather than 403,
+ * so the route does not leak the existence of other people's projects. */
+export async function requireProjectOwner(userName: string, projectName: string) {
+  const { user: viewer } = await requireAuth()
+  const db = getDb()
+  const owner = await db.user.findUnique({ where: { name: userName } })
+  if (!owner || owner.id !== viewer.id) notFound()
+  const project = await db.project.findUnique({
+    where: { userId_name: { userId: owner.id, name: projectName } },
+  })
+  if (!project) notFound()
+  return { owner, project }
 }
