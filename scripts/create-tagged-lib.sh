@@ -1,11 +1,14 @@
 #!/bin/bash
-# Create a Mathlib or closely-related-to-Mathlib (e.g. CSLib) project
+# Create a Mathlib or closely-related-to-Mathlib (e.g. CSLib) template
 # usage: create-tagged-lib.sh WORK_DIR TEMPLATE_ID LIBRARY_GITHUB LIBRARY_ID LIBRARY_GIT_TAG
 #
 # example:
 # create-tagged-lib.sh /tmp/abcd new-template leanprover/cslib cslib v4.32.0
 #
-# expects $WORK_DIR/build/Main.lean to exist
+# expects the following to exist:
+#  - $WORK-DIR/build/metadata.json
+#  - $WORK_DIR/build/Main.lean
+
 
 set -euo pipefail
 ROOT=${LEAN_WORKBENCH_DATA_DIR:?No data directory was specified}
@@ -18,6 +21,7 @@ LIBRARY_GITHUB="$1"; shift 1
 LIBRARY_ID="$1"; shift 1
 LIBRARY_GIT_TAG="$1"; shift 1
 TOOLCHAIN="leanprover/lean4:$LIBRARY_GIT_TAG"
+BUILD_DIR="$WORK_DIR/build"
 
 trap 'rm -rf "$WORK_DIR"' EXIT
 
@@ -32,7 +36,6 @@ if [ -d "$ROOT/package-sets/$TEMPLATE_ID" ]; then
 fi
 
 echo "[[ progress 1/8 Constructing project ]]"
-BUILD_DIR="$WORK_DIR/build"
 cd "$BUILD_DIR"
 
 echo "$TOOLCHAIN" > lean-toolchain
@@ -104,8 +107,8 @@ PKG_COUNT=$(wc -l < "$PACKAGE_SET_PLACED/packages.txt")
 
 echo ""
 echo "[create-template] Done."
-echo "  Package set: $PACKAGE_SET_PLACED"
-echo "  Template:    $TEMPLATE_PLACED"
-echo "  Packages:    $PKG_COUNT"
+echo "  Package set:  $PACKAGE_SET_PLACED"
+echo "  Template:     $TEMPLATE_PLACED"
+echo "  Packages:     $PKG_COUNT"
 echo "  .olean files: $OLEAN_COUNT"
-echo "  Total size:  $TOTAL_SIZE"
+echo "  Total size:   $TOTAL_SIZE"
