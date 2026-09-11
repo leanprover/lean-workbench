@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { STANDARD_TOOLCHAIN_ID_RE } from '@leanprover/workbench-shared'
-import { getDataDir, getTemplatesDir } from '@leanprover/workbench-shared/node'
+import { getDataDir, getScriptsDir, getTemplatesDir } from '@leanprover/workbench-shared/node'
 import z from 'zod'
 
 import { githubAPI } from './github'
@@ -131,7 +131,6 @@ import Cslib
  * spawn a tracked command for a basic Mathlib template (key 'create-template')
  */
 export async function startSchemaTemplate(toolchain: string, schema: TemplateSchemaId) {
-  const scriptsDir = path.join(process.cwd(), 'scripts') // scripts/ is a sibling directory
   const [_all, _namespace, tag] = toolchain.match(STANDARD_TOOLCHAIN_ID_RE)!
   await fs.mkdir(path.join(getDataDir(), 'tmp-build'), { recursive: true })
   const workDir = await fs.mkdtemp(path.join(getDataDir(), 'tmp-build', 'template-create-'))
@@ -159,5 +158,8 @@ export async function startSchemaTemplate(toolchain: string, schema: TemplateSch
       break
   }
 
-  return startTrackedCommand('create-template', { kind: 'admin' }, path.join(scriptsDir, script), args)
+  // Both parts of this path are opaque to Turbopack, which would otherwise trace the whole
+  // project into the build output. Our deployment ships the repo anyway; see AGENTS.md.
+  const scriptPath = path.join(/*turbopackIgnore: true*/ getScriptsDir(), script)
+  return startTrackedCommand('create-template', { kind: 'admin' }, scriptPath, args)
 }

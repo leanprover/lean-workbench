@@ -1,5 +1,6 @@
 'use server'
 
+import { getScriptsDir } from '@leanprover/workbench-shared/node'
 import path from 'path'
 import z from 'zod'
 
@@ -25,10 +26,14 @@ export const doSeed = submitAction(
       }
     }
 
-    const scriptsDir = path.join(process.cwd(), 'scripts') // scripts/ is a sibling directory
     const scriptsArgs = []
     if (installToolchain) scriptsArgs.push('--install-toolchain')
-    const emitter = startTrackedCommand('seed', { kind: 'admin' }, path.join(scriptsDir, 'seed-volume.sh'), scriptsArgs)
+    const emitter = startTrackedCommand(
+      'seed',
+      { kind: 'admin' },
+      path.join(getScriptsDir(), 'seed-volume.sh'),
+      scriptsArgs,
+    )
 
     emitter?.on('exit', async exit => {
       // Note: success has already been reported to the client component;
