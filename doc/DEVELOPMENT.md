@@ -199,7 +199,6 @@ and `~/.lean-workbench/data/` (directory on host system) for `install.sh` deploy
   publications/                 Built publications, served from the publish origin
     <publication-uuid>/         The static files nginx aliases to
       index.html
-
     .staging/                   Where a build writes, before its output is swapped into place
       <project-uuid>-<kind>/
 
@@ -288,6 +287,7 @@ The readable URL follows a user or project rename;
 the durable URL names one publication for good.
 Neither names a directory on disk, so nginx resolves the leading segments through
 `/api/pub-route/resolve` and appends the rest of the path itself.
+On the app origin, `/<user>/<project>/<kind>` redirects to the readable URL.
 
 The origin is set by `WORKBENCH_PUB_BASE_URL`,
 which `start.sh` defaults to `http://pub.localhost:3000` and exports
@@ -295,6 +295,40 @@ so that nginx and Next.js cannot disagree about it.
 `install.sh` asks for it as `--publications-url`.
 It is deployment infrastructure rather than an admin-editable preference,
 so it lives in the environment and not in `config.json`.
+
+### Testing origin separation
+
+Chrome and Firefox resolve any `*.localhost` name to loopback
+with no DNS and no `/etc/hosts` entry,
+and the container already publishes port 3000 on 127.0.0.1,
+so the dev default works without further setup.
+
+1. Log in at `http://localhost:3000`,
+   open a project whose root has a `workbench-publish.json`,
+   and publish it from its **Publish** page.
+2. Open `http://pub.localhost:3000/alice/basic-book/verso/`.
+   It renders while logged out, and in a browser that has never authenticated,
+   as does its `/_pub/<publication-id>/` form.
+3. In devtools, confirm no better-auth session cookie is sent to `pub.localhost`.
+   This holds because better-auth's cookies are host-only.
+   Assert it rather than assuming it:
+   a cookie set with `Domain=localhost` *would* reach `pub.localhost`,
+   and that would be a cookie attribute bug rather than a failure of this design.
+4. `http://pub.localhost:3000/` and `http://pub.localhost:3000/api/pub-route/resolve` 404.
+   So does `http://pub.localhost:3000/api/auth/session`,
+   though only after a redirect to its trailing-slash form:
+   any three-segment path is treated as a publication reference,
+   and the redirect to the directory form happens in nginx's rewrite phase,
+   before resolution in the access phase.
+5. `http://localhost:3000/alice/basic-book/verso` redirects to the publish origin.
+
+What this does **not** prove:
+whether a browser treats `localhost` and `pub.localhost` as cross-*site*
+depends on whether `localhost` counts as a public suffix,
+so `SameSite` behaviour here is not necessarily production behaviour.
+Production should put the publish origin on a distinct registrable domain,
+which is what `WORKBENCH_PUB_BASE_URL` is for.
+
 
 ---
 

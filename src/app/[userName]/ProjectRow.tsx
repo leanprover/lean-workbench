@@ -9,7 +9,16 @@ import { useServerAction } from '@/lib/client/util'
 
 import { deleteProject, type ProjectInfo, renameProject, toggleVisibility } from './actions'
 
-export function ProjectRow({ project, username }: { project: ProjectInfo; username: string }) {
+export function ProjectRow({
+  project,
+  username,
+  canPublish,
+}: {
+  project: ProjectInfo
+  username: string
+  /** Whether the project declares a publish manifest; if not, it has no publish page to link to. */
+  canPublish: boolean
+}) {
   const router = useRouter()
   const [renaming, setRenaming] = useState(false)
 
@@ -66,6 +75,11 @@ export function ProjectRow({ project, username }: { project: ProjectInfo; userna
         <Link href={`/${username}/${encodeURIComponent(project.name)}/` as Route}>{project.name}</Link>
       </div>
       <div className='actions'>
+        {canPublish && (
+          <Link className='button' href={`/${username}/${encodeURIComponent(project.name)}/publish` as Route}>
+            Publish
+          </Link>
+        )}
         <button
           onClick={() => {
             startTransition(() => visibilityAction({ projectId: project.id, isPublic: !project.isPublic }))
