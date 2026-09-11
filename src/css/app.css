@@ -64,9 +64,6 @@ nav .spacer {
 }
 
 /* === Avatar menu === */
-.avatar-menu {
-  position: relative;
-}
 .avatar-btn {
   display: flex;
   align-items: center;
@@ -76,11 +73,13 @@ nav .spacer {
   padding: 0;
   border: none;
   border-radius: 50%;
-  cursor: pointer;
   background: transparent;
   transition: box-shadow 0.2s;
 }
-.avatar-btn:hover {
+button.avatar-btn {
+  cursor: pointer;
+}
+button.avatar-btn:hover {
   box-shadow: 0 0 0 2px rgba(56, 110, 224, 0.3);
 }
 .avatar-btn img {
@@ -103,44 +102,38 @@ nav .spacer {
   line-height: 1;
 }
 .avatar-dropdown {
-  display: none;
-  position: absolute;
-  right: 0;
-  top: calc(100% + 4px);
   background: #fff;
   border: 1px solid #e4ebf3;
   border-radius: 0.5rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   min-width: 160px;
-  z-index: 1001;
   overflow: hidden;
 }
-.avatar-menu:focus-within .avatar-dropdown {
-  display: block;
-}
-.avatar-dropdown-user {
+.avatar-dropdown .react-aria-Header {
   padding: 0.5rem 0.75rem;
   font-size: 0.8rem;
   font-weight: 600;
   color: #333;
   border-bottom: 1px solid #e4ebf3;
 }
-.avatar-dropdown :is(a, button) {
+.avatar-dropdown [role='menuitem'] {
   display: block;
   padding: 0.5rem 0.75rem;
   font-size: 0.8rem;
   text-decoration: none;
   color: #333;
   transition: all 0.15s;
-  background: none;
-  border: none;
-  width: 100%;
-  text-align: left;
-  border-radius: 0px;
 }
-.avatar-dropdown :is(a, button):hover {
+.avatar-dropdown [role='menuitem'][data-hovered],
+.avatar-dropdown [role='menuitem'][data-focused] {
   background: rgba(56, 110, 224, 0.08);
   color: #386ee0;
+}
+.avatar-dropdown [role='menuitem']:focus:not([data-focus-visible]) {
+  outline: none;
+}
+.avatar-dropdown [role='menuitem'][data-focus-visible] {
+  outline-offset: -2px;
 }
 
 /* === Main Content === */

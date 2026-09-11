@@ -1,9 +1,10 @@
 'use client'
 
-import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { Button, Header, Menu, MenuItem, MenuSection, MenuTrigger, Popover } from 'react-aria-components'
 
 import AvatarIcon from '@/app/components/AvatarIcon'
+import MenuLinkItem from '@/app/components/MenuLinkItem'
 import authClient from '@/lib/client/auth'
 import { useThrowToBoundary } from '@/lib/client/util'
 import { useConfigCtx } from '@/lib/contexts'
@@ -21,41 +22,43 @@ export default function AvatarMenu() {
     return (
       <>
         {user.isAdmin && <span className='admin-badge'>admin</span>}
-        <div className='avatar-menu'>
-          <AvatarIcon user={user} />
-          {!isInSetup && (
-            <div className='avatar-dropdown'>
-              <div className='avatar-dropdown-user'>{user.name}</div>
-              {user.isAdmin && <Link href='/admin'>Admin interface</Link>}
-              {cfg.isDevMode && (
-                <button
-                  onClick={() => {
-                    setIsAdmin(!user.isAdmin)
-                      .then(() => session.refetch())
-                      .catch(throwToBoundary)
-                  }}
-                >
-                  {user.isAdmin ? '[DEV] Become non-admin' : '[DEV] Become admin'}
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  authClient
-                    .signOut({
-                      fetchOptions: {
-                        onSuccess: () => {
-                          router.push('/')
-                        },
-                      },
-                    })
-                    .catch(throwToBoundary)
-                }}
-              >
-                Sign out
-              </button>
-            </div>
-          )}
-        </div>
+        {isInSetup ? (
+          <span className='avatar-btn'>
+            <AvatarIcon user={user} />
+          </span>
+        ) : (
+          <MenuTrigger>
+            <Button className='avatar-btn' aria-label='Account menu'>
+              <AvatarIcon user={user} />
+            </Button>
+            <Popover className='avatar-dropdown' placement='bottom end' offset={4}>
+              <Menu>
+                <MenuSection>
+                  <Header>{user.name}</Header>
+                  {user.isAdmin && <MenuLinkItem href='/admin'>Admin interface</MenuLinkItem>}
+                  {cfg.isDevMode && (
+                    <MenuItem
+                      onAction={() => {
+                        setIsAdmin(!user.isAdmin)
+                          .then(() => window.location.reload())
+                          .catch(throwToBoundary)
+                      }}
+                    >
+                      [DEV] Become {user.isAdmin && 'non-'}admin
+                    </MenuItem>
+                  )}
+                  <MenuItem
+                    onAction={() => {
+                      authClient.signOut({ fetchOptions: { onSuccess: () => router.push('/') } }).catch(throwToBoundary)
+                    }}
+                  >
+                    Sign out
+                  </MenuItem>
+                </MenuSection>
+              </Menu>
+            </Popover>
+          </MenuTrigger>
+        )}
       </>
     )
   } else if (!session.isPending && cfg.hasGithubAuth) {
