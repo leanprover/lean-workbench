@@ -12,14 +12,14 @@ import {
   getWorkspacesDir,
 } from '@leanprover/workbench-shared/node'
 
-import { RcMap } from '@/lib/rcMap'
+import { RcMap, type RcMapLease } from '@/lib/rcMap'
 import type { User } from '@/lib/server/auth'
 import { CollabServerHandle } from '@/lib/server/collabServer'
 import { getDb } from '@/lib/server/db'
 import { VscodeServerHandle } from '@/lib/server/vscodeServer'
 import type { Project } from '@/prisma/generated/client'
 
-class ProjectMountHandle implements AsyncDisposable {
+export class ProjectMountHandle implements AsyncDisposable {
   constructor(
     /** `bwrap` args to bind the project tree, passed to sandboxes that access the project. */
     readonly bindArgs: string[],
@@ -155,6 +155,16 @@ export class EditorSessionManager {
    * and resources are cleaned up afterwards. */
   private vscServers = new Map<string, VscodeServerHandle[]>()
 
+  /** Lease the project's shared {@link ProjectMountHandle}, building it if none exists.
+   *
+   * Every sandbox that touches a project's files must go through here rather than mounting
+   * the project itself: the overlay uses the project directory as its writable upper layer,
+   * so a second independent mount of an already-open project would stack overlays on one
+   * upper layer. */
+  async acquireProjectMount(owner: User, project: Project): Promise<RcMapLease<ProjectMountHandle>> {
+    return this.mounts.acquire(project.id, () => buildProjectMount(owner, project))
+  }
+
   /** Starts a session for `viewer` to read/edit `project` owned by `owner`,
    * reusing a current session if one already exists.
    * Assumes that `viewer` has permissions to view `project`.
@@ -177,17 +187,15 @@ export class EditorSessionManager {
       // Store before any `await` so that concurrent calls for the same viewer reuse this handle.
       this.vscServers.set(project.id, [...projectSessions, vscServer])
 
-      const makeMount = () => buildProjectMount(owner, project)
-
       const collabServerLease = await this.collabServers.acquire(project.id, async () => {
-        const collabMountLease = await this.mounts.acquire(project.id, makeMount)
+        const collabMountLease = await this.acquireProjectMount(owner, project)
         const collab = new CollabServerHandle(project, collabMountLease.value.bindArgs)
         collab.addDisposable(async () => collabMountLease[Symbol.asyncDispose]())
         return collab
       })
       vscServer.addDisposable(async () => collabServerLease[Symbol.asyncDispose]())
 
-      const vscMountLease = await this.mounts.acquire(project.id, makeMount)
+      const vscMountLease = await this.acquireProjectMount(owner, project)
       vscServer.addDisposable(async () => vscMountLease[Symbol.asyncDispose]())
 
       vscServer.start(vscMountLease.value.bindArgs, collabServerLease.value.workDir)
