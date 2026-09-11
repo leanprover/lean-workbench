@@ -17,5 +17,15 @@ export const zTrackedCommandEvent = z.discriminatedUnion('type', [
 ])
 export type TrackedCommandEvent = z.infer<typeof zTrackedCommandEvent>
 
+/** Which family of tracked commands a key names,
+ * and so which route streams its output and who may read it.
+ * `admin` commands run unsandboxed as the server user and are visible only to administrators;
+ * `user` commands are sandboxed and visible only to the user who started them. */
+export const zTrackedCommandScope = z.enum(['admin', 'user'])
+export type TrackedCommandScope = z.infer<typeof zTrackedCommandScope>
+
+export const trackedCommandStreamUrl = (scope: TrackedCommandScope, trackingKey: string) =>
+  scope === 'admin' ? `/api/admin/tracked-command/${trackingKey}` : `/api/tracked-command/${trackingKey}`
+
 /** Ensure that an unknown has the form of an Error by wrapping it if appropriate */
 export const unknownAsError = (e: unknown) => (e instanceof Error ? e : new Error(String(e)))

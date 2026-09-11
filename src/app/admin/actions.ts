@@ -30,7 +30,6 @@ import {
   startSchemaTemplate,
   type TemplateMetadata,
 } from '@/lib/server/projectTemplate'
-import { getTrackedCommandState } from '@/lib/server/trackedCommand'
 import { serverAction, submitAction } from '@/lib/server/util'
 import { type ActionResponse } from '@/lib/util'
 
@@ -299,18 +298,6 @@ export const doTemplateCreation = submitAction(
     }
   },
 )
-
-// -- Tracked command infrastructure
-
-export async function isTrackedCommandRunning(key: string) {
-  await requireAdmin()
-  return getTrackedCommandState(key)?.status === 'running'
-}
-
-export async function isTrackedCommandAvailable(key: string) {
-  await requireAdmin()
-  return !!getTrackedCommandState(key)
-}
 
 // -- Toolchain management
 

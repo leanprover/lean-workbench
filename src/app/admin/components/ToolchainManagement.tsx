@@ -29,6 +29,7 @@ export function ToolchainManagement(props: ToolchainManagementProps) {
       </CatchySuspense>
       <TrackedCommandForm
         streamCommandKey='elan'
+        scope='admin'
         trackedCommandAction={doElanInstall}
         title='+ New Toolchain'
         successAction={() => router.refresh()}

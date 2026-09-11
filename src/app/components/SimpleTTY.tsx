@@ -4,10 +4,17 @@ import '@/css/simpletty.css'
 
 import { type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
-import { type TrackedCommandEvent, type TrackedCommandExit, zTrackedCommandEvent } from '@/lib/util'
+import {
+  type TrackedCommandEvent,
+  type TrackedCommandExit,
+  type TrackedCommandScope,
+  trackedCommandStreamUrl,
+  zTrackedCommandEvent,
+} from '@/lib/util'
 
 interface SimpleTTYProps {
   streamingCommandKey: string
+  scope: TrackedCommandScope
   onExit?: (exit: TrackedCommandExit) => void
 }
 
@@ -49,7 +56,11 @@ type SimpleTTYState = (
  * Custom hook: establish and maintain a connection to the streaming command source for a given
  * key, and return a SimpleTTYState and bonus unexpectedError signal
  */
-function useTerminalConnection(streamingCommandKey: string, onExit?: (exit: TrackedCommandExit) => void) {
+function useTerminalConnection(
+  streamingCommandKey: string,
+  scope: TrackedCommandScope,
+  onExit?: (exit: TrackedCommandExit) => void,
+) {
   const incomingEventMessages = useRef<TrackedCommandEvent[]>([])
   const animationRequest = useRef<ReturnType<typeof requestAnimationFrame> | undefined>(undefined)
   const [state, setState] = useState<SimpleTTYState>({
@@ -159,7 +170,7 @@ function useTerminalConnection(streamingCommandKey: string, onExit?: (exit: Trac
   }, [])
 
   useEffect(() => {
-    const source = new EventSource(`/api/admin/tracked-command/${streamingCommandKey}`)
+    const source = new EventSource(trackedCommandStreamUrl(scope, streamingCommandKey))
     source.onmessage = event => {
       try {
         const data = zTrackedCommandEvent.parse(
@@ -204,14 +215,14 @@ function useTerminalConnection(streamingCommandKey: string, onExit?: (exit: Trac
       incomingEventMessages.current = []
       setState({ type: 'loading', buffer: [], unexpectedError: false, progress: null })
     }
-  }, [streamingCommandKey, updater])
+  }, [scope, streamingCommandKey, updater])
 
   return state
 }
 
-function SimpleTTYSession({ streamingCommandKey, reload, onExit }: SimpleTTYProps & { reload: () => void }) {
+function SimpleTTYSession({ streamingCommandKey, scope, reload, onExit }: SimpleTTYProps & { reload: () => void }) {
   const divRef = useRef<HTMLDivElement>(null)
-  const state = useTerminalConnection(streamingCommandKey, onExit)
+  const state = useTerminalConnection(streamingCommandKey, scope, onExit)
   const backscroll = useMemo(() => state.buffer.join('\n'), [state.buffer])
 
   // Auto-scroller for terminal
