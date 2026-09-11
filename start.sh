@@ -11,19 +11,24 @@ VSCODE_SERVER_DIR="${VSCODE_SERVER_DIR:-/app/vscode-server}"
 NGINX_CONF_DIR="${NGINX_CONF_DIR:-/etc/nginx}"
 NGINX_LOG_DIR="${NGINX_LOG_DIR:-/var/log/nginx}"
 
+# Origin serving publications. Must resolve to this server but be a distinct origin
+# from the app, so that a published document shares no cookies or storage with a session.
+WORKBENCH_PUB_BASE_URL="${WORKBENCH_PUB_BASE_URL:-http://pub.localhost:3000}"
+PUB_HOST="${WORKBENCH_PUB_BASE_URL#*://}"; PUB_HOST="${PUB_HOST%%/*}"; PUB_HOST="${PUB_HOST%%:*}"
+
 # Derived paths
 NGINX_PID_PATH="${NGINX_LOG_DIR}/nginx.pid"
 NGINX_ERROR_LOG_PATH="${NGINX_LOG_DIR}/error.log"
 NGINX_ACCESS_LOG_PATH="${NGINX_LOG_DIR}/access.log"
 
 # Ensure data subdirs exist
-mkdir -p "${LEAN_WORKBENCH_DATA_DIR}/workspaces" "${LEAN_WORKBENCH_DATA_DIR}/db" "${LEAN_WORKBENCH_DATA_DIR}/package-sets" "${LEAN_WORKBENCH_DATA_DIR}/templates"
+mkdir -p "${LEAN_WORKBENCH_DATA_DIR}/workspaces" "${LEAN_WORKBENCH_DATA_DIR}/db" "${LEAN_WORKBENCH_DATA_DIR}/package-sets" "${LEAN_WORKBENCH_DATA_DIR}/templates" "${LEAN_WORKBENCH_DATA_DIR}/publications"
 
 # Without this, `lake` invocations will loudly complain
 git config --global advice.detachedHead false
 
 # Start the Next.js app in the background
-export LEAN_WORKBENCH_DATA_DIR VSCODE_SERVER_DIR NGINX_CONF_DIR NGINX_LOG_DIR
+export LEAN_WORKBENCH_DATA_DIR VSCODE_SERVER_DIR NGINX_CONF_DIR NGINX_LOG_DIR WORKBENCH_PUB_BASE_URL
 if [ "${NODE_ENV}" = "production" ]; then
     cd "${SCRIPT_DIR}" && node_modules/.bin/next start --port 3002 &
 else
@@ -54,8 +59,8 @@ trap 'kill $APP_PID 2>/dev/null' EXIT
 
 # Prepare Nginx config from template
 mkdir -p "${NGINX_CONF_DIR}"
-export NGINX_PID_PATH NGINX_ERROR_LOG_PATH NGINX_ACCESS_LOG_PATH NGINX_CONF_DIR
-envsubst '$NGINX_PID_PATH $NGINX_ERROR_LOG_PATH $NGINX_ACCESS_LOG_PATH $NGINX_CONF_DIR' \
+export NGINX_PID_PATH NGINX_ERROR_LOG_PATH NGINX_ACCESS_LOG_PATH NGINX_CONF_DIR PUB_HOST
+envsubst '$NGINX_PID_PATH $NGINX_ERROR_LOG_PATH $NGINX_ACCESS_LOG_PATH $NGINX_CONF_DIR $PUB_HOST' \
     < "${SCRIPT_DIR}/nginx.conf.template" \
     > "${NGINX_CONF_DIR}/nginx.conf"
 
@@ -65,7 +70,7 @@ NGINX_PID=$!
 # Replaces previous trap
 trap 'kill $APP_PID $NGINX_PID 2>/dev/null' EXIT
 
-echo "[start.sh] Nginx listening on http://localhost:3000"
+echo "[start.sh] Nginx listening on http://localhost:3000, publications on ${WORKBENCH_PUB_BASE_URL}"
 
 wait -n $APP_PID $NGINX_PID || true
 

@@ -47,6 +47,18 @@ const defaults: ServerConfig = {
   baseUrl: 'http://localhost:3000',
 }
 
+/** Origin from which publications are served, kept separate from the app's own origin
+ * so that a published document shares nothing with a logged-in session.
+ *
+ * Deployment infrastructure rather than an admin-editable preference,
+ * so it lives in the environment and not in `config.json`.
+ * `start.sh` defaults it and exports it,
+ * so that Nginx and Next.js cannot disagree about it;
+ * the fallback here is for running outside the container. */
+export function getPubBaseUrl(): string {
+  return process.env.WORKBENCH_PUB_BASE_URL ?? 'http://pub.localhost:3000'
+}
+
 /** Whether GitHub OAuth is set up. */
 export function hasGithubAuth(cfg: ServerConfig): cfg is ServerConfig & { githubAuth: GithubAuthConfig } {
   return !!cfg.githubAuth

@@ -39,6 +39,16 @@ export function getProjectDir(user: User, projectId: string): string {
   return path.join(getWorkspacesDir(), user.id, projectId)
 }
 
+/** Root of the built publications served from the publish origin. */
+export function getPublicationsDir(): string {
+  return path.join(getDataDir(), 'publications')
+}
+
+/** The directory whose contents are served for the given publication. */
+export function getPublicationDir(publicationId: string): string {
+  return path.join(getPublicationsDir(), publicationId)
+}
+
 export function getTemplatesDir(): string {
   return path.join(getDataDir(), 'templates')
 }

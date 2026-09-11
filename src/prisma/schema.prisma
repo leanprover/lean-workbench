@@ -106,21 +106,42 @@ model Verification {
 
 model Project {
   /// 128-bit UUID.
-  id          String              @id
+  id           String              @id
   /// Project's owner.
-  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
   /// `COLLATE NOCASE` in migration.sql; see `User.name`.
-  name        String
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @default(now()) @updatedAt
+  name         String
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @default(now()) @updatedAt
   /// Which template the project was created from.
-  template    String
-  isPublic    Boolean             @default(false)
-  packageSets ProjectPackageSet[]
+  template     String
+  isPublic     Boolean             @default(false)
+  packageSets  ProjectPackageSet[]
+  /// Artefacts built from this project and served from the publish origin.
+  publications Publication[]
 
   @@unique([userId, name])
   @@map("project")
+}
+
+/// An artefact built from a project and served anonymously from the publish origin.
+/// A publication is live exactly while its row exists:
+/// every request for it resolves through this table.
+model Publication {
+  /// UUID; the publication's durable identity, and its directory under `publications/`.
+  id        String   @id
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+  /// Artefact kind, matching a key in the project's `workbench-publish.json`.
+  kind      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  /// One publication per project and kind: republishing reuses the row,
+  /// so a publication's durable URL never changes.
+  @@unique([projectId, kind])
+  @@map("publication")
 }
 
 /// Package set pulled in by a given project.
