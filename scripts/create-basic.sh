@@ -5,7 +5,9 @@
 # example:
 # create-basic.sh /tmp/abcd new-template leanprover/lean4:v4.32.0
 #
-# expects $WORK_DIR/build/Main.lean must exist
+# expects the following to exist:
+#  - $WORK-DIR/build/metadata.json
+#  - $WORK_DIR/build/Main.lean
 
 set -euo pipefail
 
@@ -16,6 +18,7 @@ export PATH="$ELAN_HOME/bin:$PATH"
 WORK_DIR="$1"; shift 1
 TEMPLATE_ID="$1"; shift 1
 TOOLCHAIN="$1"; shift 1
+BUILD_DIR="$WORK_DIR/build"
 
 trap 'rm -rf "$WORK_DIR"' EXIT
 
@@ -25,7 +28,6 @@ if [ -d "$ROOT/templates/$TEMPLATE_ID" ]; then
 fi
 
 echo "[[ progress 1/4 Constructing project ]]"
-BUILD_DIR="$WORK_DIR/build"
 cd "$BUILD_DIR"
 
 echo "$TOOLCHAIN" > lean-toolchain
