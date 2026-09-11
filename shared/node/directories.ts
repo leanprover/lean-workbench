@@ -49,6 +49,13 @@ export function getPublicationDir(publicationId: string): string {
   return path.join(getPublicationsDir(), publicationId)
 }
 
+/** Where a publish build writes before its output is swapped into place.
+ * Named after the project because a publication id is only minted once a build has succeeded.
+ * The leading `.` keeps it out of the publication id namespace. */
+export function getPublishStagingDir(projectId: string, kind: string): string {
+  return path.join(getPublicationsDir(), '.staging', `${projectId}-${kind}`)
+}
+
 export function getTemplatesDir(): string {
   return path.join(getDataDir(), 'templates')
 }

@@ -67,6 +67,18 @@ export function getUserTrackedCommandState(user: User, trackingKey: string): Rea
   return userTrackedCommandState.get(user.id)?.get(trackingKey)
 }
 
+/** How many running tracked commands, across every owner, have a key accepted by {@link match}.
+ * Used to bound how many builds of one sort may run at once. */
+export function countRunningTrackedCommands(match: (trackingKey: string) => boolean): number {
+  let count = 0
+  for (const commands of [adminTrackedCommandState, ...userTrackedCommandState.values()]) {
+    for (const [key, state] of commands) {
+      if (state.status === 'running' && match(key)) count++
+    }
+  }
+  return count
+}
+
 /**
  * Starting a tracked command connects:
  *  - a child process that produces output

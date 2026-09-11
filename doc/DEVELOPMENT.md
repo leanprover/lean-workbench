@@ -153,6 +153,7 @@ Three processes run inside the Docker container:
 | `nginx.conf.template` | Reverse proxy config with dynamic per-session includes |
 | `start.sh` | Container entrypoint: starts app + nginx |
 | `scripts/seed-volume.sh` | First-run data volume setup (elan, Mathlib, templates) |
+| `scripts/publish-verso.sh` | Builds a Verso document inside the publish sandbox |
 | `install.sh` | End-user installer (generates Docker Compose files) |
 
 ## Data volume layout
@@ -199,6 +200,9 @@ and `~/.lean-workbench/data/` (directory on host system) for `install.sh` deploy
     <publication-uuid>/         The static files nginx aliases to
       index.html
 
+    .staging/                   Where a build writes, before its output is swapped into place
+      <project-uuid>-<kind>/
+
   workspaces/                   Per-user state
     <alice-user-id>/            Better-auth 32-character alphanumeric identifier
       home/                     `$HOME` in the user's sandboxes:
@@ -227,7 +231,47 @@ the package directory at the project root puts it in the right place.
 A project can produce **publications**: static sites built once from the project's
 current contents and served anonymously from a separate origin at a stable URL.
 
-### How a publication is served
+### Declaring what a project publishes
+
+A project is publishable when its root holds `workbench-publish.json`,
+whose top level maps each artefact kind to that kind's configuration:
+
+```json
+{
+  "verso": { "genre": "manual", "exe": "generate-book" }
+}
+```
+
+One project may declare several artefacts.
+A key naming a kind this workbench does not know is ignored rather than rejected,
+so a project can be shared with a workbench that has more kinds registered than this one.
+
+`verso` is the only kind implemented today
+(`versoKind` in `src/lib/server/artefacts.ts`):
+
+| Field | Meaning |
+|-------|---------|
+| `genre` | Verso document type, `manual` or `blog`. Decides which subdirectory of the generator's output is the site: `html-multi` for a manual, the output directory itself for a blog. |
+| `exe` | Lake executable target that generates the document, i.e. the `<exe>` of `lake exe <exe>`. |
+
+`exe` restates what the lakefile already says because Lake cannot be asked:
+`lake query` requires the caller to name its targets,
+target syntax has no wildcard,
+and no command lists a package's executables.
+
+Adding a kind means adding an `ArtefactKind` and a script under `scripts/`.
+Detection, sandboxing, streaming, staging, and serving are shared.
+
+### How a publication is built and served
+
+The owner publishes from a project's **Publish** page.
+The build runs in a bwrap sandbox holding the project's shared overlay mount
+and a staging directory bound at `/publish/out`
+(`startPublish` in `src/lib/server/publish.ts`),
+and streams its output to the owner as a tracked command.
+On success the site directory is swapped into `publications/<publication-id>/`
+and a `publication` row is written.
+A failed build leaves any existing publication exactly as it was.
 
 A publication is live exactly while its row exists:
 every request resolves through the database,
