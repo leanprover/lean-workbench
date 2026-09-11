@@ -2,7 +2,7 @@
 
 import { type Route } from 'next'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 import authClient from '@/lib/client/auth'
 import { useServerAction, useThrowToBoundary } from '@/lib/client/util'
@@ -31,10 +31,14 @@ function errorParamToMsg(e: string, cfg: Config): string {
 
 export default function Root() {
   const cfg = useConfigCtx()
+  const router = useRouter()
   const session = authClient.useSession()
   const error = useSearchParams().get('error')
   const { throwToBoundary } = useThrowToBoundary()
-  const [_, devLoginAction] = useServerAction(loginDevUser, () => session.refetch())
+  const [_, devLoginAction] = useServerAction(loginDevUser, async () => {
+    await session.refetch()
+    router.replace('/profile')
+  })
 
   return (
     <>
@@ -57,7 +61,7 @@ export default function Root() {
             disabled={!cfg.hasGithubAuth}
             title={!cfg.hasGithubAuth ? 'Ask your administrator to set up GitHub authentication.' : undefined}
             onClick={() => {
-              authClient.signIn.social({ provider: 'github' }).catch(throwToBoundary)
+              authClient.signIn.social({ provider: 'github', callbackURL: '/profile' }).catch(throwToBoundary)
             }}
           >
             GitHub
