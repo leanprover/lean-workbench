@@ -3,6 +3,7 @@ import 'server-only'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
+import { existsAsync } from '@leanprover/workbench-shared/node'
 import z from 'zod'
 
 /**
@@ -87,6 +88,17 @@ export type PublishManifest =
 
 const zManifest = z.record(z.string(), z.unknown())
 
+function publishManifestPath(projectDir: string): string {
+  return path.join(projectDir, PUBLISH_MANIFEST_FILE)
+}
+
+/** Whether the project declares a manifest at all.
+ * A project without one has no publishing interface,
+ * so this gates both the project list's publish link and the publish page itself. */
+export async function hasPublishManifest(projectDir: string): Promise<boolean> {
+  return existsAsync(publishManifestPath(projectDir))
+}
+
 /** Read `<projectDir>/workbench-publish.json` and resolve the artefacts it declares.
  *
  * A manifest the owner can fix is reported rather than thrown,
@@ -95,7 +107,7 @@ const zManifest = z.record(z.string(), z.unknown())
 export async function detectPublishable(projectDir: string): Promise<PublishManifest> {
   let text: string
   try {
-    text = await fs.readFile(path.join(projectDir, PUBLISH_MANIFEST_FILE), 'utf-8')
+    text = await fs.readFile(publishManifestPath(projectDir), 'utf-8')
   } catch {
     return { type: 'missing' }
   }
