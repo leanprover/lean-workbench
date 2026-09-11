@@ -8,7 +8,6 @@ import {
   LEAN_BETA_VERSION_RE,
   LEAN_NIGHTLY_VERSION_RE,
   LEAN_STABLE_VERSION_RE,
-  STANDARD_TOOLCHAIN_ID_RE,
   zProjectId,
   zTemplateId,
   zUserId,
@@ -27,8 +26,9 @@ import {
   getAvailableTemplateSchemas,
   readTemplateMetadata,
   saveTemplateMetadata,
-  startSchemaTemplate,
+  startTemplateCreation,
   type TemplateMetadata,
+  zTemplateCreation,
 } from '@/lib/server/projectTemplate'
 import { serverAction, submitAction } from '@/lib/server/util'
 import { type ActionResponse } from '@/lib/util'
@@ -286,24 +286,15 @@ export async function availableTemplateSchemas(toolchain: string) {
   return getAvailableTemplateSchemas(toolchain)
 }
 
-const zTemplateCreation = z.object({
-  toolchain: z.string().regex(STANDARD_TOOLCHAIN_ID_RE),
-  schema: z.enum(['basic', 'mathlib', 'cslib']),
+export const doTemplateCreation = submitAction(zTemplateCreation, async (props): Promise<ActionResponse<boolean>> => {
+  await requireAdmin()
+  try {
+    const emitter = await startTemplateCreation(props)
+    return { ok: !!emitter }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) }
+  }
 })
-
-export const doTemplateCreation = submitAction(
-  zTemplateCreation,
-  async ({ toolchain, schema }): Promise<ActionResponse<boolean>> => {
-    await requireAdmin()
-
-    try {
-      const emitter = await startSchemaTemplate(toolchain, schema)
-      return { ok: !!emitter }
-    } catch (e) {
-      return { error: e instanceof Error ? e.message : String(e) }
-    }
-  },
-)
 
 // -- Toolchain management
 
