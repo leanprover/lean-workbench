@@ -12,6 +12,7 @@ import z from 'zod'
 import { requireAuth } from '@/lib/server/auth'
 import { getDb } from '@/lib/server/db'
 import { readTemplateMetadata } from '@/lib/server/projectTemplate'
+import { deletePublications } from '@/lib/server/publish'
 import { serverAction, submitAction } from '@/lib/server/util'
 import { type ActionResponse } from '@/lib/util'
 import { type Project } from '@/prisma/generated/client'
@@ -132,6 +133,7 @@ export const deleteProject = serverAction(zDeleteProject, async ({ projectId }) 
   if ('error' in owned) return owned
   const project = owned.ok
 
+  await deletePublications({ projectId: project.id })
   await getDb().project.delete({ where: { id: project.id } })
 
   return { ok: undefined }

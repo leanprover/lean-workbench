@@ -132,9 +132,10 @@ make clean
 
 Three processes run inside the Docker container:
 
-1. **nginx** (background) — reverse proxy on port 3000.
-   Routes VS Code WebSocket/HTTP traffic to per-session code-server instances.
-   Everything else goes to the Next.js server.
+1. **nginx** (background) — reverse proxy on port 3000, serving two origins.
+   On the app origin it routes VS Code WebSocket/HTTP traffic to per-session code-server
+   instances and sends everything else to the Next.js server.
+   On the publish origin it serves built publications as static files and nothing else.
 
 2. **Next.js server** (background) — Next.js app on port 3002.
    Handles authentication, project CRUD API, the setup UI,
@@ -194,6 +195,10 @@ and `~/.lean-workbench/data/` (directory on host system) for `install.sh` deploy
       lake-manifest.json
       Main.lean
 
+  publications/                 Built publications, served from the publish origin
+    <publication-uuid>/         The static files nginx aliases to
+      index.html
+
   workspaces/                   Per-user state
     <alice-user-id>/            Better-auth 32-character alphanumeric identifier
       home/                     `$HOME` in the user's sandboxes:
@@ -216,6 +221,36 @@ come from `package-sets/` and writes to it land in the project
 directory. Each package is stored under the package set at the
 `.lake/packages/<pkg>` path it occupies in a project, so that mounting
 the package directory at the project root puts it in the right place.
+
+## Publishing
+
+A project can produce **publications**: static sites built once from the project's
+current contents and served anonymously from a separate origin at a stable URL.
+
+### How a publication is served
+
+A publication is live exactly while its row exists:
+every request resolves through the database,
+so unpublishing is a row deletion and removing the directory is cleanup.
+
+Two URL shapes serve the same bytes:
+
+```
+http://pub.localhost:3000/alice/basic-book/verso/    readable
+http://pub.localhost:3000/_pub/<publication-id>/     durable
+```
+
+The readable URL follows a user or project rename;
+the durable URL names one publication for good.
+Neither names a directory on disk, so nginx resolves the leading segments through
+`/api/pub-route/resolve` and appends the rest of the path itself.
+
+The origin is set by `WORKBENCH_PUB_BASE_URL`,
+which `start.sh` defaults to `http://pub.localhost:3000` and exports
+so that nginx and Next.js cannot disagree about it.
+`install.sh` asks for it as `--publications-url`.
+It is deployment infrastructure rather than an admin-editable preference,
+so it lives in the environment and not in `config.json`.
 
 ---
 
@@ -242,6 +277,17 @@ Each user session runs in a `bwrap` sandbox with:
 
 The Docker container runs with `--cap-add SYS_ADMIN` and relaxed seccomp/apparmor settings
 because bwrap needs these capabilities to create user namespaces and overlay mounts.
+
+Publications are public by construction, so nothing authenticates a request for one.
+They are served from their own origin, which is what keeps a published document
+from reaching a logged-in session's cookies or storage.
+`Content-Security-Policy: sandbox` is deliberately not set on them, unlike on `/_file/`:
+an opaque origin would break a document's own `fetch` of its search index and data files.
+What that leaves is publication-to-publication:
+all publications share one origin, so one document's scripts can reach another's
+`localStorage` and set cookies the other will see.
+Serving each publication from `<publication-id>.pub.<host>` would close that,
+at the cost of wildcard DNS and a wildcard certificate.
 
 ## Releases
 Pushing a Git tag matching `v*` (e.g. `v0.1.0`) triggers the
