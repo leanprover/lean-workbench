@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { STANDARD_TOOLCHAIN_ID_RE } from '@leanprover/workbench-shared'
+import { STANDARD_TOOLCHAIN_ID_RE, zTemplateId } from '@leanprover/workbench-shared'
 import { getDataDir, getTemplatesDir } from '@leanprover/workbench-shared/node'
 import z from 'zod'
 
@@ -128,39 +128,66 @@ import Cslib
 #check Nat.add_comm
 `
 
+export const zTemplateCreation = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('schema'),
+    toolchain: z.string().regex(STANDARD_TOOLCHAIN_ID_RE),
+    schema: z.enum(['basic', 'mathlib', 'cslib']),
+  }),
+  z.object({
+    type: z.literal('gitRepo'),
+    gitRepo: z.string('Git repository is required').trim().min(1, 'Git repository is required'),
+    gitRef: z.string('Git branch, tag, or commit required').trim().min(1, 'Git branch, tag, or commit required'),
+    templateId: zTemplateId,
+    templateName: z.string('Template name required').trim().min(1, 'Template name required'),
+  }),
+])
+type TemplateCreation = z.infer<typeof zTemplateCreation>
+
 /**
  * Given a toolchain of the form `<namespace>:<tag>`,
  * where `<tag>` exists as a Mathlib version,
  * spawn a tracked command for a basic Mathlib template (key 'create-template')
  */
-export async function startSchemaTemplate(toolchain: string, schema: TemplateSchemaId) {
+export async function startTemplateCreation(props: TemplateCreation) {
   const scriptsDir = path.join(process.cwd(), 'scripts') // scripts/ is a sibling directory
-  const [_all, _namespace, tag] = toolchain.match(STANDARD_TOOLCHAIN_ID_RE)!
   await fs.mkdir(path.join(getDataDir(), 'tmp-build'), { recursive: true })
   const workDir = await fs.mkdtemp(path.join(getDataDir(), 'tmp-build', 'template-create-'))
   await fs.mkdir(path.join(workDir, 'build'))
-  const metadata = TEMPLATE_METADATA_FROM_SCHEMA[schema](tag!)
-  await fs.writeFile(path.join(workDir, 'build', 'metadata.json'), JSON.stringify(metadata))
 
+  let metadata: TemplateMetadata
   let script: string
   let args: string[]
-  switch (schema) {
-    case 'basic':
-      await fs.writeFile(path.join(workDir, 'build', 'Main.lean'), BASIC_MAIN_LEAN)
-      script = 'create-basic.sh'
-      args = [workDir, `basic-${tag!.replaceAll('.', '-')}`, toolchain]
+  switch (props.type) {
+    case 'schema': {
+      const [_all, _namespace, tag] = props.toolchain.match(STANDARD_TOOLCHAIN_ID_RE)!
+      metadata = TEMPLATE_METADATA_FROM_SCHEMA[props.schema](tag!)
+      switch (props.schema) {
+        case 'basic':
+          await fs.writeFile(path.join(workDir, 'build', 'Main.lean'), BASIC_MAIN_LEAN)
+          script = 'create-basic.sh'
+          args = [workDir, `basic-${tag!.replaceAll('.', '-')}`, props.toolchain]
+          break
+        case 'mathlib':
+          await fs.writeFile(path.join(workDir, 'build', 'Main.lean'), MATHLIB_MAIN_LEAN)
+          script = 'create-tagged-lib.sh'
+          args = [workDir, `mathlib-${tag!.replaceAll('.', '-')}`, 'leanprover-community/mathlib4', 'mathlib', tag!]
+          break
+        case 'cslib':
+          await fs.writeFile(path.join(workDir, 'build', 'Main.lean'), CSLIB_MAIN_LEAN)
+          script = 'create-tagged-lib.sh'
+          args = [workDir, `cslib-${tag!.replaceAll('.', '-')}`, 'leanprover/cslib', 'cslib', tag!]
+          break
+      }
       break
-    case 'mathlib':
-      await fs.writeFile(path.join(workDir, 'build', 'Main.lean'), MATHLIB_MAIN_LEAN)
-      script = 'create-tagged-lib.sh'
-      args = [workDir, `mathlib-${tag!.replaceAll('.', '-')}`, 'leanprover-community/mathlib4', 'mathlib', tag!]
-      break
-    case 'cslib':
-      await fs.writeFile(path.join(workDir, 'build', 'Main.lean'), CSLIB_MAIN_LEAN)
-      script = 'create-tagged-lib.sh'
-      args = [workDir, `cslib-${tag!.replaceAll('.', '-')}`, 'leanprover/cslib', 'cslib', tag!]
-      break
+    }
+    case 'gitRepo': {
+      metadata = { name: props.templateName, packageSet: props.templateId }
+      script = 'create-gitrepo.sh'
+      args = [workDir, props.templateId, props.gitRepo, props.gitRef]
+    }
   }
 
+  await fs.writeFile(path.join(workDir, 'build', 'metadata.json'), JSON.stringify(metadata))
   return startTrackedCommand('create-template', { kind: 'admin' }, path.join(scriptsDir, script), args)
 }
