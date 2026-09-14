@@ -1,6 +1,6 @@
 'use client'
 
-import { type CSSProperties, type ReactNode, useEffect, useState } from 'react'
+import { type CSSProperties, type ReactNode, startTransition, useEffect, useState } from 'react'
 
 import { isTrackedCommandAvailable, isTrackedCommandRunning } from '@/app/admin/actions'
 import ErrorBox from '@/app/components/ErrorBox'
@@ -137,7 +137,17 @@ export default function TrackedCommandForm({
   }
 
   return (
-    <form action={submitAction} className='command-setup-form' style={style}>
+    <form
+      action={submitAction}
+      // Prevent form clearing without resorting to fully-controlled components:
+      // https://github.com/react/react/issues/29034#issuecomment-2873390387
+      onSubmit={event => {
+        event.preventDefault()
+        startTransition(() => submitAction(new FormData(event.currentTarget)))
+      }}
+      className='command-setup-form'
+      style={style}
+    >
       {titleNode}
       {children}
       <div style={{ color: '#f00' }}>{submitError}</div>

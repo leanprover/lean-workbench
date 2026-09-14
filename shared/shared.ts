@@ -34,7 +34,7 @@ export const zValidateProjectName = z
   .string('Project name required')
   .trim()
   .regex(ALPHANUM_NAME_RE, 'Invalid project name')
-export const zTemplateId = z.string().regex(TEMPLATE_ID_RE, 'Invalid template ID')
+export const zTemplateId = z.string('Template ID required').regex(TEMPLATE_ID_RE, 'Invalid template ID')
 
 /**
  * Expected form of a toolchain (not necessarily exhaustive, must be command-line-argument-safe)
