@@ -26,6 +26,7 @@ export function TemplateManagement(props: TemplateManagementProps) {
       <TrackedCommandForm
         disabled={installedStandardToolchains.length === 0}
         streamCommandKey='create-template'
+        scope='admin'
         trackedCommandAction={doTemplateCreation}
         title='+ Create template'
         successAction={() => router.refresh()}

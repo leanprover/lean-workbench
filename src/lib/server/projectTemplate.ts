@@ -159,5 +159,5 @@ export async function startSchemaTemplate(toolchain: string, schema: TemplateSch
       break
   }
 
-  return startTrackedCommand('create-template', path.join(scriptsDir, script), args)
+  return startTrackedCommand('create-template', { kind: 'admin' }, path.join(scriptsDir, script), args)
 }

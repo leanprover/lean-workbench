@@ -2,14 +2,15 @@
 
 import { type CSSProperties, type ReactNode, useEffect, useState } from 'react'
 
-import { isTrackedCommandAvailable, isTrackedCommandRunning } from '@/app/admin/actions'
 import ErrorBox from '@/app/components/ErrorBox'
 import SimpleTTY from '@/app/components/SimpleTTY'
 import { useServerAction, useThrowToBoundary } from '@/lib/client/util'
-import { type ActionResponse, type TrackedCommandExit } from '@/lib/util'
+import { isTrackedCommandAvailable, isTrackedCommandRunning } from '@/lib/server/actions'
+import { type ActionResponse, type TrackedCommandExit, type TrackedCommandScope } from '@/lib/util'
 
 interface TrackedCommandFormProps {
   streamCommandKey: string
+  scope: TrackedCommandScope
   style?: CSSProperties
   title: string
   children: ReactNode
@@ -28,7 +29,7 @@ type FormState =
   | { type: 'conflict' /* Submission blocked because a separate command-run started */ }
 
 /**
- * Present the admin user with a button labeled with the `title` prop.
+ * Present the user with a button labeled with the `title` prop.
  * That button can be expanded to present the body of a <form> (the element's children),
  * that gets submitted to the serverAction `trackedCommandAction`.
  *
@@ -49,6 +50,7 @@ type FormState =
  */
 export default function TrackedCommandForm({
   streamCommandKey,
+  scope,
   style,
   title,
   children,
@@ -68,13 +70,13 @@ export default function TrackedCommandForm({
   const { throwToBoundary } = useThrowToBoundary()
   useEffect(() => {
     if (disabled || !initiallyWatchingTTY) return
-    isTrackedCommandAvailable(streamCommandKey)
+    isTrackedCommandAvailable(scope, streamCommandKey)
       .then(isTTYAvailable => setState(isTTYAvailable ? { type: 'watching' } : { type: 'editing' }))
       .catch(throwToBoundary)
-  }, [disabled, initiallyWatchingTTY, streamCommandKey, throwToBoundary])
+  }, [disabled, initiallyWatchingTTY, scope, streamCommandKey, throwToBoundary])
   const setStateOpening = () => {
     setState({ type: 'opening' })
-    isTrackedCommandRunning(streamCommandKey)
+    isTrackedCommandRunning(scope, streamCommandKey)
       .then(isAlreadyRunning => setState(isAlreadyRunning ? { type: 'watching' } : { type: 'editing' }))
       .catch(throwToBoundary)
   }
@@ -106,6 +108,7 @@ export default function TrackedCommandForm({
         {titleNode}
         <SimpleTTY
           streamingCommandKey={streamCommandKey}
+          scope={scope}
           onExit={exit => {
             if (exit.type === 'success') successAction?.()
             setState({ type: 'watching', exit })
