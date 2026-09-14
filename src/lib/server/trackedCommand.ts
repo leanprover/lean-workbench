@@ -16,7 +16,8 @@ export interface TrackedCommandEvents {
 export type TrackedCommandStatus =
   { status: 'done'; exit: TrackedCommandExit } | { status: 'running'; emitter: EventEmitter<TrackedCommandEvents> }
 
-/** Who is allowed to watch a tracked command's output.
+/** Who is allowed to watch a tracked command's output,
+ * and so which map the command is tracked in.
  * Plain data rather than a closure, so that it survives HMR along with the rest of the state. */
 export type TrackedCommandOwner = { kind: 'admin' } | { kind: 'user'; userId: string }
 
@@ -27,26 +28,43 @@ export type TrackedCommandState = TrackedCommandStatus & {
   output: string[]
 }
 
-const g = globalThis as typeof globalThis & { __trackedCommandState?: Map<string, TrackedCommandState> }
-if (!g.__trackedCommandState) g.__trackedCommandState = new Map()
-const trackedCommandState = g.__trackedCommandState
+/** Administrative commands share a single key space, so only one can run under a given key at a time.
+ * Each user gets their own key space, so users never contend with each other or with an administrator. */
+const g = globalThis as typeof globalThis & {
+  __trackedCommandState?: {
+    adminTrackedCommandState: Map<string, TrackedCommandState>
+    userTrackedCommandState: Map<string, Map<string, TrackedCommandState>>
+  }
+}
+if (!g.__trackedCommandState)
+  g.__trackedCommandState = { adminTrackedCommandState: new Map(), userTrackedCommandState: new Map() }
+const { adminTrackedCommandState, userTrackedCommandState } = g.__trackedCommandState
+
+function ownerTrackedCommandState(owner: TrackedCommandOwner): Map<string, TrackedCommandState> {
+  if (owner.kind === 'admin') return adminTrackedCommandState
+  let state = userTrackedCommandState.get(owner.userId)
+  if (!state) {
+    state = new Map()
+    userTrackedCommandState.set(owner.userId, state)
+  }
+  return state
+}
 
 /**
  * A running tracked command contains an eventemitter for tracking future output from the command.
  * A completed tracked command retains the log and terminal error (if any).
  *
- * This ignores the command's {@link TrackedCommandOwner}, so it is for administrative callers;
+ * This reads the administrative commands, so it is for administrative callers;
  * anything reachable by an ordinary user goes through {@link getUserTrackedCommandState}.
  */
 export function getTrackedCommandState(trackingKey: string): Readonly<TrackedCommandState> | undefined {
-  return trackedCommandState.get(trackingKey)
+  return adminTrackedCommandState.get(trackingKey)
 }
 
-/** The tracked command with this key, if {@link user} started it themselves.
+/** The tracked command with this key among {@link user}'s own commands.
  * A command owned by anybody else, or by no user at all, is reported as absent. */
 export function getUserTrackedCommandState(user: User, trackingKey: string): Readonly<TrackedCommandState> | undefined {
-  const state = trackedCommandState.get(trackingKey)
-  return state?.owner.kind === 'user' && state.owner.userId === user.id ? state : undefined
+  return userTrackedCommandState.get(user.id)?.get(trackingKey)
 }
 
 /**
@@ -67,19 +85,21 @@ export function startTrackedCommand(
   args: string[],
   options?: pty.IPtyForkOptions,
 ): EventEmitter<TrackedCommandEvents> | null {
+  const ownerState = ownerTrackedCommandState(owner)
+
   // Only one streaming command for a given key at a time
-  if ((trackedCommandState.get(trackingKey)?.status ?? 'done') !== 'done') return null
+  if ((ownerState.get(trackingKey)?.status ?? 'done') !== 'done') return null
   if (!trackingKey.match(/^[a-zA-Z0-9-]+$/)) throw new Error(`Tracking key ${trackingKey} not URL-safe`)
 
   const started = new Date()
   const output: string[] = [] // Single log for this job, imperatively updated
   const emitter = new EventEmitter<TrackedCommandEvents>()
   const ptyProcess = pty.spawn(file, args, { name: 'dumb', ...(options ?? {}) })
-  trackedCommandState.set(trackingKey, { status: 'running', owner, emitter, started, lastEvent: started, output })
+  ownerState.set(trackingKey, { status: 'running', owner, emitter, started, lastEvent: started, output })
 
   ptyProcess.onData(data => {
     output.push(data)
-    trackedCommandState.set(trackingKey, { status: 'running', owner, emitter, started, lastEvent: new Date(), output })
+    ownerState.set(trackingKey, { status: 'running', owner, emitter, started, lastEvent: new Date(), output })
     emitter.emit('data', data)
   })
   ptyProcess.onExit(({ exitCode, signal }) => {
@@ -92,7 +112,7 @@ export function startTrackedCommand(
       exit = { type: 'success' }
     }
 
-    trackedCommandState.set(trackingKey, { status: 'done', owner, started, lastEvent: new Date(), output, exit })
+    ownerState.set(trackingKey, { status: 'done', owner, started, lastEvent: new Date(), output, exit })
     emitter.emit('exit', exit)
   })
 
