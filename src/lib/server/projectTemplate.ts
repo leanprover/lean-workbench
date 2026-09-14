@@ -12,6 +12,7 @@ export const zTemplateMetadata = z.object({
   name: z.string(),
   description: z.string().optional(),
   packageSet: z.string().optional(),
+  hidden: z.boolean().optional(),
 })
 
 export type TemplateMetadata = z.infer<typeof zTemplateMetadata>
@@ -38,6 +39,7 @@ export interface TemplateInfo {
   id: string
   name: string
   description: string
+  visible: boolean
 }
 
 export async function listTemplates(): Promise<TemplateInfo[]> {
@@ -59,6 +61,7 @@ export async function listTemplates(): Promise<TemplateInfo[]> {
       id: entry.name,
       name: meta.name,
       description: meta.description ?? '',
+      visible: !meta.hidden
     })
   }
 

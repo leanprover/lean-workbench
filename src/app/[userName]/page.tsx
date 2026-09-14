@@ -37,13 +37,15 @@ export default async function ProfileBody({ params: params_ }: { params: Promise
     select: { id: true, name: true, isPublic: true },
     orderBy: { createdAt: 'asc' },
   })
-  const templates = isOwner ? listTemplates() : Promise.resolve([])
+  const templates = isOwner ? (await listTemplates()).filter(template => template.visible) : []
 
   return (
     <>
       <h1>{user.name}&apos;s projects</h1>
       {projects.length === 0 ? (
-        <p className='empty'>{isOwner ? 'No projects yet. Create one below.' : 'No public projects.'}</p>
+        <p className='empty'>
+          {isOwner ? <>No projects yet.{templates.length > 0 && 'Create one below.'}</> : 'No public projects.'}
+        </p>
       ) : (
         <ul className='project-list'>
           {projects.map(p => (
@@ -59,7 +61,7 @@ export default async function ProfileBody({ params: params_ }: { params: Promise
           ))}
         </ul>
       )}
-      {isOwner && <NewProjectForm templates={templates} />}
+      {templates.length > 0 && <NewProjectForm templates={templates} />}
     </>
   )
 }

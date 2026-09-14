@@ -2,7 +2,7 @@
 
 import friendlyWords from 'friendly-words'
 import { useRouter } from 'next/navigation'
-import { use, useMemo, useState } from 'react'
+import {  useMemo, useState } from 'react'
 
 import CatchySuspense from '@/app/components/CatchySuspense'
 import { useServerAction } from '@/lib/client/util'
@@ -11,8 +11,10 @@ import { type TemplateInfo } from '@/lib/server/projectTemplate'
 import { createProject } from './actions'
 
 interface NewProjectProps {
-  templates: Promise<TemplateInfo[]>
+  templates: TemplateInfo[]
 }
+
+export const instant = false
 
 function generateSuggestion() {
   const predicate = friendlyWords.predicates[Math.floor(Math.random() * friendlyWords.predicates.length)]!
@@ -73,8 +75,7 @@ export function NewProjectForm(props: NewProjectProps) {
 }
 
 function NewProjectSelection(props: NewProjectProps & { createPending: boolean }) {
-  const templates = use(props.templates)
-  const [chosenTemplate, setChosenTemplate] = useState<string | undefined>(templates[0]?.id)
+  const [chosenTemplate, setChosenTemplate] = useState<string | undefined>(props.templates[0]?.id)
   if (!chosenTemplate) {
     return <>No project templates are available</>
   }
@@ -82,7 +83,7 @@ function NewProjectSelection(props: NewProjectProps & { createPending: boolean }
   return (
     <>
       <input type='hidden' name='template' value={chosenTemplate} />
-      {templates.map(t => (
+      {props.templates.map(t => (
         <button
           key={t.id}
           type='button'
