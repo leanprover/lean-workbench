@@ -3,7 +3,6 @@ import 'server-only'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { existsAsync } from '@leanprover/workbench-shared/node'
 import z from 'zod'
 
 /**
@@ -92,11 +91,53 @@ function publishManifestPath(projectDir: string): string {
   return path.join(projectDir, PUBLISH_MANIFEST_FILE)
 }
 
+/** A manifest is a short hand-written file. */
+const MAX_MANIFEST_BYTES = 64 * 1024
+
+/** The manifest's text, or why the project has none this can use. */
+type ManifestFile = { type: 'missing' } | { type: 'invalid'; error: string } | { type: 'read'; text: string }
+
+/**
+ * Read the project's manifest.
+ *
+ * The project directory is writable from its owner's sandbox, but this runs unsandboxed,
+ * so the file is opened without following a final symlink
+ * and is read only once it is known to be an ordinary file of plausible size.
+ * `O_NONBLOCK` keeps the open itself from waiting, which it otherwise would on a FIFO.
+ */
+async function readPublishManifest(projectDir: string): Promise<ManifestFile> {
+  const manifestPath = publishManifestPath(projectDir)
+  const mustBe = (what: string): ManifestFile => ({
+    type: 'invalid',
+    error: `${PUBLISH_MANIFEST_FILE} must be ${what}.`,
+  })
+
+  const flags = fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK
+  const handle = await fs.open(manifestPath, flags).catch(() => undefined)
+  if (!handle) {
+    // `O_NOFOLLOW` fails with ELOOP on a symbolic link,
+    // so an entry that is still there is one we declined to open rather than one that is absent.
+    if (await fs.lstat(manifestPath).catch(() => undefined)) return mustBe('an ordinary file, not a symbolic link')
+    return { type: 'missing' }
+  }
+  try {
+    const stat = await handle.stat()
+    if (!stat.isFile()) return mustBe('an ordinary file')
+    if (stat.size > MAX_MANIFEST_BYTES) return mustBe(`smaller than ${MAX_MANIFEST_BYTES} bytes`)
+    return { type: 'read', text: await handle.readFile('utf-8') }
+  } finally {
+    await handle.close()
+  }
+}
+
 /** Whether the project declares a manifest at all.
  * A project without one has no publishing interface,
- * so this gates both the project list's publish link and the publish page itself. */
+ * so this gates both the project list's publish link and the publish page itself.
+ *
+ * Anything occupying the name counts, including something {@link readPublishManifest} refuses to read,
+ * so that the owner reaches the page that says what is wrong with it. */
 export async function hasPublishManifest(projectDir: string): Promise<boolean> {
-  return existsAsync(publishManifestPath(projectDir))
+  return !!(await fs.lstat(publishManifestPath(projectDir)).catch(() => undefined))
 }
 
 /** Read `<projectDir>/workbench-publish.json` and resolve the artefacts it declares.
@@ -105,16 +146,12 @@ export async function hasPublishManifest(projectDir: string): Promise<boolean> {
  * both when the file as a whole is unusable
  * and when one kind's entry is. */
 export async function detectPublishable(projectDir: string): Promise<PublishManifest> {
-  let text: string
-  try {
-    text = await fs.readFile(publishManifestPath(projectDir), 'utf-8')
-  } catch {
-    return { type: 'missing' }
-  }
+  const file = await readPublishManifest(projectDir)
+  if (file.type !== 'read') return file
 
   let json: unknown
   try {
-    json = JSON.parse(text)
+    json = JSON.parse(file.text)
   } catch (e) {
     return { type: 'invalid', error: `${PUBLISH_MANIFEST_FILE} is not valid JSON: ${String(e)}` }
   }
