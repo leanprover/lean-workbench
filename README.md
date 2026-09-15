@@ -29,6 +29,7 @@ It is written with IT staff/system administrators in mind.
   which we recommend over [unofficial packages](https://docs.docker.com/engine/install/ubuntu/#uninstall-old-versions) that may come with the Linux distribution.
 - A domain (or IP address) on which you will publish the Workbench.
   Whenever you see `your-domain.com` in these setup instructions, replace it with your actual domain.
+  You will need a second hostname alongside it for published documents; see Step 0.
 - A GitHub account that will own the [OAuth App](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app)
   used to authorize GitHub-based logins on the instance.
 
@@ -44,6 +45,27 @@ is the instance administrator's responsibility.
 Make a note of the **public URL** on which you will publish the instance (e.g. `https://lean.math.uni.edu`),
 as well as the **local address and port** on which the Workbench HTTP server should listen.
 
+You also need a **publications URL** (e.g. `https://pub.lean.math.uni.edu`) resolving to the same machine.
+Documents that users publish from their projects are served from there and from nowhere else.
+Serving them off the instance's own origin is what keeps a published document's JavaScript
+away from a signed-in user's session.
+Both hostnames are served by the same container on the same local port,
+which distinguishes them by each request's `Host` header.
+
+> [!IMPORTANT]
+> Whatever terminates HTTPS in front of the Workbench must pass the original `Host` header through
+> for both hostnames.
+> A proxy that rewrites it leaves every published document returning 404.
+
+> [!TIP]
+> A publications hostname under a separate registered domain
+> isolates published documents more thoroughly than a subdomain of the instance's own domain does.
+> Browsers count `pub.your-domain.com` and `your-domain.com` as one site,
+> so a published document there can set cookies that the instance will receive,
+> and `SameSite` does not distinguish the two.
+> These instructions use a subdomain because it is far easier to set up,
+> but prefer a separate domain if your instance holds anything you would not want exposed to that.
+
 Workflows for two common cases are described below.
 
 #### Network Setup A: Cloudflare Tunnel
@@ -55,9 +77,17 @@ It requires a Cloudflare account with DNS administration privileges for `your-do
    - **Set up a tunnel** (`cloudflared`) on your machine.
    - **Publish an application** on your chosen hostname `your-domain.com`,
       with `http://127.0.0.1:8080` as the Service URL.
+   - **Publish a second application** on `pub.your-domain.com`,
+      with the same `http://127.0.0.1:8080` as the Service URL.
+      Leave its *HTTP Host Header* setting empty:
+      `cloudflared` then forwards the original `Host`, which is how the container
+      tells requests for the two hostnames apart.
+      Cloudflare's Universal SSL certificate already covers one level of subdomain,
+      so this hostname needs no certificate work.
 1. **Move to Step 1** below.
    Use `127.0.0.1:8080` as the local address and port,
-   and `https://your-domain.com` as the public URL.
+   `https://your-domain.com` as the public URL,
+   and `https://pub.your-domain.com` as the publications URL.
 
 #### Network Setup B: Let's Encrypt with Nginx
 
@@ -70,6 +100,10 @@ Nginx terminates SSL and forwards HTTP traffic to the Workbench via local loopba
    and publish it to `https://your-domain.com`.
    You can follow [DigitalOcean instructions](https://www.digitalocean.com/community/tutorials/how-to-configure-nginx-as-a-reverse-proxy-on-ubuntu-22-04
 ) to this end.
+
+   Point DNS records for both `your-domain.com` and `pub.your-domain.com` at this machine.
+   The certificate is extended to cover the second name further down,
+   once Nginx knows to serve it.
 
    Do not follow the "Testing your Reverse Proxy with Gunicorn" step in the DigitalOcean tutorial;
    you'll set up your reverse proxy to work with Lean Workbench.
@@ -110,7 +144,7 @@ Nginx terminates SSL and forwards HTTP traffic to the Workbench via local loopba
    }
    ```
 
-   You will need to modify that file in two ways.
+   You will need to modify that file in three ways.
    First, at the beginning, before the first `server`, add:
 
    ```nginx
@@ -144,11 +178,27 @@ Nginx terminates SSL and forwards HTTP traffic to the Workbench via local loopba
            proxy_buffering off;
        }
    ```
+
+   Third, in the `server` block that listens on 443,
+   add the publications hostname to `server_name`:
+
+   ```nginx
+   server_name your-domain.com pub.your-domain.com;
+   ```
+
+   The `location /` above passes `$host` through unchanged,
+   so this one block serves both hostnames and the container distinguishes them.
 1. Save the changes to `/etc/nginx/sites-enabled/<your-site>`
+1. **Extend the certificate** to cover the publications hostname:
+
+   ```bash
+   sudo certbot --nginx -d your-domain.com -d pub.your-domain.com
+   ```
 1. Restart Nginx again (`sudo systemctl restart nginx.service`).
 1. **Move to Step 1** below.
    Use the default `127.0.0.1:8080` as the local address and port,
-   and `https://your-domain.com` as the public URL.
+   `https://your-domain.com` as the public URL,
+   and `https://pub.your-domain.com` as the publications URL.
 
 ### Step 1: Install and launch
 
@@ -164,7 +214,9 @@ bash <(curl -sSf https://raw.githubusercontent.com/leanprover/lean-workbench/mai
 
 The installer will prompt for a **data directory** (default: `~/.lean-workbench`)
 where all persistent data (database, users' projects, Lean toolchains) is stored,
-as well as the local address, port, and public URL from Step 0.
+as well as the local address, port, public URL, and publications URL from Step 0.
+The publications URL defaults to the public URL's hostname prefixed with `pub.`,
+and the installer rejects one sharing a hostname with the public URL.
 
 > [!WARNING]
 > The local address defaults to 127.0.0.1 instead of 0.0.0.0
