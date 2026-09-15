@@ -296,6 +296,19 @@ so that nginx and Next.js cannot disagree about it.
 It is deployment infrastructure rather than an admin-editable preference,
 so it lives in the environment and not in `config.json`.
 
+An instance installed before publishing existed has no `WORKBENCH_PUB_BASE_URL`
+in its generated `docker-compose.yml`, and updating the container does not add one.
+Such an instance falls back to the development default and hands users links to `pub.localhost`,
+which fails only once somebody publishes.
+Adding the variable to the `lean-workbench` service is the whole fix:
+
+```yaml
+    environment:
+      - WORKBENCH_PUB_BASE_URL=https://pub.your-domain.com
+```
+
+followed by the network setup for that hostname described in the README.
+
 ### Testing origin separation
 
 Chrome and Firefox resolve any `*.localhost` name to loopback
