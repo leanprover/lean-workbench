@@ -12,6 +12,7 @@ import z from 'zod'
 import { requireAuth } from '@/lib/server/auth'
 import { getDb } from '@/lib/server/db'
 import { readTemplateMetadata } from '@/lib/server/projectTemplate'
+import { deletePublications } from '@/lib/server/publish'
 import { serverAction, submitAction } from '@/lib/server/util'
 import { type ActionResponse } from '@/lib/util'
 import { type Project } from '@/prisma/generated/client'
@@ -84,7 +85,7 @@ export const createProject = submitAction(
   },
 )
 
-async function requireProjectOwner(projectId: string): Promise<ActionResponse<Project>> {
+async function requireOwnedProjectById(projectId: string): Promise<ActionResponse<Project>> {
   const session = await requireAuth()
   const project = await getDb().project.findUnique({ where: { id: projectId } })
   if (!project) {
@@ -100,7 +101,7 @@ const zUpdateProject = z.object({
 })
 
 export const renameProject = submitAction(zUpdateProject, async ({ projectId, name }) => {
-  const owned = await requireProjectOwner(projectId)
+  const owned = await requireOwnedProjectById(projectId)
   if ('error' in owned) return owned
   const project = owned.ok
 
@@ -128,10 +129,11 @@ const zDeleteProject = z.object({
 })
 
 export const deleteProject = serverAction(zDeleteProject, async ({ projectId }) => {
-  const owned = await requireProjectOwner(projectId)
+  const owned = await requireOwnedProjectById(projectId)
   if ('error' in owned) return owned
   const project = owned.ok
 
+  await deletePublications({ projectId: project.id })
   await getDb().project.delete({ where: { id: project.id } })
 
   return { ok: undefined }
@@ -143,7 +145,7 @@ const zToggleVisibility = z.object({
 })
 
 export const toggleVisibility = serverAction(zToggleVisibility, async ({ projectId, isPublic }) => {
-  const owned = await requireProjectOwner(projectId)
+  const owned = await requireOwnedProjectById(projectId)
   if ('error' in owned) return owned
   const project = owned.ok
 

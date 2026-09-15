@@ -132,9 +132,10 @@ make clean
 
 Three processes run inside the Docker container:
 
-1. **nginx** (background) — reverse proxy on port 3000.
-   Routes VS Code WebSocket/HTTP traffic to per-session code-server instances.
-   Everything else goes to the Next.js server.
+1. **nginx** (background) — reverse proxy on port 3000, serving two origins.
+   On the app origin it routes VS Code WebSocket/HTTP traffic to per-session code-server
+   instances and sends everything else to the Next.js server.
+   On the publish origin it serves built publications as static files and nothing else.
 
 2. **Next.js server** (background) — Next.js app on port 3002.
    Handles authentication, project CRUD API, the setup UI,
@@ -152,6 +153,7 @@ Three processes run inside the Docker container:
 | `nginx.conf.template` | Reverse proxy config with dynamic per-session includes |
 | `start.sh` | Container entrypoint: starts app + nginx |
 | `scripts/seed-volume.sh` | First-run data volume setup (elan, Mathlib, templates) |
+| `scripts/publish-verso.sh` | Builds a Verso document inside the publish sandbox |
 | `install.sh` | End-user installer (generates Docker Compose files) |
 
 ## Data volume layout
@@ -194,6 +196,12 @@ and `~/.lean-workbench/data/` (directory on host system) for `install.sh` deploy
       lake-manifest.json
       Main.lean
 
+  publications/                 Built publications, served from the publish origin
+    <publication-uuid>/         The static files nginx aliases to
+      index.html
+    .staging/                   Where a build writes, before its output is swapped into place
+      <project-uuid>-<kind>/
+
   workspaces/                   Per-user state
     <alice-user-id>/            Better-auth 32-character alphanumeric identifier
       home/                     `$HOME` in the user's sandboxes:
@@ -216,6 +224,124 @@ come from `package-sets/` and writes to it land in the project
 directory. Each package is stored under the package set at the
 `.lake/packages/<pkg>` path it occupies in a project, so that mounting
 the package directory at the project root puts it in the right place.
+
+## Publishing
+
+A project can produce **publications**: static sites built once from the project's
+current contents and served anonymously from a separate origin at a stable URL.
+
+### Declaring what a project publishes
+
+A project is publishable when its root holds `workbench-publish.json`,
+whose top level maps each artefact kind to that kind's configuration:
+
+```json
+{
+  "verso": { "genre": "manual", "exe": "generate-book" }
+}
+```
+
+One project may declare several artefacts.
+A key naming a kind this workbench does not know is ignored rather than rejected,
+so a project can be shared with a workbench that has more kinds registered than this one.
+
+`verso` is the only kind implemented today
+(`versoKind` in `src/lib/server/artefacts.ts`):
+
+| Field | Meaning |
+|-------|---------|
+| `genre` | Verso document type, `manual` or `blog`. Decides which subdirectory of the generator's output is the site: `html-multi` for a manual, the output directory itself for a blog. |
+| `exe` | Lake executable target that generates the document, i.e. the `<exe>` of `lake exe <exe>`. |
+
+`exe` restates what the lakefile already says because Lake cannot be asked:
+`lake query` requires the caller to name its targets,
+target syntax has no wildcard,
+and no command lists a package's executables.
+
+Adding a kind means adding an `ArtefactKind` and a script under `scripts/`.
+Detection, sandboxing, streaming, staging, and serving are shared.
+
+### How a publication is built and served
+
+The owner publishes from a project's **Publish** page.
+The build runs in a bwrap sandbox holding the project's shared overlay mount
+and a staging directory bound at `/publish/out`
+(`startPublish` in `src/lib/server/publish.ts`),
+and streams its output to the owner as a tracked command.
+On success the site directory is swapped into `publications/<publication-id>/`
+and a `publication` row is written.
+A failed build leaves any existing publication exactly as it was.
+
+A publication is live exactly while its row exists:
+every request resolves through the database,
+so unpublishing is a row deletion and removing the directory is cleanup.
+
+Two URL shapes serve the same bytes:
+
+```
+http://pub.localhost:3000/alice/basic-book/verso/    readable
+http://pub.localhost:3000/_pub/<publication-id>/     durable
+```
+
+The readable URL follows a user or project rename;
+the durable URL names one publication for good.
+Neither names a directory on disk, so nginx resolves the leading segments through
+`/api/pub-route/resolve` and appends the rest of the path itself.
+On the app origin, `/<user>/<project>/<kind>` redirects to the readable URL.
+
+The origin is set by `WORKBENCH_PUB_BASE_URL`,
+which `start.sh` defaults to `http://pub.localhost:3000` and exports
+so that nginx and Next.js cannot disagree about it.
+`install.sh` asks for it as `--publications-url`.
+It is deployment infrastructure rather than an admin-editable preference,
+so it lives in the environment and not in `config.json`.
+
+An instance installed before publishing existed has no `WORKBENCH_PUB_BASE_URL`
+in its generated `docker-compose.yml`, and updating the container does not add one.
+Such an instance falls back to the development default and hands users links to `pub.localhost`,
+which fails only once somebody publishes.
+Adding the variable to the `lean-workbench` service is the whole fix:
+
+```yaml
+    environment:
+      - WORKBENCH_PUB_BASE_URL=https://pub.your-domain.com
+```
+
+followed by the network setup for that hostname described in the README.
+
+### Testing origin separation
+
+Chrome and Firefox resolve any `*.localhost` name to loopback
+with no DNS and no `/etc/hosts` entry,
+and the container already publishes port 3000 on 127.0.0.1,
+so the dev default works without further setup.
+
+1. Log in at `http://localhost:3000`,
+   open a project whose root has a `workbench-publish.json`,
+   and publish it from its **Publish** page.
+2. Open `http://pub.localhost:3000/alice/basic-book/verso/`.
+   It renders while logged out, and in a browser that has never authenticated,
+   as does its `/_pub/<publication-id>/` form.
+3. In devtools, confirm no better-auth session cookie is sent to `pub.localhost`.
+   This holds because better-auth's cookies are host-only.
+   Assert it rather than assuming it:
+   a cookie set with `Domain=localhost` *would* reach `pub.localhost`,
+   and that would be a cookie attribute bug rather than a failure of this design.
+4. `http://pub.localhost:3000/` and `http://pub.localhost:3000/api/pub-route/resolve` 404.
+   So does `http://pub.localhost:3000/api/auth/session`,
+   though only after a redirect to its trailing-slash form:
+   any three-segment path is treated as a publication reference,
+   and the redirect to the directory form happens in nginx's rewrite phase,
+   before resolution in the access phase.
+5. `http://localhost:3000/alice/basic-book/verso` redirects to the publish origin.
+
+What this does **not** prove:
+whether a browser treats `localhost` and `pub.localhost` as cross-*site*
+depends on whether `localhost` counts as a public suffix,
+so `SameSite` behaviour here is not necessarily production behaviour.
+Production should put the publish origin on a distinct registrable domain,
+which is what `WORKBENCH_PUB_BASE_URL` is for.
+
 
 ---
 
@@ -242,6 +368,17 @@ Each user session runs in a `bwrap` sandbox with:
 
 The Docker container runs with `--cap-add SYS_ADMIN` and relaxed seccomp/apparmor settings
 because bwrap needs these capabilities to create user namespaces and overlay mounts.
+
+Publications are public by construction, so nothing authenticates a request for one.
+They are served from their own origin, which is what keeps a published document
+from reaching a logged-in session's cookies or storage.
+`Content-Security-Policy: sandbox` is deliberately not set on them, unlike on `/_file/`:
+an opaque origin would break a document's own `fetch` of its search index and data files.
+What that leaves is publication-to-publication:
+all publications share one origin, so one document's scripts can reach another's
+`localStorage` and set cookies the other will see.
+Serving each publication from `<publication-id>.pub.<host>` would close that,
+at the cost of wildcard DNS and a wildcard certificate.
 
 ## Releases
 Pushing a Git tag matching `v*` (e.g. `v0.1.0`) triggers the
