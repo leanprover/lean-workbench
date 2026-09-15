@@ -34,6 +34,7 @@
     "node-pty": "^1.1.0",
     "prisma": "^7.7.0",
     "react": "^19.2.4",
+    "react-aria-components": "^1.21.1",
     "react-dom": "^19.2.4",
     "swr": "^2.4.1",
     "ws": "^8.20.0",
