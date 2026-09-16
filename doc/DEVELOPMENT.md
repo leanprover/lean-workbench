@@ -273,7 +273,7 @@ Two URL shapes serve the same bytes:
 
 ```
 http://pub.localhost:3000/alice/basic-book/verso/    readable
-http://pub.localhost:3000/_pub/<publication-id>/     durable
+http://pub.localhost:3000/pub/<publication-id>/      durable
 ```
 
 The readable URL follows a user or project rename;
@@ -312,7 +312,7 @@ so the dev default works without further setup.
    and publish it from its **Publish** page.
 2. Open `http://pub.localhost:3000/alice/basic-book/verso/`.
    It renders while logged out, and in a browser that has never authenticated,
-   as does its `/_pub/<publication-id>/` form.
+   as does its `/pub/<publication-id>/` form.
 3. In devtools, confirm no better-auth session cookie is sent to `pub.localhost`.
    This holds because better-auth's cookies are host-only.
    Assert it rather than assuming it:

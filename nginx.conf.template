@@ -166,15 +166,12 @@ http {
         # Without this, a document's page-relative links would resolve one level too high.
         # Nginx tries regex locations in order, so this must precede the location below,
         # which assumes there is a path after the reference.
-        location ~ ^(/_pub/[^/]+|/[^/_][^/]*/[^/]+/[^/]+)$ {
+        location ~ ^(/pub/[^/]+|/[^/]+/[^/]+/[^/]+)$ {
             return 301 $uri/;
         }
 
-        # /_pub/<publicationId>/... or /<owner>/<project>/<kind>/...
-        # The readable form excludes a leading `_` so that it cannot swallow the /_pub form,
-        # which it otherwise would for a one-segment path like /_pub/<id>/index.html.
-        # `_` cannot start a user name, which is why /_pub is spelled that way.
-        location ~ ^(?<pub_ref>/_pub/[^/]+|/[^/_][^/]*/[^/]+/[^/]+)(?<pub_rest>/.*)$ {
+        # /pub/<publicationId>/... or /<owner>/<project>/<kind>/...
+        location ~ ^(?<pub_ref>/pub/[^/]+|/[^/]+/[^/]+/[^/]+)(?<pub_rest>/.*)$ {
             # NORMALIZATION
             # Serve index.html on directory requests.
             # `last` starts a search for a location matching the changed URI after rewriting.

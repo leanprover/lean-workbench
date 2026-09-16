@@ -43,11 +43,9 @@ export function publishTrackingKey(projectId: string, kind: string): string {
   return `${PUBLISH_KEY_PREFIX}${projectId}-${kind}`
 }
 
-/** Reserved first segment of a publication's durable URL.
- * Reserved rather than pretty because a user could otherwise be named `p`,
- * which would make `/p/alice/verso` ambiguous between the two URL shapes;
- * `_` cannot start a user name. */
-export const PUB_DURABLE_PREFIX = '_pub'
+/** First segment of a publication's durable URL.
+    TODO(#132): ensure there is no user named "pub" */
+export const PUB_DURABLE_PREFIX = 'pub'
 
 /** The URL a publication is linked by: it names whichever publication is current
  * for this project and kind, and follows the project if it is renamed. */
