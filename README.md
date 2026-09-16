@@ -82,8 +82,6 @@ It requires a Cloudflare account with DNS administration privileges for `your-do
       Leave its *HTTP Host Header* setting empty:
       `cloudflared` then forwards the original `Host`, which is how the container
       tells requests for the two hostnames apart.
-      Cloudflare's Universal SSL certificate already covers one level of subdomain,
-      so this hostname needs no certificate work.
 1. **Move to Step 1** below.
    Use `127.0.0.1:8080` as the local address and port,
    `https://your-domain.com` as the public URL,
