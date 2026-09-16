@@ -152,8 +152,6 @@ Three processes run inside the Docker container:
 | `src/prisma/migrations/` | Numbered SQL migration files, run in order at server startup |
 | `nginx.conf.template` | Reverse proxy config with dynamic per-session includes |
 | `start.sh` | Container entrypoint: starts app + nginx |
-| `scripts/seed-volume.sh` | First-run data volume setup (elan, Mathlib, templates) |
-| `scripts/publish-verso.sh` | Builds a Verso document inside the publish sandbox |
 | `install.sh` | End-user installer (generates Docker Compose files) |
 
 ## Data volume layout
