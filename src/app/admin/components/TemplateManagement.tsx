@@ -128,7 +128,9 @@ function TemplateEditForm(props: TemplateInfo & { onSuccess: () => void }) {
         </Button>
       </div>
 
-      <div role="alert" style={{ color: '#f00' }}>{editError}</div>
+      <div role='alert' style={{ color: '#f00' }}>
+        {editError}
+      </div>
     </form>
   )
 }
