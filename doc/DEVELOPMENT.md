@@ -253,10 +253,6 @@ so a project can be shared with a workbench that has more kinds registered than 
 | `genre` | Verso document type, `manual` or `blog`. Decides which subdirectory of the generator's output is the site: `html-multi` for a manual, the output directory itself for a blog. |
 | `exe` | Lake executable target that generates the document, i.e. the `<exe>` of `lake exe <exe>`. |
 
-`exe` restates what the lakefile already says because Lake cannot be asked:
-`lake query` requires the caller to name its targets,
-target syntax has no wildcard,
-and no command lists a package's executables.
 
 Adding a kind means adding an `ArtefactKind` and a script under `scripts/`.
 Detection, sandboxing, streaming, staging, and serving are shared.
