@@ -61,7 +61,7 @@ export async function listTemplates(): Promise<TemplateInfo[]> {
       id: entry.name,
       name: meta.name,
       description: meta.description ?? '',
-      visible: !meta.hidden
+      visible: !meta.hidden,
     })
   }
 

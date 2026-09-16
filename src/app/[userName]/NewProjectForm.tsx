@@ -2,9 +2,8 @@
 
 import friendlyWords from 'friendly-words'
 import { useRouter } from 'next/navigation'
-import {  useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
-import CatchySuspense from '@/app/components/CatchySuspense'
 import { useServerAction } from '@/lib/client/util'
 import { type TemplateInfo } from '@/lib/server/projectTemplate'
 
@@ -13,8 +12,6 @@ import { createProject } from './actions'
 interface NewProjectProps {
   templates: TemplateInfo[]
 }
-
-export const instant = false
 
 function generateSuggestion() {
   const predicate = friendlyWords.predicates[Math.floor(Math.random() * friendlyWords.predicates.length)]!
@@ -45,9 +42,7 @@ export function NewProjectForm(props: NewProjectProps) {
   return (
     <form action={createAction} className='new-project' style={{ marginTop: 16 }}>
       <div className='template-selector'>
-        <CatchySuspense loading={<p>Loading templates&hellip;</p>}>
-          <NewProjectSelection {...props} createPending={createPending} />
-        </CatchySuspense>
+        <NewProjectSelection {...props} createPending={createPending} />
       </div>
       <input type='hidden' name='nameSuggestion' value={friendlySuggestion} />
       <label style={{ fontSize: '14px' }}>
@@ -80,21 +75,16 @@ function NewProjectSelection(props: NewProjectProps & { createPending: boolean }
     return <>No project templates are available</>
   }
 
-  return (
-    <>
-      <input type='hidden' name='template' value={chosenTemplate} />
-      {props.templates.map(t => (
-        <button
-          key={t.id}
-          type='button'
-          className={`template-option ${chosenTemplate === t.id ? 'selected' : ''}`}
-          onClick={() => setChosenTemplate(t.id)}
-          disabled={props.createPending}
-        >
-          <strong>{t.name}</strong>
-          <span>{t.description}</span>
-        </button>
-      ))}
-    </>
-  )
+  return props.templates.map(t => (
+    <button
+      key={t.id}
+      type='button'
+      className={`template-option ${chosenTemplate === t.id ? 'selected' : ''}`}
+      onClick={() => setChosenTemplate(t.id)}
+      disabled={props.createPending}
+    >
+      <strong>{t.name}</strong>
+      <span>{t.description}</span>
+    </button>
+  ))
 }

@@ -250,7 +250,7 @@ export const removeAllowedUser = serverAction(zRemoveAllowedUser, async ({ userN
 
 const zEditTemplateMetadataRequest = z.object({
   id: zTemplateId,
-  name: z.string('Template name is required').trim().min(1, "Template name is required"),
+  name: z.string('Template name is required').trim().min(1, 'Template name is required'),
   description: z.string().trim().optional(),
   projectVisible: z.boolean().optional(),
 })
