@@ -241,9 +241,7 @@ whose top level maps each artefact kind to that kind's configuration:
 }
 ```
 
-One project may declare several artefacts.
-A key naming a kind this workbench does not know is ignored rather than rejected,
-so a project can be shared with a workbench that has more kinds registered than this one.
+A key naming an unknown kind of publication is ignored.
 
 `verso` is the only kind implemented today
 (`versoKind` in `src/lib/server/artefacts.ts`):
@@ -255,7 +253,6 @@ so a project can be shared with a workbench that has more kinds registered than 
 
 
 Adding a kind means adding an `ArtefactKind` and a script under `scripts/`.
-Detection, sandboxing, streaming, staging, and serving are shared.
 
 ### How a publication is built and served
 
@@ -289,8 +286,6 @@ The origin is set by `WORKBENCH_PUB_BASE_URL`,
 which `start.sh` defaults to `http://pub.localhost:3000` and exports
 so that nginx and Next.js cannot disagree about it.
 `install.sh` asks for it as `--publications-url`.
-It is deployment infrastructure rather than an admin-editable preference,
-so it lives in the environment and not in `config.json`.
 
 An instance installed before publishing existed has no `WORKBENCH_PUB_BASE_URL`
 in its generated `docker-compose.yml`, and updating the container does not add one.

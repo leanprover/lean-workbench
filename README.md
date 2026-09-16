@@ -47,10 +47,6 @@ as well as the **local address and port** on which the Workbench HTTP server sho
 
 You also need a **publications URL** (e.g. `https://pub.lean.math.uni.edu`) resolving to the same machine.
 Documents that users publish from their projects are served from there and from nowhere else.
-Serving them off the instance's own origin is what keeps a published document's JavaScript
-away from a signed-in user's session.
-Both hostnames are served by the same container on the same local port,
-which distinguishes them by each request's `Host` header.
 
 > [!IMPORTANT]
 > Whatever terminates HTTPS in front of the Workbench must pass the original `Host` header through
