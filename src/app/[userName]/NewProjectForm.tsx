@@ -75,16 +75,21 @@ function NewProjectSelection(props: NewProjectProps & { createPending: boolean }
     return <>No project templates are available</>
   }
 
-  return props.templates.map(t => (
-    <button
-      key={t.id}
-      type='button'
-      className={`template-option ${chosenTemplate === t.id ? 'selected' : ''}`}
-      onClick={() => setChosenTemplate(t.id)}
-      disabled={props.createPending}
-    >
-      <strong>{t.name}</strong>
-      <span>{t.description}</span>
-    </button>
-  ))
+  return (
+    <>
+      <input type='hidden' name='template' value={chosenTemplate} />
+      {props.templates.map(t => (
+        <button
+          key={t.id}
+          type='button'
+          className={`template-option ${chosenTemplate === t.id ? 'selected' : ''}`}
+          onClick={() => setChosenTemplate(t.id)}
+          disabled={props.createPending}
+        >
+          <strong>{t.name}</strong>
+          <span>{t.description}</span>
+        </button>
+      ))}
+    </>
+  )
 }
