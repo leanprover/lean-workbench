@@ -27,7 +27,7 @@ export function TemplateManagement(props: TemplateManagementProps) {
   return (
     <>
       {templates.filter(template => template.visible).length === 0 && (
-        <ErrorBox>There are no user-visible templates. This will prevent users from creating new projects.</ErrorBox>
+        <ErrorBox>There are no user-visible templates. Users will be unable to create new projects.</ErrorBox>
       )}
       <TemplateManagementList templates={templates} />
       <TrackedCommandForm
