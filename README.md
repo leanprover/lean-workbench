@@ -90,14 +90,12 @@ you obtain an SSL certificate from Let's Encrypt
 and launch an Nginx reverse proxy.
 Nginx terminates SSL and forwards HTTP traffic to the Workbench via local loopback.
 
-1. **Set up Nginx with HTTPS** on your Linux machine
-   and publish it to `https://your-domain.com`.
+1. **Set up Nginx with HTTPS** on your Linux machine,
+   publishing it to `https://your-domain.com` and `https://pub.your-domain.com`.
    You can follow [DigitalOcean instructions](https://www.digitalocean.com/community/tutorials/how-to-configure-nginx-as-a-reverse-proxy-on-ubuntu-22-04
 ) to this end.
-
-   Point DNS records for both `your-domain.com` and `pub.your-domain.com` at this machine.
-   The certificate is extended to cover the second name further down,
-   once Nginx knows to serve it.
+   That tutorial sets up a pair of hostnames, `your-domain.com` and `pub.your-domain.com`;
+   Point DNS records for both names at this machine before you begin.
 
    Do not follow the "Testing your Reverse Proxy with Gunicorn" step in the DigitalOcean tutorial;
    you'll set up your reverse proxy to work with Lean Workbench.
@@ -109,7 +107,7 @@ Nginx terminates SSL and forwards HTTP traffic to the Workbench via local loopba
 
    ```
    server {
-      server_name your-domain.com;
+      server_name your-domain.com pub.your-domain.com;
 
       location / {
          proxy_pass http://127.0.0.1:8080;
@@ -125,6 +123,11 @@ Nginx terminates SSL and forwards HTTP traffic to the Workbench via local loopba
 
    }
    server {
+      if ($host = pub.your-domain.com) {
+         return 301 https://$host$request_uri;
+      } # managed by Certbot
+
+
       if ($host = your-domain.com) {
          return 301 https://$host$request_uri;
       } # managed by Certbot
@@ -133,12 +136,12 @@ Nginx terminates SSL and forwards HTTP traffic to the Workbench via local loopba
       listen 80;
       listen [::]:80;
 
-      server_name your-domain.com;
+      server_name your-domain.com pub.your-domain.com;
       return 404; # managed by Certbot
    }
    ```
 
-   You will need to modify that file in three ways.
+   You will need to modify that file in two ways.
    First, at the beginning, before the first `server`, add:
 
    ```nginx
@@ -173,21 +176,9 @@ Nginx terminates SSL and forwards HTTP traffic to the Workbench via local loopba
        }
    ```
 
-   Third, in the `server` block that listens on 443,
-   add the publications hostname to `server_name`:
-
-   ```nginx
-   server_name your-domain.com pub.your-domain.com;
-   ```
-
    The `location /` above passes `$host` through unchanged,
    so this one block serves both hostnames and the container distinguishes them.
 1. Save the changes to `/etc/nginx/sites-enabled/<your-site>`
-1. **Extend the certificate** to cover the publications hostname:
-
-   ```bash
-   sudo certbot --nginx -d your-domain.com -d pub.your-domain.com
-   ```
 1. Restart Nginx again (`sudo systemctl restart nginx.service`).
 1. **Move to Step 1** below.
    Use the default `127.0.0.1:8080` as the local address and port,
