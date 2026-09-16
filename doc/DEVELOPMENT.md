@@ -308,7 +308,7 @@ followed by the network setup for that hostname described in the README.
 ### Testing origin separation
 
 Chrome and Firefox resolve any `*.localhost` name to loopback
-with no DNS and no `/etc/hosts` entry,
+with no additional DNS configuration and no `/etc/hosts` entry,
 and the container already publishes port 3000 on 127.0.0.1,
 so the dev default works without further setup.
 
