@@ -3,6 +3,7 @@ import 'server-only'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
+import { LAKE_TARGET_RE } from '@leanprover/workbench-shared'
 import z from 'zod'
 
 /**
@@ -43,14 +44,6 @@ export interface BuildPlan {
   /** Directory, relative to the staging directory, that becomes the published site. */
   siteDir: string
 }
-
-/**
- * Lake target names are Lean names.
- * We accept a conservative subset of them,
- * chosen to exclude path separators, whitespace, and shell metacharacters
- * so that a manifest cannot smuggle either into the build command.
- */
-const LAKE_TARGET_RE = /^[A-Za-z0-9_][A-Za-z0-9_'.-]*$/
 
 const zVersoConfig = z.object({
   /** The Verso document type, which decides where the generator writes the site. */

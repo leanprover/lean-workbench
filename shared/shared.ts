@@ -37,6 +37,12 @@ export const zValidateProjectName = z
 export const zTemplateId = z.string('Template ID required').regex(TEMPLATE_ID_RE, 'Invalid template ID')
 
 /**
+ * A conservative subset of identifiers for lake targets.
+ * Forbid initial hyphens so that they can't accidentally resemble shell flags.
+ */
+export const LAKE_TARGET_RE = /^[A-Za-z0-9_][A-Za-z0-9_'.-]*$/
+
+/**
  * Expected form of a toolchain (not necessarily exhaustive, must be command-line-argument-safe)
  * Examples: `lean4`, `leanprover/lean4:v4.32.1`, `leanprover/lean4-nightly:nightly-2026-08-27`
  */
