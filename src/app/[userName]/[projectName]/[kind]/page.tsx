@@ -3,7 +3,7 @@ import { type Route } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import z from 'zod'
 
-import { ARTEFACT_KINDS } from '@/lib/server/artefacts'
+import { ARTIFACT_KINDS } from '@/lib/server/artifacts'
 import { publicationUrl } from '@/lib/server/publish'
 
 const zParams = z.object({
@@ -23,6 +23,6 @@ export default async function PublicationRedirect({ params: params_ }: { params:
   const parsed = zParams.safeParse(await params_)
   if (!parsed.success) notFound()
   const { userName, projectName, kind } = parsed.data
-  if (!ARTEFACT_KINDS.some(k => k.id === kind)) notFound()
+  if (!ARTIFACT_KINDS.some(k => k.id === kind)) notFound()
   redirect(publicationUrl(userName, projectName, kind) as Route)
 }

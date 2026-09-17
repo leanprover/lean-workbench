@@ -25,7 +25,7 @@ interface PublishCardProps {
   displayName: string
   /** What the manifest declares, or why its entry for this kind cannot be used. */
   detail: { description: string } | { error: string }
-  /** Absent until the artefact has been published at least once. */
+  /** Absent until the artifact has been published at least once. */
   publication?: PublicationInfo
   trackingKey: string
 }
