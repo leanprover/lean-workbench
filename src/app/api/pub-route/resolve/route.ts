@@ -5,22 +5,25 @@ import { forbidden } from 'next/navigation'
 import { getDb } from '@/lib/server/db'
 import { PUB_DURABLE_PREFIX } from '@/lib/server/publish'
 
-/** Queried by Nginx to resolve a publication URL to the directory holding its files.
- * A 200 carrying `X-Publication-Dir` makes Nginx serve that directory.
- * An unresolvable URL answers 403, the only rejection `auth_request` understands
- * besides 401; Nginx presents it to the visitor as a 404.
+/**
+ * Resolves a publication URL to the directory holding that publication's files.
+ * Nginx calls this as an `auth_request` subrequest while serving the publish origin,
+ * then serves files out of the directory it names.
  *
- * Nginx sends only the leading segments that name the publication,
- * and appends the rest of the path to the directory itself.
+ * The URL to resolve arrives in `X-Auth-URI`.
+ * It holds only the leading segments that name the publication,
+ * either `/pub/<publicationId>` or `/<owner>/<project>/<kind>`,
+ * rather than the whole request path;
+ * Nginx appends the rest of the path to the directory itself.
  *
- * Deliberately performs no authentication:
- * publications are public by construction,
- * and the publish origin carries no session cookies.
+ * A 200 carries the directory in `X-Publication-Dir`.
+ * An unresolvable URL answers 403, which Nginx shows the visitor as a 404,
+ * since `auth_request` understands no rejection other than 403 and 401.
  *
- * Everything under `/api/pub-route/` belongs to the publish origin:
- * the publish server block reaches it through `auth_request`,
- * and the app server block denies the whole prefix.
- * A new endpoint for that origin must live here to inherit both halves. */
+ * For now, there is no authentication, so all publications are public.
+ *
+ * See `nginx.conf.template` for the calling configuration.
+ */
 export async function GET(req: Request) {
   const dir = await resolvePublicationDir(req.headers.get('x-auth-uri') ?? '')
   if (!dir) forbidden()
