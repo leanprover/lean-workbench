@@ -15,11 +15,7 @@ const zPublishTarget = z.object({
   kind: z.string(),
 })
 
-/** Build and publish one of the project's declared artefacts.
- *
- * The manifest is read again here rather than trusted from the page:
- * it may have changed since the page was rendered,
- * and the build plan decides what runs in the sandbox. */
+/** Build and publish one of the project's declared artefacts. */
 export const startPublishing = submitAction(
   zPublishTarget,
   async ({ userName, projectName, kind }): Promise<ActionResponse<boolean>> => {
