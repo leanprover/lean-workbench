@@ -116,7 +116,7 @@ function TemplateEditForm(props: TemplateInfo & { onSuccess: () => void }) {
 
       <label className='checkbox'>
         <input disabled={editPending} type='checkbox' name='projectVisible' defaultChecked={props.visible} /> Template
-        appears in template selection menu
+        appears in project creation menu
       </label>
 
       <div className='actions'>
