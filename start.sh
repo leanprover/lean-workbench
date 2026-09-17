@@ -11,6 +11,11 @@ VSCODE_SERVER_DIR="${VSCODE_SERVER_DIR:-/app/vscode-server}"
 NGINX_CONF_DIR="${NGINX_CONF_DIR:-/etc/nginx}"
 NGINX_LOG_DIR="${NGINX_LOG_DIR:-/var/log/nginx}"
 
+BASE_URL="$(jq --raw-output '.baseUrl // empty' "${LEAN_WORKBENCH_DATA_DIR}/config.json" 2>/dev/null || true)"
+if [ -z "$BASE_URL" ] && [ "${NODE_ENV:-}" != "production" ]; then
+    BASE_URL="http://localhost:3000"
+fi
+
 # Derived paths
 NGINX_PID_PATH="${NGINX_LOG_DIR}/nginx.pid"
 NGINX_ERROR_LOG_PATH="${NGINX_LOG_DIR}/error.log"
@@ -59,11 +64,17 @@ envsubst '$NGINX_PID_PATH $NGINX_ERROR_LOG_PATH $NGINX_ACCESS_LOG_PATH $NGINX_CO
     < "${SCRIPT_DIR}/nginx.conf.template" \
     > "${NGINX_CONF_DIR}/nginx.conf"
 
+# Start shard manager in the background
+BASE_URL="$BASE_URL" node "${SCRIPT_DIR}/shard-manager/src/entry.ts" &
+SHARD_MANAGER_PID=$!
+# Replaces previous trap
+trap 'kill $APP_PID $SHARD_MANAGER_PID 2>/dev/null' EXIT
+
 # Start Nginx in the background
 nginx -e "${NGINX_ERROR_LOG_PATH}" -c "${NGINX_CONF_DIR}/nginx.conf" &
 NGINX_PID=$!
 # Replaces previous trap
-trap 'kill $APP_PID $NGINX_PID 2>/dev/null' EXIT
+trap 'kill $APP_PID $SHARD_MANAGER_PID $NGINX_PID 2>/dev/null' EXIT
 
 echo "[start.sh] Nginx listening on http://localhost:3000"
 

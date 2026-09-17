@@ -1,7 +1,5 @@
 import 'server-only'
 
-import fs from 'node:fs/promises'
-
 import { parseWithZod } from '@conform-to/zod/v4'
 import type z from 'zod'
 
@@ -47,73 +45,6 @@ export function submitAction<S extends z.ZodType, T = void>(
     }
     return handler(submission.value)
   }
-}
-
-export interface ProcessInfo {
-  pid: number
-  /** Parent PID. */
-  ppid: number
-  cmdline: string[]
-  children: ProcessInfo[]
-}
-
-/** Read the process table from `/proc`,
- * returning a map from PID to process info with children linked.
- * Linux-only. */
-export async function readProcesses(): Promise<Map<number, ProcessInfo>> {
-  const procs = new Map<number, ProcessInfo>()
-  for (const entry of await fs.readdir('/proc')) {
-    const pid = Number(entry)
-    if (!Number.isInteger(pid)) continue
-    try {
-      const status = await fs.readFile(`/proc/${pid}/status`, 'utf-8')
-      const ppid = Number(status.match(/^PPid:\s*(\d+)/m)![1])
-      const cmdline = (await fs.readFile(`/proc/${pid}/cmdline`, 'utf-8')).split('\0')
-      procs.set(pid, { pid, ppid, cmdline, children: [] })
-    } catch {
-      // A throw likely means the process exited after readdir() and before readFile; ignore
-      continue
-    }
-  }
-  for (const proc of procs.values()) {
-    procs.get(proc.ppid)?.children.push(proc)
-  }
-  return procs
-}
-
-/** Arguments that we pass to every bubblewrap sandbox before any other arguments. */
-export const BWRAP_ARGS =
-  /* prettier-ignore */ [
-    '--ro-bind', '/usr', '/usr',
-    '--ro-bind', '/lib', '/lib',
-    '--ro-bind-try', '/lib64', '/lib64',
-    '--ro-bind', '/bin', '/bin',
-    '--ro-bind', '/etc', '/etc',
-    // TeX format files
-    '--ro-bind', '/var/lib/texmf', '/var/lib/texmf',
-    '--proc', '/proc',
-    '--dev', '/dev',
-    '--tmpfs', '/tmp',
-    '--unshare-user',
-    '--uid', '1000',
-    '--gid', '1000',
-    '--unshare-pid',
-    '--unshare-uts',
-    '--unshare-cgroup',
-    '--unshare-ipc',
-    // TODO(security): unshare-net but allow outgoing inet connections for VSC bwraps.
-    // https://github.com/containers/bubblewrap/issues/504
-    // https://github.com/rootless-containers/slirp4netns
-    '--die-with-parent',
-    '--new-session',
-    '--clearenv',
-    // Override the locale with one that is always present
-    '--setenv', 'LC_ALL', 'C.UTF-8',
-  ]
-
-/** Where bwrap mounts the given user's home directory. */
-export function bwrapHomeDir(userName: string) {
-  return `/home/${userName}/`
 }
 
 export function canAccessProject(user: User, project: Project) {

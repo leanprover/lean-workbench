@@ -41,8 +41,8 @@ export default async function EditorSession({ params: params_ }: { params: Promi
 
   const manager = getEditorSessionManager()
   // may throw to error boundary (e.g. if the project folder isn't accessible)
-  const iframeSrc = await manager.ensureSession(viewer, owner, project)
+  const iframeUrl = await manager.ensureSession(viewer, owner, project)
 
   // TODO: VSC should be sandboxed but can't be opaque-origin: need a subdomain.
-  return <iframe id='editor-frame' src={iframeSrc} className='editor-session-iframe' />
+  return <iframe id='editor-frame' src={iframeUrl} className='editor-session-iframe' />
 }

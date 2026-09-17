@@ -38,6 +38,6 @@
     "next-env.d.ts",
     "next.config.ts",
     "prisma.config.ts"
-  ],
+, "shard-manager/src/rcMap.ts"  ],
   "exclude": ["node_modules", "branch-*"]
 }
