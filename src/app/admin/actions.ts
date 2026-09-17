@@ -250,22 +250,28 @@ export const removeAllowedUser = serverAction(zRemoveAllowedUser, async ({ userN
 
 const zEditTemplateMetadataRequest = z.object({
   id: zTemplateId,
-  name: z.string().optional(),
-  description: z.string().optional(),
+  name: z.string('Template name is required').trim().min(1, 'Template name is required'),
+  description: z.string().trim().optional(),
+  projectVisible: z.boolean().optional(),
 })
 
 export const editTemplateMetadata = submitAction(
   zEditTemplateMetadataRequest,
-  async ({ id, name, description }): Promise<ActionResponse<TemplateMetadata>> => {
+  async ({ id, name, description, projectVisible }): Promise<ActionResponse<TemplateMetadata>> => {
     await requireAdmin()
 
     try {
       const config = await readTemplateMetadata(id)
-      if (name) config.name = name
+      config.name = name
       if (!description) {
         delete config.description
       } else {
         config.description = description
+      }
+      if (projectVisible) {
+        delete config.hidden
+      } else {
+        config.hidden = true
       }
       await saveTemplateMetadata(id, config)
       return { ok: config }
