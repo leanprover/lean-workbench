@@ -59,9 +59,25 @@ async function createAuth() {
     await saveConfig()
   }
 
+  // `__Host-` cookies are accepted by the browser only when they are `Secure`,
+  // carry `Path=/` and no `Domain`, and are then sent only to the exact host that set them.
+  // The prefix also reserves the name: no other host can set a cookie by that name
+  // for this one, which a document published on a sibling hostname could otherwise do.
+  // See https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies#cookie_prefixes.
+  // `Secure` cookies need HTTPS, so a plain-HTTP instance keeps unprefixed names.
+  const secureCookies = config.baseUrl.startsWith('https://')
+
   const auth = betterAuth({
     database: prismaAdapter(getDb(), { provider: 'sqlite' }),
     secret: config.authSessionSecret,
+    advanced: {
+      // better-auth prepends `__Secure-` of its own when `useSecureCookies` is on,
+      // leaving `__Host-` in the middle of the name, where it means nothing.
+      // So we turn that off and set the `Secure` attribute directly.
+      useSecureCookies: false,
+      cookiePrefix: secureCookies ? '__Host-better-auth' : 'better-auth',
+      defaultCookieAttributes: { secure: secureCookies },
+    },
     databaseHooks: {
       user: {
         create: {
