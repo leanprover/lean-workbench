@@ -184,6 +184,7 @@ do_install() {
 {
   "isSetupComplete": false,
   "baseUrl": "$URL",
+  "pubBaseUrl": "$PUBLICATIONS_URL",
   "initAdminPassword": "$INIT_ADMIN_PASSWORD"
 }
 EOF
@@ -197,8 +198,6 @@ services:
     container_name: lean-workbench
     ports:
       - "${ADDR}:${PORT}:3000"
-    environment:
-      - WORKBENCH_PUB_BASE_URL=$PUBLICATIONS_URL
     volumes:
       - ./data:/data${ENV_FILE_SECTION}
     cap_add:

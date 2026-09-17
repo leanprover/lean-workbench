@@ -29,6 +29,9 @@ const zServerConfig = z.object({
    * Requests made through other URLs may misbehave,
    * e.g. better-auth will reject authentication requests. */
   baseUrl: z.url(),
+  /** Origin from which publications are served, kept separate from the app's own origin
+   * so that a published document cannot reach a logged-in session's cookies or storage. */
+  pubBaseUrl: z.url(),
   /** A pre-generated admin password,
    * changed immediately during initial setup. */
   initAdminPassword: z.string().length(24).optional(),
@@ -41,14 +44,9 @@ const defaults: ServerConfig = {
   registrationMode: 'open',
   isSetupComplete: false,
   baseUrl: 'http://localhost:3000',
+  pubBaseUrl: process.env.WORKBENCH_PUB_BASE_URL ?? 'http://pub.localhost:3000',
 }
 
-/** Origin from which publications are served, kept separate from the app's own origin
- * so that a published document cannot reach a logged-in session's cookies or storage.
- *
- * `start.sh` defaults it, exports it, and derives the origin's `server_name` from it,
- * so that Nginx and Next.js cannot disagree about it.
- * The fallback here is for running outside the container. */
 export function getPubBaseUrl(): string {
   return process.env.WORKBENCH_PUB_BASE_URL ?? 'http://pub.localhost:3000'
 }
