@@ -85,7 +85,7 @@ export const createProject = submitAction(
   },
 )
 
-async function requireOwnedProjectById(projectId: string): Promise<ActionResponse<Project>> {
+async function requireUserOwnsProjectById(projectId: string): Promise<ActionResponse<Project>> {
   const session = await requireAuth()
   const project = await getDb().project.findUnique({ where: { id: projectId } })
   if (!project) {
@@ -101,7 +101,7 @@ const zUpdateProject = z.object({
 })
 
 export const renameProject = submitAction(zUpdateProject, async ({ projectId, name }) => {
-  const owned = await requireOwnedProjectById(projectId)
+  const owned = await requireUserOwnsProjectById(projectId)
   if ('error' in owned) return owned
   const project = owned.ok
 
@@ -129,7 +129,7 @@ const zDeleteProject = z.object({
 })
 
 export const deleteProject = serverAction(zDeleteProject, async ({ projectId }) => {
-  const owned = await requireOwnedProjectById(projectId)
+  const owned = await requireUserOwnsProjectById(projectId)
   if ('error' in owned) return owned
   const project = owned.ok
 
@@ -145,7 +145,7 @@ const zToggleVisibility = z.object({
 })
 
 export const toggleVisibility = serverAction(zToggleVisibility, async ({ projectId, isPublic }) => {
-  const owned = await requireOwnedProjectById(projectId)
+  const owned = await requireUserOwnsProjectById(projectId)
   if ('error' in owned) return owned
   const project = owned.ok
 
