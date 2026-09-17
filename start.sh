@@ -70,7 +70,7 @@ NGINX_PID=$!
 # Replaces previous trap
 trap 'kill $APP_PID $NGINX_PID 2>/dev/null' EXIT
 
-echo "[start.sh] Nginx listening on http://localhost:3000, publications on ${WORKBENCH_PUB_BASE_URL}"
+echo "[start.sh] Nginx listening on http://localhost:3000"
 
 wait -n $APP_PID $NGINX_PID || true
 
