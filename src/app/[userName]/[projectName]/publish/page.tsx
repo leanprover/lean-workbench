@@ -5,7 +5,7 @@ import { connection } from 'next/server'
 import z from 'zod'
 
 import ErrorBox from '@/app/components/ErrorBox'
-import { detectPublishable, PUBLISH_MANIFEST_FILE } from '@/lib/server/artefacts'
+import { detectPublishable, PUBLISH_MANIFEST_FILE } from '@/lib/server/artifacts'
 import { getDb } from '@/lib/server/db'
 import { durablePublicationUrl, publicationUrl, publishTrackingKey } from '@/lib/server/publish'
 import { requireProjectOwner } from '@/lib/server/util'
@@ -53,23 +53,23 @@ export default async function PublishPage({ params: params_ }: { params: Promise
 
       {manifest.type === 'invalid' && <ErrorBox>{manifest.error}</ErrorBox>}
 
-      {manifest.type === 'declared' && manifest.artefacts.length === 0 && (
+      {manifest.type === 'declared' && manifest.artifacts.length === 0 && (
         <p className='empty'>
           <code>{PUBLISH_MANIFEST_FILE}</code> declares nothing this workbench knows how to publish.
         </p>
       )}
 
       {manifest.type === 'declared' &&
-        manifest.artefacts.map(artefact => (
+        manifest.artifacts.map(artifact => (
           <PublishCard
-            key={artefact.id}
+            key={artifact.id}
             userName={owner.name}
             projectName={project.name}
-            kind={artefact.id}
-            displayName={artefact.displayName}
-            detail={'error' in artefact ? { error: artefact.error } : { description: artefact.description }}
-            publication={publicationFor(artefact.id)}
-            trackingKey={publishTrackingKey(project.id, artefact.id)}
+            kind={artifact.id}
+            displayName={artifact.displayName}
+            detail={'error' in artifact ? { error: artifact.error } : { description: artifact.description }}
+            publication={publicationFor(artifact.id)}
+            trackingKey={publishTrackingKey(project.id, artifact.id)}
           />
         ))}
     </>

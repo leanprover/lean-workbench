@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import z from 'zod'
 
-import { hasPublishManifest } from '@/lib/server/artefacts'
+import { hasPublishManifest } from '@/lib/server/artifacts'
 import { requireAuth } from '@/lib/server/auth'
 import { getDb } from '@/lib/server/db'
 import { listTemplates } from '@/lib/server/projectTemplate'

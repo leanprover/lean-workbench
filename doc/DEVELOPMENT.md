@@ -231,7 +231,7 @@ current contents and served anonymously from a separate origin at a stable URL.
 ### Declaring what a project publishes
 
 A project is publishable when its root holds `workbench-publish.json`,
-whose top level maps each artefact kind to that kind's configuration:
+whose top level maps each artifact kind to that kind's configuration:
 
 ```json
 {
@@ -242,7 +242,7 @@ whose top level maps each artefact kind to that kind's configuration:
 A key naming an unknown kind of publication is ignored.
 
 `verso` is the only kind implemented today
-(`versoKind` in `src/lib/server/artefacts.ts`):
+(`versoKind` in `src/lib/server/artifacts.ts`):
 
 | Field | Meaning |
 |-------|---------|
@@ -250,7 +250,7 @@ A key naming an unknown kind of publication is ignored.
 | `exe` | Lake executable target that generates the document, i.e. the `<exe>` of `lake exe <exe>`. |
 
 
-Adding a kind means adding an `ArtefactKind` and a script under `scripts/`.
+Adding a kind means adding an `ArtifactKind` and a script under `scripts/`.
 
 ### How a publication is built and served
 

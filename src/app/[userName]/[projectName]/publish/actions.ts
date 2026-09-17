@@ -4,7 +4,7 @@ import { zProjectName, zUserName } from '@leanprover/workbench-shared'
 import { getProjectDir } from '@leanprover/workbench-shared/node'
 import z from 'zod'
 
-import { detectPublishable } from '@/lib/server/artefacts'
+import { detectPublishable } from '@/lib/server/artifacts'
 import { deletePublications, startPublish } from '@/lib/server/publish'
 import { requireProjectOwner, serverAction, submitAction } from '@/lib/server/util'
 import { type ActionResponse } from '@/lib/util'
@@ -15,7 +15,7 @@ const zPublishTarget = z.object({
   kind: z.string(),
 })
 
-/** Build and publish one of the project's declared artefacts. */
+/** Build and publish one of the project's declared artifacts. */
 export const startPublishing = submitAction(
   zPublishTarget,
   async ({ userName, projectName, kind }): Promise<ActionResponse<boolean>> => {
@@ -24,11 +24,11 @@ export const startPublishing = submitAction(
     if (manifest.type === 'missing') return { error: 'This project no longer declares anything to publish.' }
     if (manifest.type === 'invalid') return { error: manifest.error }
 
-    const artefact = manifest.artefacts.find(a => a.id === kind)
-    if (!artefact) return { error: `This project does not declare a '${kind}' artefact.` }
-    if ('error' in artefact) return { error: artefact.error }
+    const artifact = manifest.artifacts.find(a => a.id === kind)
+    if (!artifact) return { error: `This project does not declare a '${kind}' artifact.` }
+    if ('error' in artifact) return { error: artifact.error }
 
-    return startPublish(owner, project, kind, artefact.plan)
+    return startPublish(owner, project, kind, artifact.plan)
   },
 )
 
