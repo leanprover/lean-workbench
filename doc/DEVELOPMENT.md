@@ -280,23 +280,9 @@ Neither names a directory on disk, so nginx resolves the leading segments throug
 `/api/pub-route/resolve` and appends the rest of the path itself.
 On the app origin, `/<user>/<project>/<kind>` redirects to the readable URL.
 
-The origin is set by `WORKBENCH_PUB_BASE_URL`,
-which `start.sh` defaults to `http://pub.localhost:3000` and exports
-so that nginx and Next.js cannot disagree about it.
-`install.sh` asks for it as `--publications-url`.
-
-An instance installed before publishing existed has no `WORKBENCH_PUB_BASE_URL`
-in its generated `docker-compose.yml`, and updating the container does not add one.
-Such an instance falls back to the development default and hands users links to `pub.localhost`,
-which fails only once somebody publishes.
-Adding the variable to the `lean-workbench` service is the whole fix:
-
-```yaml
-    environment:
-      - WORKBENCH_PUB_BASE_URL=https://pub.your-domain.com
-```
-
-followed by the network setup for that hostname described in the README.
+The origin is `pubBaseUrl` in `config.json`. `start.sh` reads it from
+there and passes it in an environment variable when nginx is started.
+It is an install-time setting.
 
 ### Testing origin separation
 
@@ -329,7 +315,7 @@ whether a browser treats `localhost` and `pub.localhost` as cross-*site*
 depends on whether `localhost` counts as a public suffix,
 so `SameSite` behaviour here is not necessarily production behaviour.
 Production should put the publish origin on a distinct registrable domain,
-which is what `WORKBENCH_PUB_BASE_URL` is for.
+which is what `pubBaseUrl` is for.
 
 
 ---

@@ -16,7 +16,7 @@ import {
 } from '@leanprover/workbench-shared/node'
 
 import { type User } from '@/lib/server/auth'
-import { getPubBaseUrl } from '@/lib/server/config'
+import { getConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
 import {
@@ -50,13 +50,13 @@ export const PUB_DURABLE_PREFIX = 'pub'
 /** The URL a publication is linked by: it names whichever publication is current
  * for this project and kind, and follows the project if it is renamed. */
 export function publicationUrl(ownerName: string, projectName: string, kind: string): string {
-  return `${getPubBaseUrl()}/${ownerName}/${projectName}/${kind}/`
+  return `${getConfig().pubBaseUrl}/${ownerName}/${projectName}/${kind}/`
 }
 
 /** The URL that names one publication for good.
  * It survives a user or project rename. */
 export function durablePublicationUrl(publicationId: string): string {
-  return `${getPubBaseUrl()}/${PUB_DURABLE_PREFIX}/${publicationId}/`
+  return `${getConfig().pubBaseUrl}/${PUB_DURABLE_PREFIX}/${publicationId}/`
 }
 
 /** Where the sandbox sees the workbench's scripts. */

@@ -11,10 +11,9 @@ VSCODE_SERVER_DIR="${VSCODE_SERVER_DIR:-/app/vscode-server}"
 NGINX_CONF_DIR="${NGINX_CONF_DIR:-/etc/nginx}"
 NGINX_LOG_DIR="${NGINX_LOG_DIR:-/var/log/nginx}"
 
-# Origin serving publications. Must resolve to this server but be a distinct origin
-# from the app, so that a published document shares no cookies or storage with a session.
-WORKBENCH_PUB_BASE_URL="${WORKBENCH_PUB_BASE_URL:-http://pub.localhost:3000}"
-PUB_HOST="${WORKBENCH_PUB_BASE_URL#*://}"; PUB_HOST="${PUB_HOST%%/*}"; PUB_HOST="${PUB_HOST%%:*}"
+PUB_BASE_URL="$(jq --raw-output '.pubBaseUrl // empty' "${LEAN_WORKBENCH_DATA_DIR}/config.json" 2>/dev/null || true)"
+PUB_BASE_URL="${PUB_BASE_URL:-${WORKBENCH_PUB_BASE_URL:-http://pub.localhost:3000}}"
+PUB_HOST="${PUB_BASE_URL#*://}"; PUB_HOST="${PUB_HOST%%/*}"; PUB_HOST="${PUB_HOST%%:*}"
 
 # Derived paths
 NGINX_PID_PATH="${NGINX_LOG_DIR}/nginx.pid"
@@ -28,7 +27,7 @@ mkdir -p "${LEAN_WORKBENCH_DATA_DIR}/workspaces" "${LEAN_WORKBENCH_DATA_DIR}/db"
 git config --global advice.detachedHead false
 
 # Start the Next.js app in the background
-export LEAN_WORKBENCH_DATA_DIR VSCODE_SERVER_DIR NGINX_CONF_DIR NGINX_LOG_DIR WORKBENCH_PUB_BASE_URL
+export LEAN_WORKBENCH_DATA_DIR VSCODE_SERVER_DIR NGINX_CONF_DIR NGINX_LOG_DIR
 if [ "${NODE_ENV}" = "production" ]; then
     cd "${SCRIPT_DIR}" && node_modules/.bin/next start --port 3002 &
 else
