@@ -53,15 +53,6 @@ Documents that users publish from their projects are served from there and from 
 > for both hostnames.
 > A proxy that rewrites it leaves every published document returning 404.
 
-> [!TIP]
-> A publications hostname under a separate registered domain
-> isolates published documents more thoroughly than a subdomain of the instance's own domain does.
-> Browsers count `pub.your-domain.com` and `your-domain.com` as one site,
-> so a published document there can set cookies that the instance will receive,
-> and `SameSite` does not distinguish the two.
-> These instructions use a subdomain because it is far easier to set up,
-> but prefer a separate domain if your instance holds anything you would not want exposed to that.
-
 Workflows for two common cases are described below.
 
 #### Network Setup A: Cloudflare Tunnel
