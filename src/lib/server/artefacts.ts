@@ -3,7 +3,7 @@ import 'server-only'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { LAKE_TARGET_RE } from '@leanprover/workbench-shared'
+import { describeValue, LAKE_TARGET_RE, valueAt } from '@leanprover/workbench-shared'
 import z from 'zod'
 
 /**
@@ -189,20 +189,4 @@ function describeIssue(kindId: string, entry: unknown, issue: z.core.$ZodIssue):
     default:
       return `${issue.message} ${where}`
   }
-}
-
-/** Name a JSON value by its type, as the manifest's author would think of it. */
-function describeValue(value: unknown): string {
-  if (value === null) return 'null'
-  if (Array.isArray(value)) return 'array'
-  return typeof value
-}
-
-function valueAt(root: unknown, path: readonly PropertyKey[]): unknown {
-  let value = root
-  for (const segment of path) {
-    if (typeof value !== 'object' || value === null) return undefined
-    value = (value as Record<PropertyKey, unknown>)[segment]
-  }
-  return value
 }
