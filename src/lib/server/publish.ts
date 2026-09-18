@@ -30,10 +30,6 @@ import { type Prisma, type Project } from '@/prisma/generated/client'
 
 import { type BuildPlan } from './artifacts'
 
-/** Lean builds are CPU- and memory-hungry,
- * so only this many publish builds may be in flight across the whole server. */
-const MAX_CONCURRENT_PUBLISH_BUILDS = 2
-
 const PUBLISH_KEY_PREFIX = 'publish-'
 
 /** Tracking key of a project's build of one artifact kind.
@@ -81,7 +77,9 @@ export async function startPublish(
   kind: string,
   plan: BuildPlan,
 ): Promise<ActionResponse<boolean>> {
-  if (countRunningTrackedCommands(key => key.startsWith(PUBLISH_KEY_PREFIX)) >= MAX_CONCURRENT_PUBLISH_BUILDS) {
+  if (
+    countRunningTrackedCommands(key => key.startsWith(PUBLISH_KEY_PREFIX)) >= getConfig().maxConcurrentPublishBuilds
+  ) {
     return {
       error:
         'The server has reached the limit of how many publication builds can be active at the same time. ' +
