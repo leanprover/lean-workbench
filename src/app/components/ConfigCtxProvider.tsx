@@ -1,8 +1,9 @@
+import { isDevMode } from '@leanprover/workbench-shared/node'
 import { io } from 'next/cache'
 import { type ReactNode } from 'react'
 
 import { ConfigCtx } from '@/lib/contexts'
-import { getConfig, hasGithubAuth, isDevMode } from '@/lib/server/config'
+import { getConfig, hasGithubAuth } from '@/lib/server/config'
 
 export async function ConfigCtxProvider({
   children,

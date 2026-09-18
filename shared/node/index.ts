@@ -1,9 +1,11 @@
-import { access } from 'node:fs/promises'
+import { execFile } from 'node:child_process'
+import fs from 'node:fs/promises'
+import { promisify } from 'node:util'
 
 /** Conditional check whether a file exists */
 export async function existsAsync(p: string): Promise<boolean> {
   try {
-    await access(p)
+    await fs.access(p)
     return true
   } catch {
     return false
@@ -26,5 +28,11 @@ export async function waitForFileToExist(
     await new Promise(r => setTimeout(r, pollMs))
   }
 }
+
+export function isDevMode(): boolean {
+  return process.env.NODE_ENV !== 'production'
+}
+
+export const execFileAsync = promisify(execFile)
 
 export * from './directories.ts'

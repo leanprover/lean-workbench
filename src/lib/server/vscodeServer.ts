@@ -10,10 +10,16 @@ import {
   bwrapProjectDir,
   type WorkspaceMetadata,
 } from '@leanprover/workbench-shared'
-import { existsAsync, getElanDir, getOpenVscodeServerDir, getUserHomeDir } from '@leanprover/workbench-shared/node'
+import {
+  existsAsync,
+  getElanDir,
+  getOpenVscodeServerDir,
+  getUserHomeDir,
+  isDevMode,
+} from '@leanprover/workbench-shared/node'
 
 import { type User } from '@/lib/server/auth'
-import { getConfig, isDevMode } from '@/lib/server/config'
+import { getConfig } from '@/lib/server/config'
 import { BWRAP_ARGS, bwrapHomeDir, readProcesses } from '@/lib/server/util'
 import { type Project } from '@/prisma/generated/client'
 

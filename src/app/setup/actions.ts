@@ -1,10 +1,11 @@
 'use server'
 
+import { isDevMode } from '@leanprover/workbench-shared/node'
 import path from 'path'
 import z from 'zod'
 
 import { requireAdmin } from '@/lib/server/auth'
-import { getConfig, isDevMode, saveConfig } from '@/lib/server/config'
+import { getConfig, saveConfig } from '@/lib/server/config'
 import { startTrackedCommand } from '@/lib/server/trackedCommand'
 import { submitAction } from '@/lib/server/util'
 import { type ActionResponse } from '@/lib/util'
