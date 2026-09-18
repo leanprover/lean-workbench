@@ -6,6 +6,7 @@ import z from 'zod'
 
 import ErrorBox from '@/app/components/ErrorBox'
 import { detectPublishable, PUBLISH_MANIFEST_FILE } from '@/lib/server/artifacts'
+import { getConfig, isPublishingEnabled } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { durablePublicationUrl, publicationUrl, publishTrackingKey } from '@/lib/server/publish'
 import { requireProjectOwner } from '@/lib/server/util'
@@ -25,6 +26,8 @@ const formatPublishedAt = (at: Date) => `${at.toISOString().slice(0, 16).replace
 export default async function PublishPage({ params: params_ }: { params: Promise<Params> }) {
   // Reading the project directory is too expensive for prerendering or a <Link> prefetch.
   await connection()
+
+  if (!isPublishingEnabled(getConfig())) notFound()
 
   const parsed = zParams.safeParse(await params_)
   // 400 would be better, but RSCs can't return a Response and there is no 400 helper in Next.js.

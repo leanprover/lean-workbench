@@ -1,0 +1,63 @@
+# The publication site's configuration.
+
+server {
+    listen 3000;
+    server_name $PUB_HOST;
+
+    # Redirect to add trailing slash
+    location ~ ^(/pub/[^/]+|/[^/]+/[^/]+/[^/]+)$ {
+        return 301 $uri/;
+    }
+
+    # /pub/<publicationId>/... or /<owner>/<project>/<kind>/...
+    location ~ ^(?<pub_ref>/pub/[^/]+|/[^/]+/[^/]+/[^/]+)(?<pub_rest>/.*)$ {
+        # Default to index.html
+        rewrite ^(.+)/$ $1/index.html last;
+
+        set $auth_route_uri $pub_ref;
+        set $auth_route_cache_key "pub:$pub_ref";
+        auth_request /api/pub-route/resolve;
+        auth_request_set $pub_dir $upstream_http_x_publication_dir;
+        # If we get a 403 from authorization, behave as if the publication does not exist
+        error_page 403 = @pub_not_found;
+
+        alias $pub_dir$pub_rest;
+
+        disable_symlinks on;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy strict-origin always;
+        # `Content-Security-Policy: sandbox` is deliberately not set.
+    }
+
+    # Target of `auth_request` above. Same shape as /api/auth-route/,
+    # For now publications are public.
+    location ^~ /api/pub-route/ {
+        # Can only be reached by internal requests
+        internal;
+
+        proxy_pass http://127.0.0.1:3002;
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+
+        proxy_set_header X-Auth-URI $auth_route_uri;
+
+        # Relatively short cache validity, so that if the user
+        # unpublishes then republishes, we don't show stale data for
+        # too long.
+        proxy_cache auth_route_cache;
+        proxy_cache_key $auth_route_cache_key;
+        proxy_cache_valid 200 3s;
+    }
+
+    location @pub_not_found {
+        return 404;
+    }
+
+    # The app is not reachable on this origin.
+    location / {
+        return 404;
+    }
+}

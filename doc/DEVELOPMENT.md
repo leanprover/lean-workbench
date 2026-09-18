@@ -263,26 +263,20 @@ On success the site directory is swapped into `publications/<publication-id>/`
 and a `publication` row is written.
 A failed build leaves any existing publication exactly as it was.
 
-A publication is live exactly while its row exists:
-every request resolves through the database,
-so unpublishing is a row deletion and removing the directory is cleanup.
-
-Two URL shapes serve the same bytes:
+Two URLs serve the same data:
 
 ```
-http://pub.localhost:3000/alice/basic-book/verso/    readable
-http://pub.localhost:3000/pub/<publication-id>/      durable
+http://pub.localhost:3000/alice/basic-book/verso/
+http://pub.localhost:3000/pub/<publication-id>/
 ```
 
-The readable URL follows a user or project rename;
-the durable URL names one publication for good.
-Neither names a directory on disk, so nginx resolves the leading segments through
-`/api/pub-route/resolve` and appends the rest of the path itself.
-On the app origin, `/<user>/<project>/<kind>` redirects to the readable URL.
+The former is the usual "friendly" way people are expected to link the publication.
+The latter one is more like a permalink.
+On the main application domain, `/<user>/<project>/verso` redirects to the readable URL.
 
 The origin is `pubBaseUrl` in `config.json`. `start.sh` reads it from
 there and passes it in an environment variable when nginx is started.
-It is an install-time setting.
+It is an install-time setting. If it is not set, publishing is disabled.
 
 ### Testing origin separation
 

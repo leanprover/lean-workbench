@@ -4,6 +4,7 @@ import { notFound, redirect } from 'next/navigation'
 import z from 'zod'
 
 import { ARTIFACT_KINDS } from '@/lib/server/artifacts'
+import { getConfig, isPublishingEnabled } from '@/lib/server/config'
 import { publicationUrl } from '@/lib/server/publish'
 
 const zParams = z.object({
@@ -20,6 +21,7 @@ type Params = z.infer<typeof zParams>
  * so `publish` and `preview` stay siblings of this catch-all.
  * Whether the publication exists is the publish origin's business, not ours. */
 export default async function PublicationRedirect({ params: params_ }: { params: Promise<Params> }) {
+  if (!isPublishingEnabled(getConfig())) notFound()
   const parsed = zParams.safeParse(await params_)
   if (!parsed.success) notFound()
   const { userName, projectName, kind } = parsed.data

@@ -2,6 +2,7 @@ import { zProjectName, zUserName } from '@leanprover/workbench-shared'
 import { getPublicationDir } from '@leanprover/workbench-shared/node'
 import { forbidden } from 'next/navigation'
 
+import { getConfig, isPublishingEnabled } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { PUB_DURABLE_PREFIX } from '@/lib/server/publish'
 
@@ -31,6 +32,7 @@ export async function GET(req: Request) {
 }
 
 async function resolvePublicationDir(uri: string): Promise<string | undefined> {
+  if (!isPublishingEnabled(getConfig())) return undefined
   const db = getDb()
 
   const durable = new RegExp(`^/${PUB_DURABLE_PREFIX}/([^/]+)$`).exec(uri)

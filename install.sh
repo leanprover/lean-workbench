@@ -128,19 +128,23 @@ do_install() {
 
   # Published documents are served from their own origin so that they share no cookies
   # or storage with a logged-in session. It must point at this same server.
-  PUBLICATIONS_URL="${OPT_PUBLICATIONS_URL:-$(ask_input "From which URL should published documents be served?" "${URL%%://*}://pub.${URL#*://}")}"
+  # "none" leaves it out of config.json, which disables publishing.
+  PUBLICATIONS_URL="${OPT_PUBLICATIONS_URL:-$(ask_input "From which URL should published documents be served? (\"none\" to disable publishing)" "${URL%%://*}://pub.${URL#*://}")}"
   PUBLICATIONS_URL="${PUBLICATIONS_URL%/}"
+  [ "$PUBLICATIONS_URL" = "none" ] && PUBLICATIONS_URL=""
 
-  if ! [[ "$PUBLICATIONS_URL" =~ ^https?://[A-Za-z0-9._-]+(:[0-9]+)?$ ]]; then
-    error "Invalid URL \"$PUBLICATIONS_URL\". Expected an alphanumeric HTTP(S) URL (optionally with a port), e.g. \"https://pub.your-domain.com\"."
-  fi
+  if [ -n "$PUBLICATIONS_URL" ]; then
+    if ! [[ "$PUBLICATIONS_URL" =~ ^https?://[A-Za-z0-9._-]+(:[0-9]+)?$ ]]; then
+      error "Invalid URL \"$PUBLICATIONS_URL\". Expected an alphanumeric HTTP(S) URL (optionally with a port), e.g. \"https://pub.your-domain.com\"."
+    fi
 
-  # start.sh strips scheme and port to get Nginx's `server_name`, so two URLs that differ
-  # only in those still collide there, and the publish origin swallows the whole app.
-  url_host() { local h="${1#*://}"; h="${h%%/*}"; printf '%s' "${h%%:*}"; }
+    # start.sh strips scheme and port to get Nginx's `server_name`, so two URLs that differ
+    # only in those still collide there, and the publish origin swallows the whole app.
+    url_host() { local h="${1#*://}"; h="${h%%/*}"; printf '%s' "${h%%:*}"; }
 
-  if [ "$(url_host "$PUBLICATIONS_URL")" = "$(url_host "$URL")" ]; then
-    error "The publications URL must use a different hostname from $URL: it is what isolates published documents from the app."
+    if [ "$(url_host "$PUBLICATIONS_URL")" = "$(url_host "$URL")" ]; then
+      error "The publications URL must use a different hostname from $URL: it is what isolates published documents from the app."
+    fi
   fi
 
   info "Configuration:"
@@ -148,7 +152,7 @@ do_install() {
   echo "  Address: $ADDR"
   echo "  Port: $PORT"
   echo "  Public URL: $URL"
-  echo "  Publications URL: $PUBLICATIONS_URL"
+  echo "  Publications URL: ${PUBLICATIONS_URL:-none (publishing disabled)}"
   echo ""
 
   # Pull image (skip with --dev if using a locally-built image)
@@ -179,12 +183,14 @@ do_install() {
   info "Generating initial admin password..."
   INIT_ADMIN_PASSWORD=$(head -c 512 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9' | head -c 24)
 
+  local PUB_CONFIG_LINE=""
+  [ -n "$PUBLICATIONS_URL" ] && PUB_CONFIG_LINE=$'\n  "pubBaseUrl": "'"$PUBLICATIONS_URL"'",'
+
   info "Writing config.json..."
   cat > "$WORKBENCH_ROOT/data/config.json" <<EOF
 {
   "isSetupComplete": false,
-  "baseUrl": "$URL",
-  "pubBaseUrl": "$PUBLICATIONS_URL",
+  "baseUrl": "$URL",$PUB_CONFIG_LINE
   "initAdminPassword": "$INIT_ADMIN_PASSWORD"
 }
 EOF
@@ -212,8 +218,10 @@ EOF
   echo ""
   info "Lean Workbench is installed!"
   echo ""
-  echo "  Point ${PUBLICATIONS_URL#*://} at this server as well: published documents are served from there."
-  echo ""
+  if [ -n "$PUBLICATIONS_URL" ]; then
+    echo "  Point ${PUBLICATIONS_URL#*://} at this server as well: published documents are served from there."
+    echo ""
+  fi
   echo "  Initial admin password: $INIT_ADMIN_PASSWORD"
   echo ""
   local_url="http://$ADDR:$PORT"
@@ -263,7 +271,8 @@ while [ $# -gt 0 ]; do
       echo "  --pub-url URL   URL on which you will publish the Lean Workbench (e.g. https://your-domain.com)"
       echo "  --publications-url URL"
       echo "                  URL from which published documents are served, on a separate"
-      echo "                  hostname pointing at the same server (default: the --pub-url host, prefixed with 'pub.')"
+      echo "                  hostname pointing at the same server (default: the --pub-url host, prefixed with 'pub.';"
+      echo "                  'none' disables publishing)"
       echo "  --addr ADDR     Address on which the HTTP server will listen (default: 127.0.0.1)"
       echo "  --port PORT     Port on which the HTTP server will listen (default: 8080)"
       echo "  --no-pull       Skip docker pull, use locally installed image"
