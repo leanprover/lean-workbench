@@ -33,6 +33,8 @@ const zServerConfig = z.object({
    * so that a published document cannot reach a logged-in session's cookies or storage.
    * Absent, publishing is disabled. */
   pubBaseUrl: z.url().optional(),
+  /** Limit to how many publish builds may be in flight across the whole server. */
+  maxConcurrentPublishBuilds: z.int().positive().default(2),
   /** A pre-generated admin password,
    * changed immediately during initial setup. */
   initAdminPassword: z.string().length(24).optional(),
@@ -46,6 +48,7 @@ const defaults: ServerConfig = {
   isSetupComplete: false,
   baseUrl: 'http://localhost:3000',
   pubBaseUrl: process.env.WORKBENCH_PUB_BASE_URL ?? (isDevMode() ? 'http://pub.localhost:3000' : undefined),
+  maxConcurrentPublishBuilds: 2,
 }
 
 /** Whether publications are enabled */
