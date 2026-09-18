@@ -1,12 +1,16 @@
 import 'server-only'
 
-import { execFile } from 'node:child_process'
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { promisify } from 'node:util'
 
 import { bwrapProjectDir } from '@leanprover/workbench-shared'
-import { getPackageSetsDir, getProjectDir, getUserRootDir, getWorkspacesDir } from '@leanprover/workbench-shared/node'
+import {
+  execFileAsync,
+  getPackageSetsDir,
+  getProjectDir,
+  getUserRootDir,
+  getWorkspacesDir,
+} from '@leanprover/workbench-shared/node'
 
 import { RcMap } from '@/lib/rcMap'
 import type { User } from '@/lib/server/auth'
@@ -14,8 +18,6 @@ import { CollabServerHandle } from '@/lib/server/collabServer'
 import { getDb } from '@/lib/server/db'
 import { VscodeServerHandle } from '@/lib/server/vscodeServer'
 import type { Project } from '@/prisma/generated/client'
-
-const execFileAsync = promisify(execFile)
 
 class ProjectMountHandle implements AsyncDisposable {
   constructor(
