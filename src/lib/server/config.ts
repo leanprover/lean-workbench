@@ -46,13 +46,6 @@ const defaults: ServerConfig = {
 /** Origin from which publications are served, kept separate from the app's own origin
  * so that a published document cannot reach a logged-in session's cookies or storage.
  *
- * It is normally a subdomain of the app's, which makes the two *same-site*:
- * neither `SameSite` nor `Sec-Fetch-Site: same-site` distinguishes them,
- * so nothing may treat either as evidence that a request came from the app.
- * What separates them is scoped to an origin rather than a site:
- * `Origin` checks authorize writes, the `__Host-` prefix reserves cookie names
- * (`lib/server/auth.ts`), and `frame-ancestors` governs framing (`nginx.conf.template`).
- *
  * `start.sh` defaults it, exports it, and derives the origin's `server_name` from it,
  * so that Nginx and Next.js cannot disagree about it.
  * The fallback here is for running outside the container. */
