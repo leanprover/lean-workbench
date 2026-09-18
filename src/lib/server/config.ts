@@ -47,7 +47,7 @@ const defaults: ServerConfig = {
   registrationMode: 'open',
   isSetupComplete: false,
   baseUrl: 'http://localhost:3000',
-  pubBaseUrl: process.env.WORKBENCH_PUB_BASE_URL ?? (isDevMode() ? 'http://pub.localhost:3000' : undefined),
+  pubBaseUrl: isDevMode() ? 'http://pub.localhost:3000' : undefined,
   maxConcurrentPublishBuilds: 2,
 }
 

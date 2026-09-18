@@ -12,7 +12,6 @@ NGINX_CONF_DIR="${NGINX_CONF_DIR:-/etc/nginx}"
 NGINX_LOG_DIR="${NGINX_LOG_DIR:-/var/log/nginx}"
 
 PUB_BASE_URL="$(jq --raw-output '.pubBaseUrl // empty' "${LEAN_WORKBENCH_DATA_DIR}/config.json" 2>/dev/null || true)"
-PUB_BASE_URL="${PUB_BASE_URL:-${WORKBENCH_PUB_BASE_URL:-}}"
 # Development serves publications from pub.localhost without further setup.
 if [ -z "$PUB_BASE_URL" ] && [ "${NODE_ENV:-}" != "production" ]; then
     PUB_BASE_URL="http://pub.localhost:3000"
