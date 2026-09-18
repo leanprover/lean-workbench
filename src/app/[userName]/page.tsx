@@ -1,10 +1,13 @@
 import { zUserName } from '@leanprover/workbench-shared'
+import { getProjectDir } from '@leanprover/workbench-shared/node'
 import { type Route } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import z from 'zod'
 
+import { hasPublishManifest } from '@/lib/server/artifacts'
 import { requireAuth } from '@/lib/server/auth'
+import { getConfig, isPublishingEnabled } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { listTemplates } from '@/lib/server/projectTemplate'
 
@@ -32,11 +35,16 @@ export default async function ProfileBody({ params: params_ }: { params: Promise
   if (!user) notFound()
 
   const isOwner = viewerSession.user.id === user.id
-  const projects = await db.project.findMany({
-    where: { userId: user.id, ...(isOwner ? {} : { isPublic: true }) },
-    select: { id: true, name: true, isPublic: true },
-    orderBy: { createdAt: 'asc' },
-  })
+  const canPublishHere = isOwner && isPublishingEnabled(getConfig())
+  const projects = await Promise.all(
+    (
+      await db.project.findMany({
+        where: { userId: user.id, ...(isOwner ? {} : { isPublic: true }) },
+        select: { id: true, name: true, isPublic: true },
+        orderBy: { createdAt: 'asc' },
+      })
+    ).map(async p => ({ ...p, canPublish: canPublishHere && (await hasPublishManifest(getProjectDir(user, p.id))) })),
+  )
   const templates = isOwner ? listTemplates() : Promise.resolve([])
 
   return (
@@ -49,7 +57,7 @@ export default async function ProfileBody({ params: params_ }: { params: Promise
           {projects.map(p => (
             <li key={p.id}>
               {isOwner ? (
-                <ProjectRow project={p} username={user.name} />
+                <ProjectRow project={p} username={user.name} canPublish={p.canPublish} />
               ) : (
                 <div className='info'>
                   <Link href={`/${user.name}/${encodeURIComponent(p.name)}/` as Route}>{p.name}</Link>

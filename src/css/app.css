@@ -185,7 +185,10 @@ input[type='url']:focus {
   border-color: #386ee0;
   box-shadow: 0 0 0 3px rgba(56, 110, 224, 0.12);
 }
-button {
+/* `a.button` is a link styled as a button, for actions that do navigation.
+This means we should still get normal things like "open in new tab" on right click. */
+button,
+a.button {
   padding: 5px 16px;
   font-size: 14px;
   font-weight: 500;
@@ -200,7 +203,12 @@ button {
     background 0.15s,
     border-color 0.15s;
 }
-button:hover {
+a.button {
+  display: inline-block;
+  text-decoration: none;
+}
+button:hover,
+a.button:hover {
   background: #ebeef1;
   border-color: #b0bec5;
 }
@@ -326,7 +334,8 @@ form.num-button input {
 .project-list .info a:hover {
   text-decoration: underline;
 }
-.project-list .actions button {
+.project-list .actions button,
+.project-list .actions a.button {
   margin-left: 6px;
   padding: 4px 12px;
   font-size: 12px;
@@ -529,4 +538,45 @@ form.simple-action-form {
   position: absolute;
   white-space: nowrap;
   width: 1px;
+}
+
+/* === Publish Page === */
+.publish-card {
+  margin: 20px 0;
+  padding: 16px;
+  background: #f5f7fa;
+  border: 1px solid #e4ebf3;
+  border-radius: 0.5rem;
+}
+.publish-card h3 {
+  margin: 0 0 10px;
+}
+.publish-card pre {
+  background: #fff;
+  border: 1px solid #e4ebf3;
+  border-radius: 4px;
+  padding: 10px;
+  overflow-x: auto;
+}
+.publish-card-detail {
+  color: #546e7a;
+}
+.publish-card-urls {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  margin: 12px 0;
+  font-size: 14px;
+}
+.publish-card-urls dt {
+  color: #90a4ae;
+}
+.publish-card-urls dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.publish-card .actions {
+  display: flex;
+  justify-content: right;
+  margin-top: 10px;
 }

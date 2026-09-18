@@ -32,8 +32,9 @@ http {
     # Cache for /api/auth-route
     proxy_cache_path /var/cache/nginx_auth_route keys_zone=auth_route_cache:8m;
 
+    # The app. Also the fallback for any host that is not the publish origin.
     server {
-        listen 3000;
+        listen 3000 default_server;
         server_name localhost;
 
         # /_vs/<session_id>/* forwards to the VS Code server identified by <session_id>,
@@ -136,6 +137,12 @@ http {
             proxy_cache_valid 200 10m;
         }
 
+        # Resolvers for the publish origin are defined in this app, but the publish
+        # server block is their only caller. Deny them here.
+        location ^~ /api/pub-route/ {
+            return 404;
+        }
+
         # All other requests are forwarded to Next.js server.
         location / {
             proxy_pass http://127.0.0.1:3002;
@@ -147,4 +154,7 @@ http {
             proxy_set_header Connection $connection_upgrade;
         }
     }
+
+    # The publish origin, when one is configured. See `nginx-pub.conf.template`.
+    include $NGINX_CONF_DIR/pub.conf;
 }

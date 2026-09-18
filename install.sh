@@ -126,11 +126,33 @@ do_install() {
     error "Invalid URL \"$URL\". Expected an alphanumeric HTTP(S) URL (optionally with a port), e.g. \"https://your-domain.com\"."
   fi
 
+  # Published documents are served from their own origin so that they share no cookies
+  # or storage with a logged-in session. It must point at this same server.
+  # "none" leaves it out of config.json, which disables publishing.
+  PUBLICATIONS_URL="${OPT_PUBLICATIONS_URL:-$(ask_input "From which URL should published documents be served? (\"none\" to disable publishing)" "${URL%%://*}://pub.${URL#*://}")}"
+  PUBLICATIONS_URL="${PUBLICATIONS_URL%/}"
+  [ "$PUBLICATIONS_URL" = "none" ] && PUBLICATIONS_URL=""
+
+  if [ -n "$PUBLICATIONS_URL" ]; then
+    if ! [[ "$PUBLICATIONS_URL" =~ ^https?://[A-Za-z0-9._-]+(:[0-9]+)?$ ]]; then
+      error "Invalid URL \"$PUBLICATIONS_URL\". Expected an alphanumeric HTTP(S) URL (optionally with a port), e.g. \"https://pub.your-domain.com\"."
+    fi
+
+    # start.sh strips scheme and port to get Nginx's `server_name`, so two URLs that differ
+    # only in those still collide there, and the publish origin swallows the whole app.
+    url_host() { local h="${1#*://}"; h="${h%%/*}"; printf '%s' "${h%%:*}"; }
+
+    if [ "$(url_host "$PUBLICATIONS_URL")" = "$(url_host "$URL")" ]; then
+      error "The publications URL must use a different hostname from $URL: it is what isolates published documents from the app."
+    fi
+  fi
+
   info "Configuration:"
   echo "  Workbench directory: $WORKBENCH_ROOT"
   echo "  Address: $ADDR"
   echo "  Port: $PORT"
   echo "  Public URL: $URL"
+  echo "  Publications URL: ${PUBLICATIONS_URL:-none (publishing disabled)}"
   echo ""
 
   # Pull image (skip with --dev if using a locally-built image)
@@ -161,11 +183,14 @@ do_install() {
   info "Generating initial admin password..."
   INIT_ADMIN_PASSWORD=$(head -c 512 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9' | head -c 24)
 
+  local PUB_CONFIG_LINE=""
+  [ -n "$PUBLICATIONS_URL" ] && PUB_CONFIG_LINE=$'\n  "pubBaseUrl": "'"$PUBLICATIONS_URL"'",'
+
   info "Writing config.json..."
   cat > "$WORKBENCH_ROOT/data/config.json" <<EOF
 {
   "isSetupComplete": false,
-  "baseUrl": "$URL",
+  "baseUrl": "$URL",$PUB_CONFIG_LINE
   "initAdminPassword": "$INIT_ADMIN_PASSWORD"
 }
 EOF
@@ -193,6 +218,10 @@ EOF
   echo ""
   info "Lean Workbench is installed!"
   echo ""
+  if [ -n "$PUBLICATIONS_URL" ]; then
+    echo "  Point ${PUBLICATIONS_URL#*://} at this server as well: published documents are served from there."
+    echo ""
+  fi
   echo "  Initial admin password: $INIT_ADMIN_PASSWORD"
   echo ""
   local_url="http://$ADDR:$PORT"
@@ -220,7 +249,7 @@ EOF
 
 # --- Main ---
 
-OPT_DIR="" OPT_URL="" OPT_ADDR="" OPT_PORT="" NO_PULL="" OPT_ENV_FILE="" ACTION="install"
+OPT_DIR="" OPT_URL="" OPT_PUBLICATIONS_URL="" OPT_ADDR="" OPT_PORT="" NO_PULL="" OPT_ENV_FILE="" ACTION="install"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -228,6 +257,7 @@ while [ $# -gt 0 ]; do
     --no-pull) NO_PULL=1; shift ;;
     --dir) OPT_DIR="$2"; shift 2 ;;
     --pub-url) OPT_URL="$2"; shift 2 ;;
+    --publications-url) OPT_PUBLICATIONS_URL="$2"; shift 2 ;;
     --addr) OPT_ADDR="$2"; shift 2 ;;
     --port) OPT_PORT="$2"; shift 2 ;;
     --env-file) OPT_ENV_FILE="$2"; shift 2 ;;
@@ -239,6 +269,10 @@ while [ $# -gt 0 ]; do
       echo "Options:"
       echo "  --dir DIR       Directory where Lean Workbench stores its data (default: ~/.lean-workbench)"
       echo "  --pub-url URL   URL on which you will publish the Lean Workbench (e.g. https://your-domain.com)"
+      echo "  --publications-url URL"
+      echo "                  URL from which published documents are served, on a separate"
+      echo "                  hostname pointing at the same server (default: the --pub-url host, prefixed with 'pub.';"
+      echo "                  'none' disables publishing)"
       echo "  --addr ADDR     Address on which the HTTP server will listen (default: 127.0.0.1)"
       echo "  --port PORT     Port on which the HTTP server will listen (default: 8080)"
       echo "  --no-pull       Skip docker pull, use locally installed image"
