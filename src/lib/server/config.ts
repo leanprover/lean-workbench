@@ -30,8 +30,9 @@ const zServerConfig = z.object({
    * e.g. better-auth will reject authentication requests. */
   baseUrl: z.url(),
   /** Origin from which publications are served, kept separate from the app's own origin
-   * so that a published document cannot reach a logged-in session's cookies or storage. */
-  pubBaseUrl: z.url(),
+   * so that a published document cannot reach a logged-in session's cookies or storage.
+   * Absent, publishing is disabled. */
+  pubBaseUrl: z.url().optional(),
   /** A pre-generated admin password,
    * changed immediately during initial setup. */
   initAdminPassword: z.string().length(24).optional(),
@@ -44,11 +45,12 @@ const defaults: ServerConfig = {
   registrationMode: 'open',
   isSetupComplete: false,
   baseUrl: 'http://localhost:3000',
-  pubBaseUrl: process.env.WORKBENCH_PUB_BASE_URL ?? 'http://pub.localhost:3000',
+  pubBaseUrl: process.env.WORKBENCH_PUB_BASE_URL ?? (isDevMode() ? 'http://pub.localhost:3000' : undefined),
 }
 
-export function getPubBaseUrl(): string {
-  return process.env.WORKBENCH_PUB_BASE_URL ?? 'http://pub.localhost:3000'
+/** Whether publications are enabled */
+export function isPublishingEnabled(cfg: ServerConfig): cfg is ServerConfig & { pubBaseUrl: string } {
+  return !!cfg.pubBaseUrl
 }
 
 /** Whether GitHub OAuth is set up. */

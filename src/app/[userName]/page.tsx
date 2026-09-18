@@ -7,6 +7,7 @@ import z from 'zod'
 
 import { hasPublishManifest } from '@/lib/server/artifacts'
 import { requireAuth } from '@/lib/server/auth'
+import { getConfig, isPublishingEnabled } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { listTemplates } from '@/lib/server/projectTemplate'
 
@@ -34,6 +35,7 @@ export default async function ProfileBody({ params: params_ }: { params: Promise
   if (!user) notFound()
 
   const isOwner = viewerSession.user.id === user.id
+  const canPublishHere = isOwner && isPublishingEnabled(getConfig())
   const projects = await Promise.all(
     (
       await db.project.findMany({
@@ -41,7 +43,7 @@ export default async function ProfileBody({ params: params_ }: { params: Promise
         select: { id: true, name: true, isPublic: true },
         orderBy: { createdAt: 'asc' },
       })
-    ).map(async p => ({ ...p, canPublish: isOwner && (await hasPublishManifest(getProjectDir(user, p.id))) })),
+    ).map(async p => ({ ...p, canPublish: canPublishHere && (await hasPublishManifest(getProjectDir(user, p.id))) })),
   )
   const templates = isOwner ? (await listTemplates()).filter(template => template.visible) : []
 

@@ -5,6 +5,7 @@ import { getProjectDir } from '@leanprover/workbench-shared/node'
 import z from 'zod'
 
 import { detectPublishable } from '@/lib/server/artifacts'
+import { getConfig, isPublishingEnabled } from '@/lib/server/config'
 import { deletePublications, startPublish } from '@/lib/server/publish'
 import { requireProjectOwner, serverAction, submitAction } from '@/lib/server/util'
 import { type ActionResponse } from '@/lib/util'
@@ -19,6 +20,8 @@ const zPublishTarget = z.object({
 export const startPublishing = submitAction(
   zPublishTarget,
   async ({ userName, projectName, kind }): Promise<ActionResponse<boolean>> => {
+    if (!isPublishingEnabled(getConfig())) return { error: 'Publishing is not configured on this server.' }
+
     const { owner, project } = await requireProjectOwner(userName, projectName)
     const manifest = await detectPublishable(getProjectDir(owner, project.id))
     if (manifest.type === 'missing') return { error: 'This project no longer declares anything to publish.' }

@@ -16,7 +16,7 @@ import {
 } from '@leanprover/workbench-shared/node'
 
 import { type User } from '@/lib/server/auth'
-import { getConfig } from '@/lib/server/config'
+import { getConfig, isPublishingEnabled } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { getEditorSessionManager } from '@/lib/server/editorSessions'
 import {
@@ -47,16 +47,21 @@ export function publishTrackingKey(projectId: string, kind: string): string {
     TODO(#132): ensure there is no user named "pub" */
 export const PUB_DURABLE_PREFIX = 'pub'
 
-/** The URL a publication is linked by: it names whichever publication is current
- * for this project and kind, and follows the project if it is renamed. */
-export function publicationUrl(ownerName: string, projectName: string, kind: string): string {
-  return `${getConfig().pubBaseUrl}/${ownerName}/${projectName}/${kind}/`
+function getPubBaseUrl(): string {
+  const cfg = getConfig()
+  if (!isPublishingEnabled(cfg)) throw new Error('internal error: publication URL built while publishing is disabled')
+  return cfg.pubBaseUrl
 }
 
-/** The URL that names one publication for good.
- * It survives a user or project rename. */
+/** The "friendly" URL for a publication. it names whichever publication is current
+ * for this project and kind. */
+export function publicationUrl(ownerName: string, projectName: string, kind: string): string {
+  return `${getPubBaseUrl()}/${ownerName}/${projectName}/${kind}/`
+}
+
+/** An internal URL that names a publication irrespective of user or project name. */
 export function durablePublicationUrl(publicationId: string): string {
-  return `${getConfig().pubBaseUrl}/${PUB_DURABLE_PREFIX}/${publicationId}/`
+  return `${getPubBaseUrl()}/${PUB_DURABLE_PREFIX}/${publicationId}/`
 }
 
 /** Where the sandbox sees the workbench's scripts. */

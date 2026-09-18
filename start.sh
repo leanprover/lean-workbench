@@ -12,7 +12,12 @@ NGINX_CONF_DIR="${NGINX_CONF_DIR:-/etc/nginx}"
 NGINX_LOG_DIR="${NGINX_LOG_DIR:-/var/log/nginx}"
 
 PUB_BASE_URL="$(jq --raw-output '.pubBaseUrl // empty' "${LEAN_WORKBENCH_DATA_DIR}/config.json" 2>/dev/null || true)"
-PUB_BASE_URL="${PUB_BASE_URL:-${WORKBENCH_PUB_BASE_URL:-http://pub.localhost:3000}}"
+PUB_BASE_URL="${PUB_BASE_URL:-${WORKBENCH_PUB_BASE_URL:-}}"
+# Development serves publications from pub.localhost without further setup.
+if [ -z "$PUB_BASE_URL" ] && [ "${NODE_ENV:-}" != "production" ]; then
+    PUB_BASE_URL="http://pub.localhost:3000"
+fi
+# Empty when publishing is disabled.
 PUB_HOST="${PUB_BASE_URL#*://}"; PUB_HOST="${PUB_HOST%%/*}"; PUB_HOST="${PUB_HOST%%:*}"
 
 # Derived paths
@@ -59,9 +64,17 @@ trap 'kill $APP_PID 2>/dev/null' EXIT
 # Prepare Nginx config from template
 mkdir -p "${NGINX_CONF_DIR}"
 export NGINX_PID_PATH NGINX_ERROR_LOG_PATH NGINX_ACCESS_LOG_PATH NGINX_CONF_DIR PUB_HOST
-envsubst '$NGINX_PID_PATH $NGINX_ERROR_LOG_PATH $NGINX_ACCESS_LOG_PATH $NGINX_CONF_DIR $PUB_HOST' \
+envsubst '$NGINX_PID_PATH $NGINX_ERROR_LOG_PATH $NGINX_ACCESS_LOG_PATH $NGINX_CONF_DIR' \
     < "${SCRIPT_DIR}/nginx.conf.template" \
     > "${NGINX_CONF_DIR}/nginx.conf"
+
+# Without a publications URL there is no publish origin
+if [ -n "$PUB_HOST" ]; then
+    envsubst '$PUB_HOST' < "${SCRIPT_DIR}/nginx-pub.conf.template" > "${NGINX_CONF_DIR}/pub.conf"
+else
+    : > "${NGINX_CONF_DIR}/pub.conf"
+    echo "[start.sh] No publications URL configured; publishing is disabled."
+fi
 
 # Start Nginx in the background
 nginx -e "${NGINX_ERROR_LOG_PATH}" -c "${NGINX_CONF_DIR}/nginx.conf" &
