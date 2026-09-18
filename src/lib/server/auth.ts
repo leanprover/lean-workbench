@@ -63,6 +63,8 @@ async function createAuth() {
   // carry `Path=/` and no `Domain`, and are then sent only to the exact host that set them.
   // The prefix also reserves the name: no other host can set a cookie by that name
   // for this one, which a document published on a sibling hostname could otherwise do.
+  // This prevents untrusted content hosted on subdomains of `baseUrl`
+  // from setting the better-auth cookie ("cookie tossing").
   // See https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies#cookie_prefixes.
   // `Secure` cookies need HTTPS, so a plain-HTTP instance keeps unprefixed names.
   const secureCookies = config.baseUrl.startsWith('https://')
