@@ -8,10 +8,6 @@ import z from 'zod'
 
 // --- Configuration ---
 
-export function isDevMode(): boolean {
-  return process.env.NODE_ENV !== 'production'
-}
-
 const zRegistrationMode = z.enum(['open', 'restricted'])
 
 export type RegistrationMode = z.infer<typeof zRegistrationMode>

@@ -27,4 +27,8 @@ export async function waitForFileToExist(
   }
 }
 
+export function isDevMode(): boolean {
+  return process.env.NODE_ENV !== 'production'
+}
+
 export * from './directories.ts'

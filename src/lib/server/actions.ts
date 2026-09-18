@@ -7,6 +7,7 @@
 'use server'
 
 import { devModeEmail, devModePassword } from '@leanprover/workbench-shared'
+import { isDevMode } from '@leanprover/workbench-shared/node'
 import { forbidden } from 'next/navigation'
 import z from 'zod'
 
@@ -14,7 +15,6 @@ import { addEmailPasswordUser, getAuth, requireAdmin, requireAuth } from '@/lib/
 import { getDb } from '@/lib/server/db'
 import { type TrackedCommandScope, zTrackedCommandScope } from '@/lib/util'
 
-import { isDevMode } from './config'
 import { getTrackedCommandState, getUserTrackedCommandState } from './trackedCommand'
 import { submitAction } from './util'
 

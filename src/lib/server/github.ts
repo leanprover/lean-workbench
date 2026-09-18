@@ -1,4 +1,6 @@
-import { getConfig, isDevMode } from './config'
+import { isDevMode } from '@leanprover/workbench-shared/node'
+
+import { getConfig } from './config'
 
 /**
  * Make a GET request to GitHub's API using the application's OAuth App configuration.

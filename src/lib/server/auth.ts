@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { adminEmail, devModePassword, zUserName } from '@leanprover/workbench-shared'
+import { isDevMode } from '@leanprover/workbench-shared/node'
 import { betterAuth, generateId, type SocialProviders } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { hashPassword } from 'better-auth/crypto'
@@ -10,7 +11,7 @@ import { io } from 'next/cache'
 import { headers } from 'next/headers'
 import { forbidden, unauthorized } from 'next/navigation'
 
-import { getConfig, hasGithubAuth, isDevMode, saveConfig } from '@/lib/server/config'
+import { getConfig, hasGithubAuth, saveConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { provisionUserHome } from '@/lib/server/user'
 
