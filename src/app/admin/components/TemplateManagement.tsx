@@ -162,7 +162,6 @@ function TemplateCreationForm(props: { installedToolchains: string[] }) {
     },
   )
   const [tab, setTab] = useState<Key>(toolchain ? 'schema' : 'gitRepo')
-  console.log({ toolchain, tab })
 
   return (
     <Tabs selectedKey={tab} onSelectionChange={setTab} disabledKeys={toolchain ? [] : ['schema']}>
