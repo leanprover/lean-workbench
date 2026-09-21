@@ -15,11 +15,8 @@ const zParams = z.object({
 
 type Params = z.infer<typeof zParams>
 
-/** Send a link written in the app's own address space to the publication's own origin.
- *
- * Next.js matches static segments before dynamic ones,
- * so `publish` and `preview` stay siblings of this catch-all.
- * Whether the publication exists is the publish origin's business, not ours. */
+/** Redirects `/:userName/:projectName/:kind` to the same path on `pubBaseUrl`,
+ * where published artifacts are actually served. */
 export default async function PublicationRedirect({ params: params_ }: { params: Promise<Params> }) {
   if (!isPublishingEnabled(getConfig())) notFound()
   const parsed = zParams.safeParse(await params_)
