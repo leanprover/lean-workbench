@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { getDataDir } from '@leanprover/workbench-shared/node'
+import { getDataDir, isDevMode } from '@leanprover/workbench-shared/node'
 import chokidar, { type FSWatcher } from 'chokidar'
 import fs from 'fs'
 import path from 'path'
@@ -30,7 +30,7 @@ const zServerConfig = z.object({
    * e.g. better-auth will reject authentication requests. */
   baseUrl: z.url(),
   /** Origin from which publications are served.
-    * this must be separate from `baseUrl`
+   * this must be separate from `baseUrl`
    * so that a published document cannot reach a logged-in session's cookies or storage.
    * Absent, publishing is disabled. */
   pubBaseUrl: z.url().optional(),
