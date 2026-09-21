@@ -29,7 +29,8 @@ const zServerConfig = z.object({
    * Requests made through other URLs may misbehave,
    * e.g. better-auth will reject authentication requests. */
   baseUrl: z.url(),
-  /** Origin from which publications are served, kept separate from the app's own origin
+  /** Origin from which publications are served.
+    * this must be separate from `baseUrl`
    * so that a published document cannot reach a logged-in session's cookies or storage.
    * Absent, publishing is disabled. */
   pubBaseUrl: z.url().optional(),
