@@ -61,7 +61,7 @@ export const createProject = submitAction(
 
     const templateDir = path.join(getTemplatesDir(), template)
     // Copy template directory except for metadata.json
-    await fs.cp(templateDir, workspace, { recursive: true })
+    await fs.cp(templateDir, workspace, { recursive: true, verbatimSymlinks: true })
     await fs.rm(path.join(workspace, 'metadata.json'), { force: true })
 
     // Store project in DB

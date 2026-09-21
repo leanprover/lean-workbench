@@ -56,15 +56,16 @@ echo "[[ progress 4/6 Constructing package set ]]"
 PACKAGE_SET_DIR="$WORK_DIR/package-set"
 mkdir "$PACKAGE_SET_DIR"
 
+touch "$PACKAGE_SET_DIR/packages.txt"
+shopt -s nullglob # Work with zero-package repos too
 for pkg_dir in "$REPO_DIR/.lake/packages"/*/; do
   pkg_name=$(basename "$pkg_dir")
   echo "[package set] copying package: $pkg_name"
   pkg_dest="$PACKAGE_SET_DIR/$pkg_name/.lake/packages/$pkg_name"
   mkdir -p "$(dirname "$pkg_dest")"
   mv --strip-trailing-slashes "$pkg_dir" "$pkg_dest"
+  echo "$pkg_name" >> "$PACKAGE_SET_DIR/packages.txt"
 done
-
-ls -d "$PACKAGE_SET_DIR"/*/ | xargs -n1 basename > "$PACKAGE_SET_DIR/packages.txt"
 
 echo "[[ progress 5/6 Constructing template ]]"
 TEMPLATE_DIR="$WORK_DIR/template"
