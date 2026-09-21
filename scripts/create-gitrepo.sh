@@ -69,7 +69,7 @@ ls -d "$PACKAGE_SET_DIR"/*/ | xargs -n1 basename > "$PACKAGE_SET_DIR/packages.tx
 echo "[[ progress 5/6 Constructing template ]]"
 TEMPLATE_DIR="$WORK_DIR/template"
 mkdir -p "$TEMPLATE_DIR"
-rsync -a --exclude='.git' --exclude='.gitignore' --exclude='.github' --exclude='.lake' "$REPO_DIR"/ "$TEMPLATE_DIR"/
+rsync -a --exclude='.git' --exclude='.github' --exclude='.lake' "$REPO_DIR"/ "$TEMPLATE_DIR"/
 
 mv "$BUILD_DIR/metadata.json" "$TEMPLATE_DIR/"
 
