@@ -178,14 +178,3 @@ export function describeValue(value: unknown): string {
   if (Array.isArray(value)) return 'array'
   return typeof value
 }
-
-/** The value that `path` names inside `root`,
- * or `undefined` if a step along the way leaves the object tree. */
-export function valueAt(root: unknown, path: readonly PropertyKey[]): unknown {
-  let value = root
-  for (const segment of path) {
-    if (typeof value !== 'object' || value === null) return undefined
-    value = (value as Record<PropertyKey, unknown>)[segment]
-  }
-  return value
-}

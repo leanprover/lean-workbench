@@ -3,7 +3,7 @@ import 'server-only'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { describeValue, LAKE_TARGET_RE, valueAt } from '@leanprover/workbench-shared'
+import { describeValue, LAKE_TARGET_RE } from '@leanprover/workbench-shared'
 import z from 'zod'
 
 /**
@@ -167,9 +167,9 @@ export async function detectPublishable(projectDir: string): Promise<PublishMani
 
 function detectArtifact(kind: ArtifactKind, entry: unknown): DetectedArtifact {
   const { id, displayName } = kind
-  const config = kind.zConfig.safeParse(entry)
+  const config = kind.zConfig.safeParse(entry, { reportInput: true })
   if (!config.success) {
-    const complaints = config.error.issues.map(issue => describeIssue(id, entry, issue))
+    const complaints = config.error.issues.map(issue => describeIssue(id, issue))
     return { id, displayName, error: `${PUBLISH_MANIFEST_FILE} is ill-formed. ${complaints.join('; ')}` }
   }
   return { id, displayName, plan: kind.plan(config.data), description: kind.describe(config.data) }
@@ -177,15 +177,14 @@ function detectArtifact(kind: ArtifactKind, entry: unknown): DetectedArtifact {
 
 /** Say what is wrong with one entry and where, in terms of the file the author wrote.
  * Zod's own messages name neither the manifest nor the offending value's location. */
-function describeIssue(kindId: string, entry: unknown, issue: z.core.$ZodIssue): string {
+function describeIssue(kindId: string, issue: z.core.$ZodIssue): string {
   const path = [kindId, ...issue.path].map(seg => (typeof seg === 'number' ? `[${seg}]` : `.${String(seg)}`)).join('')
   const where = `in JSON path \`${path}\``
-  const found = valueAt(entry, issue.path)
   switch (issue.code) {
     case 'invalid_type':
-      return `Expected ${issue.expected}, found ${describeValue(found)} ${where}`
+      return `Expected ${issue.expected}, found ${describeValue(issue.input)} ${where}`
     case 'invalid_value':
-      return `Expected one of ${issue.values.map(v => JSON.stringify(v)).join(', ')}, found ${JSON.stringify(found)} ${where}`
+      return `Expected one of ${issue.values.map(v => JSON.stringify(v)).join(', ')}, found ${JSON.stringify(issue.input)} ${where}`
     default:
       return `${issue.message} ${where}`
   }
