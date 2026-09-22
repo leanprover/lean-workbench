@@ -2,16 +2,15 @@
 
 import friendlyWords from 'friendly-words'
 import { useRouter } from 'next/navigation'
-import { use, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
-import CatchySuspense from '@/app/components/CatchySuspense'
 import { useServerAction } from '@/lib/client/util'
 import { type TemplateInfo } from '@/lib/server/projectTemplate'
 
 import { createProject } from './actions'
 
 interface NewProjectProps {
-  templates: Promise<TemplateInfo[]>
+  templates: TemplateInfo[]
 }
 
 function generateSuggestion() {
@@ -43,9 +42,7 @@ export function NewProjectForm(props: NewProjectProps) {
   return (
     <form action={createAction} className='new-project' style={{ marginTop: 16 }}>
       <div className='template-selector'>
-        <CatchySuspense loading={<p>Loading templates&hellip;</p>}>
-          <NewProjectSelection {...props} createPending={createPending} />
-        </CatchySuspense>
+        <NewProjectSelection {...props} createPending={createPending} />
       </div>
       <input type='hidden' name='nameSuggestion' value={friendlySuggestion} />
       <label style={{ fontSize: '14px' }}>
@@ -73,8 +70,7 @@ export function NewProjectForm(props: NewProjectProps) {
 }
 
 function NewProjectSelection(props: NewProjectProps & { createPending: boolean }) {
-  const templates = use(props.templates)
-  const [chosenTemplate, setChosenTemplate] = useState<string | undefined>(templates[0]?.id)
+  const [chosenTemplate, setChosenTemplate] = useState<string | undefined>(props.templates[0]?.id)
   if (!chosenTemplate) {
     return <>No project templates are available</>
   }
@@ -82,7 +78,7 @@ function NewProjectSelection(props: NewProjectProps & { createPending: boolean }
   return (
     <>
       <input type='hidden' name='template' value={chosenTemplate} />
-      {templates.map(t => (
+      {props.templates.map(t => (
         <button
           key={t.id}
           type='button'
