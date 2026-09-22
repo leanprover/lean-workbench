@@ -6,6 +6,7 @@ import { STANDARD_TOOLCHAIN_ID_RE, toolchainHasModules } from '@leanprover/workb
 import { useRouter } from 'next/navigation'
 import { startTransition, use, useState } from 'react'
 import { Button, Dialog, DialogTrigger, Heading, Modal } from 'react-aria-components'
+import { type Key, Tab, TabList, TabPanel, TabPanels, Tabs } from 'react-aria-components'
 
 import { availableTemplateSchemas, doTemplateCreation, editTemplateMetadata } from '@/app/admin/actions'
 import CatchySuspense from '@/app/components/CatchySuspense'
@@ -31,7 +32,6 @@ export function TemplateManagement(props: TemplateManagementProps) {
       )}
       <TemplateManagementList templates={templates} />
       <TrackedCommandForm
-        disabled={installedStandardToolchains.length === 0}
         streamCommandKey='create-template'
         scope='admin'
         trackedCommandAction={doTemplateCreation}
@@ -136,11 +136,12 @@ function TemplateEditForm(props: TemplateInfo & { onSuccess: () => void }) {
 }
 
 function TemplateCreationForm(props: { installedToolchains: string[] }) {
-  const [toolchain, setToolchain] = useState(props.installedToolchains[0]!)
-  const [_toolchain, namespace, tag] = toolchain.match(STANDARD_TOOLCHAIN_ID_RE)!
+  const [toolchain, setToolchain] = useState(props.installedToolchains[0])
+  const m = toolchain?.match(STANDARD_TOOLCHAIN_ID_RE)
   const { data: schemas } = useThrowingSWR(
-    `toolchain-schema-${namespace}-${tag}`,
+    `toolchain-schema-${m?.[1]}-${m?.[2]}`,
     async () => {
+      if (!toolchain) return []
       const schemaIds = await availableTemplateSchemas(toolchain)
       return schemaIds.map(key => {
         switch (key) {
@@ -160,31 +161,59 @@ function TemplateCreationForm(props: { installedToolchains: string[] }) {
       revalidateOnReconnect: false,
     },
   )
+  const [tab, setTab] = useState<Key>(toolchain ? 'schema' : 'gitRepo')
 
   return (
-    <>
-      <label>
-        Installed toolchain:{' '}
-        <select name='toolchain' value={toolchain} onChange={e => setToolchain(e.target.value)} className='roomy'>
-          {props.installedToolchains
-            .map(tc => tc.match(STANDARD_TOOLCHAIN_ID_RE)!)
-            .map(([all, _type, tag]) => (
-              <option key={all} value={all}>
-                {tag}
-              </option>
-            ))}
-        </select>
-      </label>
-      <label>
-        Template schema:{' '}
-        <select name='schema' className='roomy'>
-          {schemas.map(({ key, name }) => (
-            <option value={key} key={key}>
-              {name}
-            </option>
-          ))}
-        </select>
-      </label>
-    </>
+    <Tabs selectedKey={tab} onSelectionChange={setTab} disabledKeys={toolchain ? [] : ['schema']}>
+      <TabList aria-label='Template Type'>
+        <Tab id='schema'>Pre-defined Lean template</Tab>
+        <Tab id='gitRepo'>Template from Git repository</Tab>
+      </TabList>
+      <TabPanels>
+        <TabPanel id='schema' shouldForceMount>
+          <input type='hidden' name='type' value={tab} />
+          <label>
+            Installed toolchain:{' '}
+            <select name='toolchain' value={toolchain} onChange={e => setToolchain(e.target.value)} className='roomy'>
+              {props.installedToolchains
+                .map(tc => tc.match(STANDARD_TOOLCHAIN_ID_RE)!)
+                .map(([all, _type, tag]) => (
+                  <option key={all} value={all}>
+                    {tag}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label>
+            Template schema:{' '}
+            <select name='schema' className='roomy'>
+              {schemas.map(({ key, name }) => (
+                <option value={key} key={key}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </TabPanel>
+        <TabPanel id='gitRepo' shouldForceMount>
+          <p style={{ color: '#dc2626' }}>
+            Installing a malicious template could corrupt the system and steal user data. Only install templates based
+            on git repositories you fully trust.
+          </p>
+          <label>
+            Git repository: <input type='text' name='gitRepo' style={{ width: '100%' }} />
+          </label>
+          <label>
+            Git tag: <input type='text' name='gitRef' defaultValue='main' />
+          </label>
+          <label>
+            Template id: <input type='text' name='templateId' placeholder='e.g. simple-template-v2' />
+          </label>
+          <label>
+            Template name: <input type='text' name='templateName' placeholder='e.g. My Simple Template' />
+          </label>
+        </TabPanel>
+      </TabPanels>
+    </Tabs>
   )
 }

@@ -277,13 +277,57 @@ form.num-button input {
   display: flex;
   flex-direction: column;
   gap: 5px;
-}
-.command-setup-form .actions {
-  display: flex;
-  flex-direction: row;
-  gap: 6px;
-  justify-content: right;
-  padding-bottom: 11px;
+
+  .actions {
+    display: flex;
+    flex-direction: row;
+    gap: 6px;
+    justify-content: right;
+    padding-bottom: 11px;
+  }
+
+  .react-aria-Tabs {
+    border: 1px solid #d1d9e2;
+    border-radius: 6px;
+    display: grid;
+    grid-template-rows: max-content 1fr;
+  }
+
+  .react-aria-TabList {
+    border: 0;
+    border-top-right-radius: 6px;
+    border-top-left-radius: 6px;
+    display: flex;
+    border-bottom: 1px solid #d1d9e2;
+  }
+
+  [role='tab'] {
+    border-bottom: 2px solid #d1d9e2;
+    padding: 5px 16px;
+    cursor: pointer;
+  }
+
+  [role='tab'][data-disabled] {
+    color: #bababa;
+    cursor: not-allowed;
+  }
+
+  [role='tab'][aria-selected='true'] {
+    color: #1d4ed8;
+    border-bottom-color: #1d4ed8;
+    color: #1d4ed8;
+  }
+
+  .react-aria-TabPanel {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 16px;
+  }
+
+  .react-aria-TabPanel[data-inert] {
+    display: none;
+  }
 }
 
 /* === Projects Page === */
