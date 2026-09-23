@@ -31,7 +31,7 @@ server {
 
     # Target of `auth_request` above. Same shape as /api/auth-route/,
     # For now publications are public.
-    location ^~ /api/pub-route/ {
+    location = /api/pub-route/resolve {
         # Can only be reached by internal requests
         internal;
 
