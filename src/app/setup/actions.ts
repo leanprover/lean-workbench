@@ -1,6 +1,6 @@
 'use server'
 
-import { isDevMode, getScriptsDir } from '@leanprover/workbench-shared/node'
+import { getScriptsDir, isDevMode } from '@leanprover/workbench-shared/node'
 import path from 'path'
 import z from 'zod'
 
