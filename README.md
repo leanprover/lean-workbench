@@ -51,7 +51,6 @@ Documents that users publish from their projects are served from there and from 
 > [!IMPORTANT]
 > Whatever terminates HTTPS in front of the Workbench must pass the original `Host` header through
 > for both hostnames.
-> A proxy that rewrites it leaves every published document returning 404.
 
 Workflows for two common cases are described below.
 
