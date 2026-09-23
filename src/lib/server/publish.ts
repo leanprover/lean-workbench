@@ -92,10 +92,12 @@ export async function startPublish(
   // Checking first only avoids building an overlay mount we would immediately tear down.
   if (getUserTrackedCommandState(owner, trackingKey)?.status === 'running') return { ok: false }
 
-  // What this build is allowed to replace. A build only ever updates the publication
-  // that existed when it started: if that row is gone by the time it finishes, the owner
-  // unpublished, and the output is discarded rather than reappearing under a fresh id.
-  const startedFrom = (
+  // If there was a prior publication, the id of it, or `undefined`
+  // otherwise. `finishPublish` will check for the prior publication.
+  // If it's missing, we interpret this as the owner unpublished while
+  // the build ran, and the output is discarded rather than reviving
+  // the publication.
+  const priorPub = (
     await getDb().publication.findUnique({ where: { projectId_kind: { projectId: project.id, kind } } })
   )?.id
 
@@ -145,7 +147,7 @@ export async function startPublish(
     void (async () => {
       try {
         try {
-          await finishPublish(project, kind, plan, exit, startedFrom)
+          await finishPublish(project, kind, plan, exit, priorPub)
         } finally {
           await mount[Symbol.asyncDispose]()
         }
@@ -164,7 +166,7 @@ export async function startPublish(
  *
  * A failed build leaves any existing publication exactly as it was.
  * So does one whose publication went away while it ran:
- * {@link startedFrom} is the row the build set out to replace,
+ * {@link priorPub} is the id of the row the build set out to replace,
  * and a build that no longer has one has been overtaken by the owner.
  *
  * The URL 404s briefly while the directories are exchanged;
@@ -174,7 +176,7 @@ async function finishPublish(
   kind: string,
   plan: BuildPlan,
   exit: TrackedCommandExit,
-  startedFrom: string | undefined,
+  priorPub: string | undefined,
 ) {
   const stagingDir = getPublishStagingDir(project.id, kind)
   try {
@@ -188,7 +190,7 @@ async function finishPublish(
     const db = getDb()
     const where = { projectId_kind: { projectId: project.id, kind } }
     const current = (await db.publication.findUnique({ where }))?.id
-    if (startedFrom !== undefined && current !== startedFrom) return
+    if (priorPub !== undefined && current !== priorPub) return
 
     const id = current ?? crypto.randomUUID()
 
