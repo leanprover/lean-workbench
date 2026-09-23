@@ -1,0 +1,13 @@
+{
+  "name": "@leanprover/workbench-shard-manager",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "tsc": "tsc",
+    "dev": "node --watch --watch-preserve-output ./src/entry.ts"
+  },
+  "dependencies": {
+    "@leanprover/workbench-shared": "*"
+  }
+}

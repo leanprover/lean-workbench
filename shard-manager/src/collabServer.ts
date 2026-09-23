@@ -5,8 +5,7 @@ import path from 'node:path'
 import { BWRAP_COLLAB_SERVER_DIR, bwrapProjectDir, COLLAB_SOCKET_FILENAME } from '@leanprover/workbench-shared'
 import { getCollabServerDir, waitForFileToExist } from '@leanprover/workbench-shared/node'
 
-import { BWRAP_ARGS } from '@/lib/server/util'
-import { type Project } from '@/prisma/generated/client'
+import { BWRAP_ARGS } from './bwrap.ts'
 
 /** Manages a collaboration server instance.
  * Non-reusable; construct a new handle to start a new server. */
@@ -17,13 +16,18 @@ export class CollabServerHandle implements AsyncDisposable {
   readonly workDir: string = `/tmp/collab-server-${this.uuid}/`
   /** Path to the `collab-server` UDS file. */
   readonly socketPath: string = path.join(this.workDir, COLLAB_SOCKET_FILENAME)
+  /** Project that this server manages. */
+  private readonly project
+  /** Arguments to `bwrap` that bind the project directory. Placed at the end. */
+  private readonly projectBindArgs
 
   constructor(
-    /** Project that this server manages. */
-    private readonly project: Project,
-    /** Arguments to `bwrap` that bind the project directory. Placed at the end. */
-    private readonly projectBindArgs: string[],
-  ) {}
+    project: { id: string; name: string }, // only necessary fields from Prisma's `Project` type
+    projectBindArgs: string[],
+  ) {
+    this.project = project
+    this.projectBindArgs = projectBindArgs
+  }
 
   /** The `bwrap` process. Defined iff the process is running. */
   private proc: ChildProcess | undefined

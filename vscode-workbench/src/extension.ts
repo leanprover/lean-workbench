@@ -20,7 +20,9 @@ import { YTextBindingManager } from './textBinding'
 async function readWorkspaceMdata(log: vs.LogOutputChannel): Promise<WorkspaceMetadata | undefined> {
   let mdata: WorkspaceMetadata
   try {
+    console.log({ path: BWRAP_METADATA_PATH })
     const raw = await fs.readFile(BWRAP_METADATA_PATH, 'utf8')
+    console.log({ raw })
     mdata = zWorkspaceMetadata.parse(JSON.parse(raw))
   } catch (err) {
     log.error(`Failed to parse workspace metadata: ${String(err)}`)

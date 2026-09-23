@@ -165,3 +165,65 @@ export const devModeEmail = (n: number) => `dev${String(n)}@dev.localhost`
  * and as the initAdminPassword in dev mode.
  */
 export const devModePassword = 'dev'
+
+/**
+ * User identity objects passed outside of the Next app.
+ * Must match the pattern of the inferred Prisma `User` type.
+ */
+export const zBaseUser = z.object({
+  id: zUserId,
+  name: zUserName,
+  displayName: z.string().nullable().optional(),
+  email: z.string(),
+  emailVerified: z.boolean(),
+  image: z.string().nullable().optional(),
+})
+
+/**
+ * User identity objects passed outside of the Next app.
+ * Must match the pattern of the inferred Prisma `User` type.
+ */
+export type BaseUser = z.output<typeof zBaseUser>
+
+/**
+ * Package identity objects passed outside of the Next app.
+ * Must match the pattern of the inferred Prisma `Project` type.
+ */
+export const zBaseProject = z.object({ id: zProjectId, name: zProjectName })
+
+/**
+ * Package identity objects passed outside of the Next app.
+ * Must match the pattern of the inferred Prisma `Project` type.
+ */
+export type BaseProject = z.output<typeof zBaseProject>
+
+export const toShardRoutes = {
+  /**
+   * Ensure an editor session exists for `viewer` on `owner/project`.
+   * Returns a URL to point the editor iframe at.
+   */
+  ensureSession: {
+    request: z.object({
+      viewer: zBaseUser,
+      owner: z.object({ id: z.string(), name: z.string() }),
+      project: zBaseProject,
+      packageSets: z.array(z.string()),
+    }),
+    response: z.object({ iframeUrl: z.string() }),
+  },
+
+  getSocketPath: {
+    request: z.object({ sessionId: z.string() }),
+    response: z.object({ socketPath: z.string(), viewerId: zUserId }).nullable(),
+  },
+
+  killShardClient: { request: z.object({}), response: z.object({}) },
+} as const
+
+export type ToShardRoutes = typeof toShardRoutes
+export type ToShardRequests = { [R in ToShardRoute]: z.infer<ToShardRoutes[R]['request']> }
+export type ToShardResponses = { [R in ToShardRoute]: z.infer<ToShardRoutes[R]['response']> }
+
+export type ToShardRoute = keyof ToShardRoutes
+export type ToShardRequest<R extends ToShardRoute> = z.infer<ToShardRoutes[R]['request']>
+export type ToShardResponse<R extends ToShardRoute> = z.infer<ToShardRoutes[R]['response']>

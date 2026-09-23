@@ -13,7 +13,6 @@ import { forbidden, unauthorized } from 'next/navigation'
 
 import { getConfig, hasGithubAuth, saveConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
-import { provisionUserHome } from '@/lib/server/user'
 
 async function ensureAdminUserExists() {
   const config = getConfig()
@@ -76,13 +75,6 @@ async function createAuth() {
               if (!allowed) return false
             }
             return { data: { ...user, name } }
-          },
-          after: async user => {
-            try {
-              await provisionUserHome(user as User)
-            } catch (err) {
-              console.error(`Failed to provision home directory for user '${user.name}': ${String(err)}`)
-            }
           },
         },
       },
@@ -157,8 +149,6 @@ export async function addEmailPasswordUser(name: string, email: string, password
     })
     return newUser
   })
-
-  if (createdUser) await provisionUserHome(createdUser)
   return !!createdUser
 }
 

@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   if (!match) forbidden()
   const sessionId = match[1]!
   const userSession = await requireAuth()
-  const socketPath = getEditorSessionManager().socketPathForViewer(userSession.user.id, sessionId)
+  const socketPath = await getEditorSessionManager().socketPathForViewer(userSession.user.id, sessionId)
   if (!socketPath) forbidden()
   return new Response(null, { status: 200, headers: { 'X-Socket-Path': socketPath } })
 }
