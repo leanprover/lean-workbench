@@ -39,6 +39,23 @@ export function getProjectDir(user: User, projectId: string): string {
   return path.join(getWorkspacesDir(), user.id, projectId)
 }
 
+/** Root of the built publications served from the publish origin. */
+export function getPublicationsDir(): string {
+  return path.join(getDataDir(), 'publications')
+}
+
+/** The directory whose contents are served for the given publication. */
+export function getPublicationDir(publicationId: string): string {
+  return path.join(getPublicationsDir(), publicationId)
+}
+
+/** Where a publish build writes before its output is swapped into place.
+ * Named after the project because a publication id is only minted once a build has succeeded.
+ * The leading `.` keeps it out of the publication id namespace. */
+export function getPublishStagingDir(projectId: string, kind: string): string {
+  return path.join(getPublicationsDir(), '.staging', `${projectId}-${kind}`)
+}
+
 export function getTemplatesDir(): string {
   return path.join(getDataDir(), 'templates')
 }
@@ -57,6 +74,11 @@ export function getElanDir(): string {
 
 export function getOpenVscodeServerDir(): string {
   return process.env.VSCODE_SERVER_DIR ?? '/app/vscode-server'
+}
+
+/** Scripts that the workbench runs, both on the host and inside sandboxes. */
+export function getScriptsDir(): string {
+  return path.join(process.cwd(), 'scripts')
 }
 
 export function getWorkbenchDir(): string {

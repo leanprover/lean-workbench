@@ -30,6 +30,7 @@ import {
   type TemplateMetadata,
   zTemplateCreation,
 } from '@/lib/server/projectTemplate'
+import { deletePublications } from '@/lib/server/publish'
 import { serverAction, submitAction } from '@/lib/server/util'
 import { type ActionResponse } from '@/lib/util'
 
@@ -77,6 +78,10 @@ export const deleteUser = serverAction(zDeleteUser, async ({ userId }) => {
   // Remove workspace directory
   const userRootDir = getUserRootDir(target)
   await fs.rm(userRootDir, { recursive: true, force: true })
+
+  // Publications live outside the user's root directory,
+  // so the cascade below would delete their rows and leave the files.
+  await deletePublications({ project: { userId } })
 
   // Delete from database (cascades to projects via schema)
   await db.user.delete({ where: { id: userId } })
