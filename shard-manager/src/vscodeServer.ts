@@ -5,25 +5,25 @@ import path from 'node:path'
 import type Stream from 'node:stream'
 
 import {
+  type BaseProject,
+  type BaseUser,
   BWRAP_COLLAB_SERVER_DIR,
   BWRAP_METADATA_PATH,
   bwrapProjectDir,
   type WorkspaceMetadata,
 } from '@leanprover/workbench-shared'
 import {
-  existsAsync,
+  BWRAP_ARGS,
+  bwrapHomeDir,
   getElanDir,
   getOpenVscodeServerDir,
-  getUserHomeDir,
   isDevMode,
 } from '@leanprover/workbench-shared/node'
 
-import { type User } from '@/lib/server/auth'
 import { getConfig } from '@/lib/server/config'
-import { BWRAP_ARGS, bwrapHomeDir, readProcesses } from '@/lib/server/util'
-import { type Project } from '@/prisma/generated/client'
 
-import { provisionUserHome } from './user'
+import { readProcesses } from './proc.ts'
+import { ensureUserHomeDir } from './user.ts'
 
 /** Create a VSCode machine settings file if one doesn't exist. */
 async function ensureMachineSettings(serverDataDir: string): Promise<void> {
@@ -120,16 +120,18 @@ export class VscodeServerHandle implements AsyncDisposable {
   readonly socketDir = `/tmp/vsc-${this.uuid}/`
   /** Host path to the server's UDS file. */
   readonly socketPath = `${this.socketDir}/${VSCODE_SOCKET_FILENAME}`
+  readonly viewer
+  readonly owner
+  readonly project
 
-  constructor(
-    readonly viewer: User,
-    readonly owner: User,
-    readonly project: Project,
-  ) {
+  constructor(viewer: BaseUser, owner: BaseUser, project: BaseProject) {
     const { promise, resolve, reject } = Promise.withResolvers<void>()
     this.started = promise
     this.resolveStarted = resolve
     this.rejectStarted = reject
+    this.viewer = viewer
+    this.owner = owner
+    this.project = project
   }
 
   /** Whether {@link start} has been called. */
@@ -183,13 +185,7 @@ export class VscodeServerHandle implements AsyncDisposable {
 
       // The viewer's home directory persists their VS Code configuration and extensions:
       // `code-server` defaults `--user-data-dir` to `$HOME/.local/share/code-server`.
-      const homeDir = getUserHomeDir(this.viewer)
-      if (!(await existsAsync(homeDir))) {
-        console.log(
-          `Warning: home directory '${homeDir}' for ${this.viewer.id} does not exist; re-provisioning a default home.`,
-        )
-        await provisionUserHome(this.viewer)
-      }
+      const homeDir = await ensureUserHomeDir(this.viewer)
 
       const vscUserDataDir = path.join(homeDir, '.local', 'share', 'code-server')
       await ensureMachineSettings(vscUserDataDir)
