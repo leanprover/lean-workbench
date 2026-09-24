@@ -1,6 +1,9 @@
 import { execFile } from 'node:child_process'
 import fs from 'node:fs/promises'
+import path from 'node:path'
 import { promisify } from 'node:util'
+
+import { getTempBuildDir } from './directories.ts'
 
 /** Conditional check whether a file exists */
 export async function existsAsync(p: string): Promise<boolean> {
@@ -27,6 +30,15 @@ export async function waitForFileToExist(
     if (Date.now() > deadline) throw new Error(`timeout waiting on ${options?.description ?? `${path} to exist`}`)
     await new Promise(r => setTimeout(r, pollMs))
   }
+}
+
+/** Returns the full path of a fresh scratch directory.
+ * Uniqueness is guaranteed by mkdtemp, but `label` is supplied as a
+ * human-readable breadcrumb in case it's useful for debugging what
+ * was happening after a server crash. */
+export async function makeTempBuildDir(label: string): Promise<string> {
+  await fs.mkdir(getTempBuildDir(), { recursive: true })
+  return fs.mkdtemp(path.join(getTempBuildDir(), `${label}-`))
 }
 
 export function isDevMode(): boolean {
