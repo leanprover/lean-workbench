@@ -49,11 +49,11 @@ export function getPublicationDir(publicationId: string): string {
   return path.join(getPublicationsDir(), publicationId)
 }
 
-/** Where a publish build writes before its output is swapped into place.
- * Named after the project because a publication id is only minted once a build has succeeded.
- * The leading `.` keeps it out of the publication id namespace. */
-export function getPublishStagingDir(projectId: string, kind: string): string {
-  return path.join(getPublicationsDir(), '.staging', `${projectId}-${kind}`)
+/** Root of the scratch directories that tracked commands build in.
+ * On the data volume rather than /tmp so that builds do not copy their
+ * output across filesystems when they place it. */
+export function getTempBuildDir(): string {
+  return path.join(getDataDir(), 'tmp-build')
 }
 
 export function getTemplatesDir(): string {

@@ -9,10 +9,9 @@ import {
   existsAsync,
   getElanDir,
   getPublicationDir,
-  getPublicationsDir,
-  getPublishStagingDir,
   getScriptsDir,
   getUserHomeDir,
+  makeTempBuildDir,
 } from '@leanprover/workbench-shared/node'
 
 import { type User } from '@/lib/server/auth'
@@ -103,10 +102,7 @@ export async function startPublish(
 
   await using stack = new AsyncDisposableStack()
 
-  // Created but never emptied here: a build that is already running owns its staging directory.
-  // The script clears it, and `finishPublish` removes it once the build exits.
-  const stagingDir = getPublishStagingDir(project.id, kind)
-  await fs.mkdir(stagingDir, { recursive: true })
+  const stagingDir = await makeTempBuildDir(trackingKey)
 
   // Must be the shared mount: a second overlay on the same upper layer would corrupt the project.
   const mount = stack.use(await getEditorSessionManager().acquireProjectMount(owner, project))
@@ -147,7 +143,7 @@ export async function startPublish(
     void (async () => {
       try {
         try {
-          await finishPublish(project, kind, plan, exit, priorPub)
+          await finishPublish(project, kind, plan, stagingDir, exit, priorPub)
         } finally {
           await mount[Symbol.asyncDispose]()
         }
@@ -175,10 +171,10 @@ async function finishPublish(
   project: Project,
   kind: string,
   plan: BuildPlan,
+  stagingDir: string,
   exit: TrackedCommandExit,
   priorPub: string | undefined,
 ) {
-  const stagingDir = getPublishStagingDir(project.id, kind)
   try {
     if (exit.type !== 'success') return
 
@@ -203,9 +199,12 @@ async function finishPublish(
     })
 
     const liveDir = getPublicationDir(id)
-    const replacedDir = path.join(getPublicationsDir(), `.replaced-${id}`)
+    const replacedDir = `${stagingDir}-replaced`
 
-    await fs.rm(replacedDir, { recursive: true, force: true })
+    // Why rename-then-rm the old directory?
+    // - avoid a partially deleted publication being visible
+    // - get to a state where the new publication *is* visible as soon as possible
+    //   because the renames are fast and the recursive rm might be slower.
     if (await existsAsync(liveDir)) await fs.rename(liveDir, replacedDir)
     await fs.rename(siteDir, liveDir)
     await fs.rm(replacedDir, { recursive: true, force: true })

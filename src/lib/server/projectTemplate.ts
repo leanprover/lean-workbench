@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { STANDARD_TOOLCHAIN_ID_RE, zTemplateId } from '@leanprover/workbench-shared'
-import { getDataDir, getScriptsDir, getTemplatesDir } from '@leanprover/workbench-shared/node'
+import { getScriptsDir, getTemplatesDir, makeTempBuildDir } from '@leanprover/workbench-shared/node'
 import z from 'zod'
 
 import { githubAPI } from './github'
@@ -150,8 +150,7 @@ type TemplateCreation = z.infer<typeof zTemplateCreation>
  * spawn a tracked command for a basic Mathlib template (key 'create-template')
  */
 export async function startTemplateCreation(props: TemplateCreation) {
-  await fs.mkdir(path.join(getDataDir(), 'tmp-build'), { recursive: true })
-  const workDir = await fs.mkdtemp(path.join(getDataDir(), 'tmp-build', 'template-create-'))
+  const workDir = await makeTempBuildDir('template-create')
   await fs.mkdir(path.join(workDir, 'build'))
 
   let metadata: TemplateMetadata
