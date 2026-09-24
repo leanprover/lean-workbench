@@ -207,3 +207,81 @@ export const zBaseProject = z.object({ id: zProjectId, name: zProjectName })
  * Must match the pattern of the inferred Prisma `Project` type.
  */
 export type BaseProject = z.output<typeof zBaseProject>
+
+export const SHARD_MANAGER_PATH = '/api/shard-manager'
+export const SHARD_MANAGER_SOCK = '/tmp/lean-workbench/shard-manager.sock'
+
+export const toShardRoutes = {
+  /**
+   * In order to delay moving publication to shards, we need a way of leasing
+   * (and returning the lease for) a ProjectMountHandle.
+   */
+  acquireProjectMount: {
+    request: z.object({
+      owner: zBaseUser,
+      project: zBaseProject,
+      packageSets: z.array(z.string()),
+    }),
+    response: z.object({
+      leaseId: z.uuidv4(),
+      bindArgs: z.array(z.string()),
+    }),
+  },
+
+  releaseProjectMount: {
+    request: z.object({
+      leaseId: z.uuidv4(),
+    }),
+    response: z.null(),
+  },
+
+  /**
+   * Ensure an editor session exists for `viewer` on `owner/project`.
+   * Returns a URL to point the editor iframe at.
+   */
+  ensureSession: {
+    request: z.object({
+      viewer: zBaseUser,
+      owner: z.object({ id: z.string(), name: z.string() }),
+      project: zBaseProject,
+      packageSets: z.array(z.string()),
+    }),
+    response: z.object({ iframeUrl: z.string() }),
+  },
+
+  killSession: {
+    request: z.object({
+      projectId: zProjectId,
+      sessionId: z.string(),
+    }),
+    response: z.null(),
+  },
+
+  getSocketPath: {
+    request: z.object({ sessionId: z.string() }),
+    response: z.object({ socketPath: z.string(), viewerId: zUserId }).nullable(),
+  },
+
+  listSessions: {
+    request: z.null(),
+    response: z.array(
+      z.object({
+        projectId: zProjectId,
+        servers: z.array(
+          z.object({
+            uuid: z.uuidv4(),
+            viewer: z.object({ id: zUserId, name: zUserName }),
+          }),
+        ),
+      }),
+    ),
+  },
+} as const
+
+export type ToShardRoutes = typeof toShardRoutes
+export type ToShardRequests = { [R in ToShardRoute]: z.infer<ToShardRoutes[R]['request']> }
+export type ToShardResponses = { [R in ToShardRoute]: z.infer<ToShardRoutes[R]['response']> }
+
+export type ToShardRoute = keyof ToShardRoutes
+export type ToShardRequest<R extends ToShardRoute> = z.infer<ToShardRoutes[R]['request']>
+export type ToShardResponse<R extends ToShardRoute> = z.infer<ToShardRoutes[R]['response']>

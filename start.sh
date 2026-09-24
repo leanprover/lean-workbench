@@ -11,6 +11,11 @@ VSCODE_SERVER_DIR="${VSCODE_SERVER_DIR:-/app/vscode-server}"
 NGINX_CONF_DIR="${NGINX_CONF_DIR:-/etc/nginx}"
 NGINX_LOG_DIR="${NGINX_LOG_DIR:-/var/log/nginx}"
 
+BASE_URL="$(jq --raw-output '.baseUrl // empty' "${LEAN_WORKBENCH_DATA_DIR}/config.json" 2>/dev/null || true)"
+if [ -z "$BASE_URL" ] && [ "${NODE_ENV:-}" != "production" ]; then
+    BASE_URL="http://localhost:3000"
+fi
+
 PUB_BASE_URL="$(jq --raw-output '.pubBaseUrl // empty' "${LEAN_WORKBENCH_DATA_DIR}/config.json" 2>/dev/null || true)"
 # Development serves publications from pub.localhost without further setup.
 if [ -z "$PUB_BASE_URL" ] && [ "${NODE_ENV:-}" != "production" ]; then
@@ -60,6 +65,12 @@ fi
 APP_PID=$!
 trap 'kill $APP_PID 2>/dev/null' EXIT
 
+# Start shard manager in the background
+BASE_URL="$BASE_URL" node "${SCRIPT_DIR}/shard-manager/src/server.ts" &
+SHARD_MANAGER_PID=$!
+# Replaces previous trap
+trap 'kill $APP_PID $SHARD_MANAGER_PID 2>/dev/null' EXIT
+
 # Prepare Nginx config from template
 mkdir -p "${NGINX_CONF_DIR}"
 export NGINX_PID_PATH NGINX_ERROR_LOG_PATH NGINX_ACCESS_LOG_PATH NGINX_CONF_DIR PUB_HOST
@@ -79,7 +90,7 @@ fi
 nginx -e "${NGINX_ERROR_LOG_PATH}" -c "${NGINX_CONF_DIR}/nginx.conf" &
 NGINX_PID=$!
 # Replaces previous trap
-trap 'kill $APP_PID $NGINX_PID 2>/dev/null' EXIT
+trap 'kill $APP_PID $SHARD_MANAGER_PID $NGINX_PID 2>/dev/null' EXIT
 
 echo "[start.sh] Nginx listening on http://localhost:3000"
 
