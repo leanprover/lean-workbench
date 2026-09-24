@@ -1,15 +1,12 @@
-import 'server-only'
-
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { getUserHomeDir } from '@leanprover/workbench-shared/node'
-
-import type { User } from '@/lib/server/auth'
+import type { BaseUser } from '@leanprover/workbench-shared'
+import { existsAsync, getUserHomeDir } from '@leanprover/workbench-shared/node'
 
 /** Create a persistent home directory for the given user,
  * seeding a global Git identity from their profile when available. */
-export async function provisionUserHome(user: User): Promise<void> {
+export async function provisionUserHome(user: BaseUser): Promise<void> {
   const homeDir = getUserHomeDir(user)
   await fs.mkdir(homeDir, { recursive: true })
 
@@ -24,4 +21,14 @@ export async function provisionUserHome(user: User): Promise<void> {
   const gitConfigDir = path.join(homeDir, '.config', 'git')
   await fs.mkdir(gitConfigDir, { recursive: true })
   await fs.writeFile(path.join(gitConfigDir, 'config'), userBlock.join('\n') + '\n')
+}
+
+export async function ensureUserHomeDir(user: BaseUser) {
+  const homeDir = getUserHomeDir(user)
+  // TODO: this should really use some kind of actual locking mechanism
+  if (!(await existsAsync(homeDir))) {
+    console.log(`Home directory ${homeDir} for ${user.id} does not exist, provisioning a default home`)
+    await provisionUserHome(user)
+  }
+  return homeDir
 }
