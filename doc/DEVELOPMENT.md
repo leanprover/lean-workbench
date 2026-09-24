@@ -197,8 +197,12 @@ and `~/.lean-workbench/data/` (directory on host system) for `install.sh` deploy
   publications/                 Built publications, served from the publish origin
     <publication-uuid>/         The static files nginx aliases to
       index.html
-    .staging/                   Where a build writes, before its output is swapped into place
-      <project-uuid>-<kind>/
+
+  tmp-build/
+    template-create-XXUIDXX/     Scratch space for one run of a tracked command
+                                (see `makeTempBuildDir` in `shared/node/index.ts`)
+    publish-<project-uuid>-<kind>-XXUIDXX/
+                                Scratch space for one publication build
 
   workspaces/                   Per-user state
     <alice-user-id>/            Better-auth 32-character alphanumeric identifier
