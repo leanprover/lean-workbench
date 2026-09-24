@@ -3,9 +3,8 @@
     /* Support the use of type stripping in Node */
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true,
-    "paths": {
-      "@/*": ["../src/*"]
-    }
+    "moduleResolution": "nodenext",
+    "module": "nodenext"
   },
   "extends": "../tsconfig.json",
   "include": ["**/*.ts"]

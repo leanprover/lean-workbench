@@ -1,7 +1,7 @@
 import { forbidden } from 'next/navigation'
 
 import { requireAuth } from '@/lib/server/auth'
-import { getEditorSessionManager } from '@/lib/server/editorSessions'
+import { getShardConnection } from '@/lib/server/shardConnection'
 
 /** Queried by Nginx to ensure the sending user can access the given editor session.
  * Any 2xx response counts for successful authentication,
@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   if (!match) forbidden()
   const sessionId = match[1]!
   const userSession = await requireAuth()
-  const socketPath = getEditorSessionManager().socketPathForViewer(userSession.user.id, sessionId)
+  const socketPath = await getShardConnection().socketPathForViewer(userSession.user.id, sessionId)
   if (!socketPath) forbidden()
   return new Response(null, { status: 200, headers: { 'X-Socket-Path': socketPath } })
 }

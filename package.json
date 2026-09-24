@@ -5,6 +5,7 @@
   "type": "module",
   "workspaces": [
     "collab-server",
+    "shard-manager",
     "shared",
     "vscode-workbench"
   ],

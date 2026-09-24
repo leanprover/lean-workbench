@@ -6,7 +6,7 @@ import { startTransition } from 'react'
 import { killEditorSession } from '@/app/admin/actions'
 import ProjectLink from '@/app/components/ProjectLink'
 import { useServerAction } from '@/lib/client/util'
-import type { EditorSessionInfo, UnknownEditorSession } from '@/lib/server/editorSessions'
+import type { EditorSessionInfo, UnknownEditorSession } from '@/lib/server/shardConnection'
 
 export function SessionRow({ info }: { info: EditorSessionInfo | UnknownEditorSession }) {
   const router = useRouter()

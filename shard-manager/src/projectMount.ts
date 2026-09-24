@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { type BaseProject, type BaseUser, bwrapProjectDir } from '@leanprover/workbench-shared'
+import { type BaseProject, bwrapProjectDir } from '@leanprover/workbench-shared'
 import {
   execFileAsync,
   getPackageSetsDir,
@@ -55,7 +55,7 @@ export class ProjectMountHandle implements AsyncDisposable {
  * we prefer only mounting the project root directory
  * so that users can remove other directories (e.g. packages) freely. */
 export async function buildProjectMount(
-  owner: BaseUser,
+  owner: { id: string; name: string },
   project: BaseProject,
   packageSets: string[],
 ): Promise<ProjectMountHandle> {

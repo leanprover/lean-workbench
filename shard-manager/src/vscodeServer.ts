@@ -20,8 +20,7 @@ import {
   isDevMode,
 } from '@leanprover/workbench-shared/node'
 
-import { getConfig } from '@/lib/server/config'
-
+import { getBaseUrl } from './env.ts'
 import { readProcesses } from './proc.ts'
 import { ensureUserHomeDir } from './user.ts'
 
@@ -124,7 +123,7 @@ export class VscodeServerHandle implements AsyncDisposable {
   readonly owner
   readonly project
 
-  constructor(viewer: BaseUser, owner: BaseUser, project: BaseProject) {
+  constructor(viewer: BaseUser, owner: { id: string; name: string }, project: BaseProject) {
     const { promise, resolve, reject } = Promise.withResolvers<void>()
     this.started = promise
     this.resolveStarted = resolve
@@ -269,7 +268,7 @@ export class VscodeServerHandle implements AsyncDisposable {
         (async () => {
           // Wait for the server to start listening.
           const workspaceMetadata: WorkspaceMetadata = {
-            baseUrl: getConfig().baseUrl,
+            baseUrl: getBaseUrl(),
             viewer: {
               name: this.viewer.name,
               image: this.viewer.image,

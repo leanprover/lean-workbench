@@ -8,9 +8,7 @@ export async function register() {
   const { initConfig } = await import('@/lib/server/config')
   const { initDb } = await import('@/lib/server/db')
   const { initAuth } = await import('@/lib/server/auth')
-  const { initEditorSessions } = await import('@/lib/server/editorSessions')
   initConfig()
   initDb()
   await initAuth()
-  await initEditorSessions()
 }
