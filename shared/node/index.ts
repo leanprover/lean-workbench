@@ -35,4 +35,5 @@ export function isDevMode(): boolean {
 
 export const execFileAsync = promisify(execFile)
 
+export * from './bwrap.ts'
 export * from './directories.ts'

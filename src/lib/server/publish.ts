@@ -12,8 +12,9 @@ import {
   getPublicationsDir,
   getPublishStagingDir,
   getScriptsDir,
-  getUserHomeDir,
 } from '@leanprover/workbench-shared/node'
+import { BWRAP_ARGS, bwrapHomeDir } from '@leanprover/workbench-shared/node'
+import { ensureUserHomeDir } from '@shard/user'
 
 import { type User } from '@/lib/server/auth'
 import { getConfig, isPublishingEnabled } from '@/lib/server/config'
@@ -24,7 +25,6 @@ import {
   getUserTrackedCommandState,
   startTrackedCommand,
 } from '@/lib/server/trackedCommand'
-import { BWRAP_ARGS, bwrapHomeDir } from '@/lib/server/util'
 import { type ActionResponse, type TrackedCommandExit } from '@/lib/util'
 import { type Prisma, type Project } from '@/prisma/generated/client'
 
@@ -111,7 +111,7 @@ export async function startPublish(
   // Must be the shared mount: a second overlay on the same upper layer would corrupt the project.
   const mount = stack.use(await getEditorSessionManager().acquireProjectMount(owner, project))
 
-  const homeDir = getUserHomeDir(owner)
+  const homeDir = await ensureUserHomeDir(owner)
   const elanDir = getElanDir()
   const sandboxHomeDir = bwrapHomeDir(owner.name)
 

@@ -3,13 +3,6 @@ import path from 'node:path'
 
 // --- Directories ---
 
-/**
- * Not exported, must match the pattern of the inferred Prisma User type
- * (The fields `name`, `email`, and `emailVerified` are only here to make it
- * less likely we'll duck-type the wrong thing as a User.)
- */
-type User = { id: string; name: string; email: string; emailVerified: boolean }
-
 export function getDataDir(): string {
   if (!process.env.LEAN_WORKBENCH_DATA_DIR) {
     throw new Error('Environment variable LEAN_WORKBENCH_DATA_DIR must be set.')
@@ -25,17 +18,17 @@ export function getWorkspacesDir(): string {
   return path.join(getDataDir(), 'workspaces')
 }
 
-export function getUserRootDir(user: User): string {
+export function getUserRootDir(user: { id: string }): string {
   return path.join(getWorkspacesDir(), user.id)
 }
 
 /** The given user's persistent home directory, used as `$HOME` in their editor sandboxes. */
-export function getUserHomeDir(user: User): string {
+export function getUserHomeDir(user: { id: string }): string {
   return path.join(getWorkspacesDir(), user.id, 'home')
 }
 
 /** The given project's data directory.*/
-export function getProjectDir(user: User, projectId: string): string {
+export function getProjectDir(user: { id: string }, projectId: string): string {
   return path.join(getWorkspacesDir(), user.id, projectId)
 }
 

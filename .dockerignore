@@ -11,6 +11,7 @@
 !prisma.config.ts
 !tsconfig.json
 !shared
+!shard-manager
 
 # Collaboration server
 !collab-server/dist

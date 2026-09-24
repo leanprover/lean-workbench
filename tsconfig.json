@@ -20,7 +20,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@shard/*": ["./shard-manager/src/*"]
     },
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
@@ -33,6 +34,7 @@
     ".next/**/*.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
+    "shard-manager/src/*.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
     "next-env.d.ts",

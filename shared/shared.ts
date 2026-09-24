@@ -178,3 +178,33 @@ export function describeValue(value: unknown): string {
   if (Array.isArray(value)) return 'array'
   return typeof value
 }
+
+/**
+ * User identity objects
+ * Must match the pattern of the inferred Prisma `User` type.
+ */
+export const zBaseUser = z.object({
+  id: zUserId,
+  name: zUserName,
+  displayName: z.string().nullable().optional(),
+  email: z.string(),
+  image: z.string().nullable().optional(),
+})
+
+/**
+ * User identity objects
+ * Must match the pattern of the inferred Prisma `User` type.
+ */
+export type BaseUser = z.output<typeof zBaseUser>
+
+/**
+ * Package identity objects passed outside of the Next app.
+ * Must match the pattern of the inferred Prisma `Project` type.
+ */
+export const zBaseProject = z.object({ id: zProjectId, name: zProjectName })
+
+/**
+ * Package identity objects passed outside of the Next app.
+ * Must match the pattern of the inferred Prisma `Project` type.
+ */
+export type BaseProject = z.output<typeof zBaseProject>
