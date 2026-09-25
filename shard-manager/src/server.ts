@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises'
-import { createServer, type ServerResponse } from 'node:http'
+import { createServer, IncomingMessage, type ServerResponse } from 'node:http'
 import path from 'node:path'
 
 import {
@@ -12,6 +12,7 @@ import {
 import z from 'zod'
 
 import { handlers } from './manager.ts'
+import { collabServers, mounts, vscServers } from './state.ts'
 
 const SHARD_MAX_BODY_BYTES = 100 * 1024
 
@@ -31,7 +32,10 @@ function prepareHandler<R extends ToShardRoute>(route: R, data: unknown) {
   }
 }
 
-const server = createServer(async (req, res) => {
+/**
+ * Captures the duration of a request. Never throws.
+ */
+async function handleRequest(req: IncomingMessage, res: ServerResponse) {
   try {
     // Check request
     if (req.method !== 'POST' || req.url !== SHARD_MANAGER_PATH) {
@@ -71,6 +75,14 @@ const server = createServer(async (req, res) => {
   } catch (e) {
     writeError(res, 500, `unexpected error handling shard request: ${e instanceof Error ? e.message : String(e)}`)
   }
+}
+
+const inFlightRequests = new Set<Promise<void>>()
+const server = createServer(async (req, res) => {
+  const inFlightRequest = handleRequest(req, res)
+  inFlightRequests.add(inFlightRequest)
+  await inFlightRequest
+  inFlightRequests.delete(inFlightRequest)
 })
 
 await fs.mkdir(path.dirname(SHARD_MANAGER_SOCK), { recursive: true, mode: 0o700 })
@@ -84,3 +96,42 @@ server.listen(SHARD_MANAGER_SOCK, async () => {
   }
   console.log(`shard manager listening at ${SHARD_MANAGER_SOCK}`)
 })
+
+async function settleAndLogErrors(action: string, promises: Iterable<Promise<unknown>>) {
+  await Promise.allSettled(promises).then(results =>
+    results.map(res => res.status === 'rejected' && console.error(`Error while ${action}:`, res.reason)),
+  )
+}
+
+let stopping = false
+async function shutdown() {
+  console.log('Shard manager shutdown triggered')
+  if (stopping) return
+  stopping = true
+
+  console.log('Closing server and finishing in-flight requests')
+  await new Promise(resolve => server.close(resolve))
+  await settleAndLogErrors('waiting for requests to finish', inFlightRequests)
+
+  console.log('Terminating VSCode editor sessions')
+  await settleAndLogErrors(
+    'terminating VSCode editor session',
+    vscServers
+      .values()
+      .flatMap(vscServersForProject => vscServersForProject.map(vscServer => vscServer[Symbol.asyncDispose]())),
+  )
+
+  console.log('Terminating collaboration servers')
+  await collabServers[Symbol.asyncDispose]().catch((reason: unknown) =>
+    console.error('Error terminating VSCode collaboration servers', reason),
+  )
+
+  console.log('Removing mount points')
+  await mounts[Symbol.asyncDispose]().catch((reason: unknown) =>
+    console.error('Error cleaning up mount points:', reason),
+  )
+}
+
+process.once('SIGTERM', shutdown)
+process.once('uncaughtException', shutdown)
+process.once('unhandledRejection', shutdown)
