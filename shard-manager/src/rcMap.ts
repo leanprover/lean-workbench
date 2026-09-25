@@ -54,6 +54,15 @@ export class RcMap<K, V extends AsyncDisposable> implements AsyncDisposable {
   async [Symbol.asyncDispose]() {
     const entries = [...this.entries.values()]
     this.entries.clear()
-    await Promise.all(entries.map(async e => (await e.value)[Symbol.asyncDispose]()))
+    const settlements = await Promise.allSettled(entries.map(async e => (await e.value)[Symbol.asyncDispose]()))
+    const rejectionReasons = settlements.flatMap(settlement =>
+      settlement.status === 'rejected' ? [settlement.reason as unknown] : [],
+    )
+    if (rejectionReasons.length > 0) {
+      throw new AggregateError(
+        rejectionReasons,
+        `RcMap encountered ${rejectionReasons.length} error${rejectionReasons.length === 1 ? '' : 's'} while disposing`,
+      )
+    }
   }
 }
