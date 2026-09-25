@@ -1,0 +1,89 @@
+legend: Legend {
+  fs: File system resources\nResources represented inside a process boundary are\nowned/managed by that process. {style.fill: "#fcd87d"}
+  bwrap: Bubblewraped process {style.stroke: "#ff0000"}
+}
+
+clients: {
+  style.opacity: 0
+  compA: Alex's Computer {
+    vscFoo1: Workbench accessing alex/foo
+    vscFoo2: Workbench accessing alex/foo
+    vscBar: Workbench accessing barb/bar
+  }
+
+  compB: Barb's Computer {
+    vsc: Workbench accessing barb/bar
+  }
+
+  compC: Carla's Computer {
+    vsc: Workbench accessing barb/bar
+  }
+
+  compD: Dash's Computer {
+    browser: Workbench, not using a VSC session
+    vsc: Workbench accessing carla/baz
+  }
+}
+
+server1: Server (connecting public HTTPS to localhost:8080) {
+  docker: Docker, exposing Workbench Nginx on port 8080 {
+    nginx: Workbench Nginx (localhost:3000)
+    nginx2: Workbench Nginx (localhost:3000/_vs/session_id)
+    nextjs: Next.js (localhost:3002) {
+      db: SQLite database {style.fill: "#fcd87d"}
+    }
+    templateCanonical: Authoritative templates {style.fill: "#fcd87d"}
+    elanCanonical: Authoritative lean versions {style.fill: "#fcd87d"}
+    projectWorkspaces: Project workspaces {style.fill: "#fcd87d"}
+    shard: Shard Manager {
+      edA1: Alex's editor session for alex/foo (1) {host: VSC Extension Host {lsp: Lean LSP}; style: {stroke: "#ff0000"}}
+      edA2: Alex's editor session for alex/foo (2) {host: VSC Extension Host {lsp: Lean LSP}; style: {stroke: "#ff0000"}}
+      edB1: Alex's editor session for barb/bar {host: VSC Extension Host {lsp: Lean LSP}; style: {stroke: "#ff0000"}}
+      edB2: Barb's editor session for barb/bar {host: VSC Extension Host {lsp: Lean LSP}; style: {stroke: "#ff0000"}}
+      edB3: Carla's editor session for barb/bar {host: VSC Extension Host {lsp: Lean LSP}; style: {stroke: "#ff0000"}}
+      edC1: Dash's editor session for carla/baz {host: VSC Extension Host {lsp: Lean LSP}; style: {stroke: "#ff0000"}}
+      collabA: Collab server for alex/foo {style.stroke: "#ff0000"}
+      collabB: Collab server for barb/bar {style.stroke: "#ff0000"}
+      collabC: Collab server for carla/baz {style.stroke: "#ff0000"}
+      userHome: User home directories {style.fill: "#fcd87d"}
+      mounts: Project overlayfs mounts {style.fill: "#fcd87d"}
+    }
+  }
+}
+
+server1.docker.nextjs -> server1.docker.templateCanonical <- server1.docker.shard
+server1.docker.nextjs -> server1.docker.elanCanonical <- server1.docker.shard
+server1.docker.nextjs -> server1.docker.projectWorkspaces: creation, deletion
+server1.docker.projectWorkspaces <- server1.docker.shard: building project mounts
+server1.docker.nextjs -> server1.docker.shard.mounts: publishing leases access\nvia the next-to-shard API {style.stroke-dash: 3}
+
+server1.docker.nginx2 -> server1.docker.nginx: checking auth
+server1.docker.nextjs -> server1.docker.shard: http over uds\n(user processes cannot\naccess the shard manager)
+server1.docker.nginx -> server1.docker.nextjs: http over local inet (user process can also access next.js on port 3002)
+
+clients.compA.vscFoo1 -> server1.docker.nginx
+clients.compA.vscFoo2 -> server1.docker.nginx
+clients.compA.vscBar -> server1.docker.nginx
+clients.compB.vsc -> server1.docker.nginx
+clients.compC.vsc -> server1.docker.nginx
+clients.compD.browser -> server1.docker.nginx
+clients.compD.vsc -> server1.docker.nginx
+
+clients.compA.vscFoo1 <-> server1.docker.nginx2
+server1.docker.nginx2 <-> server1.docker.shard.edA1: websocket proxied\nover uds
+server1.docker.shard.collabA <-> server1.docker.shard.edA1: websocket over uds
+clients.compA.vscFoo2 <-> server1.docker.nginx2
+server1.docker.nginx2 <-> server1.docker.shard.edA2: websocket proxied\nover uds
+server1.docker.shard.collabA <-> server1.docker.shard.edA2: websocket over uds
+clients.compA.vscBar <-> server1.docker.nginx2
+server1.docker.nginx2 <-> server1.docker.shard.edB1: websocket proxied\nover uds
+server1.docker.shard.collabB <-> server1.docker.shard.edB1: websocket over uds
+clients.compB.vsc <-> server1.docker.nginx2
+server1.docker.nginx2 <-> server1.docker.shard.edB2: websocket proxied\nover uds
+server1.docker.shard.collabB <-> server1.docker.shard.edB2: websocket over uds
+clients.compC.vsc <-> server1.docker.nginx2
+server1.docker.nginx2 <-> server1.docker.shard.edB3: websocket proxied\nover uds
+server1.docker.shard.collabB <-> server1.docker.shard.edB3: websocket over uds
+clients.compD.vsc <-> server1.docker.nginx2
+server1.docker.nginx2 <-> server1.docker.shard.edC1: websocket proxied\nover uds
+server1.docker.shard.collabC <-> server1.docker.shard.edC1: websocket over uds

@@ -5,7 +5,7 @@ import z from 'zod'
 
 import { requireAuth } from '@/lib/server/auth'
 import { getDb } from '@/lib/server/db'
-import { getEditorSessionManager } from '@/lib/server/editorSessions'
+import { getShardConnection } from '@/lib/server/shardConnection'
 import { canAccessProject } from '@/lib/server/util'
 
 const zParams = z.object({
@@ -39,10 +39,10 @@ export default async function EditorSession({ params: params_ }: { params: Promi
   })
   if (!project || !canAccessProject(viewer, project)) notFound()
 
-  const manager = getEditorSessionManager()
+  const shardConnection = getShardConnection()
   // may throw to error boundary (e.g. if the project folder isn't accessible)
-  const iframeSrc = await manager.ensureSession(viewer, owner, project)
+  const iframeUrl = await shardConnection.ensureSession(viewer, owner, project)
 
   // TODO: VSC should be sandboxed but can't be opaque-origin: need a subdomain.
-  return <iframe id='editor-frame' src={iframeSrc} className='editor-session-iframe' />
+  return <iframe id='editor-frame' src={iframeUrl} className='editor-session-iframe' />
 }

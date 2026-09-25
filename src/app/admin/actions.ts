@@ -20,7 +20,6 @@ import z from 'zod'
 import { initAuth, requireAdmin } from '@/lib/server/auth'
 import { getConfig, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
-import { getEditorSessionManager } from '@/lib/server/editorSessions'
 import { elanUninstall, startElanInstall } from '@/lib/server/elan'
 import {
   getAvailableTemplateSchemas,
@@ -31,6 +30,7 @@ import {
   zTemplateCreation,
 } from '@/lib/server/projectTemplate'
 import { deletePublications } from '@/lib/server/publish'
+import { getShardConnection } from '@/lib/server/shardConnection'
 import { serverAction, submitAction } from '@/lib/server/util'
 import { type ActionResponse } from '@/lib/util'
 
@@ -68,10 +68,10 @@ export const deleteUser = serverAction(zDeleteUser, async ({ userId }) => {
   if (!target) return { error: 'User not found' }
 
   // Kill active editor sessions for this user
-  const mgr = getEditorSessionManager()
-  for (const s of await mgr.listSessions()) {
+  const shardConnection = getShardConnection()
+  for (const s of await shardConnection.listSessions()) {
     if (s.viewerId === target.id) {
-      mgr.killSession(s.projectId, s.sessionId)
+      await shardConnection.killSession(s.projectId, s.sessionId)
     }
   }
 
@@ -123,8 +123,8 @@ const zEditorSession = z.object({
 
 export const killEditorSession = serverAction(zEditorSession, async ({ projectId, sessionId }) => {
   await requireAdmin()
-  const mgr = getEditorSessionManager()
-  mgr.killSession(projectId, sessionId)
+  const shardConnection = getShardConnection()
+  await shardConnection.killSession(projectId, sessionId)
   return { ok: undefined }
 })
 

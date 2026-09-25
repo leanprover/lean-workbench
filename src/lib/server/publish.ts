@@ -19,7 +19,6 @@ import { ensureUserHomeDir } from '@shard/user'
 import { type User } from '@/lib/server/auth'
 import { getConfig, isPublishingEnabled } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
-import { getEditorSessionManager } from '@/lib/server/editorSessions'
 import {
   countRunningTrackedCommands,
   getUserTrackedCommandState,
@@ -29,6 +28,7 @@ import { type ActionResponse, type TrackedCommandExit } from '@/lib/util'
 import { type Prisma, type Project } from '@/prisma/generated/client'
 
 import { type BuildPlan } from './artifacts'
+import { getShardConnection } from './shardConnection'
 
 const PUBLISH_KEY_PREFIX = 'publish-'
 
@@ -109,7 +109,7 @@ export async function startPublish(
   await fs.mkdir(stagingDir, { recursive: true })
 
   // Must be the shared mount: a second overlay on the same upper layer would corrupt the project.
-  const mount = stack.use(await getEditorSessionManager().acquireProjectMount(owner, project))
+  const mount = stack.use(await getShardConnection().acquireProjectMount(owner, project))
 
   const homeDir = await ensureUserHomeDir(owner)
   const elanDir = getElanDir()
@@ -135,7 +135,7 @@ export async function startPublish(
       '--setenv', 'GIT_CONFIG_COUNT', '1',
       '--setenv', 'GIT_CONFIG_KEY_0', 'safe.directory',
       '--setenv', 'GIT_CONFIG_VALUE_0', '*',
-      ...mount.value.bindArgs,
+      ...mount.bindArgs,
       '--chdir', bwrapProjectDir(project.name),
       '--',
       path.join(SANDBOX_SCRIPTS_DIR, plan.script), SANDBOX_OUT_DIR, ...plan.args,
