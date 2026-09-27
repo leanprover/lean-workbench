@@ -66,7 +66,11 @@ APP_PID=$!
 trap 'kill $APP_PID 2>/dev/null' EXIT
 
 # Start shard manager in the background
-BASE_URL="$BASE_URL" node "${SCRIPT_DIR}/shard-manager/src/server.ts" &
+if [ "${NODE_ENV}" = "production" ]; then
+    BASE_URL="$BASE_URL" node "${SCRIPT_DIR}/shard-manager/src/server.ts" &
+else
+    BASE_URL="$BASE_URL" node --watch --watch-preserve-output "${SCRIPT_DIR}/shard-manager/src/server.ts" &
+fi
 SHARD_MANAGER_PID=$!
 # Replaces previous trap
 trap 'kill $APP_PID $SHARD_MANAGER_PID 2>/dev/null' EXIT
