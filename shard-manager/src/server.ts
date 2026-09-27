@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises'
-import { createServer, IncomingMessage, type ServerResponse } from 'node:http'
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import path from 'node:path'
 
 import {
@@ -104,8 +104,8 @@ async function settleAndLogErrors(action: string, promises: Iterable<Promise<unk
 }
 
 let stopping = false
-async function shutdown() {
-  console.log('Shard manager shutdown triggered')
+async function shutdown(reason: string, error?: unknown) {
+  console.log(`Shard manager shutdown triggered by ${reason}`, error)
   if (stopping) return
   stopping = true
 
@@ -132,7 +132,9 @@ async function shutdown() {
   )
 }
 
-process.once('SIGTERM', shutdown)
-process.once('SIGINT', shutdown)
-process.once('uncaughtException', shutdown)
-process.once('unhandledRejection', shutdown)
+process.once('SIGTERM', () => shutdown('SIGTERM'))
+process.once('SIGINT', () => shutdown('SIGINT'))
+process.once('uncaughtException', error => shutdown(`uncaught exception`, error))
+process.on('unhandledRejection', error => {
+  console.error('Unhandled rejection at the shard manager top level:', error)
+})
