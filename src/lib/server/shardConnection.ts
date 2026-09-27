@@ -52,6 +52,7 @@ async function fetchFromShard<R extends ToShardRoute>(
       res.setEncoding('utf-8')
       const buf: string[] = []
       res.on('data', c => buf.push(String(c)))
+      res.on('error', reject)
       res.on('end', () => {
         if (res.statusCode !== 200) {
           reject(new Error(`Unexpected status code from socket request: ${res.statusCode}`))
