@@ -30,7 +30,7 @@ import {
   zTemplateCreation,
 } from '@/lib/server/projectTemplate'
 import { deletePublications } from '@/lib/server/publish'
-import { getShardConnection } from '@/lib/server/shardConnection'
+import { getShardCoordinator } from '@/lib/server/shardConnection'
 import { serverAction, submitAction } from '@/lib/server/util'
 import { type ActionResponse } from '@/lib/util'
 
@@ -68,10 +68,10 @@ export const deleteUser = serverAction(zDeleteUser, async ({ userId }) => {
   if (!target) return { error: 'User not found' }
 
   // Kill active editor sessions for this user
-  const shardConnection = getShardConnection()
-  for (const s of await shardConnection.listSessions()) {
+  const coordinator = getShardCoordinator()
+  for (const s of await coordinator.listSessions()) {
     if (s.viewerId === target.id) {
-      await shardConnection.killSession(s.projectId, s.sessionId)
+      await coordinator.killSession(s.projectId, s.sessionId)
     }
   }
 
@@ -123,8 +123,8 @@ const zEditorSession = z.object({
 
 export const killEditorSession = serverAction(zEditorSession, async ({ projectId, sessionId }) => {
   await requireAdmin()
-  const shardConnection = getShardConnection()
-  await shardConnection.killSession(projectId, sessionId)
+  const coordinator = getShardCoordinator()
+  await coordinator.killSession(projectId, sessionId)
   return { ok: undefined }
 })
 

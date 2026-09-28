@@ -1,16 +1,9 @@
 import 'server-only'
 
-import { request } from 'node:http'
-
-import {
-  SHARD_MANAGER_PATH,
-  SHARD_MANAGER_SOCK,
-  type ToShardRequests,
-  type ToShardResponses,
-  type ToShardRoute,
-  toShardRoutes,
-} from '@leanprover/workbench-shared'
-import { existsAsync } from '@leanprover/workbench-shared/node'
+import type { ShardManagerAPIRouter } from '@leanprover/workbench-shard-manager'
+import { SHARD_MANAGER_SOCK } from '@leanprover/workbench-shared'
+import { createTRPCClient, httpLink } from '@trpc/client'
+import { Pool } from 'undici'
 
 import { type Project } from '@/prisma/generated/client'
 
@@ -34,43 +27,20 @@ export interface EditorSessionInfo {
   projectName: string
 }
 
-async function fetchFromShard<R extends ToShardRoute>(
-  route: R,
-  data: ToShardRequests[R],
-): Promise<ToShardResponses[R]> {
-  // TODO: make helper function for this logic and logic in lib/server/collabServer.ts
-  const deadline = Date.now() + 10_000
-  while (!(await existsAsync(SHARD_MANAGER_SOCK))) {
-    if (Date.now() > deadline) throw new Error(`timeout waiting for ${SHARD_MANAGER_SOCK} to be available`)
-    await new Promise(r => setTimeout(r, 50))
-  }
+const dispatcher = new Pool('http://shard-connection-goes-over-uds/', { connect: { socketPath: SHARD_MANAGER_SOCK } })
+const shardConnection = createTRPCClient<ShardManagerAPIRouter>({
+  links: [
+    httpLink({
+      url: 'http://shard-connection-goes-over-uds/',
+      fetch(url, init) {
+        const options = { ...(init ?? {}), dispatcher }
+        return fetch(url, options)
+      },
+    }),
+  ],
+})
 
-  return new Promise<ToShardResponses[R]>((resolve, reject) => {
-    const body = JSON.stringify({ route, data: toShardRoutes[route].request.parse(data) })
-    const headers = { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) }
-    const req = request({ socketPath: SHARD_MANAGER_SOCK, path: SHARD_MANAGER_PATH, method: 'POST', headers }, res => {
-      res.setEncoding('utf-8')
-      const buf: string[] = []
-      res.on('data', c => buf.push(String(c)))
-      res.on('error', reject)
-      res.on('end', () => {
-        if (res.statusCode !== 200) {
-          reject(new Error(`Unexpected status code from socket request: ${res.statusCode}`))
-        } else {
-          try {
-            const response = toShardRoutes[route].response.parse(JSON.parse(buf.join('')))
-            resolve(response as ToShardResponses[R]) // Valid cast: typescript doesn't correlate the types automatically
-          } catch (e) {
-            reject(new Error(`shard route ${route} returned invalid data ${buf.join('')}: ${e}`))
-          }
-        }
-      })
-    })
-    req.on('error', reject)
-    req.end(body)
-  })
-}
-export class ShardConnectionManager {
+export class ShardCoordinator {
   /**
    * Lease the project's shared {@link ProjectMountHandle}, building it if none exists.
    *
@@ -81,15 +51,21 @@ export class ShardConnectionManager {
    */
   async acquireProjectMount(owner: User, project: Project): Promise<AsyncDisposable & { readonly bindArgs: string[] }> {
     const packageSets = await getDb().projectPackageSet.findMany({ where: { projectId: project.id } })
-    const { leaseId, bindArgs } = await fetchFromShard('acquireProjectMount', {
+    const { leaseId, bindArgs } = await shardConnection.acquireProjectMount.mutate({
       owner,
       project,
       packageSets: packageSets.map(({ packageSet }) => packageSet),
     })
+
+    /*await fetchFromShard('acquireProjectMount', {
+      owner,
+      project,
+      packageSets: packageSets.map(({ packageSet }) => packageSet),
+    })*/
     return {
       bindArgs,
       async [Symbol.asyncDispose]() {
-        await fetchFromShard('releaseProjectMount', { leaseId })
+        await shardConnection.releaseProjectMount.mutate({ leaseId })
       },
     }
   }
@@ -100,7 +76,7 @@ export class ShardConnectionManager {
    * Returns the path to the corresponding VSCode `iframe`. */
   async ensureSession(viewer: User, owner: User, project: Project): Promise<string> {
     const packageSets = await getDb().projectPackageSet.findMany({ where: { projectId: project.id } })
-    const response = await fetchFromShard('ensureSession', {
+    const response = await shardConnection.ensureSession.mutate({
       viewer,
       owner,
       project,
@@ -110,19 +86,19 @@ export class ShardConnectionManager {
   }
 
   async killSession(projectId: string, sessionId: string): Promise<void> {
-    await fetchFromShard('killSession', { projectId, sessionId })
+    await shardConnection.killSession.mutate({ projectId, sessionId })
   }
 
   /** Return the path to `sessionId`'s VS Code UDS if `userId` is allowed to view it,
    * else `undefined`. */
   async socketPathForViewer(userId: string, sessionId: string): Promise<string | undefined> {
-    const response = await fetchFromShard('getSocketPath', { sessionId })
+    const response = await shardConnection.getSocketPath.query({ sessionId })
     return response?.viewerId === userId ? response.socketPath : undefined
   }
 
   async listSessions(): Promise<(EditorSessionInfo | UnknownEditorSession)[]> {
     const result: (EditorSessionInfo | UnknownEditorSession)[] = []
-    const sessions = await fetchFromShard('listSessions', null)
+    const sessions = await shardConnection.listSessions.query()
     for (const { projectId, servers } of sessions) {
       const project = await getDb().project.findUnique({
         where: { id: projectId },
@@ -157,7 +133,7 @@ export class ShardConnectionManager {
 
 /* NB: if shardConnection gains any state that would need to survive HMR,
  * this object should be attached to globalThis */
-const shardConnection = new ShardConnectionManager()
-export function getShardConnection(): ShardConnectionManager {
-  return shardConnection
+const shardCoordinator = new ShardCoordinator()
+export function getShardCoordinator(): ShardCoordinator {
+  return shardCoordinator
 }

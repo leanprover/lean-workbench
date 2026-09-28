@@ -1,57 +1,144 @@
+/*
+ * In this file, we use tRPC to construct the shard manager API.
+ */
+
 import { randomUUID } from 'node:crypto'
 
-import { type ToShardRequests, type ToShardResponses, type ToShardRoute } from '@leanprover/workbench-shared'
+import { zBaseProject, zBaseUser, zProjectId, zUserId, zUserName } from '@leanprover/workbench-shared'
+import { initTRPC, TRPCError } from '@trpc/server'
+import { z } from 'zod'
 
-import { ensureSession } from './editorSessions.ts'
+import { ensureSession as ensureSessionImpl } from './editorSessions.ts'
 import { buildProjectMount, type ProjectMountHandle } from './projectMount.ts'
 import type { RcMapLease } from './rcMap.ts'
 import { mounts, vscServers } from './state.ts'
 
+const t = initTRPC.create()
+
+/**
+ * We want graceful shutdown to completely finish all in-flight mutations before terminating,
+ * This is accomplished by wrapping the mutations we want to finish in `trackMutation`.
+ * The mutation won't run if the server is marked as preparing to shut down,
+ * and the mutation will be waited on (with `Promise.allSettled`) as part of orderly shutdown.
+ */
+async function trackMutation<Output>(thunk: () => Promise<Output>): Promise<Output> {
+  if (serverIsStopping.current) throw new TRPCError({ code: 'SERVICE_UNAVAILABLE' })
+  const mutation = thunk()
+  inFlightTrpcMutations.add(mutation)
+  try {
+    return await mutation
+  } finally {
+    inFlightTrpcMutations.delete(mutation)
+  }
+}
+export const serverIsStopping = { current: false }
+export const inFlightTrpcMutations = new Set<Promise<unknown>>()
+
+/**
+ * In order to delay moving publication to shards, we need a way of leasing
+ * (and returning the lease for) a ProjectMountHandle.
+ */
+const acquireProjectMount = t.procedure
+  .input(z.object({ owner: zBaseUser, project: zBaseProject, packageSets: z.array(z.string()) }))
+  .output(z.object({ leaseId: z.uuidv4(), bindArgs: z.array(z.string()) }))
+  .mutation(opts =>
+    trackMutation(async () => {
+      const { owner, project, packageSets } = opts.input
+      const mount = await mounts.acquire(project.id, () => buildProjectMount(owner, project, packageSets))
+      const leaseId = randomUUID()
+      externallyLeasedProjectMountHandles.set(leaseId, mount)
+      return { leaseId, bindArgs: mount.value.bindArgs }
+    }),
+  )
+
+/** Release mount lease acquired by `acquireProjectMount` */
+const releaseProjectMount = t.procedure
+  .input(z.object({ leaseId: z.uuidv4() }))
+  .output(z.null())
+  .mutation(opts =>
+    trackMutation(async () => {
+      const lease = externallyLeasedProjectMountHandles.get(opts.input.leaseId)
+      externallyLeasedProjectMountHandles.delete(opts.input.leaseId)
+      await lease?.[Symbol.asyncDispose]()
+      return null
+    }),
+  )
 const externallyLeasedProjectMountHandles: Map<string, RcMapLease<ProjectMountHandle>> = new Map()
 
-export const handlers: { [R in ToShardRoute]: (request: ToShardRequests[R]) => Promise<ToShardResponses[R]> } = {
-  acquireProjectMount: async ({ owner, project, packageSets }) => {
-    const mount = await mounts.acquire(project.id, () => buildProjectMount(owner, project, packageSets))
-    const leaseId = randomUUID()
-    externallyLeasedProjectMountHandles.set(leaseId, mount)
-    return { leaseId, bindArgs: mount.value.bindArgs }
-  },
+/**
+ * Ensure an editor session exists for `viewer` on `owner/project`.
+ * Returns a URL to point the editor iframe at.
+ */
+const ensureSession = t.procedure
+  .input(
+    z.object({
+      viewer: zBaseUser,
+      owner: z.object({ id: z.string(), name: z.string() }),
+      project: zBaseProject,
+      packageSets: z.array(z.string()),
+    }),
+  )
+  .output(z.object({ iframeUrl: z.string() }))
+  .mutation(opts =>
+    trackMutation(async () => {
+      const { viewer, owner, project, packageSets } = opts.input
+      return { iframeUrl: await ensureSessionImpl(viewer, owner, project, packageSets) }
+    }),
+  )
 
-  releaseProjectMount: async ({ leaseId }) => {
-    const lease = externallyLeasedProjectMountHandles.get(leaseId)
-    externallyLeasedProjectMountHandles.delete(leaseId)
-    await lease?.[Symbol.asyncDispose]()
-    return null
-  },
-
-  ensureSession: async ({ viewer, owner, project, packageSets }) => {
-    return { iframeUrl: await ensureSession(viewer, owner, project, packageSets) }
-  },
-
-  killSession: async ({ projectId, sessionId }) => {
-    const projectSessions = vscServers.get(projectId) ?? []
-    const session = projectSessions.find(s => s.uuid === sessionId)
-    if (!session) {
-      console.warn(`Tried to kill nonexistent editor session (ID ${sessionId})`)
+const killSession = t.procedure
+  .input(z.object({ projectId: zProjectId, sessionId: z.string() }))
+  .output(z.null())
+  .mutation(opts =>
+    trackMutation(async () => {
+      const { projectId, sessionId } = opts.input
+      const projectSessions = vscServers.get(projectId) ?? []
+      const session = projectSessions.find(s => s.uuid === sessionId)
+      if (!session) {
+        console.warn(`Tried to kill nonexistent editor session (ID ${sessionId})`)
+        return null
+      }
+      vscServers.set(
+        projectId,
+        projectSessions.filter(s => s !== session),
+      )
+      await session[Symbol.asyncDispose]()
       return null
-    }
-    vscServers.set(
-      projectId,
-      projectSessions.filter(s => s !== session),
-    )
-    await session[Symbol.asyncDispose]()
-    return null
-  },
+    }),
+  )
 
-  getSocketPath: async ({ sessionId }) => {
+/** Returns the socket path and viewer associated with a specific session */
+const getSocketPath = t.procedure
+  .input(z.object({ sessionId: z.string() }))
+  .output(z.object({ socketPath: z.string(), viewerId: zUserId }).nullable())
+  .query(async opts => {
     for (const servers of vscServers.values()) {
-      const s = servers.find(s => s.uuid === sessionId)
+      const s = servers.find(s => s.uuid === opts.input.sessionId)
       if (s) return { socketPath: s.socketPath, viewerId: s.viewer.id }
     }
     return null
-  },
+  })
 
-  listSessions: async () => {
+const listSessions = t.procedure
+  .output(
+    z.array(
+      z.object({
+        projectId: zProjectId,
+        servers: z.array(z.object({ uuid: z.uuidv4(), viewer: z.object({ id: zUserId, name: zUserName }) })),
+      }),
+    ),
+  )
+  .query(() => {
     return [...vscServers.entries().map(([projectId, servers]) => ({ projectId, servers }))]
-  },
-}
+  })
+
+export const shardManagerRouter = t.router({
+  acquireProjectMount,
+  releaseProjectMount,
+  ensureSession,
+  getSocketPath,
+  killSession,
+  listSessions,
+})
+
+export type ShardManagerAPIRouter = typeof shardManagerRouter

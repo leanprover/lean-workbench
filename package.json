@@ -25,9 +25,11 @@
   "dependencies": {
     "@conform-to/zod": "^1.21.1",
     "@hocuspocus/provider": "^4.0.0",
+    "@leanprover/workbench-shard-manager": "^0.1.0",
     "@leanprover/workbench-shared": "*",
     "@prisma/adapter-better-sqlite3": "^7.7.0",
     "@prisma/client": "^7.7.0",
+    "@trpc/client": "^11.19.0",
     "better-auth": "^1.6.2",
     "chokidar": "^5.0.0",
     "friendly-words": "1.2.1",
@@ -38,6 +40,7 @@
     "react-aria-components": "^1.21.1",
     "react-dom": "^19.2.4",
     "swr": "^2.4.1",
+    "undici": "^7.30.0",
     "ws": "^8.20.0",
     "zod": "^4.4.3"
   },

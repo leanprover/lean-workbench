@@ -28,7 +28,7 @@ import { type ActionResponse, type TrackedCommandExit } from '@/lib/util'
 import { type Prisma, type Project } from '@/prisma/generated/client'
 
 import { type BuildPlan } from './artifacts'
-import { getShardConnection } from './shardConnection'
+import { getShardCoordinator } from './shardConnection'
 
 const PUBLISH_KEY_PREFIX = 'publish-'
 
@@ -109,7 +109,7 @@ export async function startPublish(
   await fs.mkdir(stagingDir, { recursive: true })
 
   // Must be the shared mount: a second overlay on the same upper layer would corrupt the project.
-  const mount = stack.use(await getShardConnection().acquireProjectMount(owner, project))
+  const mount = stack.use(await getShardCoordinator().acquireProjectMount(owner, project))
 
   const homeDir = await ensureUserHomeDir(owner)
   const elanDir = getElanDir()

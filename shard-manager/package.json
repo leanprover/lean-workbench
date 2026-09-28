@@ -6,6 +6,7 @@
   "scripts": {
     "tsc": "tsc"
   },
+  "main": "src/export.ts",
   "dependencies": {
     "@leanprover/workbench-shared": "*"
   }

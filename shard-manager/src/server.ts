@@ -1,88 +1,15 @@
 import fs from 'node:fs/promises'
-import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import path from 'node:path'
 
-import {
-  SHARD_MANAGER_PATH,
-  SHARD_MANAGER_SOCK,
-  type ToShardRequests,
-  type ToShardRoute,
-  toShardRoutes,
-} from '@leanprover/workbench-shared'
-import z from 'zod'
+import { SHARD_MANAGER_SOCK } from '@leanprover/workbench-shared'
+import { createHTTPServer } from '@trpc/server/adapters/standalone'
 
-import { handlers } from './manager.ts'
+import { inFlightTrpcMutations, serverIsStopping, shardManagerRouter } from './manager.ts'
 import { collabServers, mounts, vscServers } from './state.ts'
 
-const SHARD_MAX_BODY_BYTES = 100 * 1024
-
-function writeError(res: ServerResponse, status: number, message: string) {
-  res.writeHead(status, { 'content-type': 'application/json' })
-  res.end(JSON.stringify({ error: message }))
-}
-
-/** Adapter for calling the handler in a type-checked manner */
-const toShardContracts: { [R in ToShardRoute]: { request: { parse(data: unknown): ToShardRequests[R] } } } =
-  toShardRoutes
-function prepareHandler<R extends ToShardRoute>(route: R, data: unknown) {
-  const request = toShardContracts[route].request.parse(data)
-  return async () => {
-    const response = await handlers[route](request)
-    return JSON.stringify(toShardRoutes[route].response.parse(response))
-  }
-}
-
-/**
- * Captures the duration of a request. Never throws.
- */
-async function handleRequest(req: IncomingMessage, res: ServerResponse) {
-  try {
-    // Check request
-    if (req.method !== 'POST' || req.url !== SHARD_MANAGER_PATH) {
-      writeError(res, 404, `Not found: ${req.method} ${req.url}`)
-      return
-    }
-
-    // Read body
-    const chunks: Buffer[] = []
-    let size = 0
-    for await (const chunk of req) {
-      const newChunk = chunk as Buffer // Because we don't setEncoding, we're certain to get a Buffer
-      size += newChunk.length
-      chunks.push(newChunk)
-      if (size > SHARD_MAX_BODY_BYTES) {
-        writeError(res, 413, 'request body too large')
-        return
-      }
-    }
-
-    // Parse response and obtain handler
-    let responseThunk: () => Promise<string>
-    try {
-      const { route, data } = z
-        .object({ route: z.enum(Object.keys(toShardRoutes) as ToShardRoute[]), data: z.unknown() })
-        .parse(JSON.parse(Buffer.concat(chunks).toString('utf-8')))
-      responseThunk = prepareHandler(route, data)
-    } catch (e) {
-      writeError(res, 400, `request body invalid: ${e instanceof Error ? e.message : String(e)}`)
-      return
-    }
-
-    // Handle request request
-    const response = await responseThunk()
-    res.writeHead(200, { 'content-type': 'application/json', 'content-length': Buffer.byteLength(response) })
-    res.end(response)
-  } catch (e) {
-    writeError(res, 500, `unexpected error handling shard request: ${e instanceof Error ? e.message : String(e)}`)
-  }
-}
-
-const inFlightRequests = new Set<Promise<void>>()
-const server = createServer(async (req, res) => {
-  const inFlightRequest = handleRequest(req, res)
-  inFlightRequests.add(inFlightRequest)
-  await inFlightRequest
-  inFlightRequests.delete(inFlightRequest)
+const server = createHTTPServer({
+  router: shardManagerRouter,
+  maxBodySize: 100 * 1024, // Somewhat arbitrary default
 })
 
 await fs.mkdir(path.dirname(SHARD_MANAGER_SOCK), { recursive: true, mode: 0o700 })
@@ -103,15 +30,17 @@ async function settleAndLogErrors(action: string, promises: Iterable<Promise<unk
   )
 }
 
-let stopping = false
 async function shutdown(reason: string, error?: unknown) {
   console.log(`Shard manager shutdown triggered by ${reason}`, error)
-  if (stopping) return
-  stopping = true
+  if (serverIsStopping.current) return
+  serverIsStopping.current = true
 
   console.log('Closing server and finishing in-flight requests')
   await new Promise(resolve => server.close(resolve))
-  await settleAndLogErrors('waiting for requests to finish', inFlightRequests)
+  // At this point, in-flight HTTP have terminated, but the requests may be ongoing:
+  // we might still be trying to create a session, for example.
+  // This await lets all these finish in an orderly manner.
+  await settleAndLogErrors('waiting for in-flight procedures to finish', inFlightTrpcMutations)
 
   console.log('Terminating VSCode editor sessions')
   await settleAndLogErrors(
