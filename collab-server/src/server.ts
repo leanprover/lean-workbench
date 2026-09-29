@@ -7,7 +7,8 @@ import { Server } from '@hocuspocus/server'
 import { COLLAB_SOCKET_FILENAME } from '@leanprover/workbench-shared'
 import * as Y from 'yjs'
 
-import { COLLAB_TRPC_ROUTE, collabRouter, trpcExtension, YTEXT_KEY } from './index'
+import { COLLAB_TRPC_ROUTE, YTEXT_KEY } from './index'
+import { collabRouter, trpcExtension } from './trpc'
 
 /** Name of the `collab-server` database file. */
 const COLLAB_DB_FILENAME = 'collab.db'

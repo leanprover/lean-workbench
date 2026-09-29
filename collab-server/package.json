@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./trpc": "./src/trpc.ts"
   },
   "scripts": {
     "watch": "concurrently --names esbuild,tsc --kill-others-on-fail 'npm run watch:esbuild' 'npm run watch:tsc'",
