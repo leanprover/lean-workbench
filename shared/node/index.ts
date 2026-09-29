@@ -35,7 +35,8 @@ export async function waitForFileToExist(
 /** Returns the full path of a fresh scratch directory.
  * Uniqueness is guaranteed by mkdtemp, but `label` is supplied as a
  * human-readable breadcrumb in case it's useful for debugging what
- * was happening after a server crash. */
+ * was happening after a server crash. For tracked commands, this should
+ * generally be the tracking key. */
 export async function makeTempBuildDir(label: string): Promise<string> {
   await fs.mkdir(getTempBuildDir(), { recursive: true })
   return fs.mkdtemp(path.join(getTempBuildDir(), `${label}-`))
