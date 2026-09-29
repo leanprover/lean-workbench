@@ -6,8 +6,7 @@ import type { VscodeServerHandle } from './vscodeServer.ts'
 /** projectId ↦ shared {@link ProjectMountHandle}
  *
  * Exactly one of these should exist per open project.
- * Leased by the project's collab-server
- * and by every VS Code server editing the project. */
+ * Leased by every VS Code server editing the project. */
 export const mounts = new RcMap<string, ProjectMountHandle>()
 
 /** projectId ↦ shared {@link CollabServerHandle}

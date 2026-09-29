@@ -34,12 +34,7 @@ export async function ensureSession(
 
     const acquireMount = () => mounts.acquire(project.id, () => buildProjectMount(owner, project, packageSets))
 
-    const collabServerLease = await collabServers.acquire(project.id, async () => {
-      const collabMountLease = await acquireMount()
-      const collab = new CollabServerHandle(project, collabMountLease.value.bindArgs)
-      collab.addDisposable(async () => collabMountLease[Symbol.asyncDispose]())
-      return collab
-    })
+    const collabServerLease = await collabServers.acquire(project.id, async () => new CollabServerHandle(project))
     vscServer.addDisposable(async () => collabServerLease[Symbol.asyncDispose]())
 
     const vscMountLease = await acquireMount()

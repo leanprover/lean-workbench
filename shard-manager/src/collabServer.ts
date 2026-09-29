@@ -5,7 +5,6 @@ import path from 'node:path'
 import {
   type BaseProject,
   BWRAP_COLLAB_SERVER_DIR,
-  bwrapProjectDir,
   COLLAB_SOCKET_FILENAME,
 } from '@leanprover/workbench-shared'
 import { BWRAP_ARGS, getCollabServerDir, waitForFileToExist } from '@leanprover/workbench-shared/node'
@@ -20,13 +19,10 @@ export class CollabServerHandle implements AsyncDisposable {
   /** Path to the `collab-server` UDS file. */
   readonly socketPath: string = path.join(this.workDir, COLLAB_SOCKET_FILENAME)
   /** Project that this server manages. */
-  private readonly project
-  /** Arguments to `bwrap` that bind the project directory. Placed at the end. */
-  private readonly projectBindArgs
+  private readonly project: BaseProject
 
-  constructor(project: BaseProject, projectBindArgs: string[]) {
+  constructor(project: BaseProject) {
     this.project = project
-    this.projectBindArgs = projectBindArgs
   }
 
   /** The `bwrap` process. Defined iff the process is running. */
@@ -58,7 +54,6 @@ export class CollabServerHandle implements AsyncDisposable {
         await fs.rm(this.workDir, { recursive: true, force: true })
       })
 
-      const sandboxProjectDir = bwrapProjectDir(this.project.name)
       const proc = spawn(
         'bwrap',
         // prettier-ignore
@@ -69,11 +64,9 @@ export class CollabServerHandle implements AsyncDisposable {
           '--ro-bind', getCollabServerDir(), getCollabServerDir(),
           '--bind', this.workDir, BWRAP_COLLAB_SERVER_DIR,
           '--chdir', BWRAP_COLLAB_SERVER_DIR,
-          ...this.projectBindArgs,
           '--',
           '/usr/bin/node',
           path.join(getCollabServerDir(), 'dist', 'server.js'),
-          sandboxProjectDir,
         ],
         { stdio: 'inherit' },
       )
