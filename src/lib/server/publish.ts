@@ -14,7 +14,6 @@ import {
   getScriptsDir,
 } from '@leanprover/workbench-shared/node'
 import { BWRAP_ARGS, bwrapHomeDir } from '@leanprover/workbench-shared/node'
-import { ensureUserHomeDir } from '@shard/user'
 
 import { type User } from '@/lib/server/auth'
 import { getConfig, isPublishingEnabled } from '@/lib/server/config'
@@ -111,7 +110,7 @@ export async function startPublish(
   // Must be the shared mount: a second overlay on the same upper layer would corrupt the project.
   const mount = stack.use(await getShardCoordinator().acquireProjectMount(owner, project))
 
-  const homeDir = await ensureUserHomeDir(owner)
+  const { homeDir } = await getShardCoordinator().ensureHomeDirectory(owner)
   const elanDir = getElanDir()
   const sandboxHomeDir = bwrapHomeDir(owner.name)
 

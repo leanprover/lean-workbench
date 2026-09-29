@@ -91,6 +91,10 @@ export class ShardCoordinator {
     return response?.viewerId === userId ? response.socketPath : undefined
   }
 
+  async ensureHomeDirectory(user: User) {
+    return shardConnection.ensureUserHomeDir.mutate(user)
+  }
+
   async listSessions(): Promise<(EditorSessionInfo | UnknownEditorSession)[]> {
     const result: (EditorSessionInfo | UnknownEditorSession)[] = []
     const sessions = await shardConnection.listSessions.query()

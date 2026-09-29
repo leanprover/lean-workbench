@@ -12,6 +12,7 @@ import { ensureSession as ensureSessionImpl } from './editorSessions.ts'
 import { buildProjectMount, type ProjectMountHandle } from './projectMount.ts'
 import type { RcMapLease } from './rcMap.ts'
 import { mounts, vscServers } from './state.ts'
+import { ensureUserHomeDir as ensureUserHomeDirImpl } from './user.ts'
 
 const t = initTRPC.create()
 
@@ -64,6 +65,19 @@ const releaseProjectMount = t.procedure
     }),
   )
 const externallyLeasedProjectMountHandles: Map<string, RcMapLease<ProjectMountHandle>> = new Map()
+
+/**
+ * Build a home directory for the user if it doesn't exist.
+ * (Hopefully) temporary, only needed to support publication workflow within Next.js
+ */
+const ensureUserHomeDir = t.procedure
+  .input(zBaseUser)
+  .output(z.object({ homeDir: z.string() }))
+  .mutation(opts =>
+    trackMutation(async () => {
+      return { homeDir: await ensureUserHomeDirImpl(opts.input) }
+    }),
+  )
 
 /**
  * Ensure an editor session exists for `viewer` on `owner/project`.
@@ -139,6 +153,7 @@ export const shardManagerRouter = t.router({
   getSocketPath,
   killSession,
   listSessions,
+  ensureUserHomeDir,
 })
 
 export type ShardManagerAPIRouter = typeof shardManagerRouter
