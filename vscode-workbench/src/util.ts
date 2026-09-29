@@ -68,6 +68,14 @@ export function equalAwarenessUsers(u: AwarenessUser, v: AwarenessUser): boolean
   return v.name === u.name && v.color === u.color && v.image === u.image
 }
 
+/**
+ * Name of a Y.Doc with no text contents, just Hocuspocus awareness.
+ *
+ * Hocuspocus works on a model of tracking user awareness in each Y.Doc document,
+ * but a workspace has several Y.Doc documents and we want to track what users are active in the workspace as a whole.
+ *
+ * Therefore, we attach Hocuspocus awareness only to this document that never has contents.
+ */
 export const AWARENESS_DOC_NAME = '<awareness>'
 export const AWARENESS_USER_KEY = 'user'
 export const AWARENESS_SELECTION_KEY = 'selection'

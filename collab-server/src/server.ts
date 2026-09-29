@@ -31,14 +31,6 @@ const upsertDocument = (path: string, data: Uint8Array): void => {
   upsertDocumentStatement.run(path, data)
 }
 
-function checkedToDiskPath(documentName: string): string {
-  const file = path.normalize(documentName)
-  if (!file.startsWith(projectDir)) {
-    throw new Error(`Path traversal in document name: '${documentName}' escapes '${projectDir}'`)
-  }
-  return file
-}
-
 // -- HTTPS/WS SERVER --
 const server = new Server({
   extensions: [
@@ -47,11 +39,20 @@ const server = new Server({
     // but we want to try it *before* trying the filesystem.
     new Database({
       async fetch({ documentName }) {
-        const data = selectDocument(documentName)
+        const normalizedPath = path.normalize(documentName)
+
+        // In normal operation, almost every document is fetched by absolute path under the project root directory;
+        // the sole exception is the fake `<awareness>` document (`AWARENESS_DOC_NAME` in `vscode-workbench/src/util.ts`).
+        // It isn't saved and never has document contents, so we return null for `<awareness>`
+        // (and, for that matter, for any other documents outside the project directory, but that shouldn't happen).
+        if (!normalizedPath.startsWith(projectDir)) return null
+        const relativePath = path.relative(projectDir, normalizedPath)
+
+        const data = selectDocument(relativePath)
         if (data) return data
         let content: string
         try {
-          content = await fs.readFile(checkedToDiskPath(documentName), 'utf-8')
+          content = await fs.readFile(normalizedPath, 'utf-8')
         } catch {
           return null
         }
@@ -60,7 +61,10 @@ const server = new Server({
         return Y.encodeStateAsUpdate(doc)
       },
       async store({ documentName, state }) {
-        upsertDocument(documentName, state)
+        const normalizedPath = path.normalize(documentName)
+        if (!normalizedPath.startsWith(projectDir)) return // This should not occur in normal operation
+        const relativePath = path.relative(projectDir, normalizedPath)
+        upsertDocument(relativePath, state)
       },
     }),
   ],
