@@ -128,7 +128,7 @@ make clean
 
 ## Architecture
 
-![Architectue diagram](./architecture.svg)
+![Architecture diagram](./architecture.svg)
 
 Three processes run inside the Docker container:
 
@@ -138,11 +138,14 @@ Three processes run inside the Docker container:
    On the publish origin it serves built publications as static files and nothing else.
 
 2. **Next.js server** (background) — Next.js app on port 3002.
-   Handles authentication, project CRUD API, the setup UI,
-   and spawning code-server processes inside bwrap sandboxes.
+   Handles authentication, project CRUD API, and the setup UI.
 
-3. **code-server** (one per active editing session) — spawned on demand by Next.js when a user opens a project.
-   Each runs inside its own bwrap sandbox on a dynamically allocated port (3010, 3011, ...).
+3. **Shard manager** — accessed by Next.js via a tRPC API over a Unix domain socket.
+   This process dynamically spawns the code servers and collaboration servers needed for editing sessions,
+   which each run inside their own bubblewrap sandbox.
+
+This design is on an incremental path to supporting horizontal scaling by allowing multiple servers to run independent shard managers.
+The shards will all connect to a single shard coordinator in the single Next.js server.
 
 ### Key paths
 
@@ -151,7 +154,7 @@ Three processes run inside the Docker container:
 | `src/instrumentation.ts` | Runs once at startup to initialize the Next.js server |
 | `src/prisma/migrations/` | Numbered SQL migration files, run in order at server startup |
 | `nginx.conf.template` | Reverse proxy config with dynamic per-session includes |
-| `start.sh` | Container entrypoint: starts app + nginx |
+| `start.sh` | Container entrypoint: starts app + nginx + shard manager |
 | `install.sh` | End-user installer (generates Docker Compose files) |
 
 ## Data volume layout
@@ -183,7 +186,7 @@ and `~/.lean-workbench/data/` (directory on host system) for `install.sh` deploy
   templates/                    Project templates (discovered at runtime)
     hello/
       metadata.json             { "name": "hello", ... }
-                                (see `zTemplateMetadata` in `src/lib/server/util.ts`)
+                                (see `zTemplateMetadata` in `src/lib/server/projectTemplate.ts`)
       lean-toolchain
       lakefile.toml
       Main.lean

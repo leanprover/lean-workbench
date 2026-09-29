@@ -1,6 +1,6 @@
 legend: Legend {
   fs: File system resources\nResources represented inside a process boundary are\nowned/managed by that process. {style.fill: "#fcd87d"}
-  bwrap: Bubblewraped process {style.stroke: "#ff0000"}
+  bwrap: Bubblewrapped process {style.stroke: "#ff0000"}
 }
 
 clients: {
@@ -32,13 +32,18 @@ server1: Server (connecting public HTTPS to localhost:8080) {
     nextjs: Next.js (localhost:3002) {
       db: SQLite database {style.fill: "#fcd87d"}
       templateCanonical: Authoritative templates {style.fill: "#fcd87d"}
+      packageSets: Package sets {style.fill: "#fcd87d"}
       elanCanonical: Authoritative lean versions {style.fill: "#fcd87d"}
       publication: Publications {style.fill: "#fcd87d"}
     }
     projectWorkspaces: Project workspaces {style.fill: "#fcd87d"}
     shard: Shard Manager {
-      edA1: Alex's editor session for alex/foo (1) {host: VSC Extension Host {lsp: Lean LSP}; style: {stroke: "#ff0000"}}
-      edA2: Alex's editor session for alex/foo (2) {host: VSC Extension Host {lsp: Lean LSP}; style: {stroke: "#ff0000"}}
+      edA1: Alex's editor session for alex/foo\n(two browser windows, so two extension hosts with two Lean LSPs) {
+        host1: VSC Extension Host 1 {lsp: Lean LSP}
+        style: {stroke: "#ff0000"}
+        host2: VSC Extension Host 2 {lsp: Lean LSP}
+        style: {stroke: "#ff0000"}
+      }
       edB1: Alex's editor session for barb/bar {host: VSC Extension Host {lsp: Lean LSP}; style: {stroke: "#ff0000"}}
       edB2: Barb's editor session for barb/bar {host: VSC Extension Host {lsp: Lean LSP}; style: {stroke: "#ff0000"}}
       edB3: Carla's editor session for barb/bar {host: VSC Extension Host {lsp: Lean LSP}; style: {stroke: "#ff0000"}}
@@ -55,7 +60,7 @@ server1: Server (connecting public HTTPS to localhost:8080) {
 server1.docker.nextjs -> server1.docker.projectWorkspaces: creation, deletion
 server1.docker.projectWorkspaces <- server1.docker.shard: building project mounts
 server1.docker.nextjs -> server1.docker.shard.mounts: publishing leases access\nvia the next-to-shard API {style.stroke-dash: 3}
-server1.docker.shard -> server1.docker.nextjs.templateCanonical: read-only {style.stroke-dash: 3}
+server1.docker.shard -> server1.docker.nextjs.packageSets: read-only {style.stroke-dash: 3}
 server1.docker.shard -> server1.docker.nextjs.elanCanonical: read-only {style.stroke-dash: 3}
 
 server1.docker.nginx2 -> server1.docker.nginx: checking auth
@@ -74,8 +79,7 @@ clients.compA.vscFoo1 <-> server1.docker.nginx2
 server1.docker.nginx2 <-> server1.docker.shard.edA1: websocket proxied\nover uds
 server1.docker.shard.collabA <-> server1.docker.shard.edA1: websocket over uds
 clients.compA.vscFoo2 <-> server1.docker.nginx2
-server1.docker.nginx2 <-> server1.docker.shard.edA2: websocket proxied\nover uds
-server1.docker.shard.collabA <-> server1.docker.shard.edA2: websocket over uds
+server1.docker.nginx2 <-> server1.docker.shard.edA1: websocket proxied\nover uds
 clients.compA.vscBar <-> server1.docker.nginx2
 server1.docker.nginx2 <-> server1.docker.shard.edB1: websocket proxied\nover uds
 server1.docker.shard.collabB <-> server1.docker.shard.edB1: websocket over uds
