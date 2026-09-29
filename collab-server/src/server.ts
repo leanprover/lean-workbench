@@ -4,7 +4,10 @@ import { DatabaseSync } from 'node:sqlite'
 
 import { Database } from '@hocuspocus/extension-database'
 import { Server } from '@hocuspocus/server'
-import { COLLAB_DB_FILENAME, COLLAB_SOCKET_FILENAME } from '@leanprover/workbench-shared'
+import { COLLAB_SOCKET_FILENAME } from '@leanprover/workbench-shared'
+
+/** Name of the `collab-server` database file. */
+const COLLAB_DB_FILENAME = 'collab.db'
 
 // -- CLI --
 if (process.argv.length !== 2) {
