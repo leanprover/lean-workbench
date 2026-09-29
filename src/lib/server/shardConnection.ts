@@ -57,11 +57,6 @@ export class ShardCoordinator {
       packageSets: packageSets.map(({ packageSet }) => packageSet),
     })
 
-    /*await fetchFromShard('acquireProjectMount', {
-      owner,
-      project,
-      packageSets: packageSets.map(({ packageSet }) => packageSet),
-    })*/
     return {
       bindArgs,
       async [Symbol.asyncDispose]() {

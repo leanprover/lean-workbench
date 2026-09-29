@@ -207,7 +207,7 @@ and `~/.lean-workbench/data/` (directory on host system) for `install.sh` deploy
         .config/git/config         Git identity seeded from the user's profile
       overlay-work/<project-uuid>/    overlayfs work directory
       overlay-merged/<project-uuid>/  overlayfs mount point, bound into the sandbox
-                                      (see `buildProjectMount` in `editorSessions.ts`)
+                                      (see `buildProjectMount` in `projectMount.ts`)
       <project-uuid>/           Project files, and the overlayfs upper layer
         lean-toolchain
         lakefile.toml

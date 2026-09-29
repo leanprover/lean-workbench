@@ -8,6 +8,7 @@
   },
   "main": "src/export.ts",
   "dependencies": {
-    "@leanprover/workbench-shared": "*"
+    "@leanprover/workbench-shared": "*",
+    "@trpc/server": "^11.19.0"
   }
 }

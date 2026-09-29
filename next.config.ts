@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   experimental: {
     authInterrupts: true,
+    serverComponentsHmrCache: false,
   },
   turbopack: {
     // Without this, Turbopack uses the parent dir as root
