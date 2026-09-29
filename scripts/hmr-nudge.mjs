@@ -8,7 +8,10 @@ import { readFile, utimes } from 'node:fs/promises'
 
 import chokidar from 'chokidar'
 
-const paths = process.argv.length < 3 ? ['.'] : process.argv.slice(2)
+const paths =
+  process.argv.length < 3
+    ? ['src', 'shard', 'collab-server/src', 'vscode-workbench/src', 'public', 'shard-manager']
+    : process.argv.slice(2)
 const hashes = new Map()
 const nudge = async file => {
   const hash = createHash('sha256')
