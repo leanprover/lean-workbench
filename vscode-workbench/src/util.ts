@@ -68,6 +68,8 @@ export function equalAwarenessUsers(u: AwarenessUser, v: AwarenessUser): boolean
   return v.name === u.name && v.color === u.color && v.image === u.image
 }
 
+/** Name of the Y.Doc whose awareness CRDT is shared by all collab clients. */
+export const AWARENESS_DOC_NAME = '<awareness>'
 export const AWARENESS_USER_KEY = 'user'
 export const AWARENESS_SELECTION_KEY = 'selection'
 /** Colors for remote collaborator cursors. */
