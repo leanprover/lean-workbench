@@ -1,5 +1,7 @@
 import { HocuspocusProviderWebsocket } from '@hocuspocus/provider'
 import { Server } from '@hocuspocus/server'
+import { COLLAB_TRPC_ROUTE, type CollabRouter, collabRouter, trpcExtension } from '@leanprover/workbench-collab-server'
+import { createTRPCClient, createWSClient, wsLink } from '@trpc/client'
 import * as assert from 'assert'
 import * as vs from 'vscode'
 
@@ -139,11 +141,24 @@ suite('Collaborative editing', () => {
     useTagTextDocumentChangePatch: boolean = true,
   ): Promise<TestHandles> => {
     // In-memory Hocuspocus server on an ephemeral port; no persistence, no signal handlers.
-    const server = new Server({ stopOnSignals: false, quiet: true })
+    const server = new Server({
+      stopOnSignals: false,
+      quiet: true,
+      extensions: [
+        trpcExtension(collabRouter, COLLAB_TRPC_ROUTE, {
+          openDocument: () => {},
+        }),
+      ],
+    })
     await new Promise<void>(resolve => server.httpServer.listen(0, '127.0.0.1', resolve))
     const url = `ws://127.0.0.1:${server.address.port}`
 
-    const mkClient = () => new HocuspocusProviderWebsocket({ url })
+    const mkClient = () => {
+      const collabSock = new HocuspocusProviderWebsocket({ url })
+      const tRpcWs = createWSClient({ url: `${url}${COLLAB_TRPC_ROUTE}` })
+      const tRpc = createTRPCClient<CollabRouter>({ links: [wsLink({ client: tRpcWs })] })
+      return { collabSock, tRpcWs, tRpc }
+    }
     const clients = Array.from({ length: count }, mkClient)
     const docs = await Promise.all(
       Array.from({ length: count }, () => vs.workspace.openTextDocument({ content: '', language: 'plaintext' })),
@@ -167,7 +182,10 @@ suite('Collaborative editing', () => {
         changeSub.dispose()
         for (const b of bindings) b.dispose()
         // Not disposing old docs to avoid 'did you mean to close unsaved buffer' warnings.
-        for (const c of clients) c.destroy()
+        for (const c of clients) {
+          await c.tRpcWs.close()
+          c.collabSock.destroy()
+        }
         await server.destroy()
       },
     }
