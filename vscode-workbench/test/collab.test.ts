@@ -1,6 +1,7 @@
 import { HocuspocusProviderWebsocket } from '@hocuspocus/provider'
 import { Server } from '@hocuspocus/server'
-import { COLLAB_TRPC_ROUTE, type CollabRouter, collabRouter, trpcExtension } from '@leanprover/workbench-collab-server'
+import { COLLAB_TRPC_ROUTE, type CollabRouter } from '@leanprover/workbench-collab-server'
+import { collabRouter, trpcExtension } from '@leanprover/workbench-collab-server/trpc'
 import { createTRPCClient, createWSClient, wsLink } from '@trpc/client'
 import * as assert from 'assert'
 import * as vs from 'vscode'

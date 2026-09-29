@@ -6,7 +6,8 @@ import { Server } from '@hocuspocus/server'
 import { BWRAP_COLLAB_DB_PATH, BWRAP_COLLAB_SOCK_PATH } from '@leanprover/workbench-shared'
 import * as Y from 'yjs'
 
-import { COLLAB_TRPC_ROUTE, collabRouter, trpcExtension, YTEXT_KEY } from './index'
+import { COLLAB_TRPC_ROUTE, YTEXT_KEY } from './index'
+import { collabRouter, trpcExtension } from './trpc'
 
 // -- CLI --
 if (process.argv.length !== 3) {
