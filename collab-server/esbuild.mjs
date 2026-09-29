@@ -12,6 +12,11 @@ const ctx = await esbuild.context({
   sourcemap: !isProd,
   platform: 'node',
   target: 'node24',
+  // Lets bundled CommonJS dependencies `require` Node.js built-ins.
+  // See https://github.com/evanw/esbuild/issues/1921
+  banner: {
+    js: "import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);",
+  },
 })
 
 if (watch) {

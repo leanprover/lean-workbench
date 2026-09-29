@@ -17,7 +17,9 @@
     "@hocuspocus/extension-database": "^4.0.0",
     "@hocuspocus/server": "^4.0.0",
     "@leanprover/workbench-shared": "*",
+    "@trpc/server": "^11.19.0",
     "esbuild": "^0.28",
+    "ws": "^8.20",
     "zod": "^4.6.5"
   }
 }
