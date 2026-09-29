@@ -1,5 +1,4 @@
 import { once } from 'node:events'
-import path from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 
 import { Database } from '@hocuspocus/extension-database'

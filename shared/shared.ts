@@ -129,12 +129,6 @@ export const zWorkspaceMetadata = z.object({
   excludeSyncPatterns: z.array(z.string()).optional(),
 })
 
-/** We keep a Y.Doc per collaboratively-editable file.
- * This is the Y.Doc key under which the text content lives. */
-export const YTEXT_KEY = 'content'
-
-/** Name of the `collab-server` database file. */
-
 /** Name of the `collab-server` UDS file. */
 export const COLLAB_SOCKET_FILENAME = 'collab.sock'
 
