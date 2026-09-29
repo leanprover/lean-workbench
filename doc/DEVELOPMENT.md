@@ -202,7 +202,7 @@ and `~/.lean-workbench/data/` (directory on host system) for `install.sh` deploy
       index.html
 
   tmp-build/
-    template-create-XXUIDXX/     Scratch space for one run of a tracked command
+    create-template-XXUIDXX/     Scratch space for one run of a tracked command
                                 (see `makeTempBuildDir` in `shared/node/index.ts`)
     publish-<project-uuid>-<kind>-XXUIDXX/
                                 Scratch space for one publication build
