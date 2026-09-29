@@ -81,7 +81,7 @@ export async function activate(ctx: vs.ExtensionContext) {
   if (!collabServer) return
   ctx.subscriptions.push(collabServer)
 
-  const bindings = new YTextBindingManager(collabServer.collabSock, mdata, log)
+  const bindings = new YTextBindingManager(collabServer, mdata, log)
   ctx.subscriptions.push(
     bindings,
     // Remote presence indicators

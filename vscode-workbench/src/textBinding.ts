@@ -1,9 +1,10 @@
-import { HocuspocusProvider, type HocuspocusProviderWebsocket } from '@hocuspocus/provider'
+import { HocuspocusProvider } from '@hocuspocus/provider'
 import { YTEXT_KEY } from '@leanprover/workbench-collab-server'
 import { type WorkspaceMetadata } from '@leanprover/workbench-shared'
 import vs from 'vscode'
 import * as Y from 'yjs'
 
+import { type CollabServerTextIface } from './collabServer'
 import { type Logger, logWithPrefix, shouldSyncPath } from './util'
 
 /** Maintains a {@link YTextBinding} binding for every open {@link vs.TextDocument}
@@ -13,7 +14,7 @@ export class YTextBindingManager implements vs.Disposable {
   private disposables: vs.Disposable[] = []
 
   constructor(
-    private readonly collabSock: HocuspocusProviderWebsocket,
+    private readonly collab: CollabServerTextIface,
     private readonly mdata: WorkspaceMetadata,
     private readonly log: vs.LogOutputChannel,
   ) {
@@ -38,7 +39,7 @@ export class YTextBindingManager implements vs.Disposable {
     if (!shouldSync) return
     // TODO: can one path have multiple `TextDocument`s?
     if (this.bindings.has(filePath)) return
-    this.bindings.set(filePath, new YTextBinding(doc, this.collabSock, this.log))
+    this.bindings.set(filePath, new YTextBinding(doc, this.collab, this.log))
   }
 
   private onDidCloseTextDocument(doc: vs.TextDocument) {
@@ -151,9 +152,11 @@ export class YTextBinding implements vs.Disposable {
 
   private readonly log: Logger
 
+  private disposed = false
+
   constructor(
     readonly doc: vs.TextDocument,
-    collabSock: HocuspocusProviderWebsocket,
+    collab: CollabServerTextIface,
     log_: Logger,
     /** Whether to rely on text document change tags for loopback prevention.
      * Needs `code-server-patches/001-tagTextDocumentChange.diff` to be applied. */
@@ -162,18 +165,17 @@ export class YTextBinding implements vs.Disposable {
      * disabling {@link scheduleEnsureSync} if zero.
      * Expected to be non-zero except in tests. */
     private readonly ensureSyncTimeoutMs: number = 3_000,
-    /** Yjs name of this document (accessed via {@link collabSock}).
+    /** Yjs name of this document (accessed via {@link collab}).
      * Expected to be the file path except in tests. */
     docName: string = vs.workspace.asRelativePath(doc.uri.fsPath, false),
   ) {
     // https://tiptap.dev/docs/hocuspocus/provider/examples#multiplexing
     this.hs = new HocuspocusProvider({
-      websocketProvider: collabSock,
+      websocketProvider: collab.collabSock,
       name: docName,
       // We use a single, global awareness CRDT rather than per-document CRDTs.
       awareness: null,
     })
-    this.hs.attach()
 
     this.log = logWithPrefix(log_, `[YTextBinding(${docName}|${this.hs.document.clientID.toString(16)})]`)
 
@@ -182,17 +184,23 @@ export class YTextBinding implements vs.Disposable {
     const onLaterSync = () => {
       this.log.warn(`unexpected reconnection from collab-server`)
     }
-    if (this.hs.synced) {
+    const onInitialSync = () => {
+      this.hs.off('synced', onInitialSync)
       this.enqueueTransaction(() => this.initFromRemote())
       this.hs.on('synced', onLaterSync)
-    } else {
-      const onInitialSync = () => {
-        this.hs.off('synced', onInitialSync)
-        this.enqueueTransaction(() => this.initFromRemote())
-        this.hs.on('synced', onLaterSync)
-      }
-      this.hs.on('synced', onInitialSync)
     }
+    this.hs.on('synced', onInitialSync)
+
+    this.enqueueTransaction(async () => {
+      // If a Y.Doc isn't yet open for this file,
+      // one will be created from the contents of `this.doc`.
+      // Otherwise we will receive the remote contents after attaching.
+      await collab.tRpc.openDocument.mutate(
+        { docName, initialText: this.doc.getText() },
+        { signal: AbortSignal.timeout(5_000) },
+      )
+      if (!this.disposed) this.hs.attach()
+    })
   }
 
   /** Place an operation on the work queue.
@@ -439,6 +447,7 @@ export class YTextBinding implements vs.Disposable {
   }
 
   dispose() {
+    this.disposed = true
     clearTimeout(this.ensureSyncTimeout)
 
     this.localYdoc?.off('update', this.onLocalUpdate)

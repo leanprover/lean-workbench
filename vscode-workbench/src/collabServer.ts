@@ -1,21 +1,29 @@
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider'
-import { AWARENESS_DOC_NAME } from '@leanprover/workbench-collab-server'
+import { COLLAB_TRPC_ROUTE, type CollabRouter } from '@leanprover/workbench-collab-server'
 import { BWRAP_COLLAB_SOCK_PATH, type WorkspaceMetadata } from '@leanprover/workbench-shared'
 import { waitForFileToExist } from '@leanprover/workbench-shared/node'
+import { createTRPCClient, createWSClient, type TRPCClient, type TRPCWebSocketClient, wsLink } from '@trpc/client'
 import vs from 'vscode'
 import WebSocket from 'ws'
 import type { Awareness } from 'y-protocols/awareness'
 
-import { AWARENESS_CURSOR_COLORS, AWARENESS_USER_KEY, type AwarenessUser } from './util'
+import { AWARENESS_CURSOR_COLORS, AWARENESS_DOC_NAME, AWARENESS_USER_KEY, type AwarenessUser } from './util'
+
+/** The part of {@link CollabServerConnection} used to sync text buffers.
+ * Instantiated differently in tests. */
+export type CollabServerTextIface = Pick<CollabServerConnection, 'collabSock' | 'tRpc'>
 
 export class CollabServerConnection implements vs.Disposable {
   constructor(
     readonly collabSock: HocuspocusProviderWebsocket,
+    private readonly tRpcWs: TRPCWebSocketClient,
+    readonly tRpc: TRPCClient<CollabRouter>,
     private readonly awarenessProvider: HocuspocusProvider,
   ) {}
 
   dispose() {
     this.awarenessProvider.destroy()
+    void this.tRpcWs.close()
     this.collabSock.destroy()
   }
 
@@ -56,7 +64,14 @@ export async function connectToCollabServer(
     // Must use the `ws` package for https://github.com/websockets/ws/blob/master/doc/ws.md#ipc-connections.
     WebSocketPolyfill: WebSocket,
   })
-  log.debug('Opened collab-server socket')
+
+  const tRpcWs = createWSClient({
+    url: `ws+unix:${BWRAP_COLLAB_SOCK_PATH}:${COLLAB_TRPC_ROUTE}`,
+    WebSocket: WebSocket as unknown as typeof globalThis.WebSocket,
+  })
+  const tRpc = createTRPCClient<CollabRouter>({ links: [wsLink({ client: tRpcWs })] })
+
+  log.debug('Opened Hocuspocus and tRPC connections to the collab-server socket')
 
   const awarenessProvider = new HocuspocusProvider({
     websocketProvider: collabSock,
@@ -95,5 +110,5 @@ export async function connectToCollabServer(
     color,
   } satisfies AwarenessUser)
 
-  return new CollabServerConnection(collabSock, awarenessProvider)
+  return new CollabServerConnection(collabSock, tRpcWs, tRpc, awarenessProvider)
 }
