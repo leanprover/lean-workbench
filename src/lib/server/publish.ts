@@ -205,6 +205,20 @@ async function finishPublish(
     // - avoid a partially deleted publication being visible
     // - get to a state where the new publication *is* visible as soon as possible
     //   because the renames are fast and the recursive rm might be slower.
+    //
+    // Why not atomically swap a symlink?
+    // - We must for security reasons disable symlinks from being
+    //   followed by nginx *inside* publications, because otherwise
+    //   malicious publications could exfiltrate other parts of the
+    //   filesystem that they're not meant to. For now, prefer a big
+    //         disable_symlinks on;
+    //  in nginx-pub.conf.template to avoid any future accidents.
+    //  The disadvantage of the lack of atomicity here is mild; the
+    //  user might get a transient 404 if their timing is very
+    //  unlikely. We could consider having a database entry be the
+    //  "pointer" to the filesystem position of the current
+    //  publication version. If we move to keeping multiple versions
+    //  of a publication we should probably do this.
     if (await existsAsync(liveDir)) await fs.rename(liveDir, replacedDir)
     await fs.rename(siteDir, liveDir)
     await fs.rm(replacedDir, { recursive: true, force: true })
