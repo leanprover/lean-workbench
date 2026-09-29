@@ -150,7 +150,7 @@ type TemplateCreation = z.infer<typeof zTemplateCreation>
  * spawn a tracked command for a basic Mathlib template (key 'create-template')
  */
 export async function startTemplateCreation(props: TemplateCreation) {
-  const workDir = await makeTempBuildDir('template-create')
+  const workDir = await makeTempBuildDir('create-template')
   await fs.mkdir(path.join(workDir, 'build'))
 
   let metadata: TemplateMetadata
