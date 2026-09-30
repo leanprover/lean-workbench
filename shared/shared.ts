@@ -141,8 +141,6 @@ export const COLLAB_SOCKET_FILENAME = 'collab.sock'
 
 /**
  * Where bwrap mounts the given project directory.
- * We identify project files by absolute path in Yjs,
- * so this has to match across VS Code server and collab-server bwraps.
  */
 export function bwrapProjectDir(projectName: string) {
   return `/workspace/${projectName}/`
