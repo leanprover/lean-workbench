@@ -16,6 +16,12 @@ import { ensureUserHomeDir as ensureUserHomeDirImpl } from './user.ts'
 
 const t = initTRPC.create()
 
+/** Parses according to {@link schema} and includes the input in parse errors. */
+const reportingParse =
+  <S extends z.ZodType>(schema: S) =>
+  (input: unknown) =>
+    schema.parse(input, { reportInput: true })
+
 /**
  * We want graceful shutdown to completely finish all in-flight mutations before terminating,
  * This is accomplished by wrapping the mutations we want to finish in `trackMutation`.
@@ -40,8 +46,8 @@ export const inFlightTrpcMutations = new Set<Promise<unknown>>()
  * (and returning the lease for) a ProjectMountHandle.
  */
 const acquireProjectMount = t.procedure
-  .input(z.object({ owner: zBaseUser, project: zBaseProject, packageSets: z.array(z.string()) }))
-  .output(z.object({ leaseId: z.uuidv4(), bindArgs: z.array(z.string()) }))
+  .input(reportingParse(z.object({ owner: zBaseUser, project: zBaseProject, packageSets: z.array(z.string()) })))
+  .output(reportingParse(z.object({ leaseId: z.uuidv4(), bindArgs: z.array(z.string()) })))
   .mutation(opts =>
     trackMutation(async () => {
       const { owner, project, packageSets } = opts.input
@@ -54,8 +60,8 @@ const acquireProjectMount = t.procedure
 
 /** Release mount lease acquired by `acquireProjectMount` */
 const releaseProjectMount = t.procedure
-  .input(z.object({ leaseId: z.uuidv4() }))
-  .output(z.null())
+  .input(reportingParse(z.object({ leaseId: z.uuidv4() })))
+  .output(reportingParse(z.null()))
   .mutation(opts =>
     trackMutation(async () => {
       const lease = externallyLeasedProjectMountHandles.get(opts.input.leaseId)
@@ -71,8 +77,8 @@ const externallyLeasedProjectMountHandles: Map<string, RcMapLease<ProjectMountHa
  * (Hopefully) temporary, only needed to support publication workflow within Next.js
  */
 const ensureUserHomeDir = t.procedure
-  .input(zBaseUser)
-  .output(z.object({ homeDir: z.string() }))
+  .input(reportingParse(zBaseUser))
+  .output(reportingParse(z.object({ homeDir: z.string() })))
   .mutation(opts =>
     trackMutation(async () => {
       return { homeDir: await ensureUserHomeDirImpl(opts.input) }
@@ -85,14 +91,16 @@ const ensureUserHomeDir = t.procedure
  */
 const ensureSession = t.procedure
   .input(
-    z.object({
-      viewer: zBaseUser,
-      owner: z.object({ id: z.string(), name: z.string() }),
-      project: zBaseProject,
-      packageSets: z.array(z.string()),
-    }),
+    reportingParse(
+      z.object({
+        viewer: zBaseUser,
+        owner: z.object({ id: z.string(), name: z.string() }),
+        project: zBaseProject,
+        packageSets: z.array(z.string()),
+      }),
+    ),
   )
-  .output(z.object({ iframeUrl: z.string() }))
+  .output(reportingParse(z.object({ iframeUrl: z.string() })))
   .mutation(opts =>
     trackMutation(async () => {
       const { viewer, owner, project, packageSets } = opts.input
@@ -101,8 +109,8 @@ const ensureSession = t.procedure
   )
 
 const killSession = t.procedure
-  .input(z.object({ projectId: zProjectId, sessionId: z.string() }))
-  .output(z.null())
+  .input(reportingParse(z.object({ projectId: zProjectId, sessionId: z.string() })))
+  .output(reportingParse(z.null()))
   .mutation(opts =>
     trackMutation(async () => {
       const { projectId, sessionId } = opts.input
@@ -123,8 +131,8 @@ const killSession = t.procedure
 
 /** Returns the socket path and viewer associated with a specific session */
 const getSocketPath = t.procedure
-  .input(z.object({ sessionId: z.string() }))
-  .output(z.object({ socketPath: z.string(), viewerId: zUserId }).nullable())
+  .input(reportingParse(z.object({ sessionId: z.string() })))
+  .output(reportingParse(z.object({ socketPath: z.string(), viewerId: zUserId }).nullable()))
   .query(async opts => {
     for (const servers of vscServers.values()) {
       const s = servers.find(s => s.uuid === opts.input.sessionId)
@@ -135,11 +143,13 @@ const getSocketPath = t.procedure
 
 const listSessions = t.procedure
   .output(
-    z.array(
-      z.object({
-        projectId: zProjectId,
-        servers: z.array(z.object({ uuid: z.uuidv4(), viewer: z.object({ id: zUserId, name: zUserName }) })),
-      }),
+    reportingParse(
+      z.array(
+        z.object({
+          projectId: zProjectId,
+          servers: z.array(z.object({ uuid: z.uuidv4(), viewer: z.object({ id: zUserId, name: zUserName }) })),
+        }),
+      ),
     ),
   )
   .query(() => {
