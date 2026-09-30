@@ -198,6 +198,7 @@ export class YTextBinding implements vs.Disposable {
 
       // FIXME: local edits made between this and the initial sync
       // are reverted by `initFromRemote`.
+      // FIXME: we should retry this on failure and/or display a clear error to the user.
       await collab.tRpc.openDocument.mutate(
         { docName, initialText: this.doc.getText() },
         { signal: AbortSignal.timeout(5_000) },
