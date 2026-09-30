@@ -33,7 +33,7 @@ const upsertDocument = (path: string, data: Uint8Array): void => {
 }
 
 function checkedToDiskPath(documentName: string): string {
-  const file = path.normalize(documentName)
+  const file = path.normalize(path.resolve(projectDir, documentName))
   if (!file.startsWith(projectDir)) {
     throw new Error(`Path traversal in document name: '${documentName}' escapes '${projectDir}'`)
   }
@@ -52,7 +52,7 @@ const server = new Server({
         if (data) return data
         let content: string
         try {
-          content = await fs.readFile(checkedToDiskPath(path.resolve(projectDir, documentName)), 'utf-8')
+          content = await fs.readFile(checkedToDiskPath(documentName), 'utf-8')
         } catch {
           return null
         }
