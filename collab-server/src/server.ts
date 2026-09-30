@@ -1,4 +1,3 @@
-import { once } from 'node:events'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
@@ -86,21 +85,3 @@ server.httpServer.listen(socketPath, () => {
 
   // No need to call `onListen` hooks here since we don't register any.
 })
-
-await Promise.race([once(process, 'SIGINT'), once(process, 'SIGQUIT'), once(process, 'SIGTERM')])
-console.log('Hocuspocus shutting down..')
-
-// Persist open documents to disk.
-await Promise.all(
-  [...server.hocuspocus.documents.values()].map(async doc => {
-    try {
-      await fs.writeFile(checkedToDiskPath(doc.name), doc.getText(YTEXT_KEY).toString())
-      console.log(`Saved '${doc.name}' to disk`)
-    } catch (e) {
-      console.error(`Failed to save '${doc.name}' to disk:`, e)
-    }
-  }),
-)
-
-await server.destroy()
-db.close()
