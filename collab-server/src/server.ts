@@ -1,12 +1,10 @@
 import { once } from 'node:events'
-import fs from 'node:fs/promises'
 import path from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 
 import { Database } from '@hocuspocus/extension-database'
 import { Server } from '@hocuspocus/server'
-import { BWRAP_COLLAB_DB_PATH, BWRAP_COLLAB_SOCK_PATH, YTEXT_KEY } from '@leanprover/workbench-shared'
-import * as Y from 'yjs'
+import { BWRAP_COLLAB_DB_PATH, BWRAP_COLLAB_SOCK_PATH } from '@leanprover/workbench-shared'
 
 // -- CLI --
 if (process.argv.length !== 3) {
@@ -14,7 +12,7 @@ if (process.argv.length !== 3) {
   process.exit(1)
 }
 
-const projectDir = process.argv[2]!
+const _projectDir = process.argv[2]!
 const socketPath = BWRAP_COLLAB_SOCK_PATH
 const dbPath = BWRAP_COLLAB_DB_PATH
 
@@ -32,33 +30,12 @@ const upsertDocument = (path: string, data: Uint8Array): void => {
   upsertDocumentStatement.run(path, data)
 }
 
-function checkedToDiskPath(documentName: string): string {
-  const file = path.normalize(path.resolve(projectDir, documentName))
-  if (!file.startsWith(projectDir)) {
-    throw new Error(`Path traversal in document name: '${documentName}' escapes '${projectDir}'`)
-  }
-  return file
-}
-
 // -- HTTPS/WS SERVER --
 const server = new Server({
   extensions: [
-    // Note: we can't use the SQLite extension.
-    // Its onLoadDocument would be called after ours,
-    // but we want to try it *before* trying the filesystem.
     new Database({
       async fetch({ documentName }) {
-        const data = selectDocument(documentName)
-        if (data) return data
-        let content: string
-        try {
-          content = await fs.readFile(checkedToDiskPath(documentName), 'utf-8')
-        } catch {
-          return null
-        }
-        const doc = new Y.Doc()
-        doc.getText(YTEXT_KEY).insert(0, content)
-        return Y.encodeStateAsUpdate(doc)
+        return selectDocument(documentName) ?? null
       },
       async store({ documentName, state }) {
         upsertDocument(documentName, state)
@@ -66,11 +43,6 @@ const server = new Server({
     }),
   ],
 })
-
-// TODO: listen for fs events to avoid lost writes.
-// VSCs could inform the server about which saves came from them,
-// as opposed to other processes (e.g. CLI tools).
-// Non-VSC edits could be applied to the Y.Doc as whole-file replacements.
 
 // `server.listen` exposes a port. We use a socket which needs direct `httpServer` access.
 server.httpServer.listen(socketPath, () => {
@@ -89,18 +61,6 @@ server.httpServer.listen(socketPath, () => {
 
 await Promise.race([once(process, 'SIGINT'), once(process, 'SIGQUIT'), once(process, 'SIGTERM')])
 console.log('Hocuspocus shutting down..')
-
-// Persist open documents to disk.
-await Promise.all(
-  [...server.hocuspocus.documents.values()].map(async doc => {
-    try {
-      await fs.writeFile(checkedToDiskPath(doc.name), doc.getText(YTEXT_KEY).toString())
-      console.log(`Saved '${doc.name}' to disk`)
-    } catch (e) {
-      console.error(`Failed to save '${doc.name}' to disk:`, e)
-    }
-  }),
-)
 
 await server.destroy()
 db.close()
