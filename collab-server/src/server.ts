@@ -5,7 +5,7 @@ import { DatabaseSync } from 'node:sqlite'
 
 import { Database } from '@hocuspocus/extension-database'
 import { Server } from '@hocuspocus/server'
-import { COLLAB_DB_FILENAME, COLLAB_SOCKET_FILENAME, YTEXT_KEY } from '@leanprover/workbench-shared'
+import { BWRAP_COLLAB_DB_PATH, BWRAP_COLLAB_SOCK_PATH, YTEXT_KEY } from '@leanprover/workbench-shared'
 import * as Y from 'yjs'
 
 // -- CLI --
@@ -15,8 +15,8 @@ if (process.argv.length !== 3) {
 }
 
 const projectDir = process.argv[2]!
-const socketPath = path.join(process.cwd(), COLLAB_SOCKET_FILENAME)
-const dbPath = path.join(process.cwd(), COLLAB_DB_FILENAME)
+const socketPath = BWRAP_COLLAB_SOCK_PATH
+const dbPath = BWRAP_COLLAB_DB_PATH
 
 // -- DB --
 const db = new DatabaseSync(dbPath)

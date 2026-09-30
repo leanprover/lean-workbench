@@ -151,11 +151,17 @@ export function bwrapProjectDir(projectName: string) {
 /** Path to workspace metadata file in VSCode bwraps. */
 export const BWRAP_METADATA_PATH = '/workspace/.lean-workbench.json'
 
-/** Working directory of collab-server in the VSCode and collab-server bwraps. */
-export const BWRAP_COLLAB_SERVER_DIR = '/workspace/.collab-server'
+/** Working directory for the collab-server socket shared by VSCode and collab-server bwraps. */
+export const BWRAP_COLLAB_SOCK_DIR = '/workspace/.collab-server-socket'
+
+/** Working directory for the collab-server's private state. */
+export const BWRAP_COLLAB_DATA_DIR = '/workspace/.collab-server-data'
+
+/** Collab-server database path in the collab-server bwraps. */
+export const BWRAP_COLLAB_DB_PATH = `${BWRAP_COLLAB_DATA_DIR}/${COLLAB_DB_FILENAME}`
 
 /** Collab-server socket path in the VSCode and collab-server bwraps. */
-export const BWRAP_COLLAB_SOCK_PATH = `${BWRAP_COLLAB_SERVER_DIR}/${COLLAB_SOCKET_FILENAME}`
+export const BWRAP_COLLAB_SOCK_PATH = `${BWRAP_COLLAB_SOCK_DIR}/${COLLAB_SOCKET_FILENAME}`
 
 /** Pseudo-email for the admin user */
 export const adminEmail = 'admin@admin.localhost'

@@ -1,4 +1,7 @@
+import path from 'node:path'
+
 import type { BaseProject, BaseUser } from '@leanprover/workbench-shared'
+import { getUserRootDir } from '@leanprover/workbench-shared/node'
 
 import { CollabServerHandle } from './collabServer.ts'
 import { buildProjectMount } from './projectMount.ts'
@@ -36,7 +39,8 @@ export async function ensureSession(
 
     const collabServerLease = await collabServers.acquire(project.id, async () => {
       const collabMountLease = await acquireMount()
-      const collab = new CollabServerHandle(project, collabMountLease.value.bindArgs)
+      const dataDir = path.join(getUserRootDir(owner), 'collab-server-data', project.id)
+      const collab = new CollabServerHandle(project, collabMountLease.value.bindArgs, dataDir)
       collab.addDisposable(async () => collabMountLease[Symbol.asyncDispose]())
       return collab
     })
@@ -45,7 +49,7 @@ export async function ensureSession(
     const vscMountLease = await acquireMount()
     vscServer.addDisposable(async () => vscMountLease[Symbol.asyncDispose]())
 
-    vscServer.start(vscMountLease.value.bindArgs, collabServerLease.value.workDir)
+    vscServer.start(vscMountLease.value.bindArgs, collabServerLease.value.socketDir)
     await Promise.all([collabServerLease.value.start(), vscServer.started])
 
     // Resources allocated successfully, dispose later when the session actually exits.

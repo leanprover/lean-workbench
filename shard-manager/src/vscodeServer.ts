@@ -7,7 +7,7 @@ import type Stream from 'node:stream'
 import {
   type BaseProject,
   type BaseUser,
-  BWRAP_COLLAB_SERVER_DIR,
+  BWRAP_COLLAB_SOCK_DIR,
   BWRAP_METADATA_PATH,
   bwrapProjectDir,
   type WorkspaceMetadata,
@@ -166,7 +166,7 @@ export class VscodeServerHandle implements AsyncDisposable {
   start(
     /** Arguments to `bwrap` that bind the project directory. Placed at the end. */
     projectBindArgs: string[],
-    /** `collab-server` working directory. */
+    /** `collab-server` directory containing the socket shared between the collab server and the vscode server. */
     collabWorkDir: string,
   ): void {
     if (this.startCalled) {
@@ -210,7 +210,7 @@ export class VscodeServerHandle implements AsyncDisposable {
           '--ro-bind', getOpenVscodeServerDir(), getOpenVscodeServerDir(),
           '--ro-bind', getElanDir(), getElanDir(),
           '--bind', homeDir, sandboxHomeDir,
-          '--bind', collabWorkDir, BWRAP_COLLAB_SERVER_DIR,
+          '--bind', collabWorkDir, BWRAP_COLLAB_SOCK_DIR,
           '--bind', this.socketDir, '/workspace/.vscode-server',
           '--ro-bind-data', '3', BWRAP_METADATA_PATH,
           '--setenv', 'HOME', sandboxHomeDir,

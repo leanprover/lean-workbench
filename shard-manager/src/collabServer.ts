@@ -4,7 +4,8 @@ import path from 'node:path'
 
 import {
   type BaseProject,
-  BWRAP_COLLAB_SERVER_DIR,
+  BWRAP_COLLAB_DATA_DIR,
+  BWRAP_COLLAB_SOCK_DIR,
   bwrapProjectDir,
   COLLAB_SOCKET_FILENAME,
 } from '@leanprover/workbench-shared'
@@ -15,18 +16,21 @@ import { BWRAP_ARGS, getCollabServerDir, waitForFileToExist } from '@leanprover/
 export class CollabServerHandle implements AsyncDisposable {
   /** Unique ID of this `collab-server` instance. */
   readonly uuid = crypto.randomUUID()
-  /** Directory in which `collab-server` places its ephemeral files. */
-  readonly workDir: string = `/tmp/collab-server-${this.uuid}/`
+  /** Directory in which `collab-server` places the unix domain socket that connects it to the Vscode server. */
+  readonly socketDir: string = `/tmp/collab-server-${this.uuid}/`
+  /** Directory in which `collab-server` stores its private state. */
+  readonly dataDir
   /** Path to the `collab-server` UDS file. */
-  readonly socketPath: string = path.join(this.workDir, COLLAB_SOCKET_FILENAME)
+  readonly socketPath: string = path.join(this.socketDir, COLLAB_SOCKET_FILENAME)
   /** Project that this server manages. */
   private readonly project
   /** Arguments to `bwrap` that bind the project directory. Placed at the end. */
   private readonly projectBindArgs
 
-  constructor(project: BaseProject, projectBindArgs: string[]) {
+  constructor(project: BaseProject, projectBindArgs: string[], dataDir: string) {
     this.project = project
     this.projectBindArgs = projectBindArgs
+    this.dataDir = dataDir
   }
 
   /** The `bwrap` process. Defined iff the process is running. */
@@ -53,9 +57,10 @@ export class CollabServerHandle implements AsyncDisposable {
       throw new Error(`Tried to start ${this.description} after dispose.`)
     }
     this.starting = (async () => {
-      await fs.mkdir(this.workDir, { recursive: true })
+      await fs.mkdir(this.dataDir, { recursive: true })
+      await fs.mkdir(this.socketDir, { recursive: true })
       this.disposables.defer(async () => {
-        await fs.rm(this.workDir, { recursive: true, force: true })
+        await fs.rm(this.socketDir, { recursive: true, force: true })
       })
 
       const sandboxProjectDir = bwrapProjectDir(this.project.name)
@@ -67,8 +72,9 @@ export class CollabServerHandle implements AsyncDisposable {
           // We don't need internet access.
           '--unshare-net',
           '--ro-bind', getCollabServerDir(), getCollabServerDir(),
-          '--bind', this.workDir, BWRAP_COLLAB_SERVER_DIR,
-          '--chdir', BWRAP_COLLAB_SERVER_DIR,
+          '--bind', this.dataDir, BWRAP_COLLAB_DATA_DIR,
+          '--bind', this.socketDir, BWRAP_COLLAB_SOCK_DIR,
+          '--chdir', BWRAP_COLLAB_SOCK_DIR,
           ...this.projectBindArgs,
           '--',
           '/usr/bin/node',
@@ -93,7 +99,7 @@ export class CollabServerHandle implements AsyncDisposable {
             reject(new Error(`${this.description} exited before creating UDS`))
           })
         }),
-        waitForFileToExist(path.join(this.workDir, COLLAB_SOCKET_FILENAME), {
+        waitForFileToExist(path.join(this.socketDir, COLLAB_SOCKET_FILENAME), {
           description: `${this.description} binding the unix domain socket`,
         }),
       ])
