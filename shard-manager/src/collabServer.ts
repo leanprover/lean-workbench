@@ -16,7 +16,7 @@ import { BWRAP_ARGS, getCollabServerDir, waitForFileToExist } from '@leanprover/
 export class CollabServerHandle implements AsyncDisposable {
   /** Unique ID of this `collab-server` instance. */
   readonly uuid = crypto.randomUUID()
-  /** Directory in which `collab-server` places the unix domain socket that connects it to the Vscode server. */
+  /** Directory in which `collab-server` places the Unix domain socket that connects it to VSCode servers. */
   readonly socketDir: string = `/tmp/collab-server-${this.uuid}/`
   /** Directory in which `collab-server` stores its private state. */
   readonly dataDir
@@ -74,7 +74,6 @@ export class CollabServerHandle implements AsyncDisposable {
           '--ro-bind', getCollabServerDir(), getCollabServerDir(),
           '--bind', this.dataDir, BWRAP_COLLAB_DATA_DIR,
           '--bind', this.socketDir, BWRAP_COLLAB_SOCK_DIR,
-          '--chdir', BWRAP_COLLAB_SOCK_DIR,
           ...this.projectBindArgs,
           '--',
           '/usr/bin/node',

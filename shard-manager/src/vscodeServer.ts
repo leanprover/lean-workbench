@@ -166,8 +166,8 @@ export class VscodeServerHandle implements AsyncDisposable {
   start(
     /** Arguments to `bwrap` that bind the project directory. Placed at the end. */
     projectBindArgs: string[],
-    /** `collab-server` directory containing the socket shared between the collab server and the vscode server. */
-    collabWorkDir: string,
+    /** Host directory containing the socket shared between the collab server and the vscode server. */
+    collabSockDir: string,
   ): void {
     if (this.startCalled) {
       throw new Error(`Tried to start ${this.description} more than once.`)
@@ -210,7 +210,7 @@ export class VscodeServerHandle implements AsyncDisposable {
           '--ro-bind', getOpenVscodeServerDir(), getOpenVscodeServerDir(),
           '--ro-bind', getElanDir(), getElanDir(),
           '--bind', homeDir, sandboxHomeDir,
-          '--bind', collabWorkDir, BWRAP_COLLAB_SOCK_DIR,
+          '--bind', collabSockDir, BWRAP_COLLAB_SOCK_DIR,
           '--bind', this.socketDir, '/workspace/.vscode-server',
           '--ro-bind-data', '3', BWRAP_METADATA_PATH,
           '--setenv', 'HOME', sandboxHomeDir,

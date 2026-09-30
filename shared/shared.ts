@@ -134,7 +134,6 @@ export const zWorkspaceMetadata = z.object({
 export const YTEXT_KEY = 'content'
 
 /** Name of the `collab-server` database file. */
-export const COLLAB_DB_FILENAME = 'collab.db'
 
 /** Name of the `collab-server` UDS file. */
 export const COLLAB_SOCKET_FILENAME = 'collab.sock'
@@ -151,14 +150,14 @@ export function bwrapProjectDir(projectName: string) {
 /** Path to workspace metadata file in VSCode bwraps. */
 export const BWRAP_METADATA_PATH = '/workspace/.lean-workbench.json'
 
-/** Working directory for the collab-server socket shared by VSCode and collab-server bwraps. */
+/** Directory for the collab-server socket shared by VSCode and collab-server bwraps. */
 export const BWRAP_COLLAB_SOCK_DIR = '/workspace/.collab-server-socket'
 
-/** Working directory for the collab-server's private state. */
+/** Directory for collab-server's private state bound in collab-server bwraps. */
 export const BWRAP_COLLAB_DATA_DIR = '/workspace/.collab-server-data'
 
 /** Collab-server database path in the collab-server bwraps. */
-export const BWRAP_COLLAB_DB_PATH = `${BWRAP_COLLAB_DATA_DIR}/${COLLAB_DB_FILENAME}`
+export const BWRAP_COLLAB_DB_PATH = `${BWRAP_COLLAB_DATA_DIR}/collab.db`
 
 /** Collab-server socket path in the VSCode and collab-server bwraps. */
 export const BWRAP_COLLAB_SOCK_PATH = `${BWRAP_COLLAB_SOCK_DIR}/${COLLAB_SOCKET_FILENAME}`
