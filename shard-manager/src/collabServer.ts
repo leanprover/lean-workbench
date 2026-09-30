@@ -2,11 +2,7 @@ import { type ChildProcess, spawn } from 'node:child_process'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import {
-  type BaseProject,
-  BWRAP_COLLAB_SERVER_DIR,
-  COLLAB_SOCKET_FILENAME,
-} from '@leanprover/workbench-shared'
+import { type BaseProject, BWRAP_COLLAB_SERVER_DIR, COLLAB_SOCKET_FILENAME } from '@leanprover/workbench-shared'
 import { BWRAP_ARGS, getCollabServerDir, waitForFileToExist } from '@leanprover/workbench-shared/node'
 
 /** Manages a collaboration server instance.
