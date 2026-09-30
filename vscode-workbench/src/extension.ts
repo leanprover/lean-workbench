@@ -62,7 +62,8 @@ export async function activate(ctx: vs.ExtensionContext) {
 
   if (!(await ensureProjectFolderOpen(mdata, log))) return
 
-  ctx.subscriptions.push(
+  // VSCode disposes subscriptions in-order, so push to the front.
+  ctx.subscriptions.unshift(
     vs.commands.registerCommand('leanprover-workbench.previewFile', async (uri?: vs.Uri) => {
       uri ??= vs.window.activeTextEditor?.document.uri
       if (!uri) return
@@ -79,10 +80,10 @@ export async function activate(ctx: vs.ExtensionContext) {
 
   const collabServer = await connectToCollabServer(log, mdata)
   if (!collabServer) return
-  ctx.subscriptions.push(collabServer)
+  ctx.subscriptions.unshift(collabServer)
 
   const bindings = new YTextBindingManager(collabServer, mdata, log)
-  ctx.subscriptions.push(
+  ctx.subscriptions.unshift(
     bindings,
     // Remote presence indicators
     new RemoteSelectionDecorator(collabServer.awareness),
@@ -90,7 +91,7 @@ export async function activate(ctx: vs.ExtensionContext) {
 
   // Panel with workbench-specific information
   const panel = new WorkbenchPanelProvider(collabServer.awareness, mdata, log)
-  ctx.subscriptions.push(panel, vs.window.registerTreeDataProvider('leanprover-workbench-view', panel))
+  ctx.subscriptions.unshift(panel, vs.window.registerTreeDataProvider('leanprover-workbench-view', panel))
 
   log.debug('Extension activated')
 }
