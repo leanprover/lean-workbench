@@ -195,6 +195,9 @@ export class YTextBinding implements vs.Disposable {
       // If a Y.Doc isn't yet open for this file,
       // one will be created from the contents of `this.doc`.
       // Otherwise we will receive the remote contents after attaching.
+
+      // FIXME: local edits made between this and the initial sync
+      // are reverted by `initFromRemote`.
       await collab.tRpc.openDocument.mutate(
         { docName, initialText: this.doc.getText() },
         { signal: AbortSignal.timeout(5_000) },
