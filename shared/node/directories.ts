@@ -32,6 +32,11 @@ export function getProjectDir(user: { id: string }, projectId: string): string {
   return path.join(getWorkspacesDir(), user.id, projectId)
 }
 
+/** The directory in which collab-server saves persistent data for the given project. */
+export function getProjectCollabDir(user: { id: string }, projectId: string): string {
+  return path.join(getUserRootDir(user), 'collab-server-data', projectId)
+}
+
 /** Root of the built publications served from the publish origin. */
 export function getPublicationsDir(): string {
   return path.join(getDataDir(), 'publications')

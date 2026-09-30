@@ -1,7 +1,5 @@
-import path from 'node:path'
-
 import type { BaseProject, BaseUser } from '@leanprover/workbench-shared'
-import { getUserRootDir } from '@leanprover/workbench-shared/node'
+import { getProjectCollabDir } from '@leanprover/workbench-shared/node'
 
 import { CollabServerHandle } from './collabServer.ts'
 import { buildProjectMount } from './projectMount.ts'
@@ -39,7 +37,7 @@ export async function ensureSession(
 
     const collabServerLease = await collabServers.acquire(project.id, async () => {
       const collabMountLease = await acquireMount()
-      const dataDir = path.join(getUserRootDir(owner), 'collab-server-data', project.id)
+      const dataDir = getProjectCollabDir(owner, project.id)
       const collab = new CollabServerHandle(project, collabMountLease.value.bindArgs, dataDir)
       collab.addDisposable(async () => collabMountLease[Symbol.asyncDispose]())
       return collab
