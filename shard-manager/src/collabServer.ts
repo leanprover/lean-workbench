@@ -116,12 +116,11 @@ export class CollabServerHandle implements AsyncDisposable {
     this.disposing = (async () => {
       if (this.starting) {
         await this.starting.catch(() => {})
-        if (this.proc) {
+        const proc = this.proc
+        if (proc) {
           await new Promise<void>(resolve => {
-            this.proc!.once('close', () => {
-              resolve()
-            })
-            this.proc!.kill()
+            proc.once('close', resolve)
+            proc.kill()
           })
         }
       }
