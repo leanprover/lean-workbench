@@ -109,7 +109,7 @@ function diffMessage(label: string, a: string, b: string): string {
   return `${label}: diverge at index ${i} (lenA=${a.length}, lenB=${b.length})\n  A …${ctx(a)}…\n  B …${ctx(b)}…`
 }
 
-const DOC_NAME = '/test/shared.txt'
+const DOC_NAME = 'shared.txt'
 const COLUMNS: vs.ViewColumn[] = [
   vs.ViewColumn.One,
   vs.ViewColumn.Two,

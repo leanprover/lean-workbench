@@ -163,7 +163,7 @@ export class YTextBinding implements vs.Disposable {
     private readonly ensureSyncTimeoutMs: number = 3_000,
     /** Yjs name of this document (accessed via {@link collabSock}).
      * Expected to be the file path except in tests. */
-    docName: string = doc.uri.fsPath,
+    docName: string = vs.workspace.asRelativePath(doc.uri.fsPath, false),
   ) {
     // https://tiptap.dev/docs/hocuspocus/provider/examples#multiplexing
     this.hs = new HocuspocusProvider({
