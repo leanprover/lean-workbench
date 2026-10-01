@@ -203,7 +203,7 @@ export class YTextBinding implements vs.Disposable {
         { docName, initialText: this.doc.getText() },
         { signal: AbortSignal.timeout(5_000) },
       )
-      this.log.trace(`[enqueueTransaction] got a response from openDocument`)
+      this.log.trace(`got a response from openDocument`)
       if (!this.disposed) this.hs.attach()
     })
   }
