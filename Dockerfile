@@ -129,7 +129,7 @@ FROM base AS runner-base
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         nginx strace git libcap2 gettext-base rsync \
-        build-essential \
+        build-essential jq \
         texlive-latex-base texlive-latex-recommended texlive-latex-extra \
         texlive-pictures texlive-fonts-recommended texlive-fonts-extra \
         texlive-luatex texlive-xetex texlive-plain-generic \
