@@ -11,19 +11,20 @@ These apply the relevant patches and create a baseline commit:
 git clone https://github.com/coder/code-server
 cd code-server
 
-git checkout <the ref specified as CODE_SERVER_VERSION in the Dockerfile>
+git checkout <'v' followed by the version specified as CODE_SERVER_VERSION in the Dockerfile>
 git submodule update --init
 quilt push -a
-for p in ../lean-workbench/code-server-patches/*.diff; do patch -p1 < "$p"; done
+for p in ../lean-workbench/code-server-patches/*.diff; do patch -p1 < "$p" || exit 1; done
 git -C lib/vscode add -A && git -C lib/vscode commit -m base
+git add -A && git commit -m base
 ```
 
-Then, after creating edits, create a new patch file,
-which should have the filename `NNN-desc.diff` matching other files in this folder,
-by running:
+Then, edit files as needed, ensuring new files are tracked by running `git add --intent-to-add <filenames>`.
+When the working tree contains all the changes you want to include in the patch,
+create the patch file with a filename of the form `NNN-desc.diff` (matching other files in this folder):
 
 ```sh
-git -C lib/vscode diff --src-prefix=a/lib/vscode --dst-prefix=b/lib/vscode > new.diff
+git -C lib/vscode diff --src-prefix=a/lib/vscode/ --dst-prefix=b/lib/vscode/ > new.diff
 git diff -- . ':!lib/vscode' >> new.diff
 mv new.diff ../lean-workbench/code-server-patches/<appropriate filename.diff>
 ```
