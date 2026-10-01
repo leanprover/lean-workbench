@@ -36,5 +36,5 @@
 # Scripts, data, etc.
 !scripts
 !templates
-!nginx.conf.template
+!nginx*.conf.template
 !start.sh
