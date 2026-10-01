@@ -23,6 +23,9 @@ It is written with IT staff/system administrators in mind.
   - 3 GiB of RAM per concurrent user is recommended.
   - A dedicated machine (hosting nothing else) is recommended:
     the Workbench container runs with elevated privileges.
+  - A significant swap disk (at least 12 GiB, and up to half the available RAM):
+    while the default for web servers is often to not configure swap,
+    this interacts badly with Lean's reliance on large memory-mapped files.
 - Docker and Docker Compose
 
   These both come with [Docker Engine](https://docs.docker.com/engine/install/),
