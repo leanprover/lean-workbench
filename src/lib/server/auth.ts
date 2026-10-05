@@ -41,6 +41,8 @@ async function createAuth() {
     socialProviders.github = {
       clientId: config.githubAuth.clientId,
       clientSecret: config.githubAuth.clientSecret,
+      disableDefaultScope: true,
+      scope: ['user:email'], // better-auth default scope also has read:user, which we don't need
       mapProfileToUser: profile => {
         return {
           // `better-auth` stores the display name (`profile.name`) in `name` by default;
