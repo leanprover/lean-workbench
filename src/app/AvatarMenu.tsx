@@ -65,7 +65,7 @@ export default function AvatarMenu() {
     return (
       <button
         onClick={() => {
-          authClient.signIn.social({ provider: 'github' }).catch(throwToBoundary)
+          authClient.signIn.social({ provider: 'github', callbackURL: '/profile' }).catch(throwToBoundary)
         }}
       >
         Sign in via GitHub
