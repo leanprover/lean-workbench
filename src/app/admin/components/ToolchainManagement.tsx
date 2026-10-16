@@ -12,6 +12,7 @@ import z from 'zod'
 
 import { doElanInstall, uninstallToolchainVersion } from '@/app/admin/actions'
 import CatchySuspense from '@/app/components/CatchySuspense'
+import { QuickFilterInput, useQuickFilter } from '@/app/components/QuickFilterInput'
 import TrackedCommandForm from '@/app/components/TrackedCommandForm'
 import { useServerAction, useThrowingSWR } from '@/lib/client/util'
 
@@ -21,11 +22,16 @@ interface ToolchainManagementProps {
 
 export function ToolchainManagement(props: ToolchainManagementProps) {
   const router = useRouter()
+  const { matchesFilter, filter } = useQuickFilter()
+
   return (
     <section>
-      <h2>Lean Toolchains</h2>
+      <h2 className='with-filter'>Lean Toolchains</h2>
+      <div className='filter'>
+        <QuickFilterInput description='Filter toolchains' filter={filter} />
+      </div>
       <CatchySuspense loading={<p>Loading installed toolchains&hellip;</p>}>
-        <ToolchainManagementList {...props} />
+        <ToolchainManagementList matchesFilter={matchesFilter} {...props} />
       </CatchySuspense>
       <TrackedCommandForm
         streamCommandKey='elan'
@@ -42,12 +48,16 @@ export function ToolchainManagement(props: ToolchainManagementProps) {
   )
 }
 
-function ToolchainManagementList(props: ToolchainManagementProps) {
+function ToolchainManagementList(props: ToolchainManagementProps & { matchesFilter: (text: string) => boolean }) {
   const installedToolchains = use(props.installedToolchainsPromise)
-  if (installedToolchains.length === 0) return <p className='empty'>No installed toolchains.</p>
+  const filteredToolchains = installedToolchains
+    .filter(tc => props.matchesFilter(tc))
+    .toSorted((a, b) => b.localeCompare(a, undefined, { numeric: true }))
+  if (filteredToolchains.length === 0)
+    return <p className='empty'>No installed toolchains{installedToolchains.length > 0 && ' match the filter'}.</p>
   return (
     <ul className='action-list'>
-      {installedToolchains.map(toolchain => (
+      {filteredToolchains.map(toolchain => (
         <ToolchainRow key={toolchain} toolchain={toolchain} />
       ))}
     </ul>

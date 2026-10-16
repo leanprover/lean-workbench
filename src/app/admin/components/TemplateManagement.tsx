@@ -11,6 +11,7 @@ import { type Key, Tab, TabList, TabPanel, TabPanels, Tabs } from 'react-aria-co
 import { availableTemplateSchemas, doTemplateCreation, editTemplateMetadata } from '@/app/admin/actions'
 import CatchySuspense from '@/app/components/CatchySuspense'
 import ErrorBox from '@/app/components/ErrorBox'
+import { QuickFilterInput, useQuickFilter } from '@/app/components/QuickFilterInput'
 import TrackedCommandForm from '@/app/components/TrackedCommandForm'
 import { useServerAction, useThrowingSWR } from '@/lib/client/util'
 import { type TemplateInfo } from '@/lib/server/projectTemplate'
@@ -24,13 +25,17 @@ export function TemplateManagement(props: TemplateManagementProps) {
   const router = useRouter()
   const templates = use(props.templatesPromise)
   const installedStandardToolchains = use(props.installedToolchainsPromise).filter(tc => toolchainHasModules(tc))
+  const { filter, matchesFilter } = useQuickFilter()
 
   return (
     <>
+      <div className='filter'>
+        <QuickFilterInput description='Filter templates' filter={filter} />
+      </div>
       {templates.filter(template => template.visible).length === 0 && (
         <ErrorBox>There are no user-visible templates. Users will be unable to create new projects.</ErrorBox>
       )}
-      <TemplateManagementList templates={templates} />
+      <TemplateManagementList templates={templates} matchesFilter={matchesFilter} />
       <TrackedCommandForm
         streamCommandKey='create-template'
         scope='admin'
@@ -46,10 +51,20 @@ export function TemplateManagement(props: TemplateManagementProps) {
   )
 }
 
-function TemplateManagementList(props: { templates: TemplateInfo[] }) {
+function TemplateManagementList(props: { templates: TemplateInfo[]; matchesFilter: (text: string) => boolean }) {
+  const filtered = props.templates
+    .filter(
+      template =>
+        props.matchesFilter(template.name) ||
+        props.matchesFilter(template.description) ||
+        props.matchesFilter(template.id),
+    )
+    .toSorted((a, b) => a.id.localeCompare(b.id))
+  if (props.templates.length === 0) return null // "No visible templates" warning already given above
+  if (filtered.length === 0) return <p className='empty'>No templates match the filter.</p>
   return (
     <ul className='action-list'>
-      {props.templates.map(template => (
+      {filtered.map(template => (
         <TemplateRow key={template.id} {...template} />
       ))}
     </ul>

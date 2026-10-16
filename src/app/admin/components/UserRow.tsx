@@ -5,10 +5,9 @@ import { startTransition } from 'react'
 
 import { deleteUser, toggleAdmin } from '@/app/admin/actions'
 import { useServerAction } from '@/lib/client/util'
+import { type User } from '@/lib/server/auth'
 
-type User = { id: string; name: string; isAdmin: boolean }
-
-export function UserRow({ user, isSelf }: { user: User; isSelf: boolean }) {
+export function UserRow({ user, isSelf }: { user: Pick<User, 'name' | 'id' | 'isAdmin'>; isSelf: boolean }) {
   const router = useRouter()
 
   const [toggleError, toggleAction, togglePending] = useServerAction(toggleAdmin, () => router.refresh())

@@ -164,6 +164,7 @@ h2 {
 
 /* === Form elements === */
 input[type='text'],
+input[type='search'],
 input[type='password'],
 input[type='url'] {
   padding: 5px 12px;
@@ -179,6 +180,7 @@ input[type='url'] {
     box-shadow 0.15s;
 }
 input[type='text']:focus,
+input[type='search']:focus,
 input[type='password']:focus,
 input[type='url']:focus {
   outline: none;
@@ -441,7 +443,7 @@ ul.action-list {
 }
 .empty {
   color: #90a4ae;
-  margin: 16px 0;
+  margin: 8px 0;
 }
 
 /* === Template Selector === */
@@ -613,6 +615,18 @@ select.roomy {
   grid-template-columns: max-content 1fr;
   align-items: center;
   gap: 0.375rem;
+}
+
+/* === Admin interface === */
+
+h2.with-filter {
+  border: none;
+  margin-bottom: 0;
+}
+.filter {
+  input {
+    width: 100%;
+  }
 }
 
 /* === Accessibility === */

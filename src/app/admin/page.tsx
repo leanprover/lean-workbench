@@ -32,7 +32,7 @@ export default async function AdminPage() {
       <HealthMonitor systemHealth={systemHealth} />
       <ToolchainManagement installedToolchainsPromise={installedToolchains} />
       <section>
-        <h2>Project Templates</h2>
+        <h2 className='with-filter'>Project Templates</h2>
         <CatchySuspense loading={<p>Loading toolchains and templates&hellip;</p>}>
           <TemplateManagement installedToolchainsPromise={installedToolchains} templatesPromise={templates} />
         </CatchySuspense>
