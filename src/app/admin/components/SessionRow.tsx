@@ -28,7 +28,7 @@ export function SessionRow({ info }: { info: EditorSessionInfo | UnknownEditorSe
         </div>
       </div>
       <div className='secondary'>
-        <div>
+        <div title={info.sessionId}>
           <span>UUID {info.sessionId}</span>
         </div>
         <div className='subinfo'>

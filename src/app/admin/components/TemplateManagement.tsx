@@ -69,7 +69,7 @@ function TemplateRow(props: TemplateInfo) {
         </div>
         {props.description && <div className='subinfo'>{props.description}</div>}
       </div>
-      <div className='secondary'>
+      <div className='secondary' title={props.id}>
         <span>ID {props.id}</span>
       </div>
       <div className='actions'>

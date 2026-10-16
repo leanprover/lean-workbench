@@ -159,12 +159,7 @@ const listSessions = t.procedure
     ),
   )
   .query(() => {
-    return [
-      ...vscServers.entries().map(([projectId, servers]) => ({
-        projectId,
-        servers: servers.map(({ uuid, viewer, createdAt }) => ({ uuid, viewer, createdAt: createdAt.toISOString() })),
-      })),
-    ]
+    return [...vscServers.entries().map(([projectId, servers]) => ({ projectId, servers }))]
   })
 
 export const shardManagerRouter = t.router({

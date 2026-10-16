@@ -33,16 +33,14 @@ export function UserRow({ user, isSelf }: { user: User; isSelf: boolean }) {
   return (
     <li>
       <div>
-        <div>
-          <span>{user.name}</span>
-          {isSelf && (
-            <span style={{ fontSize: '0.75rem', color: '#90a4ae', marginLeft: 8, marginRight: 8 }}>(you)</span>
-          )}
-          {user.isAdmin && <span className='admin-badge'>admin</span>}
-        </div>
+        <span>{user.name}</span>
+        {isSelf && <span style={{ fontSize: '0.75rem', color: '#90a4ae', marginLeft: 8, marginRight: 8 }}>(you)</span>}
+        {user.isAdmin && <span className='admin-badge'>admin</span>}
       </div>
 
-      <div className='secondary'>ID {user.id}</div>
+      <div className='secondary' title={user.id}>
+        ID {user.id}
+      </div>
       <div className='actions'>
         <button disabled={isSelf || pending} onClick={handleToggleAdmin}>
           {user.isAdmin ? 'Remove admin' : 'Make admin'}

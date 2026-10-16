@@ -132,7 +132,7 @@ export class VscodeServerHandle implements AsyncDisposable {
     this.viewer = viewer
     this.owner = owner
     this.project = project
-    this.createdAt = new Date()
+    this.createdAt = new Date().toISOString()
   }
 
   /** Whether {@link start} has been called. */
