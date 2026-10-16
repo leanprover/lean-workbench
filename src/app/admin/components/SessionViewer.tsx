@@ -24,7 +24,7 @@ async function SessionViewerData() {
   return sessions.length === 0 ? (
     <p className='empty'>No active editor sessions.</p>
   ) : (
-    <ul className='project-list'>
+    <ul className='action-list'>
       {sessions.map(info => (
         <SessionRow key={`${info.viewerId}/${info.projectId}`} info={info} />
       ))}

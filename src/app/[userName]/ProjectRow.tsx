@@ -37,8 +37,8 @@ export function ProjectRow({
     return (
       <>
         <form action={renameAction} style={{ display: 'contents' }}>
-          <input type='hidden' name='projectId' value={project.id} />
-          <div className='info' style={{ flex: 1 }}>
+          <div style={{ overflowX: 'visible', textBox: 'normal' }}>
+            <input type='hidden' name='projectId' value={project.id} />
             <input
               name='name'
               type='text'
@@ -47,7 +47,7 @@ export function ProjectRow({
                 if (e.key === 'Escape') setRenaming(false)
               }}
               placeholder='Project name'
-              style={{ width: '100%', marginBottom: 4 }}
+              style={{ width: '100%' }}
               disabled={renamePending}
               autoFocus
             />
@@ -60,8 +60,8 @@ export function ProjectRow({
               Cancel
             </button>
           </div>
+          {renameError && <div style={{ color: '#dc2626', fontSize: 13 }}>{renameError}</div>}
         </form>
-        {renameError && <div style={{ color: '#dc2626', fontSize: 13 }}>{renameError}</div>}
       </>
     )
   }
@@ -71,7 +71,7 @@ export function ProjectRow({
 
   return (
     <>
-      <div className='info'>
+      <div>
         <Link href={`/${username}/${encodeURIComponent(project.name)}/` as Route}>{project.name}</Link>
       </div>
       <div className='actions'>

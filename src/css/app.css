@@ -338,6 +338,91 @@ form.num-button input {
   }
 }
 
+/* === Action lists === 
+
+Used in both user and admin UIs for lists that provide both basic information
+and some kind of action.
+
+             .secondary
+ div (info)  (optional) .actions
+|-----------|----------|---------|
+
+*/
+ul.action-list {
+  list-style: none;
+  padding: 0;
+
+  li {
+    padding: 4px 0;
+    border-bottom: 1px solid #e4ebf3;
+    display: grid;
+    align-items: center;
+    grid-template-columns: 1fr fit-content(180px) max-content;
+    font-size: 14px;
+
+    div {
+      min-width: 0;
+      overflow-x: clip;
+      text-overflow: ellipsis;
+      text-wrap-mode: nowrap;
+      text-box: trim-both cap alphabetic;
+    }
+
+    /* For two-line information (title/subtitle), the subtitle gets the class subinfo */
+    .subinfo {
+      padding-top: 6px;
+      font-size: 11px;
+      color: #90a4ae;
+    }
+
+    .secondary {
+      text-align: right;
+      color: #90a4ae;
+    }
+
+    .actions {
+      grid-column: 3;
+      text-box: normal;
+      overflow-x: visible;
+
+      button,
+      a.button {
+        height: 32px;
+        margin-left: 6px;
+        padding-block: 0;
+        padding-inline: 12px;
+        font-size: 12px;
+      }
+      button.delete:hover {
+        background: #fef2f2;
+        border-color: #fca5a5;
+        color: #dc2626;
+      }
+    }
+
+    /* Everything after actions gets a full row (for error messages) */
+    .actions ~ * {
+      grid-column: 1 / -1;
+      text-wrap-mode: wrap;
+      text-box: normal;
+    }
+  }
+  li:last-child {
+    border-bottom: none;
+  }
+}
+
+/* :where removes specificity so this doesn't style a.button */
+:where(ul.action-list a) {
+  color: #386ee0;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+:where(ul.action-list a:hover) {
+  text-decoration: underline;
+}
+
 /* === Projects Page === */
 .new-project {
   margin: 20px 0;
@@ -353,41 +438,6 @@ form.num-button input {
   display: block;
   width: 100%;
   margin-bottom: 8px;
-}
-.project-list {
-  list-style: none;
-  padding: 0;
-}
-.project-list li {
-  padding: 12px 0;
-  border-bottom: 1px solid #e4ebf3;
-  display: flex;
-  align-items: center;
-}
-.project-list li:last-child {
-  border-bottom: none;
-}
-.project-list .info {
-  flex: 1;
-}
-.project-list .info a {
-  color: #386ee0;
-  text-decoration: none;
-  font-weight: 500;
-}
-.project-list .info a:hover {
-  text-decoration: underline;
-}
-.project-list .actions button,
-.project-list .actions a.button {
-  margin-left: 6px;
-  padding: 4px 12px;
-  font-size: 12px;
-}
-.project-list .actions button.delete:hover {
-  background: #fef2f2;
-  border-color: #fca5a5;
-  color: #dc2626;
 }
 .empty {
   color: #90a4ae;
@@ -536,7 +586,7 @@ select.roomy {
 
 .admin-badge {
   margin-left: 0.35rem;
-  padding: 0.1rem 0.4rem;
+  padding: 0.4rem;
   font-size: 0.65rem;
   font-weight: 600;
   color: #386ee0;
@@ -544,16 +594,10 @@ select.roomy {
   border-radius: 0.25rem;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+  text-box: trim-both cap alphabetic;
 }
 
-/* === List-like forms that come with actions === */
-
-form.simple-action-form {
-  display: grid;
-  grid-template-areas: 'name actions' 'desc desc' 'error error';
-  grid-template-columns: 1fr auto;
-  width: 100%;
-}
+/* === Checkbox sequences === */
 
 .check-seq {
   display: flex;

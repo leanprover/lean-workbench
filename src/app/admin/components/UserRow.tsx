@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { startTransition, useState } from 'react'
+import { startTransition } from 'react'
 
 import { deleteUser, toggleAdmin } from '@/app/admin/actions'
 import { useServerAction } from '@/lib/client/util'
@@ -10,7 +10,6 @@ type User = { id: string; name: string; isAdmin: boolean }
 
 export function UserRow({ user, isSelf }: { user: User; isSelf: boolean }) {
   const router = useRouter()
-  const [expanded, setExpanded] = useState(false)
 
   const [toggleError, toggleAction, togglePending] = useServerAction(toggleAdmin, () => router.refresh())
   const [deleteError, deleteAction, deletePending] = useServerAction(deleteUser, () => router.refresh())
@@ -32,25 +31,26 @@ export function UserRow({ user, isSelf }: { user: User; isSelf: boolean }) {
   }
 
   return (
-    <li style={{ display: 'block' }}>
-      <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => setExpanded(x => !x)}>
-        <span style={{ width: 16, fontSize: '0.7rem', color: '#90a4ae' }}>{expanded ? '\u25BC' : '\u25B6'}</span>
-        <div className='info' style={{ flex: 1 }}>
+    <li>
+      <div>
+        <div>
           <span>{user.name}</span>
+          {isSelf && (
+            <span style={{ fontSize: '0.75rem', color: '#90a4ae', marginLeft: 8, marginRight: 8 }}>(you)</span>
+          )}
           {user.isAdmin && <span className='admin-badge'>admin</span>}
-          {isSelf && <span style={{ fontSize: '0.75rem', color: '#90a4ae', marginLeft: 8 }}>(you)</span>}
         </div>
       </div>
-      {expanded && (
-        <div style={{ padding: '12px 0 4px 16px', display: 'flex', gap: 8 }}>
-          <button disabled={isSelf || pending} onClick={handleToggleAdmin}>
-            {user.isAdmin ? 'Make normal user' : 'Make admin'}
-          </button>
-          <button className='delete' disabled={isSelf || pending} onClick={handleDelete}>
-            Delete user
-          </button>
-        </div>
-      )}
+
+      <div className='secondary'>ID {user.id}</div>
+      <div className='actions'>
+        <button disabled={isSelf || pending} onClick={handleToggleAdmin}>
+          {user.isAdmin ? 'Remove admin' : 'Make admin'}
+        </button>
+        <button className='delete' disabled={isSelf || pending} onClick={handleDelete}>
+          Delete user
+        </button>
+      </div>
       {error && <div style={{ color: '#dc2626', fontSize: 13 }}>{error}</div>}
     </li>
   )

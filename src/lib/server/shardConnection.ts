@@ -15,6 +15,7 @@ export interface UnknownEditorSession {
   viewerId: string
   viewerUsername: string
   projectId: string
+  createdAt: Date
 }
 
 /** Admin-visible information about a running editor session. */
@@ -25,6 +26,7 @@ export interface EditorSessionInfo {
   ownerUsername: string
   projectId: string
   projectName: string
+  createdAt: Date
 }
 
 const dispatcher = new Pool('http://shard-connection-goes-over-uds/', { connect: { socketPath: SHARD_MANAGER_SOCK } })
@@ -115,6 +117,7 @@ export class ShardCoordinator {
             ownerUsername: project.user.name,
             projectId,
             projectName: project.name,
+            createdAt: new Date(s.createdAt),
           })
         } else {
           result.push({
@@ -122,6 +125,7 @@ export class ShardCoordinator {
             viewerId: s.viewer.id,
             viewerUsername: s.viewer.name,
             projectId,
+            createdAt: new Date(s.createdAt),
           })
         }
       }

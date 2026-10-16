@@ -20,7 +20,7 @@ export async function UserManagement() {
       {users.length === 0 ? (
         <p className='empty'>No users.</p>
       ) : (
-        <ul className='project-list'>
+        <ul className='action-list'>
           {users.map(u => (
             <UserRow key={u.id} user={u} isSelf={u.id === session.user.id} />
           ))}

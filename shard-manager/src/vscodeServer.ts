@@ -122,6 +122,7 @@ export class VscodeServerHandle implements AsyncDisposable {
   readonly viewer
   readonly owner
   readonly project
+  readonly createdAt
 
   constructor(viewer: BaseUser, owner: { id: string; name: string }, project: BaseProject) {
     const { promise, resolve, reject } = Promise.withResolvers<void>()
@@ -131,6 +132,7 @@ export class VscodeServerHandle implements AsyncDisposable {
     this.viewer = viewer
     this.owner = owner
     this.project = project
+    this.createdAt = new Date()
   }
 
   /** Whether {@link start} has been called. */

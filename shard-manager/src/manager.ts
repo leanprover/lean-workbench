@@ -147,13 +147,24 @@ const listSessions = t.procedure
       z.array(
         z.object({
           projectId: zProjectId,
-          servers: z.array(z.object({ uuid: z.uuidv4(), viewer: z.object({ id: zUserId, name: zUserName }) })),
+          servers: z.array(
+            z.object({
+              uuid: z.uuidv4(),
+              viewer: z.object({ id: zUserId, name: zUserName }),
+              createdAt: z.iso.datetime(),
+            }),
+          ),
         }),
       ),
     ),
   )
   .query(() => {
-    return [...vscServers.entries().map(([projectId, servers]) => ({ projectId, servers }))]
+    return [
+      ...vscServers.entries().map(([projectId, servers]) => ({
+        projectId,
+        servers: servers.map(({ uuid, viewer, createdAt }) => ({ uuid, viewer, createdAt: createdAt.toISOString() })),
+      })),
+    ]
   })
 
 export const shardManagerRouter = t.router({

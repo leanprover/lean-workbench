@@ -46,7 +46,7 @@ function ToolchainManagementList(props: ToolchainManagementProps) {
   const installedToolchains = use(props.installedToolchainsPromise)
   if (installedToolchains.length === 0) return <p className='empty'>No installed toolchains.</p>
   return (
-    <ul className='project-list'>
+    <ul className='action-list'>
       {installedToolchains.map(toolchain => (
         <ToolchainRow key={toolchain} toolchain={toolchain} />
       ))}
@@ -62,11 +62,11 @@ function ToolchainRow(props: { toolchain: string }) {
   })
   return (
     <li>
-      <form className='simple-action-form' action={action}>
-        <div style={{ gridArea: 'name' }}>{props.toolchain}</div>
+      <div>{props.toolchain}</div>
+      <form className='actions' action={action}>
         <input type='hidden' name='toolchain' value={props.toolchain} />
         {EXPECTED_TOOLCHAIN_ID_RE.test(props.toolchain) /* prevent uninstall of weird-enough-named toolchains */ && (
-          <div className='actions' style={{ gridArea: 'actions' }}>
+          <>
             {!confirm && (
               <button type='button' onClick={() => setConfirm(true)}>
                 Remove Toolchain
@@ -82,10 +82,10 @@ function ToolchainRow(props: { toolchain: string }) {
                 </button>
               </>
             )}
-          </div>
+          </>
         )}
-        <div style={{ gridArea: 'error', color: '#f00' }}>{error}</div>
       </form>
+      <div style={{ color: '#dc2626' }}>{error}</div>
     </li>
   )
 }

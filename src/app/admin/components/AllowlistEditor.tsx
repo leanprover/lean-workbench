@@ -25,10 +25,10 @@ export function AllowlistEditor({ users }: { users: string[] }) {
       {users.length === 0 ? (
         <p className='empty'>No users in the allowlist.</p>
       ) : (
-        <ul className='project-list'>
+        <ul className='action-list'>
           {users.map(u => (
             <li key={u}>
-              <div className='info'>{u}</div>
+              <div>{u}</div>
               <div className='actions'>
                 <button
                   className='delete'

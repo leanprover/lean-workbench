@@ -14,17 +14,39 @@ export function SessionRow({ info }: { info: EditorSessionInfo | UnknownEditorSe
 
   return (
     <li>
-      <div className='info'>
-        <a href={`/${info.viewerUsername}`}>{info.viewerUsername}</a>
-        <span style={{ color: '#90a4ae', margin: '0 0.25rem' }}>editing</span>
-        {'ownerUsername' in info ? (
-          <ProjectLink ownerUsername={info.ownerUsername} projectName={info.projectName} />
-        ) : (
-          <div style={{ color: '#dc2626' }}>project {info.projectId} not listed in the database (deleted?)</div>
-        )}
+      <div>
+        <div>
+          {'ownerUsername' in info ? (
+            <ProjectLink ownerUsername={info.ownerUsername} projectName={info.projectName} />
+          ) : (
+            <div style={{ color: '#dc2626' }}>Unlisted (deleted?) project {info.projectId}</div>
+          )}
+        </div>
+        <div className='subinfo'>
+          <a href={`/${info.viewerUsername}`}>{info.viewerUsername}</a>
+          <span> editing</span>
+        </div>
+      </div>
+      <div className='secondary'>
+        <div>
+          <span>UUID {info.sessionId}</span>
+        </div>
+        <div className='subinfo'>
+          <span>
+            since{' '}
+            {info.createdAt.toLocaleString('en-us', {
+              month: 'long',
+              day: 'numeric',
+              hour: 'numeric',
+              minute: 'numeric',
+              hourCycle: 'h23',
+              timeZone: 'UTC',
+              timeZoneName: 'short',
+            })}
+          </span>
+        </div>
       </div>
       <div className='actions'>
-        <span style={{ fontSize: '0.8rem', color: '#90a4ae' }}>UUID {info.sessionId}</span>
         <button
           className='delete'
           disabled={killPending}

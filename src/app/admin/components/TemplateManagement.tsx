@@ -48,7 +48,7 @@ export function TemplateManagement(props: TemplateManagementProps) {
 
 function TemplateManagementList(props: { templates: TemplateInfo[] }) {
   return (
-    <ul className='project-list'>
+    <ul className='action-list'>
       {props.templates.map(template => (
         <TemplateRow key={template.id} {...template} />
       ))}
@@ -61,17 +61,18 @@ function TemplateRow(props: TemplateInfo) {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   return (
-    <li style={{ display: 'grid', gridTemplateColumns: '1fr auto', width: '100%' }}>
-      <input type='hidden' name='id' value={props.id} />
+    <li>
       <div>
-        <div style={{ fontSize: '13px' }}>
+        <div>
           {props.name}
           {!props.visible && <em> (hidden)</em>}
         </div>
-        <div style={{ fontSize: '11px', color: '#90a4ae' }}>{props.description}</div>
+        {props.description && <div className='subinfo'>{props.description}</div>}
+      </div>
+      <div className='secondary'>
+        <span>ID {props.id}</span>
       </div>
       <div className='actions'>
-        <span style={{ fontSize: '0.8rem', color: '#90a4ae' }}>ID {props.id}</span>
         <DialogTrigger isOpen={isModalOpen} onOpenChange={setIsModalOpen}>
           <Button>Edit</Button>
           <Modal isDismissable>
@@ -128,7 +129,7 @@ function TemplateEditForm(props: TemplateInfo & { onSuccess: () => void }) {
         </Button>
       </div>
 
-      <div role='alert' style={{ color: '#f00' }}>
+      <div role='alert' style={{ color: '#dc2626' }}>
         {editError}
       </div>
     </form>

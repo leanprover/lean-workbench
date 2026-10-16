@@ -55,13 +55,13 @@ export default async function ProfileBody({ params: params_ }: { params: Promise
           {isOwner ? <>No projects yet.{templates.length > 0 && ' Create one below.'}</> : 'No public projects.'}
         </p>
       ) : (
-        <ul className='project-list'>
+        <ul className='action-list'>
           {projects.map(p => (
             <li key={p.id}>
               {isOwner ? (
                 <ProjectRow project={p} username={user.name} canPublish={p.canPublish} />
               ) : (
-                <div className='info'>
+                <div>
                   <Link href={`/${user.name}/${encodeURIComponent(p.name)}/` as Route}>{p.name}</Link>
                 </div>
               )}
