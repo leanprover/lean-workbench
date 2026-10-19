@@ -43,7 +43,7 @@ export function UserRow({ user, isSelf }: { user: User; isSelf: boolean }) {
       </div>
       <div className='actions'>
         <button disabled={isSelf || pending} onClick={handleToggleAdmin}>
-          {user.isAdmin ? 'Remove admin' : 'Make admin'}
+          {user.isAdmin ? 'Make normal user' : 'Make admin'}
         </button>
         <button className='delete' disabled={isSelf || pending} onClick={handleDelete}>
           Delete user
