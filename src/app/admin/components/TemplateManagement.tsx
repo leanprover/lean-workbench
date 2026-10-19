@@ -63,7 +63,7 @@ function TemplateManagementList(props: { templates: TemplateInfo[]; matchesFilte
   if (props.templates.length === 0) return null // "No visible templates" warning already given above
   if (filtered.length === 0) return <p className='empty'>No templates match the filter.</p>
   return (
-    <ul className='action-list'>
+    <ul className='action-list scroll-region'>
       {filtered.map(template => (
         <TemplateRow key={template.id} {...template} />
       ))}

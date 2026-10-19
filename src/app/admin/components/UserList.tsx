@@ -15,7 +15,7 @@ export function UserList(props: { users: Pick<User, 'name' | 'id' | 'isAdmin'>[]
         <QuickFilterInput description='Filter users' filter={filter} />
       </div>
       {filtered.length === 0 && <p className='empty'>No users match the filter.</p>}
-      <ul className='action-list'>
+      <ul className='action-list scroll-region'>
         {filtered.map(u => (
           <UserRow key={u.id} user={u} isSelf={u.id === props.selfId} />
         ))}

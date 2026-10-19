@@ -414,6 +414,27 @@ ul.action-list {
   }
 }
 
+.scroll-region {
+  max-height: 50vh;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+
+  /* Scroll gradient from https://lea.verou.me/blog/2012/04/background-attachment-local/ */
+  background:
+    linear-gradient(white 30%, rgba(255, 255, 255, 0)) /* Shadow covers */,
+    linear-gradient(rgba(255, 255, 255, 0), white 70%) 0 100%,
+    radial-gradient(farthest-side at 50% 0, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0)) /* Shadows */,
+    radial-gradient(farthest-side at 50% 100%, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0)) 0 100%;
+  background-repeat: no-repeat;
+  background-color: white;
+  background-size:
+    100% 40px,
+    100% 40px,
+    100% 14px,
+    100% 14px;
+  /* Opera doesn't support this in the shorthand */
+  background-attachment: local, local, scroll, scroll;
+}
 /* :where removes specificity so this doesn't style a.button */
 :where(ul.action-list a) {
   color: #386ee0;

@@ -56,7 +56,7 @@ function ToolchainManagementList(props: ToolchainManagementProps & { matchesFilt
   if (filteredToolchains.length === 0)
     return <p className='empty'>No installed toolchains{installedToolchains.length > 0 && ' match the filter'}.</p>
   return (
-    <ul className='action-list'>
+    <ul className='action-list scroll-region'>
       {filteredToolchains.map(toolchain => (
         <ToolchainRow key={toolchain} toolchain={toolchain} />
       ))}
