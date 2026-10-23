@@ -66,7 +66,7 @@ export function PublishCard({
         scope='user'
         title={publication ? 'Publish again' : 'Publish'}
         disabled={broken}
-        initiallyWatchingTTY
+        resumeTTY='running'
         trackedCommandAction={startPublishing}
         successAction={() => router.refresh()}
       >
