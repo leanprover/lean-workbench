@@ -10,7 +10,7 @@ import chokidar from 'chokidar'
 
 const paths =
   process.argv.length < 3
-    ? ['src', 'shard', 'collab-server/src', 'vscode-workbench/src', 'public', 'shard-manager']
+    ? ['src', 'shared', 'collab-server/src', 'vscode-workbench/src', 'public', 'shard-manager']
     : process.argv.slice(2)
 const hashes = new Map()
 const nudge = async file => {
