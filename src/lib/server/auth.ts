@@ -81,6 +81,25 @@ async function createAuth() {
       cookiePrefix: secureCookies ? '__Host-better-auth' : 'better-auth',
       defaultCookieAttributes: { secure: secureCookies },
     },
+    disabledPaths: [
+      // Lets users change their account username;
+      // we need server-side control over structure and uniqueness of usernames.
+      '/update-user',
+      // These are simply unused at present; new plugins and upgrades may make this list incomplete.
+      // If there's a reason to call these client-side, remove them from the list.
+      '/account-info',
+      '/get-access-token',
+      '/link-social',
+      '/list-accounts',
+      '/list-sessions',
+      '/refresh-token',
+      '/revoke-other-sessions',
+      '/revoke-session',
+      '/revoke-sessions',
+      '/update-session',
+      '/unlink-account',
+      '/verify-password',
+    ],
     databaseHooks: {
       user: {
         create: {
