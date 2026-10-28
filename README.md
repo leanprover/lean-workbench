@@ -285,3 +285,7 @@ Otherwise, a partially written, corrupted database may be copied.
 ## Development
 
 See [doc/DEVELOPMENT.md](doc/DEVELOPMENT.md).
+
+## Migration Notes
+
+- v0.0.19: while unlikely, database migration will fail if a user managed to create two accounts attached to the same GitHub provider. Please reach out to us via Lean Zulip if you encounter this.
