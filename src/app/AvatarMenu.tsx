@@ -5,7 +5,7 @@ import { Button, Header, Menu, MenuItem, MenuSection, MenuTrigger, Popover } fro
 
 import AvatarIcon from '@/app/components/AvatarIcon'
 import MenuLinkItem from '@/app/components/MenuLinkItem'
-import authClient from '@/lib/client/auth'
+import authClient, { githubSignin } from '@/lib/client/auth'
 import { useThrowToBoundary } from '@/lib/client/util'
 import { useConfigCtx } from '@/lib/contexts'
 import { setIsAdmin } from '@/lib/server/actions'
@@ -62,15 +62,7 @@ export default function AvatarMenu() {
       </>
     )
   } else if (!session.isPending && cfg.hasGithubAuth) {
-    return (
-      <button
-        onClick={() => {
-          authClient.signIn.social({ provider: 'github' }).catch(throwToBoundary)
-        }}
-      >
-        Sign in via GitHub
-      </button>
-    )
+    return <button onClick={() => githubSignin().catch(throwToBoundary)}>Sign in via GitHub</button>
   } else {
     return <></>
   }

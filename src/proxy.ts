@@ -1,8 +1,9 @@
 import { type NextRequest, NextResponse } from 'next/server'
 
+import { getUserSession } from './lib/server/auth'
 import { getConfig } from './lib/server/config'
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const cfg = getConfig()
   if (!cfg.isSetupComplete) {
     const path = request.nextUrl.pathname
@@ -13,6 +14,15 @@ export function proxy(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/setup'
     return NextResponse.redirect(url)
+  }
+  if (request.nextUrl.pathname === '/') {
+    const session = await getUserSession()
+    if (session) {
+      const url = request.nextUrl.clone()
+      url.pathname = `/${session.user.name}`
+      url.search = ''
+      return NextResponse.redirect(url)
+    }
   }
   return NextResponse.next()
 }

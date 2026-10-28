@@ -4,7 +4,7 @@ import { type Route } from 'next'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
-import authClient from '@/lib/client/auth'
+import authClient, { githubSignin } from '@/lib/client/auth'
 import { useServerAction, useThrowToBoundary } from '@/lib/client/util'
 import { type Config, useConfigCtx } from '@/lib/contexts'
 import { loginDevUser } from '@/lib/server/actions'
@@ -34,7 +34,7 @@ export default function Root() {
   const session = authClient.useSession()
   const error = useSearchParams().get('error')
   const { throwToBoundary } = useThrowToBoundary()
-  const [_, devLoginAction] = useServerAction(loginDevUser, () => session.refetch())
+  const [_, devLoginAction] = useServerAction(loginDevUser, () => window.location.reload())
 
   return (
     <>
@@ -56,9 +56,7 @@ export default function Root() {
             className='login-link'
             disabled={!cfg.hasGithubAuth}
             title={!cfg.hasGithubAuth ? 'Ask your administrator to set up GitHub authentication.' : undefined}
-            onClick={() => {
-              authClient.signIn.social({ provider: 'github' }).catch(throwToBoundary)
-            }}
+            onClick={() => githubSignin().catch(throwToBoundary)}
           >
             GitHub
           </button>
