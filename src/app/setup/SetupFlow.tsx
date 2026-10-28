@@ -27,7 +27,7 @@ export default function SetupFlow({ baseUrl }: SetupFlowProps) {
     <TrackedCommandForm
       streamCommandKey='seed'
       scope='admin'
-      initiallyWatchingTTY
+      resumeTTY='any'
       title='Start Setup'
       trackedCommandAction={doSeed}
       style={{ margin: '20px 0' }}

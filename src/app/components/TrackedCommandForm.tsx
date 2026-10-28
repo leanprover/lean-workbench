@@ -1,6 +1,6 @@
 'use client'
 
-import { type CSSProperties, type ReactNode, startTransition, useEffect, useState } from 'react'
+import { type CSSProperties, type ReactNode, startTransition, useCallback, useEffect, useState } from 'react'
 
 import ErrorBox from '@/app/components/ErrorBox'
 import SimpleTTY from '@/app/components/SimpleTTY'
@@ -15,7 +15,7 @@ interface TrackedCommandFormProps {
   title: string
   children: ReactNode
   disabled?: boolean
-  initiallyWatchingTTY?: boolean
+  resumeTTY?: 'any' | 'running'
   successAction?: () => void
   successButton?: { allowClose?: boolean; text: string; action: (props: { close: () => void }) => void }
   trackedCommandAction: (formData: FormData) => Promise<ActionResponse<boolean>>
@@ -40,8 +40,9 @@ type FormState =
  * Optional configuration props:
  *  - `disabled`: forces the form closed, disables the button
  *  - `style`: styles applied to the TrackedCommandForm
- *  - `initiallyWatchingTTY`: begin in an open state, try to open the TTY view first, and
- *    fall back on the form view only if no prior TTY session is available.
+ *  - `resumeTTY`: begin in an open state, showing the TTY if there is a session to watch
+ *    and the form otherwise
+ *    (`'any'`: any prior session, finished or not; `'running'`: only one still running).
  *  - `successAction`: runs immediately if an successful-exit is detected (whether via replay
  *    or via a new streaming event)
  *  - `successButton`: if provided, then when the TTY is showing a successful exit state, the
@@ -55,12 +56,12 @@ export default function TrackedCommandForm({
   title,
   children,
   disabled,
-  initiallyWatchingTTY,
+  resumeTTY,
   successAction,
   successButton,
   trackedCommandAction,
 }: TrackedCommandFormProps) {
-  const [state, setState] = useState<FormState>(initiallyWatchingTTY ? { type: 'opening' } : { type: 'closed' })
+  const [state, setState] = useState<FormState>(resumeTTY ? { type: 'opening' } : { type: 'closed' })
   const [submitError, submitAction, submitPending] = useServerAction(
     trackedCommandAction,
     wasCommandCreationSuccessful =>
@@ -68,17 +69,22 @@ export default function TrackedCommandForm({
   )
 
   const { throwToBoundary } = useThrowToBoundary()
+  /** Shows the TTY if `probe` finds a session to watch, and the form otherwise. */
+  const openFor = useCallback(
+    (probe: typeof isTrackedCommandRunning) => {
+      probe(scope, streamCommandKey)
+        .then(watch => setState(watch ? { type: 'watching' } : { type: 'editing' }))
+        .catch(throwToBoundary)
+    },
+    [scope, streamCommandKey, throwToBoundary],
+  )
   useEffect(() => {
-    if (disabled || !initiallyWatchingTTY) return
-    isTrackedCommandAvailable(scope, streamCommandKey)
-      .then(isTTYAvailable => setState(isTTYAvailable ? { type: 'watching' } : { type: 'editing' }))
-      .catch(throwToBoundary)
-  }, [disabled, initiallyWatchingTTY, scope, streamCommandKey, throwToBoundary])
+    if (disabled || !resumeTTY) return
+    openFor(resumeTTY === 'any' ? isTrackedCommandAvailable : isTrackedCommandRunning)
+  }, [disabled, resumeTTY, openFor])
   const setStateOpening = () => {
     setState({ type: 'opening' })
-    isTrackedCommandRunning(scope, streamCommandKey)
-      .then(isAlreadyRunning => setState(isAlreadyRunning ? { type: 'watching' } : { type: 'editing' }))
-      .catch(throwToBoundary)
+    openFor(isTrackedCommandRunning)
   }
 
   if (state.type === 'closed' || disabled) {

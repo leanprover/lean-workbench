@@ -206,7 +206,8 @@ a.button {
     border-color 0.15s;
 }
 a.button {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   text-decoration: none;
 }
 button:hover,
