@@ -108,6 +108,7 @@ export function ProjectRow({
               <MenuItem onAction={() => setRenaming(true)} isDisabled={actionPending}>
                 Rename
               </MenuItem>
+              <MenuItem href={`/${username}/${encodeURIComponent(project.name)}/download`}>Download</MenuItem>
               <MenuItem
                 onAction={() => {
                   if (!confirm(`Delete project "${project.name}"? Project files will be kept.`)) return

@@ -50,3 +50,29 @@ export const execFileAsync = promisify(execFile)
 
 export * from './bwrap.ts'
 export * from './directories.ts'
+
+/**
+ * Turns an iterator into a ReadableStream.
+ * Node has had this as `ReadableStream.from` for years,
+ * but Next's TypeScript story expects us to always use the least-common-denominator of browser-available and node-available.
+ * (we should replace this with `ReadableStream.from` once typescript includes types for it).
+ *
+ * Adapted from
+ * https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream#convert_an_iterator_or_async_iterator_to_a_stream
+ * which lacks the `cancel` function.
+ */
+export function iteratorToStream<T>(iterator: AsyncGenerator<T, void>): ReadableStream<T> {
+  return new ReadableStream({
+    async pull(controller) {
+      const { value, done } = await iterator.next()
+      if (done) {
+        controller.close()
+      } else {
+        controller.enqueue(value)
+      }
+    },
+    async cancel() {
+      await iterator.return()
+    },
+  })
+}
