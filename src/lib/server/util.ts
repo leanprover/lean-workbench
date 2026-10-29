@@ -54,6 +54,12 @@ function canAccessProject(user: User, project: Project) {
   return isOwner || project.isPublic
 }
 
+/**
+ * If a the given User can access <ownerName>/<projectName>,
+ * return both the owner and project records.
+ *
+ * Otherwise, return null.
+ */
 export async function getProjectForViewer(
   sessionUser: User,
   ownerName: string,
