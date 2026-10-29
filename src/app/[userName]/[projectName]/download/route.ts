@@ -6,8 +6,7 @@ import { notFound } from 'next/navigation'
 import z from 'zod'
 
 import { requireAuth } from '@/lib/server/auth'
-import { getDb } from '@/lib/server/db'
-import { canAccessProject } from '@/lib/server/util'
+import { getProjectForViewer } from '@/lib/server/util'
 
 const zParams = z.object({
   userName: zUserName,
@@ -35,14 +34,10 @@ export async function GET(_req: Request, { params }: { params: Promise<unknown> 
   const { userName, projectName } = parsed.data
 
   const session = await requireAuth()
-  const db = getDb()
-  const owner = await db.user.findUnique({ where: { name: userName } })
-  if (!owner) notFound()
-  const project = await db.project.findUnique({
-    where: { userId_name: { userId: owner.id, name: projectName } },
-  })
-  // 404 rather than 403 to avoid leaking the existence of inaccessible projects.
-  if (!project || !canAccessProject(session.user, project)) notFound()
+
+  const proj = await getProjectForViewer(session.user, userName, projectName)
+  if (!proj) notFound() // 404 rather than 403 to avoid leaking the existence of inaccessible projects.
+  const { owner, project } = proj
 
   return new Response(iteratorToStream(generateProjectTgz(owner, project.id)), {
     headers: {
