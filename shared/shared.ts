@@ -5,7 +5,7 @@ import { z } from 'zod'
  *
  * - IDs are used in file paths and in URLs.
  *   They must never contain traversal characters (`/` and `.`).
- *   Project and user IDs are randomized strings (UUIDv4 or BetterAuth's custom ID format)
+ *   Project and user IDs are randomized strings (UUIDv4 and BetterAuth's custom ID format, respectively)
  * - Project and user names are not used in file paths, but may be used in URLs.
  *   We enforce alphanumeric ASCII names.
  *   Names are unique up to recasing, natively in the database (`COLLATE NOCASE`).
