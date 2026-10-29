@@ -212,13 +212,20 @@ export async function getAuth(): Promise<AuthInstance> {
   return g.__auth!
 }
 
-/** Require an authenticated user. Throws `unauthorized()` if not logged in. */
-export async function requireAuth(): Promise<SessionAndUser> {
+/** Check for an authenticated user. Returns `null` if not logged in. */
+export async function getUserSession(): Promise<null | SessionAndUser> {
   await io()
   const auth = await getAuth()
   const session = await auth.api.getSession({ headers: await headers() })
-  if (!session) unauthorized()
+  if (!session) return null
   return session
+}
+
+/** Require an authenticated user. Throws `unauthorized()` if not logged in. */
+export async function requireAuth(): Promise<SessionAndUser> {
+  const auth = await getUserSession()
+  if (!auth) unauthorized()
+  return auth
 }
 
 /** Require an admin user. Throws `unauthorized()` if not logged in, `forbidden()` if not admin. */
