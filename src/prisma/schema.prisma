@@ -13,19 +13,11 @@ datasource db {
 model User {
   /// Better-auth identifier (matches BETTERAUTH_ID_RE)
   id            String    @id
-  /// Better-auth does not require uniqueness but we do.
-  /// These names serve two distinct purposes that require uniqueness.
-  ///
-  /// First, they are a user-controlled identifier that appears in a URL as to signify the project's owner
+  /// Better-auth does not require name uniqueness but we do:
+  /// names are user-controlled identifiers that appear in a URL as part of locating the project
   /// (e.g. https://example.com/my-user-name/my-first-project).
   ///
-  /// Second, they are unique long-lasting filesystem identifiers used to group a user's project
-  /// data on the file system.
-  ///
-  /// (It's possible that in the future we will want to tease these apart,
-  /// and allow the URL-appearing identifier to be changed more freely by users.)
-  ///
-  /// Names must match `ALPHANUM_NAME_RE`.
+  /// Names must match ALPHANUM_NAME_RE.
   /// This column is `COLLATE NOCASE` in migration.sql
   /// (Prisma cannot express SQLite collation settings),
   /// so uniqueness and lookups are case-insensitive
@@ -111,7 +103,7 @@ model Verification {
 // Workbench-specific tables
 
 model Project {
-  /// 128-bit UUID.
+  /// 128-bit UUIDv4.
   id           String              @id
   /// Project's owner.
   user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -135,7 +127,7 @@ model Project {
 /// A publication is live exactly while its row exists:
 /// every request for it resolves through this table.
 model Publication {
-  /// UUID; the publication's durable identity, and its directory under `publications/`.
+  /// UUIDv4; the publication's durable identity, and its directory under `publications/`.
   id        String   @id
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId String
