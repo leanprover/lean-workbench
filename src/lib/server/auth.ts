@@ -73,6 +73,15 @@ async function createAuth() {
   const auth = betterAuth({
     database: prismaAdapter(getDb(), { provider: 'sqlite' }),
     secret: config.authSessionSecret,
+    account: {
+      accountLinking: {
+        // Account login is associated with the *github account* I used to log in.
+        // A different github account with the same verified email
+        // (or another social provider with the same verified email)
+        // is not sufficient for logging in.
+        disableImplicitLinking: true,
+      },
+    },
     advanced: {
       // better-auth prepends `__Secure-` of its own when `useSecureCookies` is on,
       // leaving `__Host-` in the middle of the name, where it means nothing.
