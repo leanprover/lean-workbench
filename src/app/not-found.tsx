@@ -8,7 +8,7 @@ export default async function NotFound() {
   return (
     <div>
       <h1>404 Not Found</h1>
-      <p>Whatever you were looking for, it is not here.</p>
+      <p>Page Not Found.</p>
       <p>
         {session && (
           <>
