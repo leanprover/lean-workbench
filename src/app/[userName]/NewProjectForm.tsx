@@ -7,7 +7,7 @@ import { useMemo, useState } from 'react'
 import { useServerAction } from '@/lib/client/util'
 import { type TemplateInfo } from '@/lib/server/projectTemplate'
 
-import { createProject } from './actions'
+import { createProjectFromTemplate } from './actions'
 
 interface NewProjectProps {
   templates: TemplateInfo[]
@@ -24,7 +24,7 @@ export function NewProjectForm(props: NewProjectProps) {
   const [open, setOpen] = useState(false)
   const friendlySuggestion = useMemo(() => (open ? generateSuggestion() : ''), [open])
 
-  const [createError, createAction, createPending] = useServerAction(createProject, () => {
+  const [createError, createAction, createPending] = useServerAction(createProjectFromTemplate, () => {
     setOpen(false)
     router.refresh()
   })

@@ -1,12 +1,8 @@
-import { execFile } from 'node:child_process'
 import path from 'node:path'
-import { promisify } from 'node:util'
 
-import { getElanDir } from '@leanprover/workbench-shared/node'
+import { execFileAsync, getElanDir } from '@leanprover/workbench-shared/node'
 
 import { startTrackedCommand } from './trackedCommand'
-
-const exec = promisify(execFile)
 
 const getElanBin = () => path.join(getElanDir(), 'bin', 'elan')
 
@@ -20,7 +16,7 @@ const getElanBin = () => path.join(getElanDir(), 'bin', 'elan')
  */
 export async function listInstalledToolchains(): Promise<string[]> {
   const ELAN_HOME = getElanDir()
-  const { stderr, stdout } = await exec(getElanBin(), ['toolchain', 'list'], {
+  const { stderr, stdout } = await execFileAsync(getElanBin(), ['toolchain', 'list'], {
     env: { ...process.env, ELAN_HOME },
   })
   // a successful `elan toolchain list` prints only to standard output
@@ -34,7 +30,7 @@ export async function listInstalledToolchains(): Promise<string[]> {
 
 export async function elanUninstall(leanVersion: string) {
   const ELAN_HOME = getElanDir()
-  const { stderr, stdout } = await exec(getElanBin(), ['toolchain', 'uninstall', leanVersion], {
+  const { stderr, stdout } = await execFileAsync(getElanBin(), ['toolchain', 'uninstall', leanVersion], {
     env: { ...process.env, ELAN_HOME },
   })
   // a successful `elan toolchain uninstall ...` prints only to standard error

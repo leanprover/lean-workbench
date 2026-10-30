@@ -16,6 +16,18 @@ export function useServerAction<Payload = void, T = void>(
   onSuccess?: (_: T) => void,
 ) {
   return useActionState(async (_: string | null, payload: Payload) => {
+    // Server actions throw if they get a 413 response
+    // Returning an error keeps us from throwing to an error boundary
+    if (payload instanceof FormData) {
+      let total = 0
+      for (const value of payload.values()) {
+        total += value instanceof File ? value.size : value.length
+      }
+      if (total > 1_000_000) {
+        return 'Submission too large (form submissions are limited to 1 MB)'
+      }
+    }
+
     const result = await fn(payload)
     if ('error' in result) return result.error
     onSuccess?.(result.ok)

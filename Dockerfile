@@ -134,6 +134,7 @@ RUN apt-get update \
         texlive-pictures texlive-fonts-recommended texlive-fonts-extra \
         texlive-luatex texlive-xetex texlive-plain-generic \
         ghostscript inkscape \
+        libarchive-tools \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app/
