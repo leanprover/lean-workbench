@@ -4,9 +4,8 @@ import { connection } from 'next/server'
 import z from 'zod'
 
 import { requireAuth } from '@/lib/server/auth'
-import { getDb } from '@/lib/server/db'
 import { getShardCoordinator } from '@/lib/server/shardConnection'
-import { canAccessProject } from '@/lib/server/util'
+import { getProjectForViewer } from '@/lib/server/util'
 
 const zParams = z.object({
   userName: zUserName,
@@ -26,22 +25,14 @@ export default async function EditorSession({ params: params_ }: { params: Promi
   const params = parsed.data
 
   const session = await requireAuth()
-  const viewer = session.user
 
-  const db = getDb()
-  const owner = await db.user.findUnique({
-    where: { name: params.userName },
-  })
-  if (!owner) notFound()
-
-  const project = await db.project.findUnique({
-    where: { userId_name: { userId: owner.id, name: params.projectName } },
-  })
-  if (!project || !canAccessProject(viewer, project)) notFound()
+  const proj = await getProjectForViewer(session.user, params.userName, params.projectName)
+  if (!proj) notFound() // 404 rather than 403 to avoid leaking the existence of inaccessible projects.
+  const { owner, project } = proj
 
   const coordinator = getShardCoordinator()
   // may throw to error boundary (e.g. if the project folder isn't accessible)
-  const iframeUrl = await coordinator.ensureSession(viewer, owner, project)
+  const iframeUrl = await coordinator.ensureSession(session.user, owner, project)
 
   // TODO: VSC should be sandboxed but can't be opaque-origin: need a subdomain.
   return <iframe id='editor-frame' src={iframeUrl} className='editor-session-iframe' />

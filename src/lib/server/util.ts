@@ -49,9 +49,32 @@ export function submitAction<S extends z.ZodType, T = void>(
   }
 }
 
-export function canAccessProject(user: User, project: Project) {
+function canAccessProject(user: User, project: Project) {
   const isOwner = user.id === project.userId
   return isOwner || project.isPublic
+}
+
+/**
+ * If a the given User can access <ownerName>/<projectName>,
+ * return both the owner and project records.
+ *
+ * Otherwise, return null.
+ */
+export async function getProjectForViewer(
+  sessionUser: User,
+  ownerName: string,
+  projectName: string,
+): Promise<{ owner: User; project: Project } | null> {
+  const db = getDb()
+
+  const owner = await db.user.findUnique({ where: { name: ownerName } })
+  if (!owner) return null
+
+  const project = await db.project.findUnique({ where: { userId_name: { userId: owner.id, name: projectName } } })
+  if (!project) return null
+
+  if (canAccessProject(sessionUser, project)) return { owner, project }
+  return null
 }
 
 /** Resolve `<userName>/<projectName>` for an owner-only route,
