@@ -208,3 +208,33 @@ export type BaseProject = z.output<typeof zBaseProject>
 
 /** Filesystem location of the unix domain socket that connects the next.js server to the shard manager */
 export const SHARD_MANAGER_SOCK = '/tmp/lean-workbench/shard-manager.sock'
+
+/**
+ * Given a candidate string (e.g. a username) and a test to see if a string is ok,
+ * return a string matching `ALPHANUM_NAME_RE` and starting with a non-numeric character.
+ */
+export async function findSuitableAlphaNumName(candidate: string, isOk: (str: string) => Promise<boolean>) {
+  const candidateAlphaNum = candidate.match(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,99}/)?.[0] ?? 'anon'
+
+  // Try to just accept this candidate
+  if (await isOk(candidateAlphaNum)) {
+    return candidateAlphaNum
+  }
+
+  // Remove any numeric postfix, and try successive numeric postfixes
+  // An entirely numeric id will become "anon"
+  let candidatePrefix = candidateAlphaNum.match(/^([a-zA-Z0-9_-]*[^0-9])[0-9]*$/)?.[1] ?? 'anon'
+  for (let i = 1; ; i++) {
+    if (`${candidatePrefix}${i}`.length > 100) {
+      candidatePrefix = candidatePrefix.slice(0, -1)
+    }
+    const newCandidate = `${candidatePrefix}${i}`
+    if (await isOk(newCandidate)) return newCandidate
+
+    // Protect against non-termination due to an isOk test that's overbroad
+    if (i > 1_000) candidatePrefix = 'anon'
+
+    // Protect harder
+    if (i > 10_000) throw new Error('findSuitableAlphaNumName() unable to find an acceptable candidate')
+  }
+}
