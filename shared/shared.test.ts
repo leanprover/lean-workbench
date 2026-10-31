@@ -1,6 +1,6 @@
 import { describe, expect, it, test } from 'vitest'
 
-import { bwrapProjectDir, describeValue, leanVersionCompare, toolchainHasModules } from './shared.ts'
+import { describeValue, leanVersionCompare, toolchainHasModules } from './shared.ts'
 
 describe('leanVersionCompare', () => {
   it('should throw on non-lean version numbers', () => {
@@ -35,10 +35,6 @@ test('toolchainHasModules', () => {
   expect(toolchainHasModules('leanprover/lean4:v4.99.0')).toBe(true)
   expect(toolchainHasModules('leanprover/lean4-nightly:nightly-1900-01-01')).toBe(false)
   expect(toolchainHasModules('leanprover/lean4-nightly:nightly-2027-01-01')).toBe(true)
-})
-
-test('bwrapProjectDir', () => {
-  expect(bwrapProjectDir('abc')).toBe('/workspace/abc/')
 })
 
 test('describeValue', () => {
