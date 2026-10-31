@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test": "vitest run --coverage",
     "tsc": "tsc"
   },
   "exports": {
@@ -12,5 +13,9 @@
   },
   "dependencies": {
     "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.5",
+    "@vitest/coverage-v8": "^5.0.5"
   }
 }

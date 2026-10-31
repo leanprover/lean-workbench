@@ -27,6 +27,8 @@ jobs:
 
       - run: npm run lint
 
+      - run: npm run test --workspace=shared
+
       # Registry cache import/export requires the docker-container driver.
       - uses: docker/setup-buildx-action@v3
         with:
