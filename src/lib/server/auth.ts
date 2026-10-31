@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { adminEmail, devModePassword, zUserName } from '@leanprover/workbench-shared'
+import { adminEmail, devModePassword, findSuitableAlphaNumName } from '@leanprover/workbench-shared'
 import { isDevMode } from '@leanprover/workbench-shared/node'
 import { betterAuth, generateId, type SocialProviders } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
@@ -31,6 +31,35 @@ async function ensureAdminUserExists() {
       console.log('Created admin user with dev mode password')
     }
   }
+}
+
+/**
+ * Usernames that might conflict with route components, or that we choose to disallow for other reasons.
+ */
+const FORBIDDEN_USERNAMES = new Set([
+  'admin', // route conflict between /admin and /[userName]
+  'api', // route conflict between /api and /[userName]
+  'components', // potential route conflict between /components (if a page.tsx ends up in that directory) and `/[userName]`
+  'dev', // reserve for future use
+  'error', // reserve for future use
+  'lean', // reserve for future use
+  'lean4', // reserve for future use
+  'pub', // potential future conflict with <userName>.example.com-style subdomains
+  'profile', // potential future route conflict between /profile /[userName]
+  'settings', // potential future route conflict between /settings and /[userName]
+  'setup', // route conflict between /setup and /[userName]
+  'view', // reserve for future use
+  'www', // potential future conflict with <userName>.example.com-style subdomains
+])
+
+/** Returns true if a candidate name is not in the forbidden usernames list and is not a currently registered username. */
+async function isAvailableUsername(candidate: string) {
+  const candidateLower = candidate.toLowerCase()
+  if (FORBIDDEN_USERNAMES.has(candidateLower)) return false
+  // potential future route conflict with <userName>.example.com-style subdomains
+  if (/^shard\d+$/.test(candidateLower)) return false
+  if (/^worker\d+$/.test(candidateLower)) return false
+  return null === (await getDb().user.findUnique({ where: { name: candidate } }))
 }
 
 async function createAuth() {
@@ -113,16 +142,13 @@ async function createAuth() {
       user: {
         create: {
           before: async user => {
-            const parsed = zUserName.safeParse(user.name)
-            if (!parsed.success) return false
-            const name = parsed.data
             if (getConfig().registrationMode === 'restricted') {
               const allowed = await getDb().allowedGithubUser.findUnique({
-                where: { githubUsername: name },
+                where: { githubUsername: user.name },
               })
               if (!allowed) return false
             }
-            return { data: { ...user, name } }
+            return { data: { ...user, name: await findSuitableAlphaNumName(user.name, isAvailableUsername) } }
           },
         },
       },
