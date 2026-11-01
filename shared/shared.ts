@@ -135,9 +135,8 @@ export const COLLAB_SOCKET_FILENAME = 'collab.sock'
 /**
  * Where bwrap mounts the given project directory.
  */
-export function bwrapProjectDir(projectName: string) {
-  return `/workspace/${projectName}/`
-}
+/* v8 ignore next */
+export const bwrapProjectDir = (projectName: string) => `/workspace/${projectName}/`
 
 /** Path to workspace metadata file in VSCode bwraps. */
 export const BWRAP_METADATA_PATH = '/workspace/.lean-workbench.json'
@@ -161,6 +160,7 @@ export const adminEmail = 'admin@admin.localhost'
 export const MIN_ADMIN_PASSWORD_LENGTH = 8
 
 /** Pseudo-email for dev user number `n`. */
+/* v8 ignore next */
 export const devModeEmail = (n: number) => `dev${String(n)}@dev.localhost`
 
 /**
