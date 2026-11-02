@@ -1,6 +1,6 @@
 import { io } from 'next/cache'
 
-import CatchySuspense from '@/app/components/CatchySuspense'
+import { CatchySuspense } from '@/app/components/CatchySuspense'
 import { requireAdmin } from '@/lib/server/auth'
 import { getShardCoordinator } from '@/lib/server/shardConnection'
 

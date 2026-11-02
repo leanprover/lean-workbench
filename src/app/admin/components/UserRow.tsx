@@ -3,8 +3,8 @@
 import { useRouter } from 'next/navigation'
 import { startTransition } from 'react'
 
-import { deleteUser, toggleAdmin } from '@/app/admin/actions'
 import { useServerAction } from '@/lib/client/util'
+import { deleteUser, toggleAdmin } from '@/lib/server/adminActions'
 import { type User } from '@/lib/server/auth'
 
 export function UserRow({ user, isSelf }: { user: Pick<User, 'name' | 'id' | 'isAdmin'>; isSelf: boolean }) {

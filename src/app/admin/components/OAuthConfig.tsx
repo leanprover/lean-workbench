@@ -3,9 +3,9 @@
 import { useRouter } from 'next/navigation'
 import { use, useState } from 'react'
 
-import { updateOAuthConfig } from '@/app/admin/actions'
-import CatchySuspense from '@/app/components/CatchySuspense'
+import { CatchySuspense } from '@/app/components/CatchySuspense'
 import { useServerAction } from '@/lib/client/util'
+import { updateOAuthConfig } from '@/lib/server/adminActions'
 
 interface OAuthConfigProps {
   oauthConfigPromise: Promise<{ clientId: string }>

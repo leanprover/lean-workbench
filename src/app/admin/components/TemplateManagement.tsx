@@ -8,12 +8,12 @@ import { startTransition, use, useState } from 'react'
 import { Button, Dialog, DialogTrigger, Heading, Modal } from 'react-aria-components'
 import { type Key, Tab, TabList, TabPanel, TabPanels, Tabs } from 'react-aria-components'
 
-import { availableTemplateSchemas, doTemplateCreation, editTemplateMetadata } from '@/app/admin/actions'
-import CatchySuspense from '@/app/components/CatchySuspense'
-import ErrorBox from '@/app/components/ErrorBox'
+import { CatchySuspense } from '@/app/components/CatchySuspense'
+import { ErrorBox } from '@/app/components/ErrorBox'
 import { QuickFilterInput, useQuickFilter } from '@/app/components/QuickFilterInput'
-import TrackedCommandForm from '@/app/components/TrackedCommandForm'
+import { TrackedCommandForm } from '@/app/components/TrackedCommandForm'
 import { useServerAction, useThrowingSWR } from '@/lib/client/util'
+import { availableTemplateSchemas, doTemplateCreation, editTemplateMetadata } from '@/lib/server/adminActions'
 import { type TemplateInfo } from '@/lib/server/projectTemplate'
 
 interface TemplateManagementProps {

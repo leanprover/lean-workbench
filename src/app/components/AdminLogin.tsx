@@ -4,7 +4,7 @@ import { adminEmail, MIN_ADMIN_PASSWORD_LENGTH } from '@leanprover/workbench-sha
 import { useActionState } from 'react'
 import z from 'zod'
 
-import auth from '@/lib/client/auth'
+import { authClient as auth } from '@/lib/client/auth'
 
 async function loginAction(_: string | null, formData: FormData) {
   const password = String(formData.get('password') ?? '')
@@ -21,7 +21,7 @@ async function loginAction(_: string | null, formData: FormData) {
   return null
 }
 
-export default function AdminLogin() {
+export function AdminLogin() {
   const [error, action, isPending] = useActionState(loginAction, null)
 
   return (

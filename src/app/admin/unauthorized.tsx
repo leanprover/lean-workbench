@@ -1,4 +1,4 @@
-import AdminLogin from './components/AdminLogin'
+import { AdminLogin } from '@/app/components/AdminLogin'
 
 export default function Unauthorized() {
   return <AdminLogin />

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { startTransition, useState } from 'react'
 import { Button, Menu, MenuItem, MenuTrigger, Popover } from 'react-aria-components'
 
-import MenuLinkItem from '@/app/components/MenuLinkItem'
+import { MenuLinkItem } from '@/app/components/MenuLinkItem'
 import { useServerAction } from '@/lib/client/util'
 
 import { deleteProject, type ProjectInfo, renameProject, toggleVisibility } from './actions'

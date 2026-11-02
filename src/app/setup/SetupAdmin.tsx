@@ -3,7 +3,7 @@
 import { adminEmail, MIN_ADMIN_PASSWORD_LENGTH } from '@leanprover/workbench-shared'
 import { useActionState, useState } from 'react'
 
-import auth from '@/lib/client/auth'
+import { authClient as auth } from '@/lib/client/auth'
 
 async function firstLoginAction(_: string | null, formData: FormData) {
   const currentPassword = String(formData.get('currentPassword') ?? '')
@@ -26,7 +26,7 @@ async function firstLoginAction(_: string | null, formData: FormData) {
   return null
 }
 
-export default function SetupAdmin() {
+export function SetupAdmin() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmNewPassword, setConfirmNewPassword] = useState('')
   const newPasswordsMatch =

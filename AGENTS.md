@@ -22,8 +22,8 @@
   For example, prefer one state of type `'loading' | { error: E } | { result: T }`
   to three states `[loading, setLoading] = useState(); [error, setError] = useState(); [result, setResult] = useState()`.
 - For UI actions that hit the server,
-prefer `useServerAction` (`@/lib/client/util`) or (if `useServerAction` doesn't work) `useActionState`
-over manually storing response/error state with `useState`.
+  prefer `useServerAction` (`@/lib/client/util`) or (if `useServerAction` doesn't work) `useActionState`
+  over manually storing response/error state with `useState`.
 - To call Server Functions on mount (e.g. to fetch data), use SWR.
 - RSCs must call `await io()` before accessing server state (`getConfig`, `getAuth`, etc),
   unless they have already used a request-time API (`cookies`, `params`, etc).
@@ -83,7 +83,37 @@ Some details/consequences:
   some of the Server Actions previously invoked over the network by the RCC
   may now be possible to call directly in the RSC;
   if no other RCC still needs these Server Actions, move them to the RSC file.
-  
+
+## Directory structure
+
+- Imports may refer to relative paths like `./actions` and `./SomeComponent`,
+  but imports like `../actions` or `../components/SomeComponent` are not permitted.
+- Absolute imports starting with `@/app/components` are allowed;
+  no other imports starting with `@/app` are allowed.
+  (Example: `import { ErrorBox } from '@/app/components/ErrorBox'` is allowed,
+  `import { AdminErrorBox } from '@/app/components/admin/AdminErrorBox'` is allowed,
+  `import { SetupErrorBox } from '@/app/setup/SetupErrorBox'` is not allowed.)
+
+Actions will naturally start out in `actions.ts` files alongside the `page.tsx` file where they are used,
+and components will naturally start out in `MyComponent.tsx` files alongside the `page.tsx` files where they are used;
+however, as a consequence of these rules,
+when the functionality is needed in a second location, actions or components may need to migrate to a new location.
+Gathering components for a route into a subfolder (e.g. `./src/app/(settings)/admin/components`)
+may also require actions to migrate into the `./src/lib` tree.
+
+- Functionality that is used in multiple places goes in `./src/app/components` and its subfolders (for `.tsx` files)
+  and in `./src/lib` and its subfolders (for server actions and other non-component `.ts` code).
+- Most `.tsx` files that aren't a part of Next's routing should principally introduce a component,
+  along with hooks and helpers for that component.
+- A file principally introducing the `ErrorBox` component should be named `ErrorBox.tsx`.
+- Default exports should only be used where expected by Next.js.
+  A component `ErrorBox` should be exported as a non-default export in `ErrorBox.tsx`.
+
+## Linting
+
+- Autofixable problems should generally be `warn`, not `error`:
+  errors indicate only problems that aren't deterministically addressed by the pre-commit hook.
+
 ## Git
 
 - Don't commit or push, let the user do that. You can automate git worktree operations, though.

@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import { connection } from 'next/server'
 import z from 'zod'
 
-import ErrorBox from '@/app/components/ErrorBox'
+import { ErrorBox } from '@/app/components/ErrorBox'
 import { detectPublishable, PUBLISH_MANIFEST_FILE } from '@/lib/server/artifacts'
 import { getConfig, isPublishingEnabled } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'

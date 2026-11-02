@@ -3,8 +3,8 @@
 import { useRouter } from 'next/navigation'
 import { startTransition, useState } from 'react'
 
-import { setRegistrationMode } from '@/app/admin/actions'
 import { useServerAction } from '@/lib/client/util'
+import { setRegistrationMode } from '@/lib/server/adminActions'
 import type { RegistrationMode } from '@/lib/server/config'
 
 const MODES: { value: RegistrationMode; label: string }[] = [

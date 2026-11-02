@@ -1,7 +1,7 @@
 import { requireAdmin } from '@/lib/server/auth'
 import { getConfig } from '@/lib/server/config'
 
-import SetupFlow from './SetupFlow'
+import { SetupFlow } from './SetupFlow'
 
 export const instant = false
 

@@ -38,7 +38,7 @@ interface SimpleTTYProps {
  * The auto-reconnection features of SSE are disabled; instead, an explicit
  * user action is needed to reconnect.
  */
-export default function SimpleTTY(props: SimpleTTYProps) {
+export function SimpleTTY(props: SimpleTTYProps) {
   const [attempt, setAttempt] = useState(0)
   return <SimpleTTYSession key={attempt} reload={() => setAttempt(attempt => attempt + 1)} {...props} />
 }

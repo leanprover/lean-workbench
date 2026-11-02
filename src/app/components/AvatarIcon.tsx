@@ -2,7 +2,7 @@ import Image from 'next/image'
 
 import type { User } from '@/lib/server/auth'
 
-export default function AvatarIcon({
+export function AvatarIcon({
   user,
   size: maybeSize,
 }: {

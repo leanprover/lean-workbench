@@ -3,14 +3,14 @@
 import { usePathname, useRouter } from 'next/navigation'
 import { Button, Header, Menu, MenuItem, MenuSection, MenuTrigger, Popover } from 'react-aria-components'
 
-import AvatarIcon from '@/app/components/AvatarIcon'
-import MenuLinkItem from '@/app/components/MenuLinkItem'
-import authClient, { githubSignin, useReloadSession } from '@/lib/client/auth'
+import { AvatarIcon } from '@/app/components/AvatarIcon'
+import { MenuLinkItem } from '@/app/components/MenuLinkItem'
+import { authClient, githubSignin, useReloadSession } from '@/lib/client/auth'
 import { useThrowToBoundary } from '@/lib/client/util'
 import { useConfigCtx } from '@/lib/contexts'
 import { setIsAdmin } from '@/lib/server/actions'
 
-export default function AvatarMenu() {
+export function AvatarMenu() {
   const session = authClient.useSession()
   const cfg = useConfigCtx()
   const router = useRouter()
