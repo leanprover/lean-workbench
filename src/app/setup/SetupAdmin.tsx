@@ -3,22 +3,22 @@
 import { adminEmail, MIN_ADMIN_PASSWORD_LENGTH } from '@leanprover/workbench-shared'
 import { useActionState, useState } from 'react'
 
-import { authClient as auth } from '@/lib/client/auth'
+import { authClient } from '@/lib/client/auth'
 
 async function firstLoginAction(_: string | null, formData: FormData) {
   const currentPassword = String(formData.get('currentPassword') ?? '')
   const newPassword = String(formData.get('newPassword') ?? '')
   try {
-    await auth.signIn.email({ email: adminEmail, password: currentPassword })
+    await authClient.signIn.email({ email: adminEmail, password: currentPassword })
   } catch (e) {
     return 'Incorrect password'
   }
 
   try {
     // Technically a write-after-read race condition (currentPassword could have changed!). It's fine.
-    await auth.changePassword({ currentPassword, newPassword, revokeOtherSessions: true })
+    await authClient.changePassword({ currentPassword, newPassword, revokeOtherSessions: true })
   } catch (e) {
-    await auth.signOut()
+    await authClient.signOut()
     throw e
   }
 

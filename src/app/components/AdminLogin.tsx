@@ -4,12 +4,12 @@ import { adminEmail, MIN_ADMIN_PASSWORD_LENGTH } from '@leanprover/workbench-sha
 import { useActionState } from 'react'
 import z from 'zod'
 
-import { authClient as auth } from '@/lib/client/auth'
+import { authClient } from '@/lib/client/auth'
 
 async function loginAction(_: string | null, formData: FormData) {
   const password = String(formData.get('password') ?? '')
   try {
-    await auth.signIn.email({ email: adminEmail, password })
+    await authClient.signIn.email({ email: adminEmail, password })
   } catch (e) {
     if (z.object({ error: z.object({ code: z.literal('INVALID_EMAIL_OR_PASSWORD') }) }).safeParse(e).success) {
       return 'Incorrect password'
