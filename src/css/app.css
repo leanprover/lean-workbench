@@ -217,6 +217,10 @@ button:disabled {
   opacity: 0.5;
   cursor: default;
 }
+button[data-pending] {
+  opacity: 0.5;
+  cursor: progress;
+}
 button.primary {
   background: #386ee0;
   color: #fff;
