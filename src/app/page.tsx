@@ -4,7 +4,7 @@ import { type Route } from 'next'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
-import authClient, { githubSignin } from '@/lib/client/auth'
+import authClient, { githubSignin, useReloadSession } from '@/lib/client/auth'
 import { useServerAction, useThrowToBoundary } from '@/lib/client/util'
 import { type Config, useConfigCtx } from '@/lib/contexts'
 import { loginDevUser } from '@/lib/server/actions'
@@ -34,7 +34,8 @@ export default function Root() {
   const session = authClient.useSession()
   const error = useSearchParams().get('error')
   const { throwToBoundary } = useThrowToBoundary()
-  const [_, devLoginAction] = useServerAction(loginDevUser, () => window.location.reload())
+  const reloadSession = useReloadSession()
+  const [_, devLoginAction] = useServerAction(loginDevUser, () => reloadSession())
 
   return (
     <>
