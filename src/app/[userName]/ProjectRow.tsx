@@ -37,34 +37,32 @@ export function ProjectRow({
 
   if (renaming) {
     return (
-      <>
-        <form action={renameAction} style={{ display: 'contents' }}>
-          <div style={{ overflowX: 'visible', textBox: 'normal' }}>
-            <input type='hidden' name='projectId' value={project.id} />
-            <input
-              name='name'
-              type='text'
-              defaultValue={project.name}
-              onKeyDown={e => {
-                if (e.key === 'Escape') setRenaming(false)
-              }}
-              placeholder='Project name'
-              style={{ width: '100%' }}
-              disabled={renamePending}
-              autoFocus
-            />
-          </div>
-          <div className='actions'>
-            <button type='submit' disabled={renamePending}>
-              Save
-            </button>
-            <button type='button' onClick={() => setRenaming(false)} disabled={renamePending}>
-              Cancel
-            </button>
-          </div>
-          {renameError && <div style={{ color: '#dc2626', fontSize: 13 }}>{renameError}</div>}
-        </form>
-      </>
+      <form action={renameAction} style={{ display: 'contents' }}>
+        <div style={{ overflowX: 'visible', textBox: 'normal' }}>
+          <input type='hidden' name='projectId' value={project.id} />
+          <input
+            name='name'
+            type='text'
+            defaultValue={project.name}
+            onKeyDown={e => {
+              if (e.key === 'Escape') setRenaming(false)
+            }}
+            placeholder='Project name'
+            style={{ width: '100%' }}
+            disabled={renamePending}
+            autoFocus
+          />
+        </div>
+        <div className='actions'>
+          <button type='submit' disabled={renamePending}>
+            Save
+          </button>
+          <button type='button' onClick={() => setRenaming(false)} disabled={renamePending}>
+            Cancel
+          </button>
+        </div>
+        {renameError && <div style={{ color: '#dc2626', fontSize: 13 }}>{renameError}</div>}
+      </form>
     )
   }
 
