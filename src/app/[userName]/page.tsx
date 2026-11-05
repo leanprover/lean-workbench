@@ -49,7 +49,7 @@ export default async function ProfileBody({ params: params_ }: { params: Promise
 
   return (
     <>
-      <h1>{user.name}&apos;s projects</h1>
+      <h1>{isOwner ? 'Your' : `${user.displayName ?? user.name}’s`} projects</h1>
       {projects.length === 0 ? (
         <p className='empty'>
           {isOwner ? <>No projects yet.{templates.length > 0 && ' Create one below.'}</> : 'No public projects.'}
