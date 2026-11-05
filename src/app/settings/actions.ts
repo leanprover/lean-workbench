@@ -18,7 +18,7 @@ export async function clearUserAvatar() {
   return { ok: null }
 }
 
-export async function setUserAvatarGithub(): Promise<ActionResponse<null>> {
+export async function setUserAvatarGitHub(): Promise<ActionResponse<null>> {
   const session = await requireAuth()
   const db = getDb()
 

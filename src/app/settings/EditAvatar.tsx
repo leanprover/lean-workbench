@@ -8,7 +8,7 @@ import { useThrowToBoundary } from '@/lib/client/util'
 import { type User } from '@/lib/server/auth'
 import { type ActionResponse } from '@/lib/util'
 
-import { clearUserAvatar, setUserAvatarGithub } from './actions'
+import { clearUserAvatar, setUserAvatarGitHub } from './actions'
 
 interface EditAvatarProps {
   user: User
@@ -50,11 +50,11 @@ export function EditAvatar({ user }: EditAvatarProps) {
             <MenuItem
               onAction={() =>
                 startTransition(() =>
-                  setUserAvatarGithub().then(reloadOrErr('Could not set avatar')).catch(throwToBoundary),
+                  setUserAvatarGitHub().then(reloadOrErr('Could not set avatar')).catch(throwToBoundary),
                 )
               }
             >
-              Use Github User Picture
+              Use GitHub User Picture
             </MenuItem>
           )}
         </Menu>

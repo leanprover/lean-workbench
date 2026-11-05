@@ -18,7 +18,7 @@ import { getDataDir, getUserRootDir, getWorkspacesDir } from '@leanprover/workbe
 import z from 'zod'
 
 import { initAuth, requireAdmin } from '@/lib/server/auth'
-import { getConfig, saveConfig, zGithubAuthConfig } from '@/lib/server/config'
+import { getConfig, saveConfig, zGitHubAuthConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { elanUninstall, startElanInstall } from '@/lib/server/elan'
 import {
@@ -91,8 +91,8 @@ export const deleteUser = serverAction(zDeleteUser, async ({ userId }) => {
 // --- OAuth configuration ---
 
 const zUpdateOAuth = z.object({
-  clientId: zGithubAuthConfig.shape.clientId,
-  clientSecret: zGithubAuthConfig.shape.clientSecret.optional(),
+  clientId: zGitHubAuthConfig.shape.clientId,
+  clientSecret: zGitHubAuthConfig.shape.clientSecret.optional(),
 })
 
 export const updateOAuthConfig = submitAction(zUpdateOAuth, async ({ clientId, clientSecret }) => {
@@ -231,7 +231,7 @@ const zAddAllowedUser = z.object({
 
 export const addAllowedUser = submitAction(zAddAllowedUser, async ({ userName }) => {
   await requireAdmin()
-  await getDb().allowedGithubUser.upsert({
+  await getDb().allowedGitHubUser.upsert({
     where: { githubUsername: userName },
     create: { githubUsername: userName },
     update: {},
@@ -245,7 +245,7 @@ const zRemoveAllowedUser = z.object({
 
 export const removeAllowedUser = serverAction(zRemoveAllowedUser, async ({ userName }) => {
   await requireAdmin()
-  await getDb().allowedGithubUser.delete({
+  await getDb().allowedGitHubUser.delete({
     where: { githubUsername: userName },
   })
   return { ok: undefined }

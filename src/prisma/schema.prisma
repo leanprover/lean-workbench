@@ -153,7 +153,7 @@ model ProjectPackageSet {
 }
 
 /// GitHub accounts allowed to register in `restricted` registration mode.
-model AllowedGithubUser {
+model AllowedGitHubUser {
   /// `COLLATE NOCASE` in migration.sql; see `User.name`.
   githubUsername String @id
 

@@ -7,7 +7,7 @@ import type { RegistrationMode } from '@/lib/server/config'
 export interface Config {
   isSetupComplete: boolean
   isDevMode: boolean
-  hasGithubAuth: boolean
+  hasGitHubAuth: boolean
   registrationMode: RegistrationMode
 }
 

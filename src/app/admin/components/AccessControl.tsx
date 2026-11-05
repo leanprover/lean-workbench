@@ -10,7 +10,7 @@ export async function AccessControl() {
   await io()
   const mode = getConfig().registrationMode
   const allowed =
-    mode === 'restricted' ? await getDb().allowedGithubUser.findMany({ orderBy: { githubUsername: 'asc' } }) : []
+    mode === 'restricted' ? await getDb().allowedGitHubUser.findMany({ orderBy: { githubUsername: 'asc' } }) : []
   return (
     <>
       <section>
