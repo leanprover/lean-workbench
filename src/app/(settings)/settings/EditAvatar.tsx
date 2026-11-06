@@ -31,7 +31,7 @@ export function EditAvatar({ user }: EditAvatarProps) {
       <Button isPending={pending} style={{ padding: 5, fontSize: 20 }} aria-label='Edit avatar'>
         ✏️
       </Button>
-      <Popover className='avatar-dropdown' placement='end top' offset={4}>
+      <Popover className='dropdown-popover' placement='end top' offset={4}>
         <Menu>
           {user.image && (
             <MenuItem
