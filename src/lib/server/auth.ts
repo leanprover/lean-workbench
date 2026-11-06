@@ -13,6 +13,7 @@ import { forbidden, unauthorized } from 'next/navigation'
 
 import { getConfig, hasGitHubAuth, saveConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
+import { isAvailableUsername } from './usernames'
 
 async function ensureAdminUserExists() {
   const config = getConfig()
@@ -31,36 +32,6 @@ async function ensureAdminUserExists() {
       console.log('Created admin user with dev mode password')
     }
   }
-}
-
-/**
- * Usernames that might conflict with route components, or that we choose to disallow for other reasons.
- */
-const FORBIDDEN_USERNAMES = new Set([
-  'admin', // route conflict between /admin and /[userName]
-  'api', // route conflict between /api and /[userName]
-  'components', // potential route conflict between /components (if a page.tsx ends up in that directory) and `/[userName]`
-  'dev', // reserve for future use
-  'error', // reserve for future use
-  'lean', // reserve for future use
-  'lean4', // reserve for future use
-  'login', // reserve for future use
-  'pub', // potential future conflict with <userName>.example.com-style subdomains
-  'profile', // potential future route conflict between /profile /[userName]
-  'settings', // potential future route conflict between /settings and /[userName]
-  'setup', // route conflict between /setup and /[userName]
-  'view', // reserve for future use
-  'www', // potential future conflict with <userName>.example.com-style subdomains
-])
-
-/** Returns true if a candidate name is not in the forbidden usernames list and is not a currently registered username. */
-async function isAvailableUsername(candidate: string) {
-  const candidateLower = candidate.toLowerCase()
-  if (FORBIDDEN_USERNAMES.has(candidateLower)) return false
-  // potential future route conflict with <userName>.example.com-style subdomains
-  if (/^shard\d+$/.test(candidateLower)) return false
-  if (/^worker\d+$/.test(candidateLower)) return false
-  return null === (await getDb().user.findUnique({ where: { name: candidate } }))
 }
 
 async function createAuth() {
