@@ -10,7 +10,6 @@ import { ConfigCtxProvider } from '@/app/components/ConfigCtxProvider'
 
 import { AvatarMenu } from './AvatarMenu'
 import { Breadcrumbs } from './Breadcrumbs'
-import { NavbarExtra, NavbarExtraProvider } from './NavbarExtra'
 
 const openSans = Open_Sans({
   subsets: ['latin'],
@@ -30,32 +29,29 @@ export default async function RootLayout({
 }>) {
   return (
     <html lang='en' className={openSans.className}>
-      <NavbarExtraProvider>
-        <body>
-          <nav>
-            <Link className='logo' href='/'>
-              <Image src='/static/lean-logo.svg' alt='Lean logo' width={70} height={16} loading='eager' />
-              <span className='logo-text'>Lean Workbench</span>
-            </Link>
-            <Suspense fallback={null}>
-              <Breadcrumbs />
-            </Suspense>
-            <span className='spacer'></span>
-            <Suspense fallback={null}>
-              <ConfigCtxProvider>
-                <NavbarExtra />
-                <AvatarMenu />
-              </ConfigCtxProvider>
-            </Suspense>
-          </nav>
-          <main style={{ maxWidth: '600px' }}>
-            {/* FIXME: we currently don't get static shells for any page due to this `Suspense`. */}
-            <Suspense fallback={null}>
-              <ConfigCtxProvider>{children}</ConfigCtxProvider>
-            </Suspense>
-          </main>
-        </body>
-      </NavbarExtraProvider>
+      <body>
+        <nav>
+          <Link className='logo' href='/'>
+            <Image src='/static/lean-logo.svg' alt='Lean logo' width={70} height={16} loading='eager' />
+            <span className='logo-text'>Lean Workbench</span>
+          </Link>
+          <Suspense fallback={null}>
+            <Breadcrumbs />
+          </Suspense>
+          <span className='spacer'></span>
+          <Suspense fallback={null}>
+            <ConfigCtxProvider>
+              <AvatarMenu />
+            </ConfigCtxProvider>
+          </Suspense>
+        </nav>
+        <main style={{ maxWidth: '600px' }}>
+          {/* FIXME: we currently don't get static shells for any page due to this `Suspense`. */}
+          <Suspense fallback={null}>
+            <ConfigCtxProvider>{children}</ConfigCtxProvider>
+          </Suspense>
+        </main>
+      </body>
     </html>
   )
 }
