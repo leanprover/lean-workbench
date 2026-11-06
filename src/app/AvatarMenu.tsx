@@ -32,7 +32,7 @@ export function AvatarMenu() {
             <Button className='avatar-btn' aria-label='Account menu'>
               <AvatarIcon user={user} />
             </Button>
-            <Popover className='avatar-dropdown' placement='bottom end' offset={4}>
+            <Popover className='dropdown-popover' placement='bottom end' offset={4}>
               <Menu>
                 <MenuSection>
                   <Header>{user.name}</Header>
