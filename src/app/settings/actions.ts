@@ -47,6 +47,7 @@ export async function setUserAvatarGithub(): Promise<ActionResponse<null>> {
 export const setDisplayName = submitAction(
   z.object({ displayName: z.string().trim().max(256).optional() }),
   async ({ displayName }): Promise<ActionResponse<null>> => {
+    await requireAuth()
     const auth = await getAuth()
     await auth.api.updateUser({ headers: await headers(), body: { displayName: displayName || null } })
     return { ok: null }
