@@ -268,18 +268,6 @@ form.num-button input {
   width: 4em;
   outline: none;
 }
-.welcome {
-  margin: 20px 0;
-}
-.welcome a {
-  color: #386ee0;
-  text-decoration: none;
-  font-weight: 500;
-}
-.welcome a:hover {
-  color: #1d4ed8;
-  text-decoration: underline;
-}
 
 /* === Tracked Command Forms === */
 .command-setup-form {
