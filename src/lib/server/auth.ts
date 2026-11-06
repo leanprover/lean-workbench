@@ -11,7 +11,7 @@ import { io } from 'next/cache'
 import { headers } from 'next/headers'
 import { forbidden, unauthorized } from 'next/navigation'
 
-import { getConfig, hasGithubAuth, saveConfig } from '@/lib/server/config'
+import { getConfig, hasGitHubAuth, saveConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 
 async function ensureAdminUserExists() {
@@ -37,7 +37,7 @@ async function createAuth() {
   const config = getConfig()
   const socialProviders: SocialProviders = {}
 
-  if (hasGithubAuth(config)) {
+  if (hasGitHubAuth(config)) {
     socialProviders.github = {
       clientId: config.githubAuth.clientId,
       clientSecret: config.githubAuth.clientSecret,
@@ -117,7 +117,7 @@ async function createAuth() {
             if (!parsed.success) return false
             const name = parsed.data
             if (getConfig().registrationMode === 'restricted') {
-              const allowed = await getDb().allowedGithubUser.findUnique({
+              const allowed = await getDb().allowedGitHubUser.findUnique({
                 where: { githubUsername: name },
               })
               if (!allowed) return false

@@ -12,17 +12,17 @@ const zRegistrationMode = z.enum(['open', 'restricted'])
 
 export type RegistrationMode = z.infer<typeof zRegistrationMode>
 
-export const zGithubAuthConfig = z.object({
+export const zGitHubAuthConfig = z.object({
   clientId: z.string('Client ID is required').trim().min(1, 'Client ID is required'),
   clientSecret: z.string('Client secret is required').trim().min(1, 'Client secret is required'),
 })
 
-export type GithubAuthConfig = z.infer<typeof zGithubAuthConfig>
+export type GitHubAuthConfig = z.infer<typeof zGitHubAuthConfig>
 
 const zServerConfig = z.object({
   registrationMode: zRegistrationMode.default('open'),
   isSetupComplete: z.boolean(),
-  githubAuth: zGithubAuthConfig.optional(),
+  githubAuth: zGitHubAuthConfig.optional(),
   /** 256 random bits, hex-encoded as a 512-bit string. */
   authSessionSecret: z.string().optional(),
   /** The scheme, hostname, and port through which the browser will access our server.
@@ -58,7 +58,7 @@ export function isPublishingEnabled(cfg: ServerConfig): cfg is ServerConfig & { 
 }
 
 /** Whether GitHub OAuth is set up. */
-export function hasGithubAuth(cfg: ServerConfig): cfg is ServerConfig & { githubAuth: GithubAuthConfig } {
+export function hasGitHubAuth(cfg: ServerConfig): cfg is ServerConfig & { githubAuth: GitHubAuthConfig } {
   return !!cfg.githubAuth
 }
 

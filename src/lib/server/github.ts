@@ -12,12 +12,12 @@ import { getConfig } from './config'
  */
 export async function githubAPI(path: string) {
   const cfg = getConfig()
-  const headers: HeadersInit = { Accept: 'application/vnd.github+json', 'X-Github-API-Version': '2026-03-10' }
+  const headers: HeadersInit = { Accept: 'application/vnd.github+json', 'X-GitHub-API-Version': '2026-03-10' }
   if (cfg.githubAuth) {
     const auth = Buffer.from(`${cfg.githubAuth.clientId}:${cfg.githubAuth.clientSecret}`).toString('base64')
     headers.Authorization = `Basic ${auth}`
   } else if (!isDevMode()) {
-    throw new Error('Github credentials not available')
+    throw new Error('GitHub credentials not available')
   }
   const fullPath = 'https://api.github.com' + path
   const response = await fetch(fullPath, { headers })

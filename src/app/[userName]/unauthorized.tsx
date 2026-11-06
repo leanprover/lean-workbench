@@ -12,7 +12,7 @@ export default function UnauthorizedProjects() {
     <div>
       <h1>Sign In Required</h1>
       <p>You must be signed in to view profiles or projects.</p>
-      {cfg.hasGithubAuth && (
+      {cfg.hasGitHubAuth && (
         <button style={{ marginTop: 10 }} className='login-link' onClick={() => githubSignin().catch(throwToBoundary)}>
           Sign in via GitHub
         </button>

@@ -63,7 +63,7 @@ export default function AvatarMenu() {
         )}
       </>
     )
-  } else if (!session.isPending && cfg.hasGithubAuth) {
+  } else if (!session.isPending && cfg.hasGitHubAuth) {
     return <button onClick={() => githubSignin().catch(throwToBoundary)}>Sign in via GitHub</button>
   } else {
     return <></>

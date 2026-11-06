@@ -55,8 +55,8 @@ export default function Root() {
           <h2>Sign in options</h2>
           <button
             className='login-link'
-            disabled={!cfg.hasGithubAuth}
-            title={!cfg.hasGithubAuth ? 'Ask your administrator to set up GitHub authentication.' : undefined}
+            disabled={!cfg.hasGitHubAuth}
+            title={!cfg.hasGitHubAuth ? 'Ask your administrator to set up GitHub authentication.' : undefined}
             onClick={() => githubSignin().catch(throwToBoundary)}
           >
             GitHub
