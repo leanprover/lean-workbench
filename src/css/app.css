@@ -9,7 +9,7 @@ body {
 }
 
 /* === Navbar === */
-nav {
+nav.top {
   position: sticky;
   top: 0;
   z-index: 1000;
@@ -652,6 +652,69 @@ h2.with-filter {
 .filter {
   input {
     width: 100%;
+  }
+}
+
+/* === Settings === */
+
+main.settings {
+  max-width: none;
+  display: grid;
+  grid-template-columns: 300px auto;
+  max-width: 1200px;
+  gap: 1rem;
+
+  nav {
+    display: flex;
+    flex-direction: column;
+
+    h2 {
+      font-size: 0.85rem;
+      border: none;
+      margin: 0;
+      padding-left: 0.5rem;
+      padding-block: 0.25rem;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #d1d9e2;
+      margin-bottom: 0.5rem;
+    }
+
+    ul:last-child {
+      border: none;
+    }
+
+    li {
+      a {
+        position: relative;
+        display: block;
+        border-radius: 0.25rem;
+        padding: 0.25rem 0.5rem;
+      }
+
+      a[aria-current='page'] {
+        background: #00000011;
+      }
+
+      a[aria-current='page']::before {
+        position: absolute;
+        left: -6px;
+        top: 0;
+        bottom: 0;
+        display: block;
+        width: 4px;
+        border-radius: 2px;
+        background-color: #386ee0;
+        content: '';
+      }
+    }
   }
 }
 

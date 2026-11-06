@@ -10,7 +10,7 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <h1>User settings</h1>
+      <h1>User profile</h1>
       <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: '1fr max-content' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div style={{ borderBottom: '1px solid #e4ebf3', paddingBlock: 4 }}>
