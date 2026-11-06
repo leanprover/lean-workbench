@@ -10,11 +10,12 @@ interface ErrorBoundaryProps {
  */
 export default function GlobalError({ error }: ErrorBoundaryProps) {
   return (
-    <html>
+    <html lang='en'>
       <body>
         <h1>Something went wrong!</h1>
-        <p>Contact your administrator if you continue to see this message.</p>
+        {!error.digest && <p>An unexpected error occurred: {error.message}</p>}
         {error.digest && <p>(Error code {error.digest})</p>}
+        <p>Contact your administrator if you continue to see this message.</p>
       </body>
     </html>
   )
