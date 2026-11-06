@@ -1,5 +1,6 @@
 import { inferAdditionalFields } from 'better-auth/client/plugins'
 import { createAuthClient } from 'better-auth/react'
+import { useRouter } from 'next/navigation'
 
 import type { AuthInstance } from '@/lib/server/auth'
 
@@ -9,6 +10,18 @@ const authClient = createAuthClient({
   // https://better-auth.com/docs/concepts/typescript#inferring-additional-fields-on-client
   plugins: [inferAdditionalFields<AuthInstance>()],
 })
+
+/**
+ * Returns a function that performs `router.refresh(); await refetch()`.
+ */
+export function useReloadSession() {
+  const router = useRouter()
+  const { refetch } = authClient.useSession()
+  return async () => {
+    router.refresh()
+    await refetch()
+  }
+}
 
 export function githubSignin() {
   return authClient.signIn.social({

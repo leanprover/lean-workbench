@@ -5,7 +5,7 @@ import { Button, Header, Menu, MenuItem, MenuSection, MenuTrigger, Popover } fro
 
 import AvatarIcon from '@/app/components/AvatarIcon'
 import MenuLinkItem from '@/app/components/MenuLinkItem'
-import authClient, { githubSignin } from '@/lib/client/auth'
+import authClient, { githubSignin, useReloadSession } from '@/lib/client/auth'
 import { useThrowToBoundary } from '@/lib/client/util'
 import { useConfigCtx } from '@/lib/contexts'
 import { setIsAdmin } from '@/lib/server/actions'
@@ -14,6 +14,7 @@ export default function AvatarMenu() {
   const session = authClient.useSession()
   const cfg = useConfigCtx()
   const router = useRouter()
+  const reloadSession = useReloadSession()
   const { throwToBoundary } = useThrowToBoundary()
   const isInSetup = usePathname().startsWith('/setup')
 
@@ -40,7 +41,7 @@ export default function AvatarMenu() {
                     <MenuItem
                       onAction={() => {
                         setIsAdmin(!user.isAdmin)
-                          .then(() => window.location.reload())
+                          .then(() => reloadSession())
                           .catch(throwToBoundary)
                       }}
                     >
