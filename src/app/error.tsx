@@ -5,6 +5,8 @@ import { useSWRConfig } from 'swr'
 
 import { ErrorBox } from '@/app/components/ErrorBox'
 
+import { NavbarShell } from './components/NavbarShell'
+
 interface ErrorBoundaryProps {
   error: Error & { digest?: string }
   retry: () => void
@@ -21,33 +23,36 @@ export default function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   }, [error])
 
   return (
-    <div>
-      <h1>Something went wrong!</h1>
-      <ErrorBox>
-        {/* digest is only present in server-side errors */}
-        {error.digest && (
-          <p>
-            Something went wrong on the server. Try again, or contact your administrator with the error code{' '}
-            {error.digest} if the problem persists.
-          </p>
-        )}
-        {!error.digest && <p>An unexpected error occurred: {error.message}</p>}
-      </ErrorBox>
-      <button
-        onClick={async () => {
-          try {
-            // Invalidate all SWR state, but don't re-fetch automatically
-            await mutate(() => true, undefined, { revalidate: false })
-          } catch (e) {
-            console.error('Failed to clear SWR cache', e)
-          }
+    <>
+      <NavbarShell />
+      <main>
+        <h1>Error</h1>
+        <ErrorBox>
+          {/* digest is only present in server-side errors */}
+          {error.digest && (
+            <p>
+              Something went wrong on the server. Try again, or contact your administrator with the error code{' '}
+              {error.digest} if the problem persists.
+            </p>
+          )}
+          {!error.digest && <p>An unexpected error occurred: {error.message}</p>}
+        </ErrorBox>
+        <button
+          onClick={async () => {
+            try {
+              // Invalidate all SWR state, but don't re-fetch automatically
+              await mutate(() => true, undefined, { revalidate: false })
+            } catch (e) {
+              console.error('Failed to clear SWR cache', e)
+            }
 
-          //Attempt to recover by re-rendering
-          retry()
-        }}
-      >
-        Try again
-      </button>
-    </div>
+            //Attempt to recover by re-rendering
+            retry()
+          }}
+        >
+          Try again
+        </button>
+      </main>
+    </>
   )
 }
