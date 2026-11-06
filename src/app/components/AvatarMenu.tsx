@@ -36,8 +36,9 @@ export function AvatarMenu() {
               <Menu>
                 <MenuSection>
                   <Header>{user.name}</Header>
+                  <MenuLinkItem href={`/${user.name}`}>Projects</MenuLinkItem>
                   <MenuLinkItem href='/settings'>User settings</MenuLinkItem>
-                  {user.isAdmin && <MenuLinkItem href='/admin'>Admin interface</MenuLinkItem>}
+                  {user.isAdmin && <MenuLinkItem href='/admin'>Admin settings</MenuLinkItem>}
                   {cfg.isDevMode && (
                     <MenuItem
                       onAction={() => {

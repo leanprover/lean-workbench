@@ -24,7 +24,7 @@ export default async function AdminPage() {
 
   return (
     <div className='admin-page'>
-      <h1>Admin</h1>
+      <h1>Admin settings</h1>
       <UserManagement />
       <OAuthConfig oauthConfigPromise={oauthConfig} baseUrl={config.baseUrl} />
       <SessionViewer />
