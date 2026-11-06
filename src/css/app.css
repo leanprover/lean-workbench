@@ -82,9 +82,7 @@ button.avatar-btn {
 button.avatar-btn:hover {
   box-shadow: 0 0 0 2px rgba(56, 110, 224, 0.3);
 }
-.avatar-btn img {
-  width: 28px;
-  height: 28px;
+.avatar-image {
   border-radius: 50%;
   display: block;
 }
