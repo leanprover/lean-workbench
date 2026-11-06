@@ -8,8 +8,8 @@ import { type ReactNode, Suspense } from 'react'
 
 import { ConfigCtxProvider } from '@/app/components/ConfigCtxProvider'
 
-import AvatarMenu from './AvatarMenu'
-import Breadcrumbs from './Breadcrumbs'
+import { AvatarMenu } from './AvatarMenu'
+import { Breadcrumbs } from './Breadcrumbs'
 import { NavbarExtra, NavbarExtraProvider } from './NavbarExtra'
 
 const openSans = Open_Sans({

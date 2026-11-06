@@ -3,8 +3,8 @@
 import { useRouter } from 'next/navigation'
 import { startTransition } from 'react'
 
-import ErrorBox from '@/app/components/ErrorBox'
-import TrackedCommandForm from '@/app/components/TrackedCommandForm'
+import { ErrorBox } from '@/app/components/ErrorBox'
+import { TrackedCommandForm } from '@/app/components/TrackedCommandForm'
 import { useServerAction } from '@/lib/client/util'
 
 import { startPublishing, unpublish } from './actions'

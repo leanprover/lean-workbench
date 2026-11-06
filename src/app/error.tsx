@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useSWRConfig } from 'swr'
 
-import ErrorBox from './components/ErrorBox'
+import { ErrorBox } from '@/app/components/ErrorBox'
 
 interface ErrorBoundaryProps {
   error: Error & { digest?: string }

@@ -2,9 +2,9 @@
 
 import { startTransition, use, useState } from 'react'
 
-import { fetchDiskUsage, fetchHealth, type SystemHealth } from '@/app/admin/actions'
-import CatchySuspense from '@/app/components/CatchySuspense'
+import { CatchySuspense } from '@/app/components/CatchySuspense'
 import { useServerAction, useThrowingSWR } from '@/lib/client/util'
+import { fetchDiskUsage, fetchHealth, type SystemHealth } from '@/lib/server/adminActions'
 
 import { formatBytes, formatUptime } from './utils'
 

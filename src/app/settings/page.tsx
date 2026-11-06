@@ -1,4 +1,4 @@
-import AvatarIcon from '@/app/components/AvatarIcon'
+import { AvatarIcon } from '@/app/components/AvatarIcon'
 import { requireAuth } from '@/lib/server/auth'
 
 import { EditAvatar } from './EditAvatar'

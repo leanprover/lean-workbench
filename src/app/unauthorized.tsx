@@ -1,4 +1,4 @@
-import ErrorBox from './components/ErrorBox'
+import { ErrorBox } from '@/app/components/ErrorBox'
 
 export default function Unauthorized() {
   return (

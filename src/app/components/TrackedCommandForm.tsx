@@ -2,8 +2,8 @@
 
 import { type CSSProperties, type ReactNode, startTransition, useCallback, useEffect, useState } from 'react'
 
-import ErrorBox from '@/app/components/ErrorBox'
-import SimpleTTY from '@/app/components/SimpleTTY'
+import { ErrorBox } from '@/app/components/ErrorBox'
+import { SimpleTTY } from '@/app/components/SimpleTTY'
 import { useServerAction, useThrowToBoundary } from '@/lib/client/util'
 import { isTrackedCommandAvailable, isTrackedCommandRunning } from '@/lib/server/actions'
 import { type ActionResponse, type TrackedCommandExit, type TrackedCommandScope } from '@/lib/util'
@@ -49,7 +49,7 @@ type FormState =
  *    "Close" button will be replaced (or augmented, if `successButton.allowClose` is true) with
  *    a button that contains `successButton.text` and performs `successButton.action` on click.
  */
-export default function TrackedCommandForm({
+export function TrackedCommandForm({
   streamCommandKey,
   scope,
   style,

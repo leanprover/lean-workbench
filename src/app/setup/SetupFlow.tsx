@@ -3,7 +3,7 @@
 import { redirect, useRouter } from 'next/navigation'
 import { useState, useSyncExternalStore } from 'react'
 
-import TrackedCommandForm from '@/app/components/TrackedCommandForm'
+import { TrackedCommandForm } from '@/app/components/TrackedCommandForm'
 import { useConfigCtx } from '@/lib/contexts'
 
 import { doSeed } from './actions'
@@ -12,7 +12,7 @@ interface SetupFlowProps {
   baseUrl: string
 }
 
-export default function SetupFlow({ baseUrl }: SetupFlowProps) {
+export function SetupFlow({ baseUrl }: SetupFlowProps) {
   const router = useRouter()
   const cfg = useConfigCtx()
   const [wasCompleteOnMount] = useState(cfg.isSetupComplete)
