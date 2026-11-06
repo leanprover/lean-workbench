@@ -36,6 +36,7 @@ export default function AvatarMenu() {
               <Menu>
                 <MenuSection>
                   <Header>{user.name}</Header>
+                  <MenuLinkItem href='/settings'>User settings</MenuLinkItem>
                   {user.isAdmin && <MenuLinkItem href='/admin'>Admin interface</MenuLinkItem>}
                   {cfg.isDevMode && (
                     <MenuItem
