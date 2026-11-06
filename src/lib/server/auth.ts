@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { adminEmail, devModePassword, zUserName } from '@leanprover/workbench-shared'
+import { adminEmail, devModePassword, findSuitableAlphaNumName } from '@leanprover/workbench-shared'
 import { isDevMode } from '@leanprover/workbench-shared/node'
 import { betterAuth, generateId, type SocialProviders } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
@@ -13,6 +13,7 @@ import { forbidden, unauthorized } from 'next/navigation'
 
 import { getConfig, hasGitHubAuth, saveConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
+import { isAvailableUsername } from './usernames'
 
 async function ensureAdminUserExists() {
   const config = getConfig()
@@ -113,16 +114,13 @@ async function createAuth() {
       user: {
         create: {
           before: async user => {
-            const parsed = zUserName.safeParse(user.name)
-            if (!parsed.success) return false
-            const name = parsed.data
             if (getConfig().registrationMode === 'restricted') {
               const allowed = await getDb().allowedGitHubUser.findUnique({
-                where: { githubUsername: name },
+                where: { githubUsername: user.name },
               })
               if (!allowed) return false
             }
-            return { data: { ...user, name } }
+            return { data: { ...user, name: await findSuitableAlphaNumName(user.name, isAvailableUsername) } }
           },
         },
       },
