@@ -1,5 +1,7 @@
 'use client'
 
+import { faGithub } from '@fortawesome/free-brands-svg-icons'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { usePathname, useRouter } from 'next/navigation'
 import { Button, Header, Menu, MenuItem, MenuSection, MenuTrigger, Popover } from 'react-aria-components'
 
@@ -65,7 +67,11 @@ export function AvatarMenu() {
       </>
     )
   } else if (!session.isPending && cfg.hasGitHubAuth) {
-    return <button onClick={() => githubSignin().catch(throwToBoundary)}>Sign in via GitHub</button>
+    return (
+      <button onClick={() => githubSignin().catch(throwToBoundary)}>
+        <FontAwesomeIcon icon={faGithub} /> Sign in via GitHub
+      </button>
+    )
   } else {
     return <></>
   }

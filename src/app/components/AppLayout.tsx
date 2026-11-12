@@ -12,13 +12,16 @@ interface AppLayoutProps {
    * and <ConfigCtxProvider> will be available in the entire body.
    */
   suspend?: boolean
+
+  /** Class name applied to the `<main>` component */
+  mainClass?: string
 }
 
-export function AppLayout({ breadcrumbs, children, title, suspend }: AppLayoutProps) {
+export function AppLayout({ breadcrumbs, children, title, suspend, mainClass }: AppLayoutProps) {
   return (
     <>
       <Navbar breadcrumbs={breadcrumbs} />
-      <main>
+      <main className={mainClass}>
         {title && <h1>{title}</h1>}
         {suspend ? (
           <Suspense>
