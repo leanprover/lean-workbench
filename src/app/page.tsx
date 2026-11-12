@@ -3,9 +3,9 @@ import { Suspense } from 'react'
 
 import { AppLayout } from '@/app/components/AppLayout'
 import { ConfigCtxProvider } from '@/app/components/ConfigCtxProvider'
+import { SignInOptions } from '@/app/components/SignInOptions'
 
 import { LoginErrorBox } from './LoginErrorBox'
-import { SignInOptions } from './SignInOptions'
 
 export default function Root() {
   return (
