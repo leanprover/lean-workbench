@@ -90,7 +90,7 @@ export function ProjectRow({
       <div className='actions'>
         <MenuTrigger>
           <Button style={{ padding: 5, fontSize: 20 }}>⚙️</Button>
-          <Popover className='avatar-dropdown' placement='end top' offset={4}>
+          <Popover className='dropdown-popover' placement='end top' offset={4}>
             <Menu>
               <MenuItem
                 onAction={() => {

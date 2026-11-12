@@ -14,7 +14,7 @@ import { NavbarExtra, NavbarExtraProvider } from './NavbarExtra'
 
 const openSans = Open_Sans({
   subsets: ['latin'],
-  weight: ['400', '600'],
+  weight: ['400', '500', '600'],
   display: 'swap',
 })
 

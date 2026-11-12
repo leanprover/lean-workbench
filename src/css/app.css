@@ -21,46 +21,46 @@ nav {
   padding: 0 1rem;
   border-bottom: 1px solid #e4ebf3;
   font-size: 0.85rem;
-}
-nav .logo {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  text-decoration: none;
-  padding: 0.25rem 0.4rem;
-  border-radius: 0.375rem;
-  transition: all 0.2s;
-}
-nav .logo:hover {
-  background: rgba(56, 110, 224, 0.08);
-}
-nav .logo-text {
-  font-weight: 600;
-  font-size: 0.85rem;
-  color: #333;
-}
-nav .sep {
-  margin: 0 0.25rem;
-  color: #90a4ae;
-}
-nav a.breadcrumb {
-  text-decoration: none;
-  font-weight: 500;
-  font-size: 0.85rem;
-  color: #333;
-  padding: 0.25rem 0.4rem;
-  border-radius: 0.375rem;
-  transition: all 0.2s;
-}
-nav a.breadcrumb:hover {
-  color: #386ee0;
-  background: rgba(56, 110, 224, 0.08);
-}
-nav a.breadcrumb.last {
-  color: #386ee0;
-}
-nav .spacer {
-  flex: 1;
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    text-decoration: none;
+    padding: 0.25rem 0.4rem;
+    border-radius: 0.375rem;
+    transition: all 0.2s;
+  }
+  .logo:hover {
+    background: rgba(56, 110, 224, 0.08);
+  }
+  .logo-text {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #333;
+  }
+  .sep {
+    margin: 0 0.25rem;
+    color: #90a4ae;
+  }
+  a.breadcrumb {
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.85rem;
+    color: #333;
+    padding: 0.25rem 0.4rem;
+    border-radius: 0.375rem;
+    transition: all 0.2s;
+  }
+  a.breadcrumb:hover {
+    color: #386ee0;
+    background: rgba(56, 110, 224, 0.08);
+  }
+  a.breadcrumb.last {
+    color: #386ee0;
+  }
+  .spacer {
+    flex: 1;
+  }
 }
 
 /* === Avatar menu === */
@@ -99,7 +99,7 @@ button.avatar-btn:hover {
   font-weight: 600;
   line-height: 1;
 }
-.avatar-dropdown {
+.dropdown-popover {
   background: #fff;
   border: 1px solid #e4ebf3;
   border-radius: 0.5rem;
@@ -107,30 +107,31 @@ button.avatar-btn:hover {
   min-width: 160px;
   overflow: hidden;
 }
-.avatar-dropdown .react-aria-Header {
+.dropdown-popover .react-aria-Header {
   padding: 0.5rem 0.75rem;
   font-size: 0.8rem;
   font-weight: 600;
   color: #333;
   border-bottom: 1px solid #e4ebf3;
 }
-.avatar-dropdown [role='menuitem'] {
+.dropdown-popover [role='menuitem'] {
   display: block;
   padding: 0.5rem 0.75rem;
   font-size: 0.8rem;
   text-decoration: none;
   color: #333;
   transition: all 0.15s;
+  font-weight: 500;
 }
-.avatar-dropdown [role='menuitem'][data-hovered],
-.avatar-dropdown [role='menuitem'][data-focused] {
+.dropdown-popover [role='menuitem'][data-hovered],
+.dropdown-popover [role='menuitem'][data-focused] {
   background: rgba(56, 110, 224, 0.08);
   color: #386ee0;
 }
-.avatar-dropdown [role='menuitem']:focus:not([data-focus-visible]) {
+.dropdown-popover [role='menuitem']:focus:not([data-focus-visible]) {
   outline: none;
 }
-.avatar-dropdown [role='menuitem'][data-focus-visible] {
+.dropdown-popover [role='menuitem'][data-focus-visible] {
   outline-offset: -2px;
 }
 
@@ -438,14 +439,17 @@ ul.action-list {
   /* Opera doesn't support this in the shorthand */
   background-attachment: local, local, scroll, scroll;
 }
+
+/* === Link fallback styling === */
+
 /* :where removes specificity so this doesn't style a.button */
-:where(ul.action-list a) {
+:where(a) {
   color: #386ee0;
   text-decoration: none;
   font-weight: 500;
 }
 
-:where(ul.action-list a:hover) {
+:where(a:hover) {
   text-decoration: underline;
 }
 
