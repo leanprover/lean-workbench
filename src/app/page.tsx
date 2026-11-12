@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 
+import { AppLayout } from '@/app/components/AppLayout'
 import { ConfigCtxProvider } from '@/app/components/ConfigCtxProvider'
 
 import { LoginErrorBox } from './LoginErrorBox'
@@ -7,8 +8,7 @@ import { SignInOptions } from './SignInOptions'
 
 export default function Root() {
   return (
-    <>
-      <h1>Lean Workbench</h1>
+    <AppLayout title='Lean Workbench'>
       <p>Multi-user sandboxed VS Code server.</p>
       <Suspense>
         <ConfigCtxProvider>
@@ -17,6 +17,6 @@ export default function Root() {
           <SignInOptions />
         </ConfigCtxProvider>
       </Suspense>
-    </>
+    </AppLayout>
   )
 }
