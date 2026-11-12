@@ -1,6 +1,8 @@
-import { describe, expect, it, test } from 'vitest'
+import { afterEach, describe, expect, it, test, vi } from 'vitest'
 
-import { describeValue, leanVersionCompare, toolchainHasModules } from './shared.ts'
+import { describeValue, findSuitableLabelName, leanVersionCompare, toolchainHasModules } from './shared.ts'
+
+afterEach(() => vi.restoreAllMocks())
 
 describe('leanVersionCompare', () => {
   it('should throw on non-lean version numbers', () => {
@@ -42,4 +44,94 @@ test('describeValue', () => {
   expect(describeValue({})).toBe('object')
   expect(describeValue([])).toBe('array')
   expect(describeValue(true)).toBe('boolean')
+})
+
+describe('findSuitableLabelName', () => {
+  it('should let acceptable identifiers through', async () => {
+    expect(await findSuitableLabelName('abc', async () => true)).toBe('abc')
+    expect(await findSuitableLabelName('0x123', async () => true)).toBe('0x123')
+    expect(await findSuitableLabelName('0-123', async () => true)).toBe('0-123')
+  })
+
+  it('should replace non-alphanumeric characters with hyphens', async () => {
+    expect(await findSuitableLabelName('foo__bar', async () => true)).toBe('foo--bar')
+    expect(await findSuitableLabelName('xyz?0', async () => true)).toBe('xyz-0')
+    expect(await findSuitableLabelName('abc@example.com', async () => true)).toBe('abc-example-com')
+  })
+
+  it('should remove leading and trailing hyphens', async () => {
+    expect(await findSuitableLabelName('---foo---', async () => true)).toBe('foo')
+    expect(await findSuitableLabelName('---foo--1-', async () => true)).toBe('foo--1')
+    expect(await findSuitableLabelName('xyz?', async () => true)).toBe('xyz')
+    expect(await findSuitableLabelName('a?', async () => true)).toBe('a')
+    expect(await findSuitableLabelName('a + b = c', async () => true)).toBe('a---b---c')
+    expect(
+      await findSuitableLabelName(
+        'x--------------------------------------------------------------------------------------',
+        async () => true,
+      ),
+    ).toBe('x')
+  })
+
+  it('should add numeric postfixes for disallowed names', async () => {
+    expect(await findSuitableLabelName('abc', async c => c !== 'abc')).toBe('abc-1')
+    expect(await findSuitableLabelName('abc', async c => c !== 'abc' && c !== 'abc-1')).toBe('abc-2')
+    expect(await findSuitableLabelName('abc', async c => c.length > 5)).toBe('abc-10')
+    expect(await findSuitableLabelName('abc-7', async c => c.length > 6)).toBe('abc-7-1')
+    expect(await findSuitableLabelName('123', async c => c.length > 5 && !c.endsWith('0'))).toBe('123-11')
+  })
+
+  it('should truncate overlong names', async () => {
+    expect(
+      await findSuitableLabelName('123456789012345678901234567890123456789012345678901234567890123', async () => true),
+    ).toBe('123456789012345678901234567890123456789012345678901234567890123')
+    expect(
+      await findSuitableLabelName(
+        '123456789012345678901234567890123456789012345678901234567890123------',
+        async () => true,
+      ),
+    ).toBe('123456789012345678901234567890123456789012345678901234567890123')
+    expect(
+      await findSuitableLabelName(
+        '------123456789012345678901234567890123456789012345678901234567890123',
+        async () => true,
+      ),
+    ).toBe('123456789012345678901234567890123456789012345678901234567890123')
+    expect(
+      await findSuitableLabelName('1234567890123456789012345678901234567890123456789012345678901234', async () => true),
+    ).toBe('123456789012345678901234567890123456789012345678901234567890123')
+    expect(
+      await findSuitableLabelName('123456789012345678901234567890123456789012345678901234567890---4', async () => true),
+    ).toBe('123456789012345678901234567890123456789012345678901234567890')
+    expect(
+      await findSuitableLabelName('123456789012345678901234567890123456789012345678901234567890123', async c =>
+        c.endsWith('71'),
+      ),
+    ).toBe('12345678901234567890123456789012345678901234567890123456789-71')
+  })
+
+  it('should fill in gaps between names', async () => {
+    expect(
+      await findSuitableLabelName('fred', async a => ['fred', 'fred-1', 'fred-3', 'fred-4'].every(b => a !== b)),
+    ).toBe('fred-2')
+  })
+
+  it('should turn totally disallowed identifiers into "user"', async () => {
+    expect(await findSuitableLabelName('----', async () => true)).toBe('user')
+    expect(await findSuitableLabelName('!@#$%', async c => c !== 'user')).toBe('user-1')
+  })
+
+  it('should fall back to "user-<random>" identifiers', async () => {
+    expect(await findSuitableLabelName('foo', async c => !c.startsWith('foo'))).toMatch(/^user-[0-9]+$/)
+    vi.spyOn(Math, 'random').mockReturnValue(0.000007)
+    expect(await findSuitableLabelName('foo', async c => !c.startsWith('foo'))).toBe('user-7')
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    expect(await findSuitableLabelName('foo', async c => !c.startsWith('foo'))).toBe('user-0')
+    vi.spyOn(Math, 'random').mockReturnValue(0.9)
+    expect(await findSuitableLabelName('foo', async c => !c.startsWith('foo'))).toBe('user-900000')
+  })
+
+  it('should throw if forced', async () => {
+    await expect(findSuitableLabelName('user', async c => !c.startsWith('user'))).rejects.toThrow()
+  })
 })

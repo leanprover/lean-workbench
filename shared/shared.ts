@@ -208,3 +208,47 @@ export type BaseProject = z.output<typeof zBaseProject>
 
 /** Filesystem location of the unix domain socket that connects the next.js server to the shard manager */
 export const SHARD_MANAGER_SOCK = '/tmp/lean-workbench/shard-manager.sock'
+
+/**
+ * Valid usernames must be valid labels in a domain name (e.g. '<name>.example.com').
+ *
+ * Before using this in Zod validation,
+ * we need to migrate existing usernames that comply with `ALPHANUM_NAME_RE` but not `USERNAME_RE`.
+ */
+export const USERNAME_RE = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/
+
+/**
+ * Given a candidate string and a test for forbidden (e.g. "root") or already-in-use identifiers,
+ * return an identifier that can be used as a label in a domain name (e.g. '<name>.example.com').
+ * Labels must be 1 to 63 characters, alphanumeric-plus-hyphens, and cannot begin or end with a hyphen.
+ *
+ * The provided testIsOk function must be case insensitive, returning the same output on 'foo', 'Foo', and 'FOO'.
+ * The function will only be called on valid domain name labels.
+ */
+export async function findSuitableLabelName(raw: string, testIsOk: (str: string) => Promise<boolean>) {
+  // Replace all non-alphanumeric characters with hyphens, ensure the candidate starts with an alphanumeric character
+  let candidate =
+    raw
+      .replaceAll(/[^A-Za-z0-9]/g, '-')
+      .match(/[a-zA-Z0-9].*$/)?.[0]
+      ?.slice(0, 63) ?? 'user'
+
+  // Ensure candidate neither begins nor ends with a hyphen
+  if (!candidate.match(USERNAME_RE)) candidate = candidate.match(/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?/)![0]
+
+  if (await testIsOk(candidate)) return candidate
+
+  // Trim candidate to 59 characters to have room for a hyphen + 3-digit disambiguation postfix
+  candidate = candidate.match(/^[a-zA-Z0-9]([a-zA-Z0-9-]{0,57}[a-zA-Z0-9])?/)![0]
+
+  for (let i = 1; i < 1000; i++) {
+    if (await testIsOk(`${candidate}-${i}`)) return `${candidate}-${i}`
+  }
+
+  for (let i = 1; i < 1000; i++) {
+    candidate = `user-${Math.floor(Math.random() * 1_000_000)}`
+    if (await testIsOk(candidate)) return candidate
+  }
+
+  throw new Error('Unable to find an acceptable identifier')
+}
