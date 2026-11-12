@@ -5,7 +5,7 @@ export default function Forbidden() {
     <div>
       <h1>Not allowed</h1>
       <ErrorBox>
-        <p>This account does not have admin access to Lean Workbench.</p>
+        <p>This account cannot access admin settings for Lean Workbench.</p>
       </ErrorBox>
     </div>
   )
