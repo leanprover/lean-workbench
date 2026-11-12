@@ -4,7 +4,7 @@ import { catchError, type ErrorInfo } from 'next/error'
 import { type ReactNode, Suspense } from 'react'
 import z from 'zod'
 
-import ErrorBox from './ErrorBox'
+import { ErrorBox } from './ErrorBox'
 
 function ErrorFallback(props: { fallback?: ReactNode | ((err: unknown) => ReactNode) }, { error, retry }: ErrorInfo) {
   let displayedError: ReactNode
@@ -54,7 +54,7 @@ const ErrorBoundary = catchError(ErrorFallback)
  * Keep in mind that, in production environments, the actual thrown error may originate from the server
  * and so will be an unhelpful digest string with a generic "An error occurred in the Server Components blah blah blah" message.
  */
-export default function CatchySuspense(props: {
+export function CatchySuspense(props: {
   loading: ReactNode
   error?: ReactNode | ((err: unknown) => ReactNode)
   children: ReactNode

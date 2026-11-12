@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-export default function ProjectLink({ ownerUsername, projectName }: { ownerUsername: string; projectName: string }) {
+export function ProjectLink({ ownerUsername, projectName }: { ownerUsername: string; projectName: string }) {
   return (
     <>
       <Link href={`/${ownerUsername}`}>{ownerUsername}</Link>

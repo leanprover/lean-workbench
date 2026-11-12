@@ -1,10 +1,10 @@
-import CatchySuspense from '@/app/components/CatchySuspense'
+import { CatchySuspense } from '@/app/components/CatchySuspense'
+import { fetchHealth } from '@/lib/server/adminActions'
 import { getOAuthConfig, requireAdmin } from '@/lib/server/auth'
 import { getConfig } from '@/lib/server/config'
 import { listInstalledToolchains } from '@/lib/server/elan'
 import { listTemplates } from '@/lib/server/projectTemplate'
 
-import { fetchHealth } from './actions'
 import { AccessControl } from './components/AccessControl'
 import { HealthMonitor } from './components/HealthMonitor'
 import { OAuthConfig } from './components/OAuthConfig'

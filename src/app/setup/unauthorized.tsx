@@ -2,10 +2,10 @@ import 'server-only'
 
 import { io } from 'next/cache'
 
-import AdminLogin from '@/app/admin/components/AdminLogin'
+import { AdminLogin } from '@/app/components/AdminLogin'
 import { getConfig } from '@/lib/server/config'
 
-import SetupAdmin from './SetupAdmin'
+import { SetupAdmin } from './SetupAdmin'
 
 export default async function Unauthorized() {
   await io()

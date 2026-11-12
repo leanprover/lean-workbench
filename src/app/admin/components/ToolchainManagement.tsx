@@ -10,11 +10,11 @@ import { useRouter } from 'next/navigation'
 import { use, useState } from 'react'
 import z from 'zod'
 
-import { doElanInstall, uninstallToolchainVersion } from '@/app/admin/actions'
-import CatchySuspense from '@/app/components/CatchySuspense'
+import { CatchySuspense } from '@/app/components/CatchySuspense'
 import { QuickFilterInput, useQuickFilter } from '@/app/components/QuickFilterInput'
-import TrackedCommandForm from '@/app/components/TrackedCommandForm'
+import { TrackedCommandForm } from '@/app/components/TrackedCommandForm'
 import { useServerAction, useThrowingSWR } from '@/lib/client/util'
+import { doElanInstall, uninstallToolchainVersion } from '@/lib/server/adminActions'
 
 interface ToolchainManagementProps {
   installedToolchainsPromise: Promise<string[]>

@@ -4,12 +4,11 @@ import { type Route } from 'next'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
-import authClient, { githubSignin, useReloadSession } from '@/lib/client/auth'
+import { ErrorBox } from '@/app/components/ErrorBox'
+import { authClient, githubSignin, useReloadSession } from '@/lib/client/auth'
 import { useServerAction, useThrowToBoundary } from '@/lib/client/util'
 import { type Config, useConfigCtx } from '@/lib/contexts'
 import { loginDevUser } from '@/lib/server/actions'
-
-import ErrorBox from './components/ErrorBox'
 
 /**
  * Interprets an (untrusted) `error` search parameter as OAuth callback information

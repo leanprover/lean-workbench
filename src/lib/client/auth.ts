@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 
 import type { AuthInstance } from '@/lib/server/auth'
 
-const authClient = createAuthClient({
+export const authClient = createAuthClient({
   // connection errors always throw, this makes non-ok status throw as well so they can be handled similarly
   fetchOptions: { throw: true },
   // https://better-auth.com/docs/concepts/typescript#inferring-additional-fields-on-client
@@ -29,5 +29,3 @@ export function githubSignin() {
     callbackURL: window.location.pathname,
   })
 }
-
-export default authClient

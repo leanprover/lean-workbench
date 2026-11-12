@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Fragment } from 'react'
 
-export default function Breadcrumbs() {
+export function Breadcrumbs() {
   const pathname = usePathname()
   const segments = pathname.split('/').filter(c => c !== '')
   return (

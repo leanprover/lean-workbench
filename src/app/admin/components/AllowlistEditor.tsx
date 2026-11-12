@@ -3,8 +3,8 @@
 import { useRouter } from 'next/navigation'
 import { startTransition, useRef } from 'react'
 
-import { addAllowedUser, removeAllowedUser } from '@/app/admin/actions'
 import { useServerAction } from '@/lib/client/util'
+import { addAllowedUser, removeAllowedUser } from '@/lib/server/adminActions'
 
 export function AllowlistEditor({ users }: { users: string[] }) {
   const router = useRouter()

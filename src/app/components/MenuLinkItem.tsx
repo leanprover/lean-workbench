@@ -5,7 +5,7 @@ import { MenuItem, type MenuItemProps } from 'react-aria-components'
 /**
  * Next.js adapter for React Aria's MenuItems that should navigate with Link behavior via the Next router.
  */
-export default function MenuLinkItem<Href extends string>({
+export function MenuLinkItem<Href extends string>({
   href,
   ...props
 }: Omit<MenuItemProps, 'href' | 'render'> & { href: Route<Href> }) {

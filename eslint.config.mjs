@@ -75,6 +75,17 @@ const eslintConfig = defineConfig([
         'warn',
         { allowSameFolder: true, rootDir: 'src', prefix: '@' },
       ],
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '^@/app/(?!components/)',
+              message: 'Route folders are private; move shared code to @/app/components or @/lib.',
+            },
+          ],
+        },
+      ],
     },
   },
   {

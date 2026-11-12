@@ -1,4 +1,4 @@
-import ErrorBox from '@/app/components/ErrorBox'
+import { ErrorBox } from '@/app/components/ErrorBox'
 
 export default function Forbidden() {
   return (
