@@ -3,9 +3,7 @@ import { Suspense } from 'react'
 
 import { AppLayout } from '@/app/components/AppLayout'
 import { ConfigCtxProvider } from '@/app/components/ConfigCtxProvider'
-
-import { LoginErrorBox } from './LoginErrorBox'
-import { SignInOptions } from './SignInOptions'
+import { SignInOptions } from '@/app/components/SignInOptions'
 
 export default function Root() {
   return (
@@ -17,7 +15,6 @@ export default function Root() {
       </p>
       <Suspense>
         <ConfigCtxProvider>
-          <LoginErrorBox />
           <SignInOptions />
         </ConfigCtxProvider>
       </Suspense>
