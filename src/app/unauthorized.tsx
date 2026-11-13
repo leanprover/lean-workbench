@@ -1,12 +1,22 @@
-import { AppLayout } from '@/app/components/AppLayout'
-import { ErrorBox } from '@/app/components/ErrorBox'
+import { Suspense } from 'react'
 
-export default function Unauthorized() {
+import { ConfigCtxProvider } from '@/app/components/ConfigCtxProvider'
+import { SignInOptions } from '@/app/components/SignInOptions'
+
+import { BaseUrl } from './components/BaseUrl'
+
+export default function Login() {
   return (
-    <AppLayout title='Unauthorized'>
-      <ErrorBox>
-        <p>You need to be signed in to access this page.</p>
-      </ErrorBox>
-    </AppLayout>
+    <main className='login'>
+      <h1>Sign in to Lean Workbench</h1>
+      <h2>
+        <BaseUrl />
+      </h2>
+      <Suspense>
+        <ConfigCtxProvider>
+          <SignInOptions />
+        </ConfigCtxProvider>
+      </Suspense>
+    </main>
   )
 }

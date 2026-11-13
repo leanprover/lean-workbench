@@ -9,6 +9,10 @@ async function AsyncBaseUrl() {
   return cfg.baseUrl
 }
 
+/**
+ * Gives the baseUrl in the website configuration.
+ * Contains a Suspense that then awaits io() so that it won't be rendered at build time.
+ */
 export function BaseUrl() {
   return (
     <Suspense fallback={<>&nbsp;</>}>
