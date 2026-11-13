@@ -25,9 +25,12 @@ export function useReloadSession() {
   }
 }
 
-export function githubSignin(callback = window.location.pathname) {
+export function githubSignin() {
+  const callback = window.location.pathname + window.location.search
+
   return authClient.signIn.social({
     provider: 'github',
     callbackURL: callback,
+    additionalParams: { prompt: 'select_account' },
   })
 }
