@@ -1,24 +1,5 @@
-import { Suspense } from 'react'
-
-import { BaseUrl } from '@/app/components/BaseUrl'
-import { ConfigCtxProvider } from '@/app/components/ConfigCtxProvider'
-import { SignInOptions } from '@/app/components/SignInOptions'
-
-import { LoginErrorBox } from './LoginErrorBox'
+import { LoginLayout } from '@/app/components/LoginLayout'
 
 export default function Login() {
-  return (
-    <main className='login'>
-      <h1>Sign in to Lean Workbench</h1>
-      <h2>
-        <BaseUrl />
-      </h2>
-      <Suspense>
-        <ConfigCtxProvider>
-          <LoginErrorBox />
-          <SignInOptions />
-        </ConfigCtxProvider>
-      </Suspense>
-    </main>
-  )
+  return <LoginLayout />
 }
