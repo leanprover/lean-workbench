@@ -708,6 +708,20 @@ main.settings {
   }
 }
 
+main.root {
+  text-align: center;
+  p {
+    margin-block: 12px;
+  }
+  img {
+    width: 100%;
+    height: auto;
+    border: 1px solid #e4ebf3;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    margin-top: 24px;
+  }
+}
+
 /* === Accessibility === */
 
 .visually-hidden {

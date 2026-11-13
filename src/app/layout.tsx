@@ -1,3 +1,4 @@
+import '@fortawesome/fontawesome-svg-core/styles.css'
 import '@/css/app.css'
 
 import type { Metadata } from 'next'
