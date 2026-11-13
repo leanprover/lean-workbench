@@ -5,11 +5,11 @@ import { connection } from 'next/server'
 import z from 'zod'
 
 import { ErrorBox } from '@/app/components/ErrorBox'
-import { detectPublishable, PUBLISH_MANIFEST_FILE } from '@/lib/server/artifacts'
 import { getConfig, isPublishingEnabled } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { durablePublicationUrl, publicationUrl, publishTrackingKey } from '@/lib/server/publish'
 import { requireProjectOwner } from '@/lib/server/util'
+import { detectViews, PUBLISH_MANIFEST_FILE } from '@/lib/server/views'
 
 import { type PublicationInfo, PublishCard } from './PublishCard'
 
@@ -35,7 +35,7 @@ export default async function PublishPage({ params: params_ }: { params: Promise
   const { userName, projectName } = parsed.data
 
   const { owner, project } = await requireProjectOwner(userName, projectName)
-  const manifest = await detectPublishable(getProjectDir(owner, project.id))
+  const manifest = await detectViews(getProjectDir(owner, project.id))
   // A project that declares no manifest has no publishing interface at all.
   if (manifest.type === 'missing') notFound()
   const publications = await getDb().publication.findMany({ where: { projectId: project.id } })
@@ -56,23 +56,23 @@ export default async function PublishPage({ params: params_ }: { params: Promise
 
       {manifest.type === 'invalid' && <ErrorBox>{manifest.error}</ErrorBox>}
 
-      {manifest.type === 'declared' && manifest.artifacts.length === 0 && (
+      {manifest.type === 'declared' && manifest.views.length === 0 && (
         <p className='empty'>
           <code>{PUBLISH_MANIFEST_FILE}</code> declares nothing this workbench knows how to publish.
         </p>
       )}
 
       {manifest.type === 'declared' &&
-        manifest.artifacts.map(artifact => (
+        manifest.views.map(view => (
           <PublishCard
-            key={artifact.id}
+            key={view.id}
             userName={owner.name}
             projectName={project.name}
-            kind={artifact.id}
-            displayName={artifact.displayName}
-            detail={'error' in artifact ? { error: artifact.error } : { description: artifact.description }}
-            publication={publicationFor(artifact.id)}
-            trackingKey={publishTrackingKey(project.id, artifact.id)}
+            kind={view.id}
+            displayName={view.displayName}
+            detail={'error' in view ? { error: view.error } : { description: view.description }}
+            publication={publicationFor(view.id)}
+            trackingKey={publishTrackingKey(project.id, view.id)}
           />
         ))}
     </>

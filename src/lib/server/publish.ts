@@ -26,13 +26,13 @@ import {
 import { type ActionResponse, type TrackedCommandExit } from '@/lib/util'
 import { type Prisma, type Project } from '@/prisma/generated/client'
 
-import { type BuildPlan } from './artifacts'
 import { getShardCoordinator } from './shardConnection'
+import { type BuildPlan } from './views'
 
 const PUBLISH_KEY_PREFIX = 'publish-'
 
-/** Tracking key of a project's build of one artifact kind.
- * One build at a time per project and kind falls out of
+/** Tracking key of a project's build of one view.
+ * One build at a time per project and view falls out of
  * `startTrackedCommand` refusing a key that is already running. */
 export function publishTrackingKey(projectId: string, kind: string): string {
   return `${PUBLISH_KEY_PREFIX}${projectId}-${kind}`
@@ -64,7 +64,7 @@ const SANDBOX_SCRIPTS_DIR = '/publish/scripts'
 /** Where the sandbox sees the staging directory that the build writes into. */
 const SANDBOX_OUT_DIR = '/publish/out'
 
-/** Start a sandboxed build of one of `project`'s publishable artifacts,
+/** Start a sandboxed build of one of `project`'s publishable views,
  * streaming its output to `owner` under {@link publishTrackingKey}.
  *
  * Resolves once the build has been started, not when it finishes:
