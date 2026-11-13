@@ -722,6 +722,21 @@ main.root {
   }
 }
 
+main.login {
+  max-width: 350px;
+  text-align: center;
+  h1 {
+    font-size: 24px;
+  }
+  h2 {
+    border-bottom: none;
+  }
+  .login-item {
+    width: 100%;
+    margin-block: 8px;
+  }
+}
+
 /* === Accessibility === */
 
 .visually-hidden {

@@ -1,3 +1,5 @@
+import 'client-only'
+
 import { inferAdditionalFields } from 'better-auth/client/plugins'
 import { createAuthClient } from 'better-auth/react'
 import { useRouter } from 'next/navigation'
@@ -23,9 +25,9 @@ export function useReloadSession() {
   }
 }
 
-export function githubSignin() {
+export function githubSignin(callback = window.location.pathname) {
   return authClient.signIn.social({
     provider: 'github',
-    callbackURL: window.location.pathname,
+    callbackURL: callback,
   })
 }
