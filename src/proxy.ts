@@ -16,7 +16,7 @@ export async function proxy(request: NextRequest) {
     url.pathname = '/setup'
     return NextResponse.redirect(url)
   }
-  if (request.nextUrl.pathname === '/') {
+  if (request.nextUrl.pathname === '/' || request.nextUrl.pathname === '/login') {
     const session = await getUserSession()
     if (session) {
       const url = request.nextUrl.clone()
