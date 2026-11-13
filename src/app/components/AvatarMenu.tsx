@@ -44,7 +44,7 @@ export function AvatarMenu() {
                     <MenuItem
                       onAction={() => {
                         setIsAdmin(!user.isAdmin)
-                          .then(() => reloadSession())
+                          .then(() => window.location.reload())
                           .catch(throwToBoundary)
                       }}
                     >
