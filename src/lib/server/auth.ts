@@ -162,9 +162,9 @@ async function createAuth() {
       ? /* allow anything in dev mode */ req => [req?.headers.get('origin')]
       : /* require the configured public URL */ [config.baseUrl],
     onAPIError: {
-      // Redirect to root with an error search param if something goes wrong,
+      // Redirect to /login with an error search param if something goes wrong,
       // e.g. the GitHub username is not on the allowlist.
-      errorURL: '/',
+      errorURL: '/login',
     },
     plugins: [nextCookies()],
   })

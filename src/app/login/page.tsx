@@ -4,6 +4,8 @@ import { BaseUrl } from '@/app/components/BaseUrl'
 import { ConfigCtxProvider } from '@/app/components/ConfigCtxProvider'
 import { SignInOptions } from '@/app/components/SignInOptions'
 
+import { LoginErrorBox } from './LoginErrorBox'
+
 export default function Login() {
   return (
     <main className='login'>
@@ -13,6 +15,7 @@ export default function Login() {
       </h2>
       <Suspense>
         <ConfigCtxProvider>
+          <LoginErrorBox />
           <SignInOptions />
         </ConfigCtxProvider>
       </Suspense>

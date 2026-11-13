@@ -5,8 +5,6 @@ import { AppLayout } from '@/app/components/AppLayout'
 import { ConfigCtxProvider } from '@/app/components/ConfigCtxProvider'
 import { SignInOptions } from '@/app/components/SignInOptions'
 
-import { LoginErrorBox } from './LoginErrorBox'
-
 export default function Root() {
   return (
     <AppLayout title='Lean Workbench' mainClass='root'>
@@ -17,7 +15,6 @@ export default function Root() {
       </p>
       <Suspense>
         <ConfigCtxProvider>
-          <LoginErrorBox />
           <SignInOptions />
         </ConfigCtxProvider>
       </Suspense>
