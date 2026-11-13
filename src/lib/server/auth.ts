@@ -11,7 +11,7 @@ import { io } from 'next/cache'
 import { headers } from 'next/headers'
 import { forbidden, unauthorized } from 'next/navigation'
 
-import { getConfig, hasGitHubAuth, saveConfig } from '@/lib/server/config'
+import { getConfig, hasGitHubAuth, saveConfig, type ServerConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 
 import { isAvailableUsername } from './username'
@@ -33,6 +33,21 @@ async function ensureAdminUserExists() {
       console.log('Created admin user with dev mode password')
     }
   }
+}
+
+/**
+ * `__Host-` cookies are accepted by the browser only when they are `Secure`,
+ * carry `Path=/` and no `Domain`, and are then sent only to the exact host that set them.
+ * The prefix also reserves the name: no other host can set a cookie by that name
+ * for this one, which a document published on a sibling hostname could otherwise do.
+ * This prevents untrusted content hosted on subdomains of `baseUrl`
+ * from setting the better-auth cookie ("cookie tossing").
+ * See https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies#cookie_prefixes.
+ * `Secure` cookies need HTTPS, so a plain-HTTP instance keeps unprefixed names.
+ */
+export function cookiePrefix(config: ServerConfig = getConfig()) {
+  if (config.baseUrl.startsWith('https://')) return '__Host-better-auth'
+  return 'better-auth'
 }
 
 async function createAuth() {
@@ -62,16 +77,6 @@ async function createAuth() {
     await saveConfig()
   }
 
-  // `__Host-` cookies are accepted by the browser only when they are `Secure`,
-  // carry `Path=/` and no `Domain`, and are then sent only to the exact host that set them.
-  // The prefix also reserves the name: no other host can set a cookie by that name
-  // for this one, which a document published on a sibling hostname could otherwise do.
-  // This prevents untrusted content hosted on subdomains of `baseUrl`
-  // from setting the better-auth cookie ("cookie tossing").
-  // See https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies#cookie_prefixes.
-  // `Secure` cookies need HTTPS, so a plain-HTTP instance keeps unprefixed names.
-  const secureCookies = config.baseUrl.startsWith('https://')
-
   const auth = betterAuth({
     database: prismaAdapter(getDb(), { provider: 'sqlite' }),
     secret: config.authSessionSecret,
@@ -89,8 +94,8 @@ async function createAuth() {
       // leaving `__Host-` in the middle of the name, where it means nothing.
       // So we turn that off and set the `Secure` attribute directly.
       useSecureCookies: false,
-      cookiePrefix: secureCookies ? '__Host-better-auth' : 'better-auth',
-      defaultCookieAttributes: { secure: secureCookies },
+      cookiePrefix: cookiePrefix(config),
+      defaultCookieAttributes: { secure: config.baseUrl.startsWith('https://') },
     },
     disabledPaths: [
       // Lets users change their account username;

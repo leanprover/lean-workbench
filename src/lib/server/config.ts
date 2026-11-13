@@ -42,7 +42,7 @@ const zServerConfig = z.object({
 })
 
 /** Server configuration. Also stored on-disk in `$LEAN_WORKBENCH_DATA_DIR/config.json`. */
-type ServerConfig = z.infer<typeof zServerConfig>
+export type ServerConfig = z.infer<typeof zServerConfig>
 
 const defaults: ServerConfig = {
   registrationMode: 'open',
