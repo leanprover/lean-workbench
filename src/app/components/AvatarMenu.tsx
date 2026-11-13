@@ -1,6 +1,6 @@
 'use client'
 
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { Button, Header, Menu, MenuItem, MenuSection, MenuTrigger, Popover } from 'react-aria-components'
 
 import { AvatarIcon } from '@/app/components/AvatarIcon'
@@ -13,7 +13,6 @@ import { setIsAdmin } from '@/lib/server/actions'
 export function AvatarMenu() {
   const session = authClient.useSession()
   const cfg = useConfigCtx()
-  const router = useRouter()
   const reloadSession = useReloadSession()
   const { throwToBoundary } = useThrowToBoundary()
   const isInSetup = usePathname().startsWith('/setup')
@@ -52,7 +51,19 @@ export function AvatarMenu() {
                   )}
                   <MenuItem
                     onAction={() => {
-                      authClient.signOut({ fetchOptions: { onSuccess: () => router.push('/') } }).catch(throwToBoundary)
+                      authClient
+                        .signOut({
+                          fetchOptions: {
+                            onSuccess: () => {
+                              // A full-page reload, instead of the router-push eslint is recommending, is recommended for logout flows:
+                              // https://nextjs.org/docs/app/guides/preserving-ui-state#state-and-authentication
+                              // (The reload also invalidates a client-side cache that learned to redirect `/` to `/:userName`.)
+                              // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+                              window.location.assign('/')
+                            },
+                          },
+                        })
+                        .catch(throwToBoundary)
                     }}
                   >
                     Sign out
