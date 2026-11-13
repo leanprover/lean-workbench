@@ -11,7 +11,7 @@ export default function Root() {
   return (
     <AppLayout title='Lean Workbench' mainClass='root'>
       <p>
-        Edit, collaborate, and share Lean projects,
+        Edit, share, and collaborate on Lean projects,
         <br />
         no installation or download required.
       </p>
