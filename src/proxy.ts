@@ -7,8 +7,9 @@ export async function proxy(request: NextRequest) {
   const cfg = getConfig()
   if (!cfg.isSetupComplete) {
     const path = request.nextUrl.pathname
-    const allowedPrefixes = ['/setup', '/api/admin/tracked-command/seed', '/api/auth', '/favicon.ico']
-    if (allowedPrefixes.some(p => path.startsWith(p))) return NextResponse.next()
+    const allowedRoutes = ['/setup', '/api/admin/tracked-command/seed']
+    const allowedPrefixes = ['/api/auth/']
+    if (allowedRoutes.includes(path) || allowedPrefixes.some(p => path.startsWith(p))) return NextResponse.next()
     if (path.startsWith('/api/')) return NextResponse.json({ error: 'Setup not complete' }, { status: 503 })
     // https://nextjs.org/docs/messages/proxy-relative-urls#possible-ways-to-fix-it
     const url = request.nextUrl.clone()
@@ -30,6 +31,6 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     // Proxy all paths except static assets
-    '/((?!_next/static/|static/).*)',
+    '/((?!_next/static/|_next/image|__nextjs|static/|favicon\\.ico$).*)',
   ],
 }
