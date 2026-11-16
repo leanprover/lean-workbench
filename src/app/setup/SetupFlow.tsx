@@ -21,7 +21,7 @@ export function SetupFlow({ baseUrl }: SetupFlowProps) {
     () => window.location.origin,
     () => baseUrl,
   )
-  if (wasCompleteOnMount) redirect('/')
+  if (wasCompleteOnMount) redirect('/admin')
 
   return (
     <TrackedCommandForm
