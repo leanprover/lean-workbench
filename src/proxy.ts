@@ -1,6 +1,7 @@
+import { getSessionCookie } from 'better-auth/cookies'
 import { type NextRequest, NextResponse } from 'next/server'
 
-import { getUserSession } from './lib/server/auth'
+import { cookiePrefix, getUserSession } from './lib/server/auth'
 import { getConfig } from './lib/server/config'
 
 export async function proxy(request: NextRequest) {
@@ -16,6 +17,8 @@ export async function proxy(request: NextRequest) {
     url.pathname = '/setup'
     return NextResponse.redirect(url)
   }
+
+  // If logged in, send `/` and `/login` to `/:userName`
   if (request.nextUrl.pathname === '/' || request.nextUrl.pathname === '/login') {
     const session = await getUserSession()
     if (session) {
@@ -25,6 +28,18 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(url)
     }
   }
+
+  // Inexpensive check for whether the user has a login cookie. Doesn't check that the cookie is valid!
+  const possiblyLoggedIn = getSessionCookie(request, { cookiePrefix: cookiePrefix(cfg) })
+
+  // Forward logged-out users from `/admin` to `/login?admin=true
+  if (!possiblyLoggedIn && request.nextUrl.pathname === '/admin') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    url.search = '?admin=true'
+    return NextResponse.redirect(url)
+  }
+
   return NextResponse.next()
 }
 
