@@ -78,7 +78,7 @@ http {
 
         # /_file/<token>/<relPath> serves the static asset at <rootDir>/<relPath>
         # where <rootDir> is <token>'s root directory, as long as <token> is valid.
-        # See `lib/server/authToken.ts`.
+        # See `lib/server/dirToken.ts`.
         location ~ ^/_file/[^/]+/.*$ {
             # NORMALIZATION
             # Serve index.html on directory requests.
