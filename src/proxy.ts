@@ -40,6 +40,12 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // Workaround for the weird page rendering caused by https://github.com/vercel/next.js/issues/96361
+  // The regex needs to match all routes in the `(settings)` group
+  if (!possiblyLoggedIn && request.nextUrl.pathname.match(/^\/(settings|admin)($|\/)/)) {
+    return NextResponse.rewrite(new URL('/login', request.url))
+  }
+
   return NextResponse.next()
 }
 
