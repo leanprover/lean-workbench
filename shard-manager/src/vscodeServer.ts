@@ -124,7 +124,7 @@ export class VscodeServerHandle implements AsyncDisposable {
   readonly sandboxSocketDir = `${this.socketDir}sandbox/`
   /** Host path to the UDS that the host will connect to. */
   readonly socketPath = `${this.socketDir}${VSCODE_SOCKET_FILENAME}`
-  /** Host path to the UDS that the code server will create. */
+  /** Host path to the UDS that code-server will create. */
   readonly sandboxSocketPath = `${this.sandboxSocketDir}${VSCODE_SOCKET_FILENAME}`
   readonly viewer
   readonly owner
@@ -302,6 +302,7 @@ export class VscodeServerHandle implements AsyncDisposable {
           if (!(await fs.lstat(tmpSocketPath)).isSocket()) {
             throw new Error(`expected socket was not a socket: ${tmpSocketPath}`)
           }
+          // Now that we know it's a socket (and therefore not a symlink), make it visible to nginx
           await fs.rename(tmpSocketPath, this.socketPath)
 
           await waitForSocket(this.socketPath)
