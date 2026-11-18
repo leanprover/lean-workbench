@@ -18,6 +18,7 @@ import {
   getElanDir,
   getOpenVscodeServerDir,
   isDevMode,
+  waitForFileToExist,
 } from '@leanprover/workbench-shared/node'
 
 import { getBaseUrl } from './env.ts'
@@ -115,10 +116,14 @@ const VSCODE_SOCKET_FILENAME = 'client.sock'
 export class VscodeServerHandle implements AsyncDisposable {
   /** Unique ID of this VSCode server instance. */
   readonly uuid = crypto.randomUUID()
-  /** Directory in which the server places its UDS file. */
+  /** Host directory in which the host looks for the UDS file. */
   readonly socketDir = `/tmp/vsc-${this.uuid}/`
-  /** Host path to the server's UDS file. */
-  readonly socketPath = `${this.socketDir}/${VSCODE_SOCKET_FILENAME}`
+  /** Host directory to the client-controlled folder where the code-server will place the UDS file. */
+  readonly sandboxSocketDir = `${this.socketDir}sandbox/`
+  /** Host path to the server's copy of the UDS file. */
+  readonly socketPath = `${this.socketDir}${VSCODE_SOCKET_FILENAME}`
+  /** Host path to the client's copy of the UDS file. */
+  readonly sandboxSocketPath = `${this.sandboxSocketDir}${VSCODE_SOCKET_FILENAME}`
   readonly viewer
   readonly owner
   readonly project
@@ -180,8 +185,10 @@ export class VscodeServerHandle implements AsyncDisposable {
     this.startCalled = true
     ;(async () => {
       await fs.mkdir(this.socketDir, { recursive: true })
+      await fs.mkdir(this.sandboxSocketDir, { recursive: true })
       this.disposables.defer(async () => {
         await fs.rm(this.socketDir, { recursive: true, force: true })
+        await fs.rm(this.sandboxSocketDir, { recursive: true, force: true })
       })
 
       // The viewer's home directory persists their VS Code configuration and extensions:
@@ -213,7 +220,7 @@ export class VscodeServerHandle implements AsyncDisposable {
           '--ro-bind', getElanDir(), getElanDir(),
           '--bind', homeDir, sandboxHomeDir,
           '--bind', collabSockDir, BWRAP_COLLAB_SOCK_DIR,
-          '--bind', this.socketDir, '/workspace/.vscode-server',
+          '--bind', this.sandboxSocketDir, '/workspace/.vscode-server',
           '--ro-bind-data', '3', BWRAP_METADATA_PATH,
           '--setenv', 'HOME', sandboxHomeDir,
           '--setenv', 'ELAN_HOME', getElanDir(),
@@ -284,6 +291,16 @@ export class VscodeServerHandle implements AsyncDisposable {
             syncPatterns: [path.join(sandboxProjectDir, '**', '*')],
           }
           workspaceMdataPipe.end(JSON.stringify(workspaceMetadata))
+
+          // Move the socket to where nginx will look for it, after checking it's not a symlink
+          await waitForFileToExist(this.sandboxSocketPath)
+          const tmpSocketPath = `${this.socketPath}.tmp`
+          await fs.link(this.sandboxSocketPath, tmpSocketPath)
+          if (!(await fs.lstat(tmpSocketPath)).isSocket()) {
+            throw new Error(`expected socket was not a socket: ${tmpSocketPath}`)
+          }
+          await fs.rename(tmpSocketPath, this.socketPath)
+
           await waitForSocket(this.socketPath)
         })(),
       ])
