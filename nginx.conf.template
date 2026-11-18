@@ -37,9 +37,21 @@ http {
         listen 3000;
         server_name localhost;
 
+        # Valid request paths in workbench should never include non-printable characters.
+        # Defends against a family of http splitting attacks.
+        if ($uri ~ "[\x00-\x1f\x7f]") {
+            return 400;
+        }
+
         # /_vs/<session_id>/* forwards to the VS Code server identified by <session_id>,
         # as long as the auth_request accepts the user's session cookie.
-        location ~ ^/_vs/(?<session_id>[^/]+)/.*$ {
+        location ~ ^/_vs/(?<session_id>[0-9a-f-]+)/.*$ {
+            # Catch percent-encoded stuff in the first two path components;
+            # these would trip up the map that creates request_sub2_uri.
+            if ($request_uri !~ "^/_vs/[0-9a-f-]+/") {
+                return 400;
+            }
+
             # AUTHENTICATION
             # Capture the current URI for the auth subrequest.
             # ($request_uri doesn't work since it's the original URI, pre-rewrite,
