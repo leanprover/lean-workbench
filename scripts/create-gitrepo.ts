@@ -25,6 +25,11 @@ import {
 import z from 'zod'
 
 const [workDir, templateId, gitUrl, gitRev] = process.argv.slice(3) as [string, string, string, string]
+const repoDir = path.join(workDir, 'repo')
+const packageSetDir = path.join(workDir, 'package-set')
+const templateDir = path.join(workDir, 'template')
+const buildDir = path.join(workDir, 'build')
+const homeDir = path.join(workDir, 'home')
 
 export const setup = async () => {
   if (!gitRev) {
@@ -39,18 +44,13 @@ export const setup = async () => {
     throw new Error(`Package set ${templateId} already exists`)
   }
 
+  await fs.mkdir(repoDir, { recursive: true })
   await fs.mkdir(homeDir, { recursive: true })
 }
 
 export const onExit = async () => {
   await fs.rm(workDir, { recursive: true, force: true })
 }
-
-const repoDir = path.join(workDir, 'repo')
-const packageSetDir = path.join(workDir, 'package-set')
-const templateDir = path.join(workDir, 'template')
-const buildDir = path.join(workDir, 'build')
-const homeDir = path.join(workDir, 'home')
 
 let toolchain: string
 let hasPackages: boolean
@@ -59,10 +59,9 @@ export const steps: SCRIPT_STEPS = [
   {
     title: 'Checking out project',
     go() {
-      exe('git', ['clone', '--', gitUrl, repoDir])
-      process.chdir(repoDir)
-      exe('git', ['checkout', gitRev])
-      exe('git', ['submodule', 'update', '--init', '--recursive'])
+      bwrap('git', 'clone', '--', gitUrl, '.')
+      bwrap('git', 'checkout', gitRev)
+      bwrap('git', 'submodule', 'update', '--init', '--recursive')
     },
   },
   {
@@ -82,7 +81,7 @@ export const steps: SCRIPT_STEPS = [
   {
     title: 'Acquiring project dependencies',
     async go() {
-      if (!(await existsAsync('lake-manifest.json'))) {
+      if (!(await existsAsync(path.join(repoDir, 'lake-manifest.json')))) {
         bwrap('lake', '--keep-toolchain', '--no-ansi', 'update')
       }
       try {
@@ -181,8 +180,7 @@ function bwrap(...cmd: string[]) {
   exe(
     'bwrap',
     // prettier-ignore
-    [
-      ...BWRAP_ARGS,
+    [ ...BWRAP_ARGS,
       '--ro-bind', elanDir, elanDir,
       '--bind', repoDir, '/repo',
       // Lake needs a home dir for .cache
