@@ -5,10 +5,13 @@ import { promisify } from 'node:util'
 
 import { getTempBuildDir } from './directories.ts'
 
-/** Conditional check whether a file exists */
+/**
+ * Conditional check whether a file exists.
+ * Unlike `existsSync`, returns `true` if the last path component is a dangling symlink.
+ */
 export async function existsAsync(p: string): Promise<boolean> {
   try {
-    await fs.access(p)
+    await fs.lstat(p)
     return true
   } catch {
     return false
