@@ -1,15 +1,34 @@
+import crypto from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { SHARD_MANAGER_SOCK } from '@leanprover/workbench-shared'
+import { getDataDir } from '@leanprover/workbench-shared/node'
+import { TRPCError } from '@trpc/server'
 import { createHTTPServer } from '@trpc/server/adapters/standalone'
 
 import { inFlightTrpcMutations, serverIsStopping, shardManagerRouter } from './manager.ts'
 import { collabServers, mounts, vscServers } from './state.ts'
 
+const encoder = new TextEncoder()
+const authSecret = encoder.encode(
+  await fs
+    .readFile(path.join(getDataDir(), 'shard-auth-secret'), { encoding: 'utf-8' })
+    .then(token => `Bearer ${token.trim()}`),
+)
+if (authSecret.length < 30) throw new Error('authSecret too short')
+
 const server = createHTTPServer({
   router: shardManagerRouter,
   maxBodySize: 100 * 1024, // Somewhat arbitrary default
+  createContext: ({ req }) => {
+    const supplied = encoder.encode(req.headers.authorization)
+    if (authSecret.length !== supplied.length) throw new TRPCError({ code: 'UNAUTHORIZED' })
+    if (!crypto.timingSafeEqual(authSecret, supplied)) {
+      throw new TRPCError({ code: 'UNAUTHORIZED' })
+    }
+    return {}
+  },
 })
 
 await fs.mkdir(path.dirname(SHARD_MANAGER_SOCK), { recursive: true, mode: 0o700 })

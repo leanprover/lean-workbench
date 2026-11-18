@@ -1,7 +1,11 @@
 import 'server-only'
 
+import fs from 'node:fs/promises'
+import path from 'node:path'
+
 import type { ShardManagerAPIRouter } from '@leanprover/workbench-shard-manager'
 import { SHARD_MANAGER_SOCK } from '@leanprover/workbench-shared'
+import { getDataDir } from '@leanprover/workbench-shared/node'
 import { createTRPCClient, httpLink } from '@trpc/client'
 import { Pool } from 'undici'
 
@@ -29,11 +33,19 @@ export interface EditorSessionInfo {
   createdAt: Date
 }
 
+const authSecret = fs
+  .readFile(path.join(getDataDir(), 'shard-auth-secret'), { encoding: 'utf-8' })
+  .then(token => token.trim())
+  .catch((error: unknown) => {
+    console.error(`Error loading secret for authenticating to shard manager`, error)
+    return ''
+  })
 const dispatcher = new Pool('http://shard-connection-goes-over-uds/', { connect: { socketPath: SHARD_MANAGER_SOCK } })
 const shardConnection = createTRPCClient<ShardManagerAPIRouter>({
   links: [
     httpLink({
       url: 'http://shard-connection-goes-over-uds/',
+      headers: async () => ({ authorization: `Bearer ${await authSecret}` }),
       fetch(url, init) {
         const options = { ...(init ?? {}), dispatcher }
         return fetch(url, options)
