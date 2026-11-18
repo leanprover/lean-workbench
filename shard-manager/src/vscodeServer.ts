@@ -118,7 +118,8 @@ export class VscodeServerHandle implements AsyncDisposable {
   readonly uuid = crypto.randomUUID()
   /** Host directory in which the host looks for the UDS file. */
   readonly socketDir = `/tmp/vsc-${this.uuid}/`
-  /** Host directory to the client-controlled folder where the code-server will place the UDS file. */
+  /** Host directory where the code-server will place the UDS file.
+  Bound in the sandbox and writable by sandboxed processes. */
   readonly sandboxSocketDir = `${this.socketDir}sandbox/`
   /** Host path to the UDS that the host will connect to. */
   readonly socketPath = `${this.socketDir}${VSCODE_SOCKET_FILENAME}`
