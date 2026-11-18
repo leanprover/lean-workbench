@@ -111,7 +111,9 @@ export const steps: SCRIPT_STEPS = [
         const packages = await fs.readdir(path.join(repoDir, '.lake', 'packages'))
         numPackages = packages.length
         for (const pkgName of packages) {
-          if (!pkgName.match(ALPHANUM_NAME_RE)) throw new Error(`Cannot construct package set: potentially dangerous package name`)
+          if (!pkgName.match(ALPHANUM_NAME_RE)) {
+            throw new Error(`Cannot construct package set: potentially dangerous package name`)
+          }
           console.log(`[package set] copying package: ${pkgName}`)
           const pkgDest = path.join(packageSetDir, pkgName, '.lake', 'packages')
           await fs.mkdir(pkgDest, { recursive: true })
