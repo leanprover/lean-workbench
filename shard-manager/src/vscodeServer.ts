@@ -293,7 +293,7 @@ export class VscodeServerHandle implements AsyncDisposable {
           }
           workspaceMdataPipe.end(JSON.stringify(workspaceMetadata))
 
-          // Create a hardlink to the socket where nginx will look for it, after checking it's not a symlink
+          // Create a hardlink to the socket where nginx will look for it, after checking it's actually a socket
           await waitForFileToExist(this.sandboxSocketPath)
           const tmpSocketPath = `${this.socketPath}.tmp`
           await fs.link(this.sandboxSocketPath, tmpSocketPath)
