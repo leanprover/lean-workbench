@@ -1,7 +1,7 @@
 import 'server-only'
 
 import crypto from 'node:crypto'
-import fs from 'node:fs/promises'
+import fs, { lstat } from 'node:fs/promises'
 import path from 'node:path'
 
 import { bwrapProjectDir } from '@leanprover/workbench-shared'
@@ -179,7 +179,7 @@ async function finishPublish(
     if (exit.type !== 'success') return
 
     const siteDir = path.join(stagingDir, plan.siteDir)
-    if (!(await existsAsync(siteDir))) {
+    if (!(await lstat(siteDir)).isDirectory()) {
       throw new Error(`the build wrote no '${plan.siteDir}' directory, so it produced no site`)
     }
 
