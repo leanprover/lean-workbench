@@ -120,9 +120,9 @@ export class VscodeServerHandle implements AsyncDisposable {
   readonly socketDir = `/tmp/vsc-${this.uuid}/`
   /** Host directory to the client-controlled folder where the code-server will place the UDS file. */
   readonly sandboxSocketDir = `${this.socketDir}sandbox/`
-  /** Host path to the server's copy of the UDS file. */
+  /** Host path to the UDS that the host will connect to. */
   readonly socketPath = `${this.socketDir}${VSCODE_SOCKET_FILENAME}`
-  /** Host path to the client's copy of the UDS file. */
+  /** Host path to the UDS that the code server will create. */
   readonly sandboxSocketPath = `${this.sandboxSocketDir}${VSCODE_SOCKET_FILENAME}`
   readonly viewer
   readonly owner
@@ -292,7 +292,7 @@ export class VscodeServerHandle implements AsyncDisposable {
           }
           workspaceMdataPipe.end(JSON.stringify(workspaceMetadata))
 
-          // Move the socket to where nginx will look for it, after checking it's not a symlink
+          // Create a hardlink to the socket where nginx will look for it, after checking it's not a symlink
           await waitForFileToExist(this.sandboxSocketPath)
           const tmpSocketPath = `${this.socketPath}.tmp`
           await fs.link(this.sandboxSocketPath, tmpSocketPath)
