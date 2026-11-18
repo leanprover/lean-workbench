@@ -166,6 +166,7 @@ and `~/.lean-workbench/data/` (directory on host system) for `install.sh` deploy
 ```
 /data/
   config.json                   Server configuration (see `src/lib/server/config.ts`)
+  shard-auth-secret             Shared secret between shard and Next, regenerated every boot
 
   db/
     lean-workbench.db           SQLite database (users, projects, auth config)

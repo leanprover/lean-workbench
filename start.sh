@@ -35,6 +35,9 @@ mkdir -p "${LEAN_WORKBENCH_DATA_DIR}/workspaces" "${LEAN_WORKBENCH_DATA_DIR}/db"
 # Without this, `lake` invocations will loudly complain
 git config --global advice.detachedHead false
 
+# Create an API key for the next server to authenticate to the shard manager
+(umask 077; openssl rand -base64 36 > "${LEAN_WORKBENCH_DATA_DIR}/shard-auth-secret")
+
 # Start the Next.js app in the background
 export LEAN_WORKBENCH_DATA_DIR VSCODE_SERVER_DIR NGINX_CONF_DIR NGINX_LOG_DIR
 if [ "${NODE_ENV}" = "production" ]; then
