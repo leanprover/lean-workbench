@@ -116,7 +116,8 @@ const VSCODE_SOCKET_FILENAME = 'client.sock'
 export class VscodeServerHandle implements AsyncDisposable {
   /** Unique ID of this VSCode server instance. */
   readonly uuid = crypto.randomUUID()
-  /** Host directory in which the host looks for the UDS file. */
+  /** Host directory in which the host looks for the UDS file.
+  Not bound in the sandbox. */
   readonly socketDir = `/tmp/vsc-${this.uuid}/`
   /** Host directory where the code-server will place the UDS file.
   Bound in the sandbox and writable by sandboxed processes. */
