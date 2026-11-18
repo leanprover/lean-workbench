@@ -179,7 +179,11 @@ async function finishPublish(
     if (exit.type !== 'success') return
 
     const siteDir = path.join(stagingDir, plan.siteDir)
-    if (!(await lstat(siteDir)).isDirectory()) {
+    if (
+      !(await lstat(siteDir)
+        .then(stats => stats.isDirectory())
+        .catch(() => false))
+    ) {
       throw new Error(`the build wrote no '${plan.siteDir}' directory, so it produced no site`)
     }
 
