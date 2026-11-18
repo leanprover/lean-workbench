@@ -295,6 +295,7 @@ export class VscodeServerHandle implements AsyncDisposable {
 
           // Create a hardlink to the socket where nginx will look for it, after checking it's actually a socket
           await waitForFileToExist(this.sandboxSocketPath)
+          // This path is not sandbox-visible, so cannot be swapped under us by sandboxed processes
           const tmpSocketPath = `${this.socketPath}.tmp`
           await fs.link(this.sandboxSocketPath, tmpSocketPath)
           if (!(await fs.lstat(tmpSocketPath)).isSocket()) {
