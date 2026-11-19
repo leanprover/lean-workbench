@@ -6,7 +6,7 @@ server {
 
     # Redirect to add trailing slash
     location ~ ^(/pub/[^/]+|/[^/]+/[^/]+/[^/]+)$ {
-        return 301 $uri/;
+        rewrite ^(.*)$ $1/ permanent;
     }
 
     # /pub/<publicationId>/... or /<owner>/<project>/<kind>/...
