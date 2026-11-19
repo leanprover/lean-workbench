@@ -22,17 +22,23 @@ import z from 'zod'
  */
 export const PUBLISH_MANIFEST_FILE = 'workbench-publish.json'
 
-/** One way of presenting a project. */
+/** One way of presenting a project.
+ *
+ * A view is published (i.e. has a build `plan`), has a live component (`live`), or both. */
 export interface ViewDefinition<Config = unknown> {
   /** Key under which this view appears in {@link PUBLISH_MANIFEST_FILE}. */
   readonly id: string
   readonly displayName: string
   /** Validates this view's entry in the manifest. */
   readonly zConfig: z.ZodType<Config>
-  /** How to build this view's artifact. */
-  plan(config: Config): BuildPlan
   /** One-line summary of the declared view, shown to the project's owner. */
   describe(config: Config): string
+  /** How to build this view's publication; absent for a view that is not published. */
+  plan?(config: Config): BuildPlan
+  /** Whether the view has a page backed by a running server,
+   * reached only by a logged-in viewer who can read the project,
+   * and only on a project whose manifest declares the view. */
+  readonly live?: boolean
 }
 
 export interface BuildPlan {
@@ -66,13 +72,15 @@ const versoView: ViewDefinition<z.infer<typeof zVersoConfig>> = {
 
 export const VIEWS: readonly ViewDefinition[] = [versoView]
 
-/** A view the project's manifest declares,
- * either ready to build or with the reason its entry cannot be used. */
+/** One view that a project declares in its `workbench-publish.json`,
+ * in the form the publish page and the view route use:
+ * a description and, for a published view, how to build it;
+ * or, if the project's entry is invalid, the error to show the owner. */
 export type DeclaredView = {
   /** Manifest key of the declaring {@link ViewDefinition}. */
   id: string
   displayName: string
-} & ({ plan: BuildPlan; description: string } | { error: string })
+} & ({ plan?: BuildPlan; description: string } | { error: string })
 
 /** What a project's manifest says it supports. */
 export type PublishManifest =
@@ -170,7 +178,7 @@ function detectView(view: ViewDefinition, entry: unknown): DeclaredView {
     const complaints = config.error.issues.map(issue => describeIssue(id, issue))
     return { id, displayName, error: `${PUBLISH_MANIFEST_FILE} is ill-formed. ${complaints.join('; ')}` }
   }
-  return { id, displayName, plan: view.plan(config.data), description: view.describe(config.data) }
+  return { id, displayName, plan: view.plan?.(config.data), description: view.describe(config.data) }
 }
 
 /** Say what is wrong with one entry and where, in terms of the file the author wrote.
