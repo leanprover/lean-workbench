@@ -54,6 +54,8 @@ async function ensureMachineSettings(serverDataDir: string): Promise<void> {
           'files.saveConflictResolution': 'overwriteFileOnDisk',
           // Auto-save on every keystroke interferes with collaborative editing state.
           'files.autoSave': 'off',
+          // We run code-server with --disable-proxy, so accessing forwarded ports just 403s
+          'remote.autoForwardPorts': false,
         },
         null,
         2,
@@ -248,6 +250,9 @@ export class VscodeServerHandle implements AsyncDisposable {
           '--disable-update-check',
           // Reduce how long the extension host process waits for a web client to reconnect (default 3h).
           '--reconnection-grace-time', '60',
+          // Disable proxy routes to forwarded ports
+          // https://coder.com/docs/code-server/FAQ#how-do-i-disable-the-proxy
+          '--disable-proxy',
           sandboxProjectDir,
         ],
         // FIXME: pipe into a log file?

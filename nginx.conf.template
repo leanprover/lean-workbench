@@ -60,10 +60,17 @@ http {
             proxy_pass http://unix:$socket_path:$request_sub2_uri;
             proxy_http_version 1.1;
             proxy_set_header Host $http_host;
+            # code-server should not get the session cookie
+            proxy_set_header Cookie "";
 
             # Support WebSocket upgrades
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection $connection_upgrade;
+
+            # Restrict the scope of service workers to a single session
+            # https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Service-Worker-Allowed
+            proxy_hide_header Service-Worker-Allowed;
+            add_header Service-Worker-Allowed "/_vs/$session_id/";
 
             # Recommended by https://coder.com/docs/code-server/guide#using-lets-encrypt-with-nginx
             proxy_set_header Accept-Encoding gzip;
