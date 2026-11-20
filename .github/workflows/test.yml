@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
-      - uses: actions/setup-node@v4.4.0
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -30,7 +30,7 @@ jobs:
       - run: npm run test --workspace=shared
 
       # Registry cache import/export requires the docker-container driver.
-      - uses: docker/setup-buildx-action@v3.12.0
+      - uses: docker/setup-buildx-action@v4.4.1
         with:
           # Make `docker build` an alias of `docker buildx build`.
           install: true
