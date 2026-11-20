@@ -15,7 +15,6 @@ if (process.argv.length !== 3) {
   process.exit(1)
 }
 
-const _projectDir = process.argv[2]!
 const socketPath = BWRAP_COLLAB_SOCK_PATH
 const dbPath = BWRAP_COLLAB_DB_PATH
 
