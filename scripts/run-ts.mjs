@@ -11,10 +11,6 @@ const elanDir = getElanDir()
 process.env['ELAN_HOME'] = elanDir
 if (!process.env['PATH'].includes(elanDir)) process.env['PATH'] = `${elanDir}/bin:${process.env['PATH']}`
 
-// Attempt to prevent Git from wedging even though we're running in a pty
-process.env['GIT_TERMINAL_PROMPT'] ??= '0'
-process.env['GIT_SSH_COMMAND'] ??= 'ssh -o BatchMode=yes'
-
 const { setup, report, steps, onExit } = await import(`./${process.argv[2]}.ts`)
 
 try {

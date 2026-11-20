@@ -193,6 +193,9 @@ function bwrap(...cmd: string[]) {
       '--setenv', 'ELAN_HOME', elanDir,
       '--setenv', 'MATHLIB_NO_CACHE_ON_UPDATE', '1',
       '--setenv', 'PATH', `${elanDir}/bin:/usr/local/bin:/usr/bin:/bin`,
+      // Prevent Git from waiting for user input on a bad url (redundant)
+      '--setenv', 'GIT_TERMINAL_PROMPT', '0',
+      '--setenv', 'GIT_SSH_COMMAND', 'ssh -o BatchMode=yes',
       '--chdir', '/repo',
       '--', ...cmd
     ],
