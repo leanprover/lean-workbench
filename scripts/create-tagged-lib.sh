@@ -79,7 +79,9 @@ for pkg_dir in "$BUILD_DIR/.lake/packages"/*/; do
   mv --strip-trailing-slashes "$pkg_dir" "$pkg_dest"
 done
 
-ls -d "$PACKAGE_SET_DIR"/*/ | xargs -n1 basename > "$PACKAGE_SET_DIR/packages.txt"
+for pkg_dir in "$PACKAGE_SET_DIR"/*/; do
+  basename "$pkg_dir"
+done > "$PACKAGE_SET_DIR/packages.txt"
 
 echo "[[ progress 7/8 Constructing template ]]"
 TEMPLATE_DIR="$WORK_DIR/template"

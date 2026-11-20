@@ -20,7 +20,7 @@ ask_input() {
     result=$(whiptail --inputbox "$prompt" 10 60 "$default" 3>&1 1>&2 2>&3) || exit 1
     echo "$result"
   else
-    read -p "$prompt [$default]: " value
+    read -r -p "$prompt [$default]: " value
     echo "${value:-$default}"
   fi
 }
@@ -30,7 +30,7 @@ ask_yesno() {
   if has_whiptail; then
     whiptail --yesno "$prompt" 10 60 3>&1 1>&2 2>&3
   else
-    read -p "$prompt [y/N]: " yn
+    read -r -p "$prompt [y/N]: " yn
     [[ "$yn" =~ ^[Yy] ]]
   fi
 }
