@@ -20,7 +20,7 @@
     "@leanprover/workbench-shared": "*",
     "@trpc/server": "^11.19.0",
     "esbuild": "^0.28",
-    "ws": "^8.20",
+    "ws": "^8.23",
     "zod": "^4.6.5"
   }
 }
