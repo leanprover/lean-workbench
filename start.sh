@@ -81,12 +81,14 @@ trap 'kill $APP_PID $SHARD_MANAGER_PID 2>/dev/null' EXIT
 # Prepare Nginx config from template
 mkdir -p "${NGINX_CONF_DIR}"
 export NGINX_PID_PATH NGINX_ERROR_LOG_PATH NGINX_ACCESS_LOG_PATH NGINX_CONF_DIR PUB_HOST
+# shellcheck disable=SC2016 # envsubst requires unexpanded variable names
 envsubst '$NGINX_PID_PATH $NGINX_ERROR_LOG_PATH $NGINX_ACCESS_LOG_PATH $NGINX_CONF_DIR' \
     < "${SCRIPT_DIR}/nginx.conf.template" \
     > "${NGINX_CONF_DIR}/nginx.conf"
 
 # Without a publications URL there is no publish origin
 if [ -n "$PUB_HOST" ]; then
+    # shellcheck disable=SC2016 # envsubst requires unexpanded variable names
     envsubst '$PUB_HOST' < "${SCRIPT_DIR}/nginx-pub.conf.template" > "${NGINX_CONF_DIR}/pub.conf"
 else
     : > "${NGINX_CONF_DIR}/pub.conf"
