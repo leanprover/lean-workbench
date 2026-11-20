@@ -3,6 +3,11 @@
 # Docs: https://gh.io/actions-lockfile
 version: 'v0.0.3'
 workflows:
+    '.github/workflows/policy-actionlint.yml':
+        - 'actions/checkout@v7.0.1'
+        - 'reviewdog/action-actionlint@v1.83.0'
+    '.github/workflows/policy-shellcheck.yml':
+        - 'actions/checkout@v7.0.1'
     '.github/workflows/policy-verify-lockfile.yml':
         - 'actions/checkout@v7.0.1'
     '.github/workflows/release.yml':
@@ -53,3 +58,8 @@ dependencies:
         commit: 'sha1-8d2750c68a42422c14e847fe6c8ac0403b4cbd6f'
         owner_id: 5429470
         repo_id: 288485773
+    'reviewdog/action-actionlint@v1.83.0':
+        ref: 'v1.83.0'
+        commit: 'sha1-a7d35aaf8c309203a4ae861d32b7bd490baa7bf3'
+        owner_id: 48765237
+        repo_id: 385059686
