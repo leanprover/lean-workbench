@@ -14,7 +14,7 @@
     "watch": "concurrently --names collab-server,vscode-workbench --kill-others-on-fail 'npm run watch:collab-server' 'npm run watch:vscode-workbench'",
     "watch:collab-server": "npm --workspace collab-server run watch",
     "watch:vscode-workbench": "npm --workspace vscode-workbench run watch",
-    "tsc": "concurrently --names next,packages 'npm run tsc:workbench-app' 'npm run tsc --workspaces'",
+    "tsc": "concurrently --names next,packages,scripts 'npm run tsc:workbench-app' 'npm run tsc --workspaces' 'tsc -p scripts'",
     "tsc:workbench-app": "tsc",
     "lint": "eslint && prettier --check .",
     "lint:fix": "eslint . --fix && prettier --write .",

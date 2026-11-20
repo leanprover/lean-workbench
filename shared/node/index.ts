@@ -53,6 +53,7 @@ export const execFileAsync = promisify(execFile)
 
 export * from './bwrap.ts'
 export * from './directories.ts'
+export * from './scripts.ts'
 
 /**
  * Turns an iterator into a ReadableStream.
