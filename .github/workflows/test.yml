@@ -35,7 +35,7 @@ jobs:
           # Make `docker build` an alias of `docker buildx build`.
           install: true
 
-      - uses: docker/login-action@v3.7.0
+      - uses: docker/login-action@v4.8.0
         # Only trusted builds (pushes to main and tags) write the cache.
         if: github.event_name == 'push'
         with:
