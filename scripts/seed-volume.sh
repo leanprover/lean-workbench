@@ -33,12 +33,12 @@ mkdir -p "$ROOT"/{workspaces,db,package-sets,templates}
 # ------
 STEP=$(( STEP + 1 ))
 echo "[[ progress $STEP/$TOTAL Installing elan ]]"
-ELAN_HOME="$ROOT/elan"
+export ELAN_HOME="$ROOT/elan"
 if [ ! -x "$ELAN_HOME/bin/elan" ]; then
   echo "[seed-volume] Downloading elan + Lean toolchain..."
   mkdir -p "$ELAN_HOME"
   curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
-    | ELAN_HOME="$ELAN_HOME" sh -s -- -y --no-modify-path --default-toolchain none
+    | sh -s -- -y --no-modify-path --default-toolchain none
 else
   echo "[seed-volume] elan already installed."
 fi
@@ -47,7 +47,7 @@ fi
 if (( INSTALL_TOOLCHAIN )); then
   STEP=$(( STEP + 1 ))
   echo "[[ progress $STEP/$TOTAL Installing latest toolchain ]]"
-  ELAN_HOME="$ELAN_HOME" "$ELAN_HOME/bin/elan" install stable
+  "$ELAN_HOME/bin/elan" install stable
 fi
 
 # -----
