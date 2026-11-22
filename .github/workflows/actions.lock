@@ -6,6 +6,8 @@ workflows:
     '.github/workflows/policy-actionlint.yml':
         - 'actions/checkout@v7.0.1'
         - 'reviewdog/action-actionlint@v1.83.0'
+    '.github/workflows/policy-commit-convention.yml':
+        - 'actions/github-script@v9.0.0'
     '.github/workflows/policy-shellcheck.yml':
         - 'actions/checkout@v7.0.1'
     '.github/workflows/policy-verify-lockfile.yml':
@@ -28,6 +30,11 @@ dependencies:
         commit: 'sha1-3d3c42e5aac5ba805825da76410c181273ba90b1'
         owner_id: 44036562
         repo_id: 197814629
+    'actions/github-script@v9.0.0':
+        ref: 'v9.0.0'
+        commit: 'sha1-3a2844b7e9c422d3c10d287c895573f7108da1b3'
+        owner_id: 44036562
+        repo_id: 205262760
     'actions/setup-node@v7.1.0':
         ref: 'v7.1.0'
         commit: 'sha1-949feb2413d6458794dcd2491c4babbbce0c15c1'
