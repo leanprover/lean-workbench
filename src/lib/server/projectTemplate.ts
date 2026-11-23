@@ -180,9 +180,9 @@ export async function startTemplateCreation(props: TemplateCreation) {
       break
     }
     case 'gitRepo': {
-      metadata = { name: props.templateName, packageSet: props.templateId }
-      script = 'create-gitrepo.sh'
-      args = [workDir, props.templateId, props.gitRepo, props.gitRef]
+      metadata = { name: props.templateName }
+      script = 'run-ts.mjs'
+      args = ['create-gitrepo', workDir, props.templateId, props.gitRepo, props.gitRef]
     }
   }
 

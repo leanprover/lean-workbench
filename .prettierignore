@@ -6,3 +6,6 @@ package-lock.json
 
 # Git
 branch-*
+
+# Exempt copy-pasted policy-enforcement yml files from prettier 
+.github/workflows/policy-*.yml

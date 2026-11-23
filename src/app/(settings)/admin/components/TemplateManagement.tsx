@@ -212,10 +212,6 @@ function TemplateCreationForm(props: { installedToolchains: string[] }) {
           </label>
         </TabPanel>
         <TabPanel id='gitRepo' shouldForceMount>
-          <p style={{ color: '#dc2626' }}>
-            Installing a malicious template could corrupt the system and steal user data. Only install templates based
-            on git repositories you fully trust.
-          </p>
           <label>
             Git repository: <input type='text' name='gitRepo' style={{ width: '100%' }} />
           </label>
