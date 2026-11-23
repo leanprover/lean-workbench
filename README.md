@@ -30,9 +30,11 @@ It is written with IT staff/system administrators in mind.
 
   These both come with [Docker Engine](https://docs.docker.com/engine/install/),
   which we recommend over [unofficial packages](https://docs.docker.com/engine/install/ubuntu/#uninstall-old-versions) that may come with the Linux distribution.
-- A domain (or IP address) on which you will publish the Workbench.
+- A domain on which you will publish the Workbench.
   Whenever you see `your-domain.com` in these setup instructions, replace it with your actual domain.
-  You will need a second hostname alongside it for published documents; see Step 0.
+  You will need to be able to set wildcard DNS for `*.your-domain.com`,
+  and obtain TLS certificates covering both `your-domain.com` and `*.your-domain.com`.
+  (The Network Setup examples below give two examples of how this can be done.)
 - A GitHub account that will own the [OAuth App](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app)
   used to authorize GitHub-based logins on the instance.
 
@@ -47,33 +49,28 @@ is the instance administrator's responsibility.
 
 Make a note of the **public URL** on which you will publish the instance (e.g. `https://lean.math.uni.edu`),
 as well as the **local address and port** on which the Workbench HTTP server should listen.
-
-You also need a **publications URL** (e.g. `https://pub.lean.math.uni.edu`) resolving to the same machine.
-Documents that users publish from their projects are served from there and from nowhere else.
+The **wildcard URL** `https://*.lean.math.uni.edu` should resolve to the same machine.
 
 > [!IMPORTANT]
 > Whatever terminates HTTPS in front of the Workbench must send the actual requested public hostname in the `Host` header that it forwards to Workbench.
+> Workbench needs to know if a request was made to `your-domain.com`, to `pub.your-domain.com`, or to `session-2e39443c-42fa-40ad-8bed-2ce26aaf5945.your-domain.com`.
 
 Workflows for two common cases are described below.
 
 #### Network Setup A: Cloudflare Tunnel
 
-This is the easiest secure setup.
+This is the easiest secure setup, but it requires full use of a registered domain name:
+`example.com` works, `lean.example.com` does not.
 It requires a Cloudflare account with DNS administration privileges for `your-domain.com`.
 
 1. Follow [Cloudflare instructions](https://developers.cloudflare.com/tunnel/setup/) to:
    - **Set up a tunnel** (`cloudflared`) on your machine.
-   - **Publish an application** on your chosen hostname `your-domain.com`,
+   - **Publish an application** on your chosen URL `your-domain.com`,
       with `http://127.0.0.1:8080` as the Service URL.
-   - **Publish a second application** on `pub.your-domain.com`,
-      with the same `http://127.0.0.1:8080` as the Service URL.
-      Leave its *HTTP Host Header* setting empty:
-      `cloudflared` then forwards the original `Host`, which is how the container
-      tells requests for the two hostnames apart.
+1. **Publish a second application** on the wildcard URL `*.your-domain.com` (subdomain `*`),
+   with the same `http://127.0.0.1:8080` as the Service URL.
 1. **Move to Step 1** below.
-   Use `127.0.0.1:8080` as the local address and port,
-   `https://your-domain.com` as the public URL,
-   and `https://pub.your-domain.com` as the publications URL.
+   Use `127.0.0.1:8080` as the local address and port and `https://your-domain.com` as the public URL.
 
 #### Network Setup B: Let's Encrypt with Nginx
 
@@ -82,100 +79,115 @@ you obtain an SSL certificate from Let's Encrypt
 and launch an Nginx reverse proxy.
 Nginx terminates SSL and forwards HTTP traffic to the Workbench via local loopback.
 
-1. **Set up Nginx with HTTPS** on your Linux machine,
-   publishing it to `https://your-domain.com` and `https://pub.your-domain.com`.
-   You can follow [DigitalOcean instructions](https://www.digitalocean.com/community/tutorials/how-to-configure-nginx-as-a-reverse-proxy-on-ubuntu-22-04
-) to this end.
-   That tutorial sets up a pair of hostnames, `your-domain.com` and `pub.your-domain.com`;
-   Point DNS records for both names at this machine before you begin.
+1. **Point DNS records at your machine**
+   These instructions assume that domain `your-domain.com` and the wildcard domain `*.your-domain.com` both point at the IP address of your machine.
 
-   Do not follow the "Testing your Reverse Proxy with Gunicorn" step in the DigitalOcean tutorial;
-   you'll set up your reverse proxy to work with Lean Workbench.
-   For now, visiting `https://your-domain.com` should result in a 502 Bad Gateway error.
-   (If you don't even get a 502 Bad Gateway error, you may need to run `sudo ufw allow 'Nginx HTTPS'`)
+1. **Set up your machine**
+   Follow [DigitalOcean's instructions](https://www.digitalocean.com/community/tutorials/initial-server-setup-with-ubuntu) to set up a user `workbench` with admin access.
 
-1. **Configure Nginx**
-   If you followed the DigitalOcean tutorial, you should now have a `/etc/nginx/sites-enabled/<your-site>` site that looks like this:
-
-   ```
-   server {
-      server_name your-domain.com pub.your-domain.com;
-
-      location / {
-         proxy_pass http://127.0.0.1:8080;
-         include proxy_params;
-      }
-
-      listen [::]:443 ssl ipv6only=on; # managed by Certbot
-      listen 443 ssl; # managed by Certbot
-      ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem; # managed by Certbot
-      ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem; # managed by Certbot
-      include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
-      ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
-
-   }
-   server {
-      if ($host = pub.your-domain.com) {
-         return 301 https://$host$request_uri;
-      } # managed by Certbot
-
-
-      if ($host = your-domain.com) {
-         return 301 https://$host$request_uri;
-      } # managed by Certbot
-
-
-      listen 80;
-      listen [::]:80;
-
-      server_name your-domain.com pub.your-domain.com;
-      return 404; # managed by Certbot
-   }
+1. **Install Nginx** on your Linux machine
+   ```sh
+   sudo apt update
+   sudo apt install nginx
+   sudo ufw allow 'Nginx Full'
    ```
 
-   You will need to modify that file in two ways.
-   First, at the beginning, before the first `server`, add:
+   You should now be able to go to `http://your-domain.com` (note the `http`, not `https`), and see "Welcome to nginx!"
+
+1. **Obtain certificates from Let's Encrypt**
+   In order to issue a certificate for `*.your-domain.com`, Let's Encrypt requires you to demonstrate control over `your-domain.com`'s DNS records.
+   (The process is called a [DNS-01 challenge](https://letsencrypt.org/docs/challenge-types/#dns-01-challenge).)
+
+   To get certificates that renew automatically, you'll need to use a [Certbot DNS plugin](https://eff-certbot.readthedocs.io/en/stable/using.html#dns-plugins) that works with your DNS provider.
+
+   - First, follow that link and select your DNS provider (`certbot-dns-cloudflare` if Cloudflare manages your DNS, etc).
+
+   - You will be directed to <https://certbot.eff.org/instructions#wildcard>.
+     From that page, pick "Nginx" as your Software and "Linux (snap)" as your System, and then switch from the "default" tab to the "wildcard" tab and follow the directions.
+
+   - In step 10, follow the instructions to "just get a certificate."
+     The call to `certbot` must include both `-d your-domain.com` and `-d '*.your-domain.com'`.
+
+   - Step 12, "Confirm that Certbot worked," won't work until after the next step.
+
+     For now, run `sudo certbot certificates` and check that
+     - There is a certificate listed for `your-domain.com`,
+     - "Identifiers" mentions *both* `your-domain.com` and `*.your-domain.com`, and
+     - The "Expiry Date" includes `VALID`.
+
+1. **Set up Nginx to use HTTPS**
+
+   Add the following file as `/etc/nginx/sites-available/lean-workbench`
 
    ```nginx
    # Needed for WebSockets
    map $http_upgrade $connection_upgrade {
-       default upgrade;
-       ''      close;
+      default upgrade;
+      ''      close;
+   }
+
+   server {
+      server_name your-domain.com *.your-domain.com;
+
+      listen 443 ssl;
+      listen [::]:443 ssl;
+      ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+      ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+
+      location / {
+         proxy_pass http://127.0.0.1:8080;
+         proxy_http_version 1.1;
+         proxy_set_header Host              $host;
+         proxy_set_header X-Forwarded-Host  $host;
+         proxy_set_header X-Forwarded-Proto $scheme;
+         proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+
+         # Proxy WebSocket traffic
+         proxy_set_header Upgrade    $http_upgrade;
+         proxy_set_header Connection $connection_upgrade;
+
+         # Leave connections open for 24h
+         proxy_read_timeout 86400;
+         proxy_send_timeout 86400;
+
+         # Stream SSE without delay
+         proxy_buffering off;
+      }
+   }
+
+   server {
+      listen 80;
+      listen [::]:80;
+      server_name your-domain.com *.your-domain.com;
+      return 301 https://$host$request_uri;
    }
    ```
 
-   Second, **replace** the block beginning with `location /` with the following:
+   Enable the site, and check that the configuration is valid:
 
-   ```nginx
-       location / {
-           proxy_pass http://127.0.0.1:8080;
-           proxy_http_version 1.1;
-           proxy_set_header Host              $host;
-           proxy_set_header X-Forwarded-Host  $host;
-           proxy_set_header X-Forwarded-Proto $scheme;
-           proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-
-           # Proxy WebSocket traffic
-           proxy_set_header Upgrade    $http_upgrade;
-           proxy_set_header Connection $connection_upgrade;
-
-           # Leave connections open for 24h
-           proxy_read_timeout 86400;
-           proxy_send_timeout 86400;
-
-           # Stream SSE without delay
-           proxy_buffering off;
-       }
+   ```sh
+   sudo ln -s /etc/nginx/sites-available/lean-workbench /etc/nginx/sites-enabled
+   sudo nginx -t
    ```
 
-   The `location /` above passes `$host` through unchanged,
-   so this one block serves both hostnames and the container distinguishes them.
-1. Save the changes to `/etc/nginx/sites-enabled/<your-site>`
-1. Restart Nginx again (`sudo systemctl restart nginx.service`).
+1. **Test Certificate Renewal**
+
+   Configure certbot to reload nginx whenever there is a new certificate, and restart Nginx now so that it uses the new certificate.
+
+   ```sh
+   sudo certbot reconfigure --cert-name your-domain.com --deploy-hook "systemctl reload nginx" --run-deploy-hooks
+   sudo certbot renew --dry-run
+   sudo systemctl restart nginx
+   ```
+
+1. **Check Website**
+
+   At this point, visiting `your-domain.com` with `http` or `https` should take you to `https://your-domain.com`, where you should see "502 Bad Gateway."
+
+   To check that the wildcard domain is working go to `https://whatever.your-domain.com`, where you should also see "502 Bad Gateway."
+
 1. **Move to Step 1** below.
-   Use the default `127.0.0.1:8080` as the local address and port,
-   `https://your-domain.com` as the public URL,
-   and `https://pub.your-domain.com` as the publications URL.
+   Use the default `127.0.0.1:8080` as the local address and port and `https://your-domain.com` as the public URL.
 
 ### Step 1: Install and launch
 
@@ -191,9 +203,7 @@ bash <(curl -sSf https://raw.githubusercontent.com/leanprover/lean-workbench/mai
 
 The installer will prompt for a **data directory** (default: `~/.lean-workbench`)
 where all persistent data (database, users' projects, Lean toolchains) is stored,
-as well as the local address, port, public URL, and publications URL from Step 0.
-The publications URL defaults to the public URL's hostname prefixed with `pub.`,
-and the installer rejects one sharing a hostname with the public URL.
+as well as the local address, port and public URL from Step 0.
 
 > [!WARNING]
 > The local address defaults to 127.0.0.1 instead of 0.0.0.0
@@ -286,6 +296,15 @@ Otherwise, a partially written, corrupted database may be copied.
 See [doc/DEVELOPMENT.md](doc/DEVELOPMENT.md).
 
 ## Migration Notes
+
+### v0.0.20
+
+ - **Warning:** if your publication URL was anything besides `pub.your-domain.com`, this update will not work.
+ - **Deprecation:** a future release of lean-workbench will require a wildcard domain and a wildcard TLS certificate (`*.your-domain.com`).
+   Setup instructions have been changed to describe wildcard domain setup for Cloudflare and Let's Encrypt.
+   The wildcard domain and TLS certificate replace the `pub.your-domain.com` domain and TLS certificate for now.
+
+Please reach out to us via Lean Zulip if you encounter any of these issues.
 
 ### v0.0.19
 
