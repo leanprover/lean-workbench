@@ -11,22 +11,22 @@ VSCODE_SERVER_DIR="${VSCODE_SERVER_DIR:-/app/vscode-server}"
 NGINX_CONF_DIR="${NGINX_CONF_DIR:-/etc/nginx}"
 NGINX_LOG_DIR="${NGINX_LOG_DIR:-/var/log/nginx}"
 
-BASE_URL="$(jq --raw-output '.baseUrl // empty' "${LEAN_WORKBENCH_DATA_DIR}/config.json" 2>/dev/null || true)"
-if [ -z "$BASE_URL" ]; then
+APP_BASE_URL="$(jq --raw-output '.baseUrl // empty' "${LEAN_WORKBENCH_DATA_DIR}/config.json" 2>/dev/null || true)"
+if [ -z "$APP_BASE_URL" ]; then
     if [ "${NODE_ENV:-}" != "production" ]; then
-        BASE_URL="http://localhost:3000"
+        APP_BASE_URL="http://localhost:3000"
     else
         printf "[start.sh] The production app requires baseUrl to be set in %s/config.json.\n" "$LEAN_WORKBENCH_DATA_DIR"
         exit 1
     fi
 fi
-HOST_URL="${BASE_URL#*://}" # your-domain.com:3000/foobar
-HOST_ORIGIN="${HOST_URL%%/*}" # your-domain.com:3000
-HOST="${HOST_ORIGIN%%:*}" # your-domain.com
-# pub.$HOST will cause an error in nginx if it's longer than 42 characters.
+APP_HOST="${APP_BASE_URL#*://}" # your-domain.com:3000/foobar
+APP_HOST="${APP_HOST%%/*}" # your-domain.com:3000
+APP_HOSTNAME="${APP_HOST%%:*}" # your-domain.com
+# pub.$APP_HOSTNAME will cause an error in nginx if it's longer than 42 characters.
 # If users encounter this, it can be fixed by changing server_names_hash_bucket_size to 128
-if (( ${#HOST} > 42)); then
-    printf "[start.sh] The application hostname, %s, cannot be longer than 42 characters.\n" "$HOST"
+if (( ${#APP_HOSTNAME} > 42)); then
+    printf "[start.sh] The application hostname, %s, cannot be longer than 42 characters.\n" "$APP_HOSTNAME"
     exit 1
 fi
 
@@ -36,10 +36,10 @@ if [ -z "$PUB_BASE_URL" ] && [ "${NODE_ENV:-}" != "production" ]; then
     PUB_BASE_URL="http://pub.localhost:3000"
 fi
 # Empty when publishing is disabled.
-PUB_HOST="${PUB_BASE_URL#*://}"; PUB_HOST="${PUB_HOST%%/*}"; PUB_HOST="${PUB_HOST%%:*}"
+PUB_HOST="${PUB_BASE_URL#*://}"; PUB_HOST="${PUB_HOST%%/*}"; PUB_HOSTNAME="${PUB_HOST%%:*}"
 
-if (( ${#PUB_HOST} > 46)); then
-    printf "[start.sh] The application's publications hostname, %s, cannot be longer than 46 characters.\n" "$PUB_HOST"
+if (( ${#PUB_HOSTNAME} > 46)); then
+    printf "[start.sh] The application's publications hostname, %s, cannot be longer than 46 characters.\n" "$PUB_HOSTNAME"
     exit 1
 fi
 
@@ -89,9 +89,9 @@ trap 'kill $APP_PID 2>/dev/null' EXIT
 
 # Start shard manager in the background
 if [ "${NODE_ENV}" = "production" ]; then
-    BASE_URL="$BASE_URL" node "${SCRIPT_DIR}/shard-manager/src/server.ts" &
+    APP_BASE_URL="$APP_BASE_URL" node "${SCRIPT_DIR}/shard-manager/src/server.ts" &
 else
-    BASE_URL="$BASE_URL" node --watch --watch-preserve-output "${SCRIPT_DIR}/shard-manager/src/server.ts" &
+    APP_BASE_URL="$APP_BASE_URL" node --watch --watch-preserve-output "${SCRIPT_DIR}/shard-manager/src/server.ts" &
 fi
 SHARD_MANAGER_PID=$!
 # Replaces previous trap
@@ -99,16 +99,16 @@ trap 'kill $APP_PID $SHARD_MANAGER_PID 2>/dev/null' EXIT
 
 # Prepare Nginx config from template
 mkdir -p "${NGINX_CONF_DIR}"
-export NGINX_PID_PATH NGINX_ERROR_LOG_PATH NGINX_ACCESS_LOG_PATH NGINX_CONF_DIR BASE_URL HOST PUB_HOST
+export NGINX_PID_PATH NGINX_ERROR_LOG_PATH NGINX_ACCESS_LOG_PATH NGINX_CONF_DIR APP_BASE_URL APP_HOSTNAME PUB_HOSTNAME
 # shellcheck disable=SC2016 # envsubst requires unexpanded variable names
-envsubst '$NGINX_PID_PATH $NGINX_ERROR_LOG_PATH $NGINX_ACCESS_LOG_PATH $NGINX_CONF_DIR $BASE_URL $HOST' \
+envsubst '$NGINX_PID_PATH $NGINX_ERROR_LOG_PATH $NGINX_ACCESS_LOG_PATH $NGINX_CONF_DIR $APP_BASE_URL $APP_HOSTNAME' \
     < "${SCRIPT_DIR}/nginx.conf.template" \
     > "${NGINX_CONF_DIR}/nginx.conf"
 
 # Without a publications URL there is no publish origin
-if [ -n "$PUB_HOST" ]; then
+if [ -n "$PUB_HOSTNAME" ]; then
     # shellcheck disable=SC2016 # envsubst requires unexpanded variable names
-    envsubst '$PUB_HOST' < "${SCRIPT_DIR}/nginx-pub.conf.template" > "${NGINX_CONF_DIR}/pub.conf"
+    envsubst '$PUB_HOSTNAME' < "${SCRIPT_DIR}/nginx-pub.conf.template" > "${NGINX_CONF_DIR}/pub.conf"
 else
     : > "${NGINX_CONF_DIR}/pub.conf"
     echo "[start.sh] No publications URL configured; publishing is disabled."
@@ -120,7 +120,7 @@ NGINX_PID=$!
 # Replaces previous trap
 trap 'kill $APP_PID $SHARD_MANAGER_PID $NGINX_PID 2>/dev/null' EXIT
 
-echo "[start.sh] Public URL: ${BASE_URL}"
+echo "[start.sh] Public URL: ${APP_BASE_URL}"
 echo "[start.sh] Nginx listening for forwarded requests on port 3000"
 
 wait -n $APP_PID $SHARD_MANAGER_PID $NGINX_PID || true
