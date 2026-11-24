@@ -302,7 +302,8 @@ See [doc/DEVELOPMENT.md](doc/DEVELOPMENT.md).
  - **Warning:** if your publication URL was anything besides `pub.your-domain.com`, this update will not work.
  - **Deprecation:** a future release of lean-workbench will require a wildcard domain and a wildcard TLS certificate (`*.your-domain.com`).
    Setup instructions have been changed to describe wildcard domain setup for Cloudflare and Let's Encrypt.
-   The wildcard domain and TLS certificate replace the `pub.your-domain.com` domain and TLS certificate for now.
+   The wildcard domain and TLS certificate should replace the `pub.your-domain.com` domain and TLS certificate for now.
+   If you are upgrading an existing installation that uses `certbot`, we recommend removing certificates and rebuilding the network setup according to our setup instructions.
  - Lean Workbench no longer supports running from an IP address.
 
 Please reach out to us via Lean Zulip if you encounter any of these issues.
