@@ -39,6 +39,7 @@ export default async function PublishPage({ params: params_ }: { params: Promise
   // A project that declares no manifest has no publishing interface at all.
   if (manifest.type === 'missing') notFound()
   const publications = await getDb().publication.findMany({ where: { projectId: project.id } })
+  const publishable = manifest.type === 'declared' ? manifest.views.filter(v => 'error' in v || v.plan) : []
 
   const publicationFor = (kind: string): PublicationInfo | undefined => {
     const publication = publications.find(p => p.kind === kind)
@@ -56,25 +57,24 @@ export default async function PublishPage({ params: params_ }: { params: Promise
 
       {manifest.type === 'invalid' && <ErrorBox>{manifest.error}</ErrorBox>}
 
-      {manifest.type === 'declared' && manifest.views.length === 0 && (
+      {manifest.type === 'declared' && publishable.length === 0 && (
         <p className='empty'>
           <code>{PUBLISH_MANIFEST_FILE}</code> declares nothing this workbench knows how to publish.
         </p>
       )}
 
-      {manifest.type === 'declared' &&
-        manifest.views.map(view => (
-          <PublishCard
-            key={view.id}
-            userName={owner.name}
-            projectName={project.name}
-            kind={view.id}
-            displayName={view.displayName}
-            detail={'error' in view ? { error: view.error } : { description: view.description }}
-            publication={publicationFor(view.id)}
-            trackingKey={publishTrackingKey(project.id, view.id)}
-          />
-        ))}
+      {publishable.map(view => (
+        <PublishCard
+          key={view.id}
+          userName={owner.name}
+          projectName={project.name}
+          kind={view.id}
+          displayName={view.displayName}
+          detail={'error' in view ? { error: view.error } : { description: view.description }}
+          publication={publicationFor(view.id)}
+          trackingKey={publishTrackingKey(project.id, view.id)}
+        />
+      ))}
     </>
   )
 }
