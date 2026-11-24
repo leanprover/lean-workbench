@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { getDataDir, isDevMode } from '@leanprover/workbench-shared/node'
+import { getDataDir } from '@leanprover/workbench-shared/node'
 import chokidar, { type FSWatcher } from 'chokidar'
 import fs from 'fs'
 import path from 'path'
@@ -29,10 +29,10 @@ const zServerConfig = z.object({
    * Requests made through other URLs may misbehave,
    * e.g. better-auth will reject authentication requests. */
   baseUrl: z.url(),
-  /** Origin from which publications are served.
-   * this must be separate from `baseUrl`
-   * so that a published document cannot reach a logged-in session's cookies or storage.
-   * Absent, publishing is disabled. */
+  /**
+   * Deprecated: origin from which publications are served.
+   * This must be `${baseUrl.protocol}//pub.${baseUrl.host}` if it exists or loading will fail.
+   */
   pubBaseUrl: z.url().optional(),
   /** Limit to how many publish builds may be in flight across the whole server. */
   maxConcurrentPublishBuilds: z.int().positive().default(2),
@@ -47,14 +47,13 @@ export type ServerConfig = z.infer<typeof zServerConfig>
 const defaults: ServerConfig = {
   registrationMode: 'open',
   isSetupComplete: false,
-  baseUrl: 'http://localhost:3000',
-  pubBaseUrl: isDevMode() ? 'http://pub.localhost:3000' : undefined,
+  baseUrl: 'http://workbench.localhost:3000',
   maxConcurrentPublishBuilds: 2,
 }
 
 /** Whether publications are enabled */
-export function isPublishingEnabled(cfg: ServerConfig): cfg is ServerConfig & { pubBaseUrl: string } {
-  return !!cfg.pubBaseUrl
+export function isPublishingEnabled(_cfg: ServerConfig) {
+  return true
 }
 
 /** Whether GitHub OAuth is set up. */
@@ -71,7 +70,26 @@ function loadConfig() {
   try {
     const raw: unknown = JSON.parse(fs.readFileSync(getConfigPath(), 'utf-8'))
     const diskData = zServerConfig.partial().parse(raw)
-    g.__config = { ...defaults, ...diskData }
+    const config = { ...defaults, ...diskData }
+
+    let migrated = false
+    if (config.pubBaseUrl) {
+      const baseUrl = new URL(config.baseUrl)
+      const pubUrl = new URL(config.pubBaseUrl)
+      if (pubUrl.href !== `${baseUrl.protocol}//pub.${baseUrl.host}/`) {
+        throw new Error(
+          `pubBaseUrl of ${config.pubBaseUrl} is unsupported for a baseUrl of ${config.baseUrl}. Remove 'pubBaseUrl' from config.json.`,
+        )
+      }
+      delete config.pubBaseUrl
+      migrated = true
+    }
+    if (config.baseUrl.includes('http://localhost:')) {
+      throw new Error(`Dev: change 'localhost' in config.json to 'workbench.localhost'.`)
+    }
+
+    g.__config = config
+    if (migrated) writeConfig()
   } catch (e: unknown) {
     throw new Error(`Failed to parse config.json: ${String(e)}`, { cause: e })
   }

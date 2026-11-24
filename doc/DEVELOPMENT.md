@@ -17,7 +17,7 @@ npm clean-install # install dependencies and generate types
 make dev # build and run the container in development mode
 ```
 
-Open `http://localhost:3000`. You'll see the setup page.
+Open `http://workbench.localhost:3000`. You'll see the setup page.
 
 1. Use `dev` as the initial administrator password.
 1. - **Skip the OAuth section** — it's optional in dev mode.
@@ -26,7 +26,7 @@ Open `http://localhost:3000`. You'll see the setup page.
      but if you put in something invalid (and then "Save Configuration")
      the only consequence is that GitHub OAuth won't work.
    - **Or** [create a GitHub OAuth App](https://github.com/settings/developers)
-     with callback URL `http://localhost:3000/api/auth/callback/github`.
+     with callback URL `http://workbench.localhost:3000/api/auth/callback/github`.
      Enter the resulting credentials on the setup page.
 1. Click **Start Setup** to seed the data volume (downloads Mathlib,
    takes 5--30 min on first run).
@@ -70,7 +70,7 @@ sbx ports workbench --publish 43000:3000/tcp4
 ```
 
 After running the makefile targets insidethe sandbox (i.e. `make dev`),
-the sandboxed server will be available on the host machine at <http://localhost:43000>
+the sandboxed server will be available on the host machine at <http://workbench.localhost:43000>
 
 Hot module reloading won't work correctly if you're making edits outside of the VM.
 Run `npm run nudge` in a separate `sbx` session
@@ -274,17 +274,27 @@ A failed build leaves any existing publication exactly as it was.
 Two URLs serve the same data:
 
 ```
-http://pub.localhost:3000/alice/basic-book/verso/
-http://pub.localhost:3000/pub/<publication-id>/
+http://pub.workbench.localhost:3000/alice/basic-book/verso/
+http://pub.workbench.localhost:3000/pub/<publication-id>/
 ```
 
 The former is the usual "friendly" way people are expected to link the publication.
 The latter one is more like a permalink.
-On the main application domain, `/<user>/<project>/verso` redirects to the readable URL.
+On the main application domain, `/<user>/<project>/view/verso` redirects to the readable URL.
 
-The origin is `pubBaseUrl` in `config.json`. `start.sh` reads it from
-there and passes it in an environment variable when nginx is started.
-It is an install-time setting. If it is not set, publishing is disabled.
+### Origin Separation
+
+Publication isolation is something we talk about as working "like how github.io works," but there's an important difference.
+The [public suffix list](https://publicsuffix.org/list/) includes `github.io`, which means `alice.github.io`, `bob.github.io`, and `lean-lang.org` are treated by browsers that use this list as _equivalently different sites_.
+You can't set a cookie on `github.io`, just as you can't set a cookie on `com` or `co.uk`.
+
+The situation for Lean Workbench is more like that of Dreamwidth: `dreamwidth.org`, `alice.dreamwidth.org`, and `bob.dreamwidth.org` aren't treated as isolated sites.
+All three can set cookies on the domain `dreamwidth.org`, and requests between them will share those cookies.
+This is generally tenable: we're mitigating the worst of the "[cookie tossing](https://security.stackexchange.com/questions/67608/cookie-tossing-explained)" attacks with the `__Host-` cookie-name prefix.
+To make this work, we must:
+ - Make sure endpoints defend themselves against CSRF by checking the origin of all requests,
+ - Ensure we never set `Domain=` cookies,
+ - Defend against [clickjacking](https://en.wikipedia.org/wiki/Clickjacking).
 
 ### Testing origin separation
 
@@ -293,32 +303,30 @@ with no additional DNS configuration and no `/etc/hosts` entry,
 and the container already publishes port 3000 on 127.0.0.1,
 so the dev default works without further setup.
 
-1. Log in at `http://localhost:3000`,
+Generally, `localhost` is treated as a public suffix, but `workbench.localhost` is not.
+Having our development application use `workbench.localhost:3000` and `*.workbench.localhost:3000` makes development work more like a production site.
+(Development and production still aren't identical: production protects against session fixation with `__Host-` cookies that are unavailable when the `http:` protocol is used in dev.)
+
+To test this:
+
+1. Log in at `http://workbench.localhost:3000`,
    open a project whose root has a `workbench-publish.json`,
    and publish it from its **Publish** page.
-2. Open `http://pub.localhost:3000/alice/basic-book/verso/`.
+2. Open `http://pub.workbench.localhost:3000/alice/basic-book/verso/`.
    It renders while logged out, and in a browser that has never authenticated,
    as does its `/pub/<publication-id>/` form.
-3. In devtools, confirm no better-auth session cookie is sent to `pub.localhost`.
+3. In devtools, confirm no better-auth session cookie is sent to `pub.workbench.localhost`.
    This holds because better-auth's cookies are host-only.
    Assert it rather than assuming it:
-   a cookie set with `Domain=localhost` *would* reach `pub.localhost`,
+   a cookie set with `Domain=workbench.localhost` *would* reach `pub.workbench.localhost`,
    and that would be a cookie attribute bug rather than a failure of this design.
-4. `http://pub.localhost:3000/` and `http://pub.localhost:3000/api/pub-route/resolve` 404.
-   So does `http://pub.localhost:3000/api/auth/session`,
+4. `http://pub.workbench.localhost:3000/` and `http://pub.workbench.localhost:3000/api/pub-route/resolve` 404.
+   So does `http://pub.workbench.localhost:3000/api/auth/session`,
    though only after a redirect to its trailing-slash form:
    any three-segment path is treated as a publication reference,
    and the redirect to the directory form happens in nginx's rewrite phase,
    before resolution in the access phase.
-5. `http://localhost:3000/alice/basic-book/verso` redirects to the publish origin.
-
-What this does **not** prove:
-whether a browser treats `localhost` and `pub.localhost` as cross-*site*
-depends on whether `localhost` counts as a public suffix,
-so `SameSite` behaviour here is not necessarily production behaviour.
-Production should put the publish origin on a distinct registrable domain,
-which is what `pubBaseUrl` is for.
-
+5. `http://workbench.localhost:3000/alice/basic-book/view/verso` redirects to the publish origin.
 
 ---
 
