@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { getDataDir } from '@leanprover/workbench-shared/node'
+import { getDataDir, isDevMode } from '@leanprover/workbench-shared/node'
 import chokidar, { type FSWatcher } from 'chokidar'
 import fs from 'fs'
 import path from 'path'
@@ -29,11 +29,11 @@ const zServerConfig = z.object({
    * Requests made through other URLs may misbehave,
    * e.g. better-auth will reject authentication requests. */
   baseUrl: z.url(),
-  /**
-   * Deprecated: origin from which publications are served.
-   * This must be `${baseUrl.protocol}//pub.${baseUrl.host}` if it exists or loading will fail.
-   */
+  /** Deprecated: origin from which publications are served.
+   * This must be `${baseUrl.protocol}//pub.${baseUrl.host}` if it exists or loading will fail. */
   pubBaseUrl: z.url().optional(),
+  /** Does this Workbench instance enable the publication feature? */
+  publishingEnabled: z.boolean().optional(),
   /** Limit to how many publish builds may be in flight across the whole server. */
   maxConcurrentPublishBuilds: z.int().positive().default(2),
   /** A pre-generated admin password,
@@ -52,8 +52,8 @@ const defaults: ServerConfig = {
 }
 
 /** Whether publications are enabled */
-export function isPublishingEnabled(_cfg: ServerConfig) {
-  return true
+export function isPublishingEnabled(cfg: ServerConfig) {
+  return !!cfg.publishingEnabled
 }
 
 /** Whether GitHub OAuth is set up. */
@@ -72,20 +72,28 @@ function loadConfig() {
     const diskData = zServerConfig.partial().parse(raw)
     const config = { ...defaults, ...diskData }
 
-    let migrated = false
-    if (config.pubBaseUrl) {
-      const baseUrl = new URL(config.baseUrl)
-      const pubUrl = new URL(config.pubBaseUrl)
-      if (pubUrl.href !== `${baseUrl.protocol}//pub.${baseUrl.host}/`) {
-        throw new Error(
-          `pubBaseUrl of ${config.pubBaseUrl} is unsupported for a baseUrl of ${config.baseUrl}. Remove 'pubBaseUrl' from config.json.`,
-        )
-      }
-      delete config.pubBaseUrl
-      migrated = true
-    }
-    if (config.baseUrl.includes('http://localhost:')) {
+    if (isDevMode() && config.baseUrl.includes('http://localhost:')) {
       throw new Error(`Dev: change 'localhost' in config.json to 'workbench.localhost'.`)
+    }
+
+    let migrated = false
+    if (config.publishingEnabled === undefined) {
+      // Allow publication if there was a previous pubBaseUrl that has the correct shape
+      if (config.pubBaseUrl) {
+        const baseUrl = new URL(config.baseUrl)
+        const pubUrl = new URL(config.pubBaseUrl)
+        if (pubUrl.href !== `${baseUrl.protocol}//pub.${baseUrl.host}/`) {
+          throw new Error(
+            `pubBaseUrl of ${config.pubBaseUrl} is unsupported for a baseUrl of ${config.baseUrl}. Remove 'pubBaseUrl' from config.json and set '"publishingEnabled": true' to publish on pub.${baseUrl.host}.`,
+          )
+        }
+        config.publishingEnabled = true
+        delete config.pubBaseUrl
+        migrated = true
+      } else {
+        config.publishingEnabled = false
+        migrated = true
+      }
     }
 
     g.__config = config
@@ -142,7 +150,8 @@ export function getConfig(): ServerConfig {
 export function initConfig() {
   if (g.__config) throw new Error('internal error: attempted to reinitialize config module')
   if (!fs.existsSync(getConfigPath())) {
-    g.__config = { ...defaults }
+    if (!isDevMode()) throw new Error('starting production with no config.json')
+    g.__config = { ...defaults, publishingEnabled: true }
     writeConfig()
   } else {
     loadConfig()

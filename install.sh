@@ -166,6 +166,7 @@ do_install() {
 {
   "isSetupComplete": false,
   "baseUrl": "$URL",
+  "publishingEnabled": true,
   "initAdminPassword": "$INIT_ADMIN_PASSWORD"
 }
 EOF
