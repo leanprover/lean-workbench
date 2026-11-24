@@ -33,7 +33,7 @@ const zServerConfig = z.object({
    * This must be `${baseUrl.protocol}//pub.${baseUrl.host}` if it exists or loading will fail. */
   pubBaseUrl: z.url().optional(),
   /** Does this Workbench instance enable the publication feature? */
-  publishingEnabled: z.boolean().optional(),
+  isPublishingEnabled: z.boolean().optional(),
   /** Limit to how many publish builds may be in flight across the whole server. */
   maxConcurrentPublishBuilds: z.int().positive().default(2),
   /** A pre-generated admin password,
@@ -53,7 +53,7 @@ const defaults: ServerConfig = {
 
 /** Whether publications are enabled */
 export function isPublishingEnabled(cfg: ServerConfig) {
-  return !!cfg.publishingEnabled
+  return !!cfg.isPublishingEnabled
 }
 
 /** Whether GitHub OAuth is set up. */
@@ -84,7 +84,7 @@ function loadConfig() {
     }
 
     let migrated = false
-    if (config.publishingEnabled === undefined) {
+    if (config.isPublishingEnabled === undefined) {
       // Allow publication if there was a previous pubBaseUrl that has the correct shape
       if (config.pubBaseUrl) {
         const pubUrl = new URL(config.pubBaseUrl)
@@ -93,11 +93,11 @@ function loadConfig() {
             `pubBaseUrl of ${config.pubBaseUrl} is unsupported for a baseUrl of ${config.baseUrl}. Remove 'pubBaseUrl' from config.json and set '"publishingEnabled": true' to publish on pub.${baseUrl.host}.`,
           )
         }
-        config.publishingEnabled = true
+        config.isPublishingEnabled = true
         delete config.pubBaseUrl
         migrated = true
       } else {
-        config.publishingEnabled = false
+        config.isPublishingEnabled = false
         migrated = true
       }
     }
@@ -157,7 +157,7 @@ export function initConfig() {
   if (g.__config) throw new Error('internal error: attempted to reinitialize config module')
   if (!fs.existsSync(getConfigPath())) {
     if (!isDevMode()) throw new Error('starting production with no config.json')
-    g.__config = { ...defaults, publishingEnabled: true }
+    g.__config = { ...defaults, isPublishingEnabled: true }
     writeConfig()
   } else {
     loadConfig()
