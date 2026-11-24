@@ -12,12 +12,23 @@ NGINX_CONF_DIR="${NGINX_CONF_DIR:-/etc/nginx}"
 NGINX_LOG_DIR="${NGINX_LOG_DIR:-/var/log/nginx}"
 
 BASE_URL="$(jq --raw-output '.baseUrl // empty' "${LEAN_WORKBENCH_DATA_DIR}/config.json" 2>/dev/null || true)"
-if [ -z "$BASE_URL" ] && [ "${NODE_ENV:-}" != "production" ]; then
-    BASE_URL="http://localhost:3000"
+if [ -z "$BASE_URL" ]; then
+    if [ "${NODE_ENV:-}" != "production" ]; then
+        BASE_URL="http://localhost:3000"
+    else
+        printf "[start.sh] The production app requires baseUrl to be set in %s/config.json.\n" "$LEAN_WORKBENCH_DATA_DIR"
+        exit 1
+    fi
 fi
 HOST_URL="${BASE_URL#*://}" # your-domain.com:3000/foobar
 HOST_ORIGIN="${HOST_URL%%/*}" # your-domain.com:3000
 HOST="${HOST_ORIGIN%%:*}" # your-domain.com
+# pub.$HOST will cause an error in nginx if it's longer than 42 characters.
+# If users encounter this, it can be fixed by changing server_names_hash_bucket_size to 128
+if (( ${#HOST} > 42)); then
+    printf "[start.sh] The application hostname, %s, cannot be longer than 42 characters.\n" "$HOST"
+    exit 1
+fi
 
 PUB_BASE_URL="$(jq --raw-output '.pubBaseUrl // empty' "${LEAN_WORKBENCH_DATA_DIR}/config.json" 2>/dev/null || true)"
 # Development serves publications from pub.localhost without further setup.
@@ -26,6 +37,11 @@ if [ -z "$PUB_BASE_URL" ] && [ "${NODE_ENV:-}" != "production" ]; then
 fi
 # Empty when publishing is disabled.
 PUB_HOST="${PUB_BASE_URL#*://}"; PUB_HOST="${PUB_HOST%%/*}"; PUB_HOST="${PUB_HOST%%:*}"
+
+if (( ${#PUB_HOST} > 46)); then
+    printf "[start.sh] The application's publications hostname, %s, cannot be longer than 46 characters.\n" "$PUB_HOST"
+    exit 1
+fi
 
 # Derived paths
 NGINX_PID_PATH="${NGINX_LOG_DIR}/nginx.pid"
@@ -104,7 +120,8 @@ NGINX_PID=$!
 # Replaces previous trap
 trap 'kill $APP_PID $SHARD_MANAGER_PID $NGINX_PID 2>/dev/null' EXIT
 
-echo "[start.sh] Nginx listening on http://localhost:3000"
+echo "[start.sh] Public URL: ${BASE_URL}"
+echo "[start.sh] Nginx listening for forwarded requests on port 3000"
 
 wait -n $APP_PID $SHARD_MANAGER_PID $NGINX_PID || true
 

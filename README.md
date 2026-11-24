@@ -52,8 +52,7 @@ You also need a **publications URL** (e.g. `https://pub.lean.math.uni.edu`) reso
 Documents that users publish from their projects are served from there and from nowhere else.
 
 > [!IMPORTANT]
-> Whatever terminates HTTPS in front of the Workbench must pass the original `Host` header through
-> for both hostnames.
+> Whatever terminates HTTPS in front of the Workbench must send the actual requested public hostname in the `Host` header that it forwards to Workbench.
 
 Workflows for two common cases are described below.
 
@@ -292,5 +291,6 @@ See [doc/DEVELOPMENT.md](doc/DEVELOPMENT.md).
 
  - While unlikely, database migration will fail if a user managed to create two accounts attached to the same GitHub provider.
  - If your application's hostname was misconfigured, or if the `Host` header is not being correctly passed through your network setup, all Lean Workbench URLs will 404.
+ - Long base URLs may cause errors.
 
-Please reach out to us via Lean Zulip if you encounter either of these issues.
+Please reach out to us via Lean Zulip if you encounter any of these issues.
