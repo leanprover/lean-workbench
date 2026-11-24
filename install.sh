@@ -122,8 +122,8 @@ do_install() {
 
   # The app expects baseUrl to be an HTTP(S) origin: scheme, hostname, optional port (see zServerConfig).
   # The restricted character set here keeps the config.json below as valid JSON.
-  if ! [[ "$URL" =~ ^https?://[A-Za-z0-9._-]+(:[0-9]+)?$ ]]; then
-    error "Invalid URL \"$URL\". Expected an alphanumeric HTTP(S) URL (optionally with a port), e.g. \"https://your-domain.com\"."
+  if ! [[ "$URL" =~ ^https?://[A-Za-z0-9._-]{1,42}(:[0-9]+)?$ ]]; then
+    error "Invalid URL \"$URL\". Expected an alphanumeric HTTP(S) URL (optionally with a port), e.g. \"https://your-domain.com\". (Hostname cannot be longer than 42 characters.)"
   fi
 
   # Published documents are served from their own origin so that they share no cookies
@@ -134,8 +134,8 @@ do_install() {
   [ "$PUBLICATIONS_URL" = "none" ] && PUBLICATIONS_URL=""
 
   if [ -n "$PUBLICATIONS_URL" ]; then
-    if ! [[ "$PUBLICATIONS_URL" =~ ^https?://[A-Za-z0-9._-]+(:[0-9]+)?$ ]]; then
-      error "Invalid URL \"$PUBLICATIONS_URL\". Expected an alphanumeric HTTP(S) URL (optionally with a port), e.g. \"https://pub.your-domain.com\"."
+    if ! [[ "$PUBLICATIONS_URL" =~ ^https?://[A-Za-z0-9._-]{1,46}(:[0-9]+)?$ ]]; then
+      error "Invalid URL \"$PUBLICATIONS_URL\". Expected an alphanumeric HTTP(S) URL (optionally with a port), e.g. \"https://pub.your-domain.com\". (Hostname cannot be longer than 46 characters.)"
     fi
 
     # start.sh strips scheme and port to get Nginx's `server_name`, so two URLs that differ
