@@ -15,6 +15,9 @@ BASE_URL="$(jq --raw-output '.baseUrl // empty' "${LEAN_WORKBENCH_DATA_DIR}/conf
 if [ -z "$BASE_URL" ] && [ "${NODE_ENV:-}" != "production" ]; then
     BASE_URL="http://localhost:3000"
 fi
+HOST_URL="${BASE_URL#*://}" # your-domain.com:3000/foobar
+HOST_ORIGIN="${HOST_URL%%/*}" # your-domain.com:3000
+HOST="${HOST_ORIGIN%%:*}" # your-domain.com
 
 PUB_BASE_URL="$(jq --raw-output '.pubBaseUrl // empty' "${LEAN_WORKBENCH_DATA_DIR}/config.json" 2>/dev/null || true)"
 # Development serves publications from pub.localhost without further setup.
@@ -80,9 +83,9 @@ trap 'kill $APP_PID $SHARD_MANAGER_PID 2>/dev/null' EXIT
 
 # Prepare Nginx config from template
 mkdir -p "${NGINX_CONF_DIR}"
-export NGINX_PID_PATH NGINX_ERROR_LOG_PATH NGINX_ACCESS_LOG_PATH NGINX_CONF_DIR PUB_HOST
+export NGINX_PID_PATH NGINX_ERROR_LOG_PATH NGINX_ACCESS_LOG_PATH NGINX_CONF_DIR BASE_URL HOST PUB_HOST
 # shellcheck disable=SC2016 # envsubst requires unexpanded variable names
-envsubst '$NGINX_PID_PATH $NGINX_ERROR_LOG_PATH $NGINX_ACCESS_LOG_PATH $NGINX_CONF_DIR' \
+envsubst '$NGINX_PID_PATH $NGINX_ERROR_LOG_PATH $NGINX_ACCESS_LOG_PATH $NGINX_CONF_DIR $BASE_URL $HOST' \
     < "${SCRIPT_DIR}/nginx.conf.template" \
     > "${NGINX_CONF_DIR}/nginx.conf"
 
