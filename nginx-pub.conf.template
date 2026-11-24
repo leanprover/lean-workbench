@@ -2,7 +2,7 @@
 
 server {
     listen 3000;
-    server_name $PUB_HOST;
+    server_name $PUB_HOSTNAME;
 
     # Valid request paths in workbench should never include non-printable characters.
     # Defends against a family of http splitting attacks.

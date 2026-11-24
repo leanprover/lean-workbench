@@ -32,10 +32,17 @@ http {
     # Cache for /api/auth-route
     proxy_cache_path /var/cache/nginx_auth_route keys_zone=auth_route_cache:8m;
 
-    # The app.
+    # Reject unexpected hosts
+    server {
+        listen 3000 default_server;
+        default_type text/html;
+        return 404 '<!doctype html><title>Wrong address</title><p>This Lean Workbench is at <a href="$APP_BASE_URL/">$APP_BASE_URL</a>.</p>';
+    }
+
+    # The main Workbench app.
     server {
         listen 3000;
-        server_name localhost;
+        server_name $APP_HOSTNAME;
 
         # Valid request paths in workbench should never include non-printable characters.
         # Defends against a family of http splitting attacks.
