@@ -33,7 +33,7 @@ export async function proxy(request: NextRequest) {
   const possiblyLoggedIn = getSessionCookie(request, { cookiePrefix: cookiePrefix(cfg) })
 
   // Forward logged-out users from `/admin` to `/login?admin=true
-  if (!possiblyLoggedIn && request.nextUrl.pathname === '/admin') {
+  if (!possiblyLoggedIn && request.nextUrl.pathname.match(/^\/admin($|\/)/)) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.search = '?admin=true'
