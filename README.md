@@ -303,6 +303,7 @@ See [doc/DEVELOPMENT.md](doc/DEVELOPMENT.md).
  - **Deprecation:** a future release of lean-workbench will require a wildcard domain and a wildcard TLS certificate (`*.your-domain.com`).
    Setup instructions have been changed to describe wildcard domain setup for Cloudflare and Let's Encrypt.
    The wildcard domain and TLS certificate replace the `pub.your-domain.com` domain and TLS certificate for now.
+ - Lean Workbench no longer supports running from an IP address.
 
 Please reach out to us via Lean Zulip if you encounter any of these issues.
 

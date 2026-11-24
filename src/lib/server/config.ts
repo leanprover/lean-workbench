@@ -76,11 +76,17 @@ function loadConfig() {
       throw new Error(`Dev: change 'localhost' in config.json to 'workbench.localhost'.`)
     }
 
+    const baseUrl = new URL(config.baseUrl) // Throws if baseUrl is not a valid URL
+    if (!URL.canParse(`${baseUrl.protocol}//subdomain.${baseUrl.host}`)) {
+      throw new Error(
+        `Workbench's base URL requires ${baseUrl.protocol}//subdomain.${baseUrl.host} to also be a valid URL.`,
+      )
+    }
+
     let migrated = false
     if (config.publishingEnabled === undefined) {
       // Allow publication if there was a previous pubBaseUrl that has the correct shape
       if (config.pubBaseUrl) {
-        const baseUrl = new URL(config.baseUrl)
         const pubUrl = new URL(config.pubBaseUrl)
         if (pubUrl.href !== `${baseUrl.protocol}//pub.${baseUrl.host}/`) {
           throw new Error(
@@ -156,6 +162,7 @@ export function initConfig() {
   } else {
     loadConfig()
   }
+
   ensureConfigWatcher()
 }
 
