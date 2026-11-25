@@ -10,7 +10,7 @@ export interface Config {
   hasGitHubAuth: boolean
   registrationMode: RegistrationMode
   isPublishingEnabled: boolean
-  isProjectSharingEnabled: boolean
+  isPublicProjectSharingEnabled: boolean
 }
 
 /** Read-only UI configuration derived from the server configuration, set in RootLayout */

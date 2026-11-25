@@ -150,7 +150,7 @@ export const toggleVisibility = serverAction(zToggleVisibility, async ({ project
   if ('error' in owned) return owned
 
   // only reject private -> public if project sharing is disabled
-  if (isPublic && !getConfig().isProjectSharingEnabled) {
+  if (isPublic && !getConfig().isPublicProjectSharingEnabled) {
     return { error: 'projects cannot be made public, project sharing is disabled' }
   }
 

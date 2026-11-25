@@ -53,7 +53,7 @@ export function submitAction<S extends z.ZodType, T = void>(
 function canAccessProject(user: User, project: Project) {
   const cfg = getConfig()
   const isOwner = user.id === project.userId
-  return isOwner || (cfg.isProjectSharingEnabled && project.isPublic)
+  return isOwner || (cfg.isPublicProjectSharingEnabled && project.isPublic)
 }
 
 /**

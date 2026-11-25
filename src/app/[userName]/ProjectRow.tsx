@@ -71,7 +71,7 @@ export function ProjectRow({
   const actionPending = deletePending || visibilityPending
   const error = deleteError ?? visibilityError
 
-  const projectSharingDescription = cfg.isProjectSharingEnabled
+  const projectSharingDescription = cfg.isPublicProjectSharingEnabled
     ? 'Project is publicly editable by any logged-in user'
     : 'Project is set to public, though all project sharing is currently disabled'
 
@@ -98,7 +98,7 @@ export function ProjectRow({
           <Button style={{ padding: 5, fontSize: 20 }}>⚙️</Button>
           <Popover className='dropdown-popover' placement='end top' offset={4}>
             <Menu>
-              {(cfg.isProjectSharingEnabled || project.isPublic) && (
+              {(cfg.isPublicProjectSharingEnabled || project.isPublic) && (
                 <MenuItem
                   onAction={() => {
                     startTransition(() => visibilityAction({ projectId: project.id, isPublic: !project.isPublic }))

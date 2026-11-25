@@ -59,7 +59,7 @@ export default async function AdminPage() {
           </li>
           <li>
             Projects can be set public, allowing read-write collaboration:{' '}
-            {config.isProjectSharingEnabled ? 'enabled' : 'disabled'}
+            {config.isPublicProjectSharingEnabled ? 'enabled' : 'disabled'}
           </li>
         </ul>
       </section>

@@ -21,7 +21,7 @@ export async function ConfigCtxProvider({
     hasGitHubAuth: hasGitHubAuth(serverCfg),
     registrationMode: serverCfg.registrationMode,
     isPublishingEnabled: serverCfg.isPublishingEnabled ?? false,
-    isProjectSharingEnabled: serverCfg.isProjectSharingEnabled ?? true,
+    isPublicProjectSharingEnabled: serverCfg.isPublicProjectSharingEnabled ?? true,
   }
 
   // This is the pattern for including potentially-server components (the children)

@@ -38,7 +38,7 @@ export default async function ProfileBody({ params: params_ }: { params: Promise
   const isOwner = viewerSession.user.id === user.id
   const canPublishHere = isOwner && isPublishingEnabled(getConfig())
   const projects = await Promise.all(
-    (!cfg.isProjectSharingEnabled && !isOwner
+    (!cfg.isPublicProjectSharingEnabled && !isOwner
       ? [] // Only owners can see their projects if project sharing is disabled
       : await db.project.findMany({
           where: { userId: user.id, ...(isOwner ? {} : { isPublic: true }) },
