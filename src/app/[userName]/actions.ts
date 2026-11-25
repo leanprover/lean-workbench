@@ -16,6 +16,7 @@ import { deletePublications } from '@/lib/server/publish'
 import { serverAction, submitAction } from '@/lib/server/util'
 import { type ActionResponse } from '@/lib/util'
 import { type Project } from '@/prisma/generated/client'
+import { getConfig } from '@/lib/server/config'
 
 export interface ProjectInfo {
   id: string
@@ -147,6 +148,12 @@ const zToggleVisibility = z.object({
 export const toggleVisibility = serverAction(zToggleVisibility, async ({ projectId, isPublic }) => {
   const owned = await requireUserOwnsProjectById(projectId)
   if ('error' in owned) return owned
+
+  // only reject private -> public if project sharing is disabled
+  if (isPublic && !getConfig().isProjectSharingEnabled) {
+    return { error: 'projects cannot be made public, project sharing is disabled' }
+  }
+
   const project = owned.ok
 
   await getDb().project.update({
