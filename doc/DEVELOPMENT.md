@@ -22,9 +22,6 @@ Open `http://workbench.localhost:3000`. You'll see the setup page.
 1. Use `dev` as the initial administrator password.
 1. - **Skip the OAuth section** — it's optional in dev mode.
      This is the fastest way to get a running instance.
-     The UI forces you to put *something* for "Client ID" and "Client Secret",
-     but if you put in something invalid (and then "Save Configuration")
-     the only consequence is that GitHub OAuth won't work.
    - **Or** [create a GitHub OAuth App](https://github.com/settings/developers)
      with callback URL `http://workbench.localhost:3000/api/auth/callback/github`.
      Enter the resulting credentials on the setup page.
