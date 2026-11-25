@@ -34,7 +34,7 @@ const zServerConfig = z.object({
   pubBaseUrl: z.url().optional(),
   /** Does this Workbench instance enable the publication feature? (Default false.) */
   isPublishingEnabled: z.boolean().optional(),
-  /** Does this Workbench instance enable users to set projects as shared? (Default true.) */
+  /** Does this Workbench instance enable users to list projects as 'public' so that they can be viewed and edited by all users? (Default true.) */
   isProjectSharingEnabled: z.boolean().optional(),
   /** Limit to how many publish builds may be in flight across the whole server. */
   maxConcurrentPublishBuilds: z.int().positive().default(2),

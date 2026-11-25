@@ -8,9 +8,9 @@ import { Button, Menu, MenuItem, MenuTrigger, Popover } from 'react-aria-compone
 
 import { MenuLinkItem } from '@/app/components/MenuLinkItem'
 import { useServerAction } from '@/lib/client/util'
+import { useConfigCtx } from '@/lib/contexts'
 
 import { deleteProject, type ProjectInfo, renameProject, toggleVisibility } from './actions'
-import { useConfigCtx } from '@/lib/contexts'
 
 export function ProjectRow({
   project,
