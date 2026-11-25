@@ -10,6 +10,7 @@ import { forbidden } from 'next/navigation'
 import z from 'zod'
 
 import { requireAuth } from '@/lib/server/auth'
+import { getConfig } from '@/lib/server/config'
 import { getDb } from '@/lib/server/db'
 import { readTemplateMetadata } from '@/lib/server/projectTemplate'
 import { deletePublications } from '@/lib/server/publish'
@@ -147,6 +148,12 @@ const zToggleVisibility = z.object({
 export const toggleVisibility = serverAction(zToggleVisibility, async ({ projectId, isPublic }) => {
   const owned = await requireUserOwnsProjectById(projectId)
   if ('error' in owned) return owned
+
+  // only reject private -> public if project sharing is disabled
+  if (isPublic && !getConfig().isPublicProjectSharingEnabled) {
+    return { error: 'projects cannot be made public, project sharing is disabled' }
+  }
+
   const project = owned.ok
 
   await getDb().project.update({

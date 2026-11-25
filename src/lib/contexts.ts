@@ -9,6 +9,8 @@ export interface Config {
   isDevMode: boolean
   hasGitHubAuth: boolean
   registrationMode: RegistrationMode
+  isPublishingEnabled: boolean
+  isPublicProjectSharingEnabled: boolean
 }
 
 /** Read-only UI configuration derived from the server configuration, set in RootLayout */

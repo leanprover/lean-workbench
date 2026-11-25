@@ -53,6 +53,14 @@ export default async function AdminPage() {
             </CatchySuspense>{' '}
             (configure in <Link href='/admin/lean'>Lean artifacts</Link>)
           </li>
+          <li>
+            Publications can be created from projects and viewed without logging in:{' '}
+            {config.isPublishingEnabled ? 'enabled' : 'disabled'}
+          </li>
+          <li>
+            Projects can be set public, allowing read-write collaboration:{' '}
+            {config.isPublicProjectSharingEnabled ? 'enabled' : 'disabled'}
+          </li>
         </ul>
       </section>
       <HealthMonitor systemHealth={systemHealth} />

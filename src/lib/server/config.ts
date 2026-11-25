@@ -32,8 +32,10 @@ const zServerConfig = z.object({
   /** Deprecated: origin from which publications are served.
    * This must be `${baseUrl.protocol}//pub.${baseUrl.host}` if it exists or loading will fail. */
   pubBaseUrl: z.url().optional(),
-  /** Does this Workbench instance enable the publication feature? */
+  /** Does this Workbench instance enable the publication feature? (Default false.) */
   isPublishingEnabled: z.boolean().optional(),
+  /** Does this Workbench instance enable users to list projects as 'public' so that they can be viewed and edited by all users? (Default true.) */
+  isPublicProjectSharingEnabled: z.boolean().optional(),
   /** Limit to how many publish builds may be in flight across the whole server. */
   maxConcurrentPublishBuilds: z.int().positive().default(2),
   /** A pre-generated admin password,
@@ -47,6 +49,8 @@ export type ServerConfig = z.infer<typeof zServerConfig>
 const defaults: ServerConfig = {
   registrationMode: 'open',
   isSetupComplete: false,
+  // isPublishingEnabled is set to !!pubBaseUrl || isDevMode() in `loadConfig()`
+  isPublicProjectSharingEnabled: true,
   baseUrl: 'http://workbench.localhost:3000',
   maxConcurrentPublishBuilds: 2,
 }

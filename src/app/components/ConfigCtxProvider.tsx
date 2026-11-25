@@ -2,7 +2,7 @@ import { isDevMode } from '@leanprover/workbench-shared/node'
 import { io } from 'next/cache'
 import { type ReactNode } from 'react'
 
-import { ConfigCtx } from '@/lib/contexts'
+import { type Config, ConfigCtx } from '@/lib/contexts'
 import { getConfig, hasGitHubAuth } from '@/lib/server/config'
 
 export async function ConfigCtxProvider({
@@ -15,11 +15,13 @@ export async function ConfigCtxProvider({
   await io()
 
   const serverCfg = getConfig()
-  const clientCfg = {
+  const clientCfg: Config = {
     isSetupComplete: serverCfg.isSetupComplete,
     isDevMode: isDevMode(),
     hasGitHubAuth: hasGitHubAuth(serverCfg),
     registrationMode: serverCfg.registrationMode,
+    isPublishingEnabled: serverCfg.isPublishingEnabled ?? false,
+    isPublicProjectSharingEnabled: serverCfg.isPublicProjectSharingEnabled ?? true,
   }
 
   // This is the pattern for including potentially-server components (the children)

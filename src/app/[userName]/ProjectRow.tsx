@@ -8,6 +8,7 @@ import { Button, Menu, MenuItem, MenuTrigger, Popover } from 'react-aria-compone
 
 import { MenuLinkItem } from '@/app/components/MenuLinkItem'
 import { useServerAction } from '@/lib/client/util'
+import { useConfigCtx } from '@/lib/contexts'
 
 import { deleteProject, type ProjectInfo, renameProject, toggleVisibility } from './actions'
 
@@ -23,6 +24,7 @@ export function ProjectRow({
 }) {
   const router = useRouter()
   const [renaming, setRenaming] = useState(false)
+  const cfg = useConfigCtx()
 
   const [renameError, renameAction, renamePending] = useServerAction(renameProject, () => {
     setRenaming(false)
@@ -69,6 +71,10 @@ export function ProjectRow({
   const actionPending = deletePending || visibilityPending
   const error = deleteError ?? visibilityError
 
+  const projectSharingDescription = cfg.isPublicProjectSharingEnabled
+    ? 'Project is publicly editable by any logged-in user'
+    : 'Project is set to public, though all project sharing is currently disabled'
+
   return (
     <>
       <div>
@@ -78,8 +84,8 @@ export function ProjectRow({
             {' '}
             <span
               role='img'
-              aria-label='Project is publicly editable'
-              title='Project is publicly editable by any logged-in user'
+              aria-label={projectSharingDescription}
+              title={projectSharingDescription}
               style={{ cursor: 'default' }}
             >
               🌐
@@ -92,14 +98,16 @@ export function ProjectRow({
           <Button style={{ padding: 5, fontSize: 20 }}>⚙️</Button>
           <Popover className='dropdown-popover' placement='end top' offset={4}>
             <Menu>
-              <MenuItem
-                onAction={() => {
-                  startTransition(() => visibilityAction({ projectId: project.id, isPublic: !project.isPublic }))
-                }}
-                isDisabled={actionPending}
-              >
-                {project.isPublic ? 'Make private' : 'Make public'}
-              </MenuItem>
+              {(cfg.isPublicProjectSharingEnabled || project.isPublic) && (
+                <MenuItem
+                  onAction={() => {
+                    startTransition(() => visibilityAction({ projectId: project.id, isPublic: !project.isPublic }))
+                  }}
+                  isDisabled={actionPending}
+                >
+                  {project.isPublic ? 'Make private' : 'Make public'}
+                </MenuItem>
+              )}
               {canPublish && (
                 <MenuLinkItem href={`/${username}/${encodeURIComponent(project.name)}/publish`}>Publish</MenuLinkItem>
               )}

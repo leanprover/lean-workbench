@@ -8,6 +8,7 @@ import type { ActionResponse } from '@/lib/util'
 import type { Project } from '@/prisma/generated/client'
 
 import { requireAuth, type User } from './auth'
+import { getConfig } from './config'
 import { getDb } from './db'
 
 /** Wrap a server action so that its handler receives only schema-validated input.
@@ -50,8 +51,9 @@ export function submitAction<S extends z.ZodType, T = void>(
 }
 
 function canAccessProject(user: User, project: Project) {
+  const cfg = getConfig()
   const isOwner = user.id === project.userId
-  return isOwner || project.isPublic
+  return isOwner || (cfg.isPublicProjectSharingEnabled && project.isPublic)
 }
 
 /**

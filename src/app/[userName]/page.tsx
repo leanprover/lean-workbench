@@ -29,6 +29,7 @@ export default async function ProfileBody({ params: params_ }: { params: Promise
   const { userName } = parsed.data
 
   const viewerSession = await requireAuth()
+  const cfg = getConfig()
 
   const db = getDb()
   const user = await db.user.findUnique({ where: { name: userName } })
@@ -37,12 +38,13 @@ export default async function ProfileBody({ params: params_ }: { params: Promise
   const isOwner = viewerSession.user.id === user.id
   const canPublishHere = isOwner && isPublishingEnabled(getConfig())
   const projects = await Promise.all(
-    (
-      await db.project.findMany({
-        where: { userId: user.id, ...(isOwner ? {} : { isPublic: true }) },
-        select: { id: true, name: true, isPublic: true },
-        orderBy: { createdAt: 'asc' },
-      })
+    (!cfg.isPublicProjectSharingEnabled && !isOwner
+      ? [] // Only owners can see their projects if project sharing is disabled
+      : await db.project.findMany({
+          where: { userId: user.id, ...(isOwner ? {} : { isPublic: true }) },
+          select: { id: true, name: true, isPublic: true },
+          orderBy: { createdAt: 'asc' },
+        })
     ).map(async p => ({ ...p, canPublish: canPublishHere && (await hasPublishManifest(getProjectDir(user, p.id))) })),
   )
   const templates = isOwner ? (await listTemplates()).filter(template => template.visible) : []
