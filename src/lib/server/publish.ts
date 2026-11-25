@@ -45,7 +45,9 @@ export const PUB_DURABLE_PREFIX = 'pub'
 function getPubBaseUrl(): string {
   const cfg = getConfig()
   if (!isPublishingEnabled(cfg)) throw new Error('internal error: publication URL built while publishing is disabled')
-  return cfg.pubBaseUrl
+  const url = new URL(cfg.baseUrl)
+  url.hostname = `pub.${url.hostname}`
+  return url.origin
 }
 
 /** The "friendly" URL for a publication. it names whichever publication is current

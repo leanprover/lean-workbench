@@ -14,7 +14,7 @@ NGINX_LOG_DIR="${NGINX_LOG_DIR:-/var/log/nginx}"
 APP_BASE_URL="$(jq --raw-output '.baseUrl // empty' "${LEAN_WORKBENCH_DATA_DIR}/config.json" 2>/dev/null || true)"
 if [ -z "$APP_BASE_URL" ]; then
     if [ "${NODE_ENV:-}" != "production" ]; then
-        APP_BASE_URL="http://localhost:3000"
+        APP_BASE_URL="http://workbench.localhost:3000"
     else
         printf "[start.sh] The production app requires baseUrl to be set in %s/config.json.\n" "$LEAN_WORKBENCH_DATA_DIR"
         exit 1
@@ -23,23 +23,11 @@ fi
 APP_HOST="${APP_BASE_URL#*://}" # your-domain.com:3000/foobar
 APP_HOST="${APP_HOST%%/*}" # your-domain.com:3000
 APP_HOSTNAME="${APP_HOST%%:*}" # your-domain.com
-# pub.$APP_HOSTNAME will cause an error in nginx if it's longer than 42 characters.
-# If users encounter this, it can be fixed by changing server_names_hash_bucket_size to 128
+PUB_HOSTNAME="pub.${APP_HOSTNAME}"
+# $PUB_HOSTNAME will cause an error in nginx if it's longer than 46 characters.
+# If users encounter this, we can fix it by changing server_names_hash_bucket_size to a larger value, like 128
 if (( ${#APP_HOSTNAME} > 42)); then
     printf "[start.sh] The application hostname, %s, cannot be longer than 42 characters.\n" "$APP_HOSTNAME"
-    exit 1
-fi
-
-PUB_BASE_URL="$(jq --raw-output '.pubBaseUrl // empty' "${LEAN_WORKBENCH_DATA_DIR}/config.json" 2>/dev/null || true)"
-# Development serves publications from pub.localhost without further setup.
-if [ -z "$PUB_BASE_URL" ] && [ "${NODE_ENV:-}" != "production" ]; then
-    PUB_BASE_URL="http://pub.localhost:3000"
-fi
-# Empty when publishing is disabled.
-PUB_HOST="${PUB_BASE_URL#*://}"; PUB_HOST="${PUB_HOST%%/*}"; PUB_HOSTNAME="${PUB_HOST%%:*}"
-
-if (( ${#PUB_HOSTNAME} > 46)); then
-    printf "[start.sh] The application's publications hostname, %s, cannot be longer than 46 characters.\n" "$PUB_HOSTNAME"
     exit 1
 fi
 
@@ -105,14 +93,8 @@ envsubst '$NGINX_PID_PATH $NGINX_ERROR_LOG_PATH $NGINX_ACCESS_LOG_PATH $NGINX_CO
     < "${SCRIPT_DIR}/nginx.conf.template" \
     > "${NGINX_CONF_DIR}/nginx.conf"
 
-# Without a publications URL there is no publish origin
-if [ -n "$PUB_HOSTNAME" ]; then
-    # shellcheck disable=SC2016 # envsubst requires unexpanded variable names
-    envsubst '$PUB_HOSTNAME' < "${SCRIPT_DIR}/nginx-pub.conf.template" > "${NGINX_CONF_DIR}/pub.conf"
-else
-    : > "${NGINX_CONF_DIR}/pub.conf"
-    echo "[start.sh] No publications URL configured; publishing is disabled."
-fi
+# shellcheck disable=SC2016 # envsubst requires unexpanded variable names
+envsubst '$PUB_HOSTNAME' < "${SCRIPT_DIR}/nginx-pub.conf.template" > "${NGINX_CONF_DIR}/pub.conf"
 
 # Start Nginx in the background
 nginx -e "${NGINX_ERROR_LOG_PATH}" -c "${NGINX_CONF_DIR}/nginx.conf" &
