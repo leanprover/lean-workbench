@@ -28,15 +28,15 @@ collab-server/dist/server.js: $(shell find collab-server/src -type f) collab-ser
 
 container: vscode-workbench.vsix collab-server/dist/server.js
 	docker build $(DOCKER_BUILD_FLAGS) $(DOCKER_BUILD_ULIMIT) \
-		--build-arg WORKBENCH_COMMIT=$(shell git rev-parse HEAD 2>/dev/null ) \
-		--build-arg WORKBENCH_VERSION=$(shell git describe --tags --always --dirty 2>/dev/null ) \
+		--build-arg "WORKBENCH_COMMIT=$$(git rev-parse HEAD 2>/dev/null )" \
+		--build-arg "WORKBENCH_VERSION=$$(git describe --tags --always --dirty 2>/dev/null )" \
 		--tag $(IMAGE_NAME):$(IMAGE_TAG) \
 		--target runner-prod .
 
 container-dev:
 	docker build $(DOCKER_BUILD_FLAGS) $(DOCKER_BUILD_ULIMIT) \
-		--build-arg WORKBENCH_COMMIT=$(shell git rev-parse HEAD 2>/dev/null ) \
-		--build-arg WORKBENCH_VERSION=$(shell git describe --tags --always --dirty 2>/dev/null ) \
+		--build-arg "WORKBENCH_COMMIT=$$(git rev-parse HEAD 2>/dev/null )" \
+		--build-arg "WORKBENCH_VERSION=$$(git describe --tags --always --dirty 2>/dev/null)" \
 		--tag $(IMAGE_NAME):$(IMAGE_DEV_TAG) \
 		--target runner-dev .
 
