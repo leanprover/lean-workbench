@@ -61,3 +61,14 @@ jobs:
             WORKBENCH_COMMIT=${{ github.sha }}
           # Test job above should have pushed the cache, read it here.
           cache-from: type=registry,ref=ghcr.io/leanprover/lean-workbench/buildcache:latest
+
+  release:
+    needs: docker
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - run: gh release view "$GITHUB_REF_NAME" || gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
