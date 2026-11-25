@@ -9,7 +9,7 @@ import { listInstalledToolchains } from '@/lib/server/elan'
 import { listTemplates } from '@/lib/server/projectTemplate'
 
 import { HealthMonitor } from './components/HealthMonitor'
-import { TemplateSummary, ToolchainSummary } from './components/Summaries'
+import { CheckRelease, TemplateSummary, ToolchainSummary } from './components/Summaries'
 
 export const instant = false
 export default async function AdminPage() {
@@ -25,6 +25,23 @@ export default async function AdminPage() {
       <section>
         <hr />
         <ul className='list'>
+          <li>
+            Lean Workbench {process.env.WORKBENCH_VERSION}
+            {!isDevMode() && process.env.WORKBENCH_COMMIT && (
+              <>
+                {' '}
+                — commit{' '}
+                <a href={`https://github.com/leanprover/lean-workbench/tree/${process.env.WORKBENCH_COMMIT}`}>
+                  <code>{process.env.WORKBENCH_COMMIT.slice(0, 10)}</code>
+                </a>
+              </>
+            )}
+          </li>
+          <li>
+            <CatchySuspense loading='Checking latest release…' error='Error checking for latest release'>
+              <CheckRelease />
+            </CatchySuspense>
+          </li>
           {isDevMode() && (
             <li>
               <span style={{ color: '#dc2626' }}>DEVELOPMENT MODE — INSECURE</span>

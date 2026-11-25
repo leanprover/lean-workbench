@@ -157,6 +157,9 @@ RUN apt-get update \
 
 COPY --from=builder-base /app /app
 
+ARG WORKBENCH_VERSION WORKBENCH_COMMIT
+ENV WORKBENCH_VERSION=${WORKBENCH_VERSION} WORKBENCH_COMMIT=${WORKBENCH_COMMIT}
+
 # --- prod builder image: bundle the extension and the Next.js server ---
 FROM builder-base AS builder-prod
 
@@ -185,3 +188,6 @@ FROM runner-base AS runner-prod
 ENV NODE_ENV=production
 
 COPY --from=builder-prod /app /app
+
+ARG WORKBENCH_VERSION WORKBENCH_COMMIT
+ENV WORKBENCH_VERSION=${WORKBENCH_VERSION} WORKBENCH_COMMIT=${WORKBENCH_COMMIT}
