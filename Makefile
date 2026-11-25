@@ -27,16 +27,27 @@ collab-server/dist/server.js: $(shell find collab-server/src -type f) collab-ser
 	npm --workspace collab-server run build
 
 container: vscode-workbench.vsix collab-server/dist/server.js
-	docker build $(DOCKER_BUILD_FLAGS) $(DOCKER_BUILD_ULIMIT) --tag $(IMAGE_NAME):$(IMAGE_TAG) --target runner-prod .
+	docker build $(DOCKER_BUILD_FLAGS) $(DOCKER_BUILD_ULIMIT) \
+		--build-arg WORKBENCH_COMMIT=$(shell git rev-parse HEAD 2>/dev/null ) \
+		--build-arg WORKBENCH_VERSION=$(shell git describe --tags --always --dirty 2>/dev/null ) \
+		--tag $(IMAGE_NAME):$(IMAGE_TAG) \
+		--target runner-prod .
 
 container-dev:
-	docker build $(DOCKER_BUILD_FLAGS) $(DOCKER_BUILD_ULIMIT) --tag $(IMAGE_NAME):$(IMAGE_DEV_TAG) --target runner-dev .
+	docker build $(DOCKER_BUILD_FLAGS) $(DOCKER_BUILD_ULIMIT) \
+		--build-arg WORKBENCH_COMMIT=$(shell git rev-parse HEAD 2>/dev/null ) \
+		--build-arg WORKBENCH_VERSION=$(shell git describe --tags --always --dirty 2>/dev/null ) \
+		--tag $(IMAGE_NAME):$(IMAGE_DEV_TAG) \
+		--target runner-dev .
 
 test:
 # Test vscode-workbench using VS Code with our patches applied.
 # `--output type=cacheonly` skips the expensive image export at the end.
 # `--progress=plain` displays RUN step output (notably the testing step).
-	docker build $(DOCKER_BUILD_FLAGS) $(DOCKER_BUILD_ULIMIT) --target tester-vscode-workbench --output type=cacheonly --progress=plain .
+	docker build $(DOCKER_BUILD_FLAGS) $(DOCKER_BUILD_ULIMIT) \
+		--target tester-vscode-workbench \
+		--output type=cacheonly \
+		--progress=plain .
 
 DOCKER_RUN = docker run --rm --init --tty \
 	--cap-add SYS_ADMIN \
