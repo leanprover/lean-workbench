@@ -13,6 +13,8 @@ import { detectViews, PUBLISH_MANIFEST_FILE } from '@/lib/server/views'
 
 import { type PublicationInfo, PublishCard } from './PublishCard'
 
+export const instant = false
+
 const zParams = z.object({
   userName: zUserName,
   projectName: zProjectName,
