@@ -18,7 +18,7 @@ interface HealthMonitorProps {
 export function HealthMonitor(props: HealthMonitorProps) {
   return (
     <section>
-      <h2>System health</h2>
+      <h2>Health</h2>
       <CatchySuspense loading={<p>Loading&hellip;</p>}>
         <HealthMonitorData {...props} />
       </CatchySuspense>

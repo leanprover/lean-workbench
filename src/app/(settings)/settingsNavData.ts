@@ -6,7 +6,12 @@ export const settings = [
   },
   {
     title: 'Admin',
-    routes: [{ href: '/admin', label: 'Admin settings' }],
+    routes: [
+      { href: '/admin', label: 'System' },
+      { href: '/admin/accounts', label: 'Accounts' },
+      { href: '/admin/sessions', label: 'Editor sessions' },
+      { href: '/admin/lean', label: 'Lean artifacts' },
+    ],
     admin: true,
   },
 ] as const
