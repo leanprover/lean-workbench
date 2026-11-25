@@ -7,6 +7,8 @@ import { requireAuth } from '@/lib/server/auth'
 import { getShardCoordinator } from '@/lib/server/shardConnection'
 import { getProjectForViewer } from '@/lib/server/util'
 
+export const instant = false
+
 const zParams = z.object({
   userName: zUserName,
   projectName: zProjectName,

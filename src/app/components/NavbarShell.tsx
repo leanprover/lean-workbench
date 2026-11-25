@@ -1,6 +1,8 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { type ReactNode, Suspense } from 'react'
+import { type ReactNode } from 'react'
+
+import { NavigationSafeSuspense } from './NavigationSafeSuspense'
 
 interface NavbarShellProps {
   breadcrumbs?: ReactNode
@@ -21,7 +23,7 @@ export function NavbarShell({ breadcrumbs, children }: NavbarShellProps) {
         <Image src='/static/lean-logo.svg' alt='Lean logo' width={70} height={16} loading='eager' />
         <span className='logo-text'>Lean Workbench</span>
       </Link>
-      <Suspense>{breadcrumbs}</Suspense>
+      <NavigationSafeSuspense>{breadcrumbs}</NavigationSafeSuspense>
       <span className='spacer' />
       {children}
     </nav>

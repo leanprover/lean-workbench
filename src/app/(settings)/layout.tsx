@@ -1,7 +1,8 @@
-import { type ReactNode, Suspense } from 'react'
+import { type ReactNode } from 'react'
 
 import { ConfigCtxProvider } from '@/app/components/ConfigCtxProvider'
 import { Navbar } from '@/app/components/Navbar'
+import { NavigationSafeSuspense } from '@/app/components/NavigationSafeSuspense'
 
 import { SettingsBreadcrumb } from './SettingsBreadcrumb'
 import { SettingsNav } from './SettingsNav'
@@ -14,11 +15,11 @@ export default function SettingsLayout({ children }: Readonly<{ children: ReactN
         <aside>
           <SettingsNav />
         </aside>
-        <Suspense>
+        <NavigationSafeSuspense>
           <ConfigCtxProvider>
             <section>{children}</section>
           </ConfigCtxProvider>
-        </Suspense>
+        </NavigationSafeSuspense>
       </main>
     </>
   )

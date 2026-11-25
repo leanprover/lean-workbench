@@ -12,6 +12,8 @@ import { publicationUrl } from '@/lib/server/publish'
 import { getProjectForViewer } from '@/lib/server/util'
 import { detectViews, VIEWS } from '@/lib/server/views'
 
+export const instant = false
+
 const zParams = z.object({
   userName: zUserName,
   projectName: zProjectName,
