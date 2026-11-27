@@ -16,6 +16,6 @@
   },
   "devDependencies": {
     "vitest": "^5.0.5",
-    "@vitest/coverage-v8": "^5.0.5"
+    "@vitest/coverage-v8": "^5.1.1"
   }
 }
