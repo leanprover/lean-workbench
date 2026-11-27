@@ -34,7 +34,7 @@
     "@leanprover/workbench-shared": "*",
     "@prisma/adapter-better-sqlite3": "^7.7.0",
     "@prisma/client": "^7.7.0",
-    "@trpc/client": "^11.19.0",
+    "@trpc/client": "^11.29.5",
     "better-auth": "^1.7.14",
     "chokidar": "^5.0.0",
     "friendly-words": "1.2.1",

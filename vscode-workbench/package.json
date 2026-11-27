@@ -113,7 +113,7 @@
     "@hocuspocus/provider": "^4.0",
     "@leanprover/workbench-collab-server": "*",
     "@leanprover/workbench-shared": "*",
-    "@trpc/client": "^11.19.0",
+    "@trpc/client": "^11.29.5",
     "minimatch": "^10.2",
     "ws": "^8.23",
     "zod": "^4.6.7"
