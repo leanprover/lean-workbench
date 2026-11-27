@@ -5,7 +5,7 @@ version: 'v0.0.3'
 workflows:
     '.github/workflows/policy-actionlint.yml':
         - 'actions/checkout@v7.0.1'
-        - 'reviewdog/action-actionlint@v1.83.0'
+        - 'reviewdog/action-actionlint@v1.84.1'
     '.github/workflows/policy-commit-convention.yml':
         - 'actions/github-script@v9.0.0'
     '.github/workflows/policy-shellcheck.yml':
@@ -60,8 +60,8 @@ dependencies:
         commit: 'sha1-f87e5991a6d7451dcb8d9637bfbc97413f497069'
         owner_id: 5429470
         repo_id: 288485773
-    'reviewdog/action-actionlint@v1.83.0':
-        ref: 'v1.83.0'
-        commit: 'sha1-a7d35aaf8c309203a4ae861d32b7bd490baa7bf3'
+    'reviewdog/action-actionlint@v1.84.1':
+        ref: 'v1.84.1'
+        commit: 'sha1-ae857e78c1b42b3d0a49637181b09d3d56d402b4'
         owner_id: 48765237
         repo_id: 385059686
